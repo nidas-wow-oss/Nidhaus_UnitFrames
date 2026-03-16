@@ -93,6 +93,7 @@ A full in-game configuration interface organized into tabs:
 1. Download or clone this repository.
 2. Copy the `Nidhaus_UnitFrames` folder into your WoW `Interface/AddOns/` directory.
 3. Restart the WoW client or type `/reload` if already in-game.
+4. Delete " -main " in the name addon.
 
 ## Slash Commands
 
