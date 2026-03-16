@@ -1,0 +1,18 @@
+## Interface: 30300
+## Title: |cffffffffN|r|cffffffffi|r|cffffffffd|r|cffffffffh|r|cffffffffa|r|cffffffffu|r|cffffffffs|r|cff00ff00_|r|cff00ff00U|r|cff00ff00n|r|cff00ff00i|r|cff00ff00t|r|cff00ff00F|r|cff00ff00r|r|cff00ff00a|r|cff00ff00m|r|cff00ff00e|r|cff00ff00s|r
+## Author: Nidhaus
+## Version: 3.5
+## SavedVariables: NidhausUnitFramesDB, PartyBuffsDB, NiceDamageDB
+
+Nidhaus_UnitFrames.xml
+
+Modules2\NewPartyFrame.lua
+Modules2\PartyBuffs.lua
+Modules2\ArenaTimes.lua
+Modules2\HideActionBarTextures.lua
+Modules2\HideChatButton.lua
+Modules2\ButtonRange.lua
+Modules2\Lorti UI\Lorti UI.lua
+Modules2\Lorti UI\func\functions.lua
+Modules2\ClassIcons\ClassIcons.lua
+Modules2\MiniBar.lua
