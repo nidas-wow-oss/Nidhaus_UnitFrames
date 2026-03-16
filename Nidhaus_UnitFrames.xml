@@ -1,0 +1,50 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script file="Core\Init.lua"/>
+	<Script file="Core\Localization.lua"/>
+	<Script file="Config\ConfigManager.lua"/>
+	<Script file="Config\Settings.lua"/>
+	<Script file="Core\API.lua"/>
+	<Script file="Core\ModuleManager.lua"/>
+	<Script file="Modules\ArenaFramePositionSaver.lua"/>
+	<Script file="UnitFrames\PlayerFrame.lua"/>
+	<Script file="UnitFrames\TargetFrame.lua"/>
+	<Script file="UnitFrames\PartyFrame.lua"/>
+	<Script file="Modules\PartyMode3v3.lua"/>
+	<Script file="UnitFrames\BossFrame.lua"/>
+	<Script file="UnitFrames\ArenaFlat.lua"/>
+	<Script file="UnitFrames\ArenaFrame.lua"/>
+	<Script file="UnitFrames\ClassColor.lua"/>
+	<Script file="Core\FramePositions.lua"/>
+	<Script file="Core\FrameDragger.lua"/>
+	<Script file="Modules\HealthPercentage.lua"/>
+	<Script file="Modules\ArenaFrame_Trinkets.lua"/>
+	<Script file="Modules\MirrorMode.lua"/>
+	<Script file="Modules\ArenaMover.lua"/>
+	<Script file="Modules\ActionBars.lua"/>
+	<Script file="Modules2\ArenaCountDown.lua"/>
+	<!-- PartyTargets -->
+	<Script file="Modules2\PartyTargets\LibStub\LibStub.lua"/>
+	<Script file="Modules2\PartyTargets\Frames.lua"/>
+	<Include file="Modules2\PartyTargets\FrameTemplate.xml"/>
+	<Script file="Modules2\PartyTargets\Options.lua"/>
+	<Script file="Modules2\PartyTargets\PartyTargets_Integration.lua"/>
+	<!-- PartyCastingBars -->
+	<Script file="Modules2\PartyCastingBars\localization.en.lua"/>
+	<Script file="Modules2\PartyCastingBars\localization.de.lua"/>
+	<Script file="Modules2\PartyCastingBars\PartyCastingBars.lua"/>
+	<Include file="Modules2\PartyCastingBars\PartyCastingBars_Frames.xml"/>
+	<!-- NiceDamage + SpecIcons -->
+	<Script file="Modules2\NiceDamage\NiceDamage.lua"/>
+	<Script file="Modules2\SpecIcons\SpecDB.lua"/>
+	<Script file="Modules2\SpecIcons\SpecIcons.lua"/>
+	<Script file="Modules2\AutoSell.lua"/>
+	<Script file="Modules2\AutoRepair.lua"/>
+	<Script file="Modules2\ErrorHide.lua"/>
+	<Script file="Core\MinimapButton.lua"/>
+	<Script file="Config\OptionsPanelFrames.lua"/>
+	<Script file="Config\OptionsPanelArena.lua"/>
+	<Script file="Config\OptionsPanelExtra.lua"/>
+	<Script file="Config\OptionsPanelAbout.lua"/>
+	<Script file="Config\OptionsPanel.lua"/>
+	<Script file="Core\Commands.lua"/>
+</Ui>
