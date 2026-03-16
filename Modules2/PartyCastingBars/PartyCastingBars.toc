@@ -1,0 +1,17 @@
+## Interface: 30000
+## Title: PartyCastingBars
+## Title-deDE: Gruppen-Zauberleisten
+## Notes: Adds party member casting bars to their unit frames.
+## Notes-deDE: Erlaubt es Zauber-Fortschrittsbalken der Gruppenmitgliedern neben deren Charakterfenster anzuzeigen.
+## Author: AnduinLothar
+## OptionalDeps: Khaos, Portfolio
+## RequiredDeps: ChatThrottleLib
+## Version: 2.0
+## X-Revision: $Rev: 5127 $
+## X-Date: $Date: 2007-11-13 18:34:54 -0600 (Tue, 13 Nov 2007) $
+## X-Category: UnitFrames
+## X-Email: karlkfi@yahoo.com
+## X-Localizations: enUS, deDE
+## X-CompatibleLocales: enUS, enGB, deDE
+## SavedVariables: PartyCastingBars_Enabled, PartyCastingBars_IconsEnabled, PartyCastingBars_Parented, PartyCastingBars_Scale, PartyCastingBars_Colors
+PartyCastingBars.xml

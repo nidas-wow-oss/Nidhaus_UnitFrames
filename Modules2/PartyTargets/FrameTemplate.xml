@@ -1,0 +1,210 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+	<!-- ============================================================ -->
+	<!-- PartyTargets - Target of Target Style                        -->
+	<!-- Movable with ALT+drag. /ptarget for commands.                -->
+	<!-- ============================================================ -->
+	<Button name="PartyTargetFrameTemp" frameStrata="LOW" toplevel="true" movable="true" hidden="true" inherits="SecureUnitButtonTemplate" virtual="true">
+		<Size>
+			<AbsDimension x="96" y="46"/>
+		</Size>
+		<HitRectInsets>
+			<AbsInset left="4" right="4" top="4" bottom="4"/>
+		</HitRectInsets>
+		<Layers>
+			<!-- Portrait -->
+			<Layer level="BACKGROUND">
+				<Texture name="$parentPortrait">
+					<Size>
+						<AbsDimension x="28" y="28"/>
+					</Size>
+					<Anchors>
+						<Anchor point="TOPLEFT">
+							<Offset>
+								<AbsDimension x="4" y="-2"/>
+							</Offset>
+						</Anchor>
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
+		<Frames>
+			<!-- Flash -->
+			<Frame name="$parentFlash" hidden="true">
+				<Size>
+					<AbsDimension x="96" y="46"/>
+				</Size>
+				<Anchors><Anchor point="TOPLEFT"/></Anchors>
+				<Layers>
+					<Layer level="BACKGROUND">
+						<Texture name="$parentFlash" alphaMode="ADD"/>
+					</Layer>
+				</Layers>
+			</Frame>
+			<!-- Dropdown -->
+			<Frame name="$parentDropDown" inherits="UIDropDownMenuTemplate" id="1" hidden="true">
+				<Size><AbsDimension x="10" y="10"/></Size>
+				<Anchors>
+					<Anchor point="TOP">
+						<Offset><AbsDimension x="-20" y="-10"/></Offset>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						LibStub:GetLibrary("PartyTargets-3.3").DropDownOnLoad(self);
+					</OnLoad>
+				</Scripts>
+			</Frame>
+			<!-- Border art overlay (on top of bars) -->
+			<Frame setAllPoints="true" frameLevel="3">
+				<Layers>
+					<Layer level="ARTWORK">
+						<Texture name="$parentTexture" file="Interface\TargetingFrame\UI-TargetofTargetFrame">
+							<Size>
+								<AbsDimension x="96" y="46"/>
+							</Size>
+							<Anchors>
+								<Anchor point="TOPLEFT">
+									<Offset><AbsDimension x="0" y="0"/></Offset>
+								</Anchor>
+							</Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
+			</Frame>
+			<!-- Name right below mana bar -->
+			<Frame frameLevel="4">
+				<Size><AbsDimension x="66" y="10"/></Size>
+				<Anchors>
+					<Anchor point="TOPLEFT">
+						<Offset><AbsDimension x="35" y="-22"/></Offset>
+					</Anchor>
+				</Anchors>
+				<Layers>
+					<Layer level="OVERLAY">
+						<FontString name="$parentName" inherits="GameFontNormalSmall" justifyH="LEFT">
+							<Size><AbsDimension x="66" y="10"/></Size>
+							<Anchors>
+								<Anchor point="TOPLEFT">
+									<Offset><AbsDimension x="0" y="0"/></Offset>
+								</Anchor>
+							</Anchors>
+							<Color r="1.0" g="0.82" b="0"/>
+						</FontString>
+					</Layer>
+				</Layers>
+			</Frame>
+			<!-- Hidden text (required by UnitFrame_Initialize) -->
+			<Frame hidden="true">
+				<Size><AbsDimension x="1" y="1"/></Size>
+				<Anchors><Anchor point="TOPLEFT"/></Anchors>
+				<Layers>
+					<Layer level="OVERLAY">
+						<FontString name="$parentHealthBarText" inherits="TextStatusBarText" hidden="true">
+							<Anchors><Anchor point="CENTER"/></Anchors>
+						</FontString>
+						<FontString name="$parentManaBarText" inherits="TextStatusBarText" hidden="true">
+							<Anchors><Anchor point="CENTER"/></Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+			</Frame>
+			<!-- Health Bar -->
+			<StatusBar name="$parentHealthBar" inherits="TextStatusBar" frameLevel="1">
+				<Size>
+					<AbsDimension x="33" y="4"/>
+				</Size>
+				<Anchors>
+					<Anchor point="TOPLEFT">
+						<Offset>
+							<AbsDimension x="35" y="-11"/>
+						</Offset>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						TextStatusBar_Initialize(self);
+						self.textLockable = 1;
+						self.lockShow = 0;
+					</OnLoad>
+					<OnValueChanged>
+						LibStub:GetLibrary("PartyTargets-3.3").HealthCheck(self, value);
+						UnitFrameHealthBar_OnValueChanged(self, value);
+					</OnValueChanged>
+				</Scripts>
+				<BarTexture file="Interface\TargetingFrame\UI-StatusBar"/>
+			</StatusBar>
+			<!-- Mana Bar -->
+			<StatusBar name="$parentManaBar" inherits="TextStatusBar" frameLevel="1">
+				<Size>
+					<AbsDimension x="33" y="4"/>
+				</Size>
+				<Anchors>
+					<Anchor point="TOPLEFT">
+						<Offset>
+							<AbsDimension x="35" y="-18"/>
+						</Offset>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						TextStatusBar_Initialize(self);
+						self.textLockable = 1;
+						self.lockShow = 0;
+					</OnLoad>
+				</Scripts>
+				<BarTexture file="Interface\TargetingFrame\UI-StatusBar"/>
+				<BarColor r="0" g="0" b="1.0"/>
+			</StatusBar>
+		</Frames>
+		<Scripts>
+			<OnLoad>
+				local id = self:GetID();
+				self.noTextPrefix = 1;
+				local prefix = "PartyTargetFrame"..id;
+				UnitFrame_Initialize(self, "party"..id.."target", getglobal(prefix.."Name"), getglobal(prefix.."Portrait"),
+					getglobal(prefix.."HealthBar"), getglobal(prefix.."HealthBarText"), 
+					getglobal(prefix.."ManaBar"), getglobal(prefix.."ManaBarText"));
+				SetTextStatusBarTextZeroText(getglobal(prefix.."HealthBar"), DEAD);
+				
+				LibStub:GetLibrary("PartyTargets-3.3").OnLoad(self);
+			</OnLoad>
+			<OnEvent>
+				LibStub:GetLibrary("PartyTargets-3.3").OnEvent(self, event, ...);
+			</OnEvent>
+			<OnUpdate>
+				LibStub:GetLibrary("PartyTargets-3.3").OnUpdate(self, elapsed);
+			</OnUpdate>
+		</Scripts>
+	</Button>
+
+	<!-- Instances -->
+	<Button name="PartyTargetFrame1" inherits="PartyTargetFrameTemp" parent="PartyMemberFrame1" toplevel="true" id="1">
+		<Anchors>
+			<Anchor point="TOPLEFT" relativeTo="PartyMemberFrame1" relativePoint="BOTTOMLEFT">
+				<Offset><AbsDimension x="20" y="12"/></Offset>
+			</Anchor>
+		</Anchors>
+	</Button>
+	<Button name="PartyTargetFrame2" inherits="PartyTargetFrameTemp" parent="PartyMemberFrame2" toplevel="true" id="2">
+		<Anchors>
+			<Anchor point="TOPLEFT" relativeTo="PartyMemberFrame2" relativePoint="BOTTOMLEFT">
+				<Offset><AbsDimension x="20" y="12"/></Offset>
+			</Anchor>
+		</Anchors>
+	</Button>
+	<Button name="PartyTargetFrame3" inherits="PartyTargetFrameTemp" parent="PartyMemberFrame3" toplevel="true" id="3">
+		<Anchors>
+			<Anchor point="TOPLEFT" relativeTo="PartyMemberFrame3" relativePoint="BOTTOMLEFT">
+				<Offset><AbsDimension x="20" y="12"/></Offset>
+			</Anchor>
+		</Anchors>
+	</Button>
+	<Button name="PartyTargetFrame4" inherits="PartyTargetFrameTemp" parent="PartyMemberFrame4" toplevel="true" id="4">
+		<Anchors>
+			<Anchor point="TOPLEFT" relativeTo="PartyMemberFrame4" relativePoint="BOTTOMLEFT">
+				<Offset><AbsDimension x="20" y="12"/></Offset>
+			</Anchor>
+		</Anchors>
+	</Button>
+</Ui>

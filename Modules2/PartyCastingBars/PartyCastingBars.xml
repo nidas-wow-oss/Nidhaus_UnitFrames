@@ -1,0 +1,65 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+
+	<Frame name="PartyCastingBarsFrame" hidden="true">
+		<Scripts>
+			<OnLoad>
+				PartyCastingBars.EventFrameOnLoad(this)
+			</OnLoad>
+			<OnEvent>
+				PartyCastingBars.EventFrameOnEvent(event, arg1, arg2, arg3, arg4)
+			</OnEvent>
+		</Scripts>
+	</Frame>
+	
+	<StatusBar name="PartyCastingBarTemplate" toplevel="true" hidden="true" inherits="CastingBarFrameTemplate" movable="true" virtual="true">
+		<Size>
+			<AbsDimension x="195" y="13"/>
+		</Size>
+		<Anchors>
+			<Anchor point="TOPLEFT" relativePoint="TOPRIGHT">
+				<Offset>
+					<AbsDimension x="7" y="2"/>
+				</Offset>
+			</Anchor>
+		</Anchors>
+		<Layers>
+			<Layer level="ARTWORK">
+				<FontString name="$parentTime" inherits="GameFontNormalSmall">
+					<Anchors>
+						<Anchor point="LEFT" relativePoint="RIGHT">
+							<Offset>
+								<AbsDimension x="7" y="0"/>
+							</Offset>
+						</Anchor>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnLoad>
+				PartyCastingBars.OnLoad(self)
+			</OnLoad>
+			<OnEvent>
+				PartyCastingBars.OnEvent(self, event, ...)
+			</OnEvent>
+			<OnUpdate>
+				PartyCastingBars.OnUpdate(self, elapsed)
+			</OnUpdate>
+			<OnDragStart>
+				PartyCastingBars.OnDragStart(self, button)
+			</OnDragStart>
+			<OnDragStop>
+				PartyCastingBars.OnDragStop(self)
+			</OnDragStop>
+			<OnHide>
+				PartyCastingBars.OnHide(self)
+			</OnHide>
+		</Scripts>
+	</StatusBar>
+	
+	<StatusBar name="$parentCastingBarFrame" parent="PartyMemberFrame1" inherits="PartyCastingBarTemplate" />
+	<StatusBar name="$parentCastingBarFrame" parent="PartyMemberFrame2" inherits="PartyCastingBarTemplate" />
+	<StatusBar name="$parentCastingBarFrame" parent="PartyMemberFrame3" inherits="PartyCastingBarTemplate" />
+	<StatusBar name="$parentCastingBarFrame" parent="PartyMemberFrame4" inherits="PartyCastingBarTemplate" />
+
+</Ui>

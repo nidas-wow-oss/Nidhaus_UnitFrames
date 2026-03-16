@@ -1,0 +1,84 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+
+	<!--
+		PartyCastingBars_Frames.xml
+		Adapted for Nidhaus_UnitFrames
+		
+		NOTE: Scripts (PartyCastingBars.lua, localization files) are already loaded
+		by the main Nidhaus_UnitFrames.xml — do NOT include them here again.
+	-->
+
+	<!-- EventFrame: handles party caching, UNIT_SPELLCAST_SENT, CHAT_MSG_ADDON -->
+	<Frame name="PartyCastingBarsFrame" hidden="true">
+		<Scripts>
+			<OnLoad>
+				PartyCastingBars.EventFrameOnLoad(this)
+			</OnLoad>
+			<OnEvent>
+				PartyCastingBars.EventFrameOnEvent(event, arg1, arg2, arg3, arg4)
+			</OnEvent>
+		</Scripts>
+	</Frame>
+
+	<!--
+		Bar template.
+		inherits="CastingBarFrameTemplate" provides: Icon, Spark, Flash, Border,
+		StatusBarTexture, Text, and the standard casting bar structure.
+		
+		toplevel="true"  — renders above party frames even when parented to them.
+		movable="true"   — required for StartMoving() to work in drag mode.
+		virtual="true"   — template only, not instantiated directly.
+	-->
+	<StatusBar name="PartyCastingBarTemplate" toplevel="true" hidden="true"
+	           inherits="CastingBarFrameTemplate" movable="true" virtual="true">
+		<Size>
+			<AbsDimension x="195" y="13"/>
+		</Size>
+		<Anchors>
+			<!-- Default anchor: to the right of the parent party member frame -->
+			<Anchor point="TOPLEFT" relativePoint="TOPRIGHT">
+				<Offset>
+					<AbsDimension x="7" y="2"/>
+				</Offset>
+			</Anchor>
+		</Anchors>
+		<Layers>
+			<Layer level="ARTWORK">
+				<!-- Time remaining label, positioned to the right of the bar -->
+				<FontString name="$parentTime" inherits="GameFontNormalSmall">
+					<Anchors>
+						<Anchor point="LEFT" relativePoint="RIGHT">
+							<Offset>
+								<AbsDimension x="7" y="0"/>
+							</Offset>
+						</Anchor>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnLoad>
+				PartyCastingBars.OnLoad(this)
+			</OnLoad>
+			<!-- OnEvent and OnUpdate are NOT set here intentionally.
+			     They are only activated via PartyCastingBars.EnableToggle(true)
+			     so that bars stay completely inactive when PCB_Enabled = false. -->
+			<OnDragStart>
+				PartyCastingBars.OnDragStart(this, button)
+			</OnDragStart>
+			<OnDragStop>
+				PartyCastingBars.OnDragStop(this)
+			</OnDragStop>
+			<OnHide>
+				PartyCastingBars.OnHide(this)
+			</OnHide>
+		</Scripts>
+	</StatusBar>
+
+	<!-- Four bar instances, one per party slot, parented to Blizzard's party frames -->
+	<StatusBar name="PartyMemberFrame1CastingBarFrame" parent="PartyMemberFrame1" inherits="PartyCastingBarTemplate"/>
+	<StatusBar name="PartyMemberFrame2CastingBarFrame" parent="PartyMemberFrame2" inherits="PartyCastingBarTemplate"/>
+	<StatusBar name="PartyMemberFrame3CastingBarFrame" parent="PartyMemberFrame3" inherits="PartyCastingBarTemplate"/>
+	<StatusBar name="PartyMemberFrame4CastingBarFrame" parent="PartyMemberFrame4" inherits="PartyCastingBarTemplate"/>
+
+</Ui>

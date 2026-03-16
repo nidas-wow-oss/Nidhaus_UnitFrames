@@ -1,0 +1,12 @@
+## Interface: 30300
+## Version: 3.3-5
+## Author: Nidhaus
+## Title: Party Targets
+## Notes: Mirrors party frames and shows targets in Target-of-Target style. /ptarget to configure.
+## SavedVariables: PartyTargetsDB
+
+LibStub\LibStub.lua
+
+Frames.lua
+Options.lua
+FrameTemplate.xml
