@@ -24,17 +24,18 @@ NUF is designed with arena and battleground players in mind, providing fully cus
 ### Arena Systems
 
 - **Arena Frames** — Two fully styled arena frame modes: **Default** (enhanced Blizzard style) and **Flat** (minimal, competitive style).
-- **Arena Mover** — Test mode with class preview, allowing you to position arena frames outside of a match. Accessible via `/nuf arena` or right-clicking the minimap button.
-- **Trinket Tracker** — Tracks enemy PvP trinket usage on arena frames with cooldown indicators. Draggable per style and mirror mode.
-- **Spec Detection (SpecIcons)** — Detects enemy specializations via combat log analysis using a database of 600+ spell-to-spec mappings. Displays spec icons on Target, Focus, and Arena frames with style-aware positioning.
-- **Arena Countdown** — Visual countdown timer that activates from arena system messages (supports English, Spanish, and numeric server patterns). Includes a Shadow Sight timer overlay.
-- **Arena Position Saver** — Saves arena frame positions independently per style and mirror mode using composite keys, so your layout is preserved across sessions and configurations.
-
 <img width="215" alt="Image" src="https://github.com/user-attachments/assets/ace03d46-ccb9-4952-b3c1-bdbd25d2b891" />
 
 <img width="220" alt="Image" src="https://github.com/user-attachments/assets/ba6e5101-b017-4d48-a4bc-9b57ba7d2023" />
 
 <img width="212" alt="Image" src="https://github.com/user-attachments/assets/431c3a78-f485-40e2-b942-b1a4e6202e0c" />
+
+- **Arena Mover** — Test mode with class preview, allowing you to position arena frames outside of a match. Accessible via `/nuf arena` or right-clicking the minimap button.
+- **Trinket Tracker** — Tracks enemy PvP trinket usage on arena frames with cooldown indicators. Draggable per style and mirror mode.
+- **Spec Detection (SpecIcons)** — Detects enemy specializations via combat log analysis using a database of 600+ spell-to-spec mappings. Displays spec icons on Target, Focus, and Arena frames with style-aware positioning.
+- **Arena Countdown** — Visual countdown timer that activates from arena system messages. Includes a Shadow Sight timer overlay.
+- **Arena Position Saver** — Saves arena frame positions independently per style and mirror mode using composite keys, so your layout is preserved across sessions and configurations.
+
 
 ### Mirror Mode
 
@@ -53,9 +54,9 @@ NUF uses a module manager that allows enabling/disabling features independently.
 |--------|-------------|
 | **ActionBars** | Unifies and reskins the default action bars. Includes texture hiding, combat lockdown guards, vehicle handling, and deferred execution for safe toggling during combat. |
 | **NiceDamage** | Floating combat text replacement with dual-font selection (separate fonts for damage and healing). Includes a font preview system and validation.<br><img width="200" alt="NiceDamage" src="https://github.com/user-attachments/assets/fcb8a2a1-1adb-40fc-be00-0c09d2f801ec" /> |
-| **NewPartyFrame** | Custom-styled party frames with enhanced visuals, integrated with PartyBuffs and PartyTargets for seamless operation. |
+| **NewPartyFrame** | Custom-styled party frames with enhanced visuals, integrated with PartyBuffs and PartyTargets for seamless operation.<br><img width="75" alt="Image" src="https://github.com/user-attachments/assets/79210886-68ca-4a54-adaf-a69cfa139953" /> 
 | **PartyBuffs** | Displays buff/debuff icons on party frames with layout adjustments for both Blizzard and NewPartyFrame modes. Commands: `/pbuffs`, `/partybuffs`. |
-| **PartyTargets** | Shows target-of-party-member indicators with optional horizontal mirroring. Automatically disables mirror when NewPartyFrame is active to prevent visual conflicts. |
+| **PartyTargets** | Shows target-of-party-member indicators with optional horizontal mirroring. Automatically disables mirror when NewPartyFrame is active to prevent visual conflicts.<br><img width="100" alt="Image" src="https://github.com/user-attachments/assets/6ac41efa-3557-4d9f-aeb2-bbe5dc4608d0" /> 
 | **ClassIcons** | Replaces unit portraits with class icons. Throttled refresh in arena for performance. |
 | **ButtonRange** | Tints action buttons red when the target is out of range. |
 | **HideActionBarTextures** | Removes default action bar art and decorations for a cleaner UI. |
@@ -90,22 +91,6 @@ A full in-game configuration interface organized into tabs:
 1. Download or clone this repository.
 2. Copy the `Nidhaus_UnitFrames` folder into your WoW `Interface/AddOns/` directory.
 3. Restart the WoW client or type `/reload` if already in-game.
-
-```
-World of Warcraft/
-└── Interface/
-    └── AddOns/
-        └── Nidhaus_UnitFrames/
-            ├── Nidhaus_UnitFrames.toc
-            ├── Nidhaus_UnitFrames.xml
-            ├── Core/
-            ├── Config/
-            ├── UnitFrames/
-            ├── Modules/
-            └── Modules2/
-```
-
----
 
 ## Slash Commands
 
