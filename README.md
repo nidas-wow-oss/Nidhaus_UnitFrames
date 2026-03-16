@@ -30,7 +30,11 @@ NUF is designed with arena and battleground players in mind, providing fully cus
 - **Arena Countdown** — Visual countdown timer that activates from arena system messages (supports English, Spanish, and numeric server patterns). Includes a Shadow Sight timer overlay.
 - **Arena Position Saver** — Saves arena frame positions independently per style and mirror mode using composite keys, so your layout is preserved across sessions and configurations.
 
+<img width="215" alt="Image" src="https://github.com/user-attachments/assets/ace03d46-ccb9-4952-b3c1-bdbd25d2b891" />
 
+<img width="220" alt="Image" src="https://github.com/user-attachments/assets/ba6e5101-b017-4d48-a4bc-9b57ba7d2023" />
+
+<img width="212" alt="Image" src="https://github.com/user-attachments/assets/431c3a78-f485-40e2-b942-b1a4e6202e0c" />
 
 ### Mirror Mode
 
@@ -48,12 +52,11 @@ NUF uses a module manager that allows enabling/disabling features independently.
 | Module | Description |
 |--------|-------------|
 | **ActionBars** | Unifies and reskins the default action bars. Includes texture hiding, combat lockdown guards, vehicle handling, and deferred execution for safe toggling during combat. |
-| **NiceDamage** | Floating combat text replacement with dual-font selection (separate fonts for damage and healing). Includes a font preview system and validation. |
+| **NiceDamage** | Floating combat text replacement with dual-font selection (separate fonts for damage and healing). Includes a font preview system and validation.<br><img width="200" alt="NiceDamage" src="https://github.com/user-attachments/assets/fcb8a2a1-1adb-40fc-be00-0c09d2f801ec" /> |
 | **NewPartyFrame** | Custom-styled party frames with enhanced visuals, integrated with PartyBuffs and PartyTargets for seamless operation. |
 | **PartyBuffs** | Displays buff/debuff icons on party frames with layout adjustments for both Blizzard and NewPartyFrame modes. Commands: `/pbuffs`, `/partybuffs`. |
 | **PartyTargets** | Shows target-of-party-member indicators with optional horizontal mirroring. Automatically disables mirror when NewPartyFrame is active to prevent visual conflicts. |
 | **ClassIcons** | Replaces unit portraits with class icons. Throttled refresh in arena for performance. |
-| **Round3DPortraits** | Applies round 3D portrait rendering to target frames with proper strata and render order. |
 | **ButtonRange** | Tints action buttons red when the target is out of range. |
 | **HideActionBarTextures** | Removes default action bar art and decorations for a cleaner UI. |
 | **HideChatButton** | Adds a toggle button to show/hide the entire chat frame. |
@@ -117,21 +120,8 @@ World of Warcraft/
 
 The minimap button also provides quick access: left-click opens the options panel, right-click toggles the arena mover.
 
----
 
-## Architecture
 
-NUF is built around a shared namespace (`K` for functions, `C` for config, `L` for localization) initialized in `Init.lua`. The addon follows a strict load order defined in the XML file:
-
-1. **Core** — Init, API, Settings, ConfigManager, ModuleManager, FrameDragger, FramePositions
-2. **Config** — OptionsPanel (modular: General, Frames, Arena, Extra, About tabs), Commands, Localization
-3. **UnitFrames** — PlayerFrame, TargetFrame, PartyFrame, BossFrame, ArenaFrame, ArenaFlat, ClassColor
-4. **Modules** — ActionBars, MirrorMode, ArenaMover, ArenaFrame_Trinkets, ArenaFramePositionSaver, PartyMode3v3, HealthPercentage, MinimapButton, and more
-5. **Modules2** — NiceDamage, NewPartyFrame, PartyBuffs, PartyTargets, ClassIcons, SpecIcons, ArenaCountDown, MiniBar, AutoSell, AutoRepair, ErrorHide
-
-The ConfigManager provides a custom event system (`CONFIG_LOADED`, `CONFIG_CHANGED`, `CONFIG_RESET`) that modules subscribe to for reactive updates. Configuration is stored in `NidhausUnitFramesDB` (SavedVariables).
-
----
 
 ## Compatibility
 
