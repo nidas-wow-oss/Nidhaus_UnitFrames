@@ -1,8 +1,8 @@
 # Nidhaus UnitFrames (NUF)
 
-A comprehensive unit frame replacement and UI enhancement addon for **World of Warcraft WotLK 3.3.5a** (Warmane Blackrock and other private servers).
+A PvP-focused UI addon for **World of Warcraft WotLK 3.3.5a** (Warmane Blackrock and other private servers).
 
-NUF replaces and enhances the default Blizzard unit frames with fully customizable player, target, party, boss, and arena frames — plus a modular system of optional features covering action bars, floating combat text, party buffs, and more.
+NUF is designed with arena and battleground players in mind, providing fully customizable unit frames, arena-specific tools (trinket tracking, spec detection, countdown timers, frame positioning per style), and a modular system of optional features — all configurable from a single in-game options panel.
 
 ![WoW 3.3.5a](https://img.shields.io/badge/WoW-3.3.5a-blue)
 ![Client](https://img.shields.io/badge/Client-WotLK-orange)
