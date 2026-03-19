@@ -290,7 +290,7 @@ L["ABOUT_CMD_ARENA"]             = "|cffFFFFFF/nuf arena|r — Toggle arena test
 L["ABOUT_CMD_BOSS"]              = "|cffFFFFFF/nuf boss|r — Toggle boss test mode";
 L["ABOUT_CMD_RESET"]             = "|cffFFFFFF/nuf reset|r — Reset all settings";
 L["ABOUT_CONTACT_LABEL"]         = "|cffFFAA00Discord:|r";
-L["ABOUT_CONTACT_LINK"]          = "https://discord.gg/p3sqeram";
+L["ABOUT_CONTACT_LINK"]          = "https://discord.gg/3sYjytGfhj";
 L["ABOUT_COPY_HINT"]             = "|cffAAAAAA(Click to select, Ctrl+C to copy)|r";
 
 -- === MINIMAP BUTTON ===
@@ -583,7 +583,7 @@ L["ABOUT_CMD_ARENA"]             = "|cffFFFFFF/nuf arena|r — Toggle modo test 
 L["ABOUT_CMD_BOSS"]              = "|cffFFFFFF/nuf boss|r — Toggle modo test de boss";
 L["ABOUT_CMD_RESET"]             = "|cffFFFFFF/nuf reset|r — Resetear configuración";
 L["ABOUT_CONTACT_LABEL"]         = "|cffFFAA00Discord:|r";
-L["ABOUT_CONTACT_LINK"]          = "https://discord.gg/p3sqeram";
+L["ABOUT_CONTACT_LINK"]          = "https://discord.gg/3sYjytGfhj";
 L["ABOUT_COPY_HINT"]             = "|cffAAAAAA(Click para seleccionar, Ctrl+C para copiar)|r";
 
 -- === MINIMAP BUTTON ===
