@@ -1,5 +1,10 @@
+Changelog
+v3.6
 
-version 3.5
+Fix style menu options
+Fix text display issues
+Fix various frame bugs
+
 # Nidhaus UnitFrames (NUF)
 
 A PvP-focused UI addon for **World of Warcraft WotLK 3.3.5a** (Warmane Blackrock and other private servers).
