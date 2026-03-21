@@ -67,7 +67,7 @@ L["TIP_ArenaCastBarWidth"]       = "Cast bar width.";
 
 -- === OPTIONS PANEL ===
 L["PANEL_TITLE"]                 = "Nidhaus UnitFrames";
-L["PANEL_VERSION"]               = "|cffFFAA00v3.5|r";
+L["PANEL_VERSION"]               = "|cffFFAA00v3.6|r";
 L["PANEL_SUBTITLE"]              = "Unit Frame Customization & Arena Tools";
 
 -- Tabs
@@ -86,6 +86,8 @@ L["CB_CLASS_COLOR"]              = "Class Color Health Bars";
 L["CB_BACKDROP"]                 = "Statusbar Backdrop";
 L["CB_HEALTH_PCT"]               = "Health Percentage";
 L["HEADER_POSITIONS"]            = "|cff00FF00Frame Positions & Draggable|r";
+L["POS_HINT_ENABLE"]            = "|cffFFCC44Enable Custom Positions|r |cffAAAAAAto move Player, Target & Party frames.|r";
+L["POS_HINT_DRAG"]              = "|cff6699FFShift+Alt+Click|r |cffAAAAAAto drag a frame.|r";
 L["CB_CUSTOM_POS"]               = "Use Custom Positions";
 L["CB_LOCK_POS"]                 = "Lock Positions";
 L["CB_PARTY_INDIVIDUAL"]         = "Move Party Individually";
@@ -281,16 +283,17 @@ L["COLLAPSE_ICON_COLLAPSE"]      = "[v]";
 L["HEADER_ABOUT"]                = "|cff00FF00About|r";
 L["ABOUT_ADDON_NAME"]            = "|cffffffffNidhaus|r |cff00FF00UnitFrames|r";
 L["ABOUT_DESCRIPTION"]           = "A PVP-focused UI addon for WoW WotLK 3.3.5a.\nCustom arena frames, trinket tracking, mirror mode,\nclass-colored health bars, and optimized frame positioning\ndesigned for competitive arena gameplay.";
-L["ABOUT_AUTHOR"]                = "|cffFFAA00Author:|r Nidhaus";
-L["ABOUT_VERSION"]               = "|cffFFAA00Version:|r 3.5";
+L["ABOUT_VERSION"]               = "|cffFFAA00Version:|r 3.6";
 L["ABOUT_COMMANDS_HEADER"]       = "|cffFFAA00Slash Commands:|r";
 L["ABOUT_CMD_OPTIONS"]           = "|cffFFFFFF/nuf|r — Open options panel";
 L["ABOUT_CMD_CONFIG"]            = "|cffFFFFFF/nuf config|r — Show saved variables";
 L["ABOUT_CMD_ARENA"]             = "|cffFFFFFF/nuf arena|r — Toggle arena test mode";
 L["ABOUT_CMD_BOSS"]              = "|cffFFFFFF/nuf boss|r — Toggle boss test mode";
 L["ABOUT_CMD_RESET"]             = "|cffFFFFFF/nuf reset|r — Reset all settings";
+L["ABOUT_GITHUB_LABEL"]          = "|cffFFAA00GitHub:|r";
+L["ABOUT_GITHUB_LINK"]           = "https://github.com/nidas-wow-oss";
 L["ABOUT_CONTACT_LABEL"]         = "|cffFFAA00Discord:|r";
-L["ABOUT_CONTACT_LINK"]          = "https://discord.gg/3sYjytGfhj";
+L["ABOUT_CONTACT_LINK"]          = "https://discord.gg/p3sqeram";
 L["ABOUT_COPY_HINT"]             = "|cffAAAAAA(Click to select, Ctrl+C to copy)|r";
 
 -- === MINIMAP BUTTON ===
@@ -386,6 +389,8 @@ L["CB_CLASS_COLOR"]              = "Barras de vida por clase";
 L["CB_BACKDROP"]                 = "Fondo de barras";
 L["CB_HEALTH_PCT"]               = "Porcentaje de vida";
 L["HEADER_POSITIONS"]            = "|cff00FF00Posiciones & Arrastrables|r";
+L["POS_HINT_ENABLE"]            = "|cffFFCC44Activá Custom Positions|r |cffAAAAAApara mover Player, Target y Party.|r";
+L["POS_HINT_DRAG"]              = "|cff6699FFShift+Alt+Click|r |cffAAAAAApara arrastrar un frame.|r";
 L["CB_CUSTOM_POS"]               = "Usar Posiciones Custom";
 L["CB_LOCK_POS"]                 = "Bloquear Posiciones";
 L["CB_PARTY_INDIVIDUAL"]         = "Mover Party Individual";
@@ -574,16 +579,17 @@ L["COLLAPSE_ICON_COLLAPSE"]      = "[v]";
 L["HEADER_ABOUT"]                = "|cff00FF00Acerca de|r";
 L["ABOUT_ADDON_NAME"]            = "|cffffffffNidhaus|r |cff00FF00UnitFrames|r";
 L["ABOUT_DESCRIPTION"]           = "Un addon de interfaz enfocado en PVP para WoW WotLK 3.3.5a.\nArena frames custom, tracking de trinkets, modo espejo,\nbarras de vida por clase, y posicionamiento optimizado\ndiseñado para arena competitivo.";
-L["ABOUT_AUTHOR"]                = "|cffFFAA00Autor:|r Nidhaus";
-L["ABOUT_VERSION"]               = "|cffFFAA00Versión:|r 3.5";
+L["ABOUT_VERSION"]               = "|cffFFAA00Versión:|r 3.6";
 L["ABOUT_COMMANDS_HEADER"]       = "|cffFFAA00Comandos:|r";
 L["ABOUT_CMD_OPTIONS"]           = "|cffFFFFFF/nuf|r — Abrir panel de opciones";
 L["ABOUT_CMD_CONFIG"]            = "|cffFFFFFF/nuf config|r — Mostrar variables guardadas";
 L["ABOUT_CMD_ARENA"]             = "|cffFFFFFF/nuf arena|r — Toggle modo test de arena";
 L["ABOUT_CMD_BOSS"]              = "|cffFFFFFF/nuf boss|r — Toggle modo test de boss";
 L["ABOUT_CMD_RESET"]             = "|cffFFFFFF/nuf reset|r — Resetear configuración";
+L["ABOUT_GITHUB_LABEL"]          = "|cffFFAA00GitHub:|r";
+L["ABOUT_GITHUB_LINK"]           = "https://github.com/nidas-wow-oss";
 L["ABOUT_CONTACT_LABEL"]         = "|cffFFAA00Discord:|r";
-L["ABOUT_CONTACT_LINK"]          = "https://discord.gg/3sYjytGfhj";
+L["ABOUT_CONTACT_LINK"]          = "https://discord.gg/p3sqeram";
 L["ABOUT_COPY_HINT"]             = "|cffAAAAAA(Click para seleccionar, Ctrl+C para copiar)|r";
 
 -- === MINIMAP BUTTON ===

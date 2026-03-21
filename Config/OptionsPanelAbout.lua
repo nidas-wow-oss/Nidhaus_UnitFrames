@@ -25,15 +25,10 @@ function K.PopulateAboutTab(panel)
 	aboutDesc:SetJustifyH("CENTER");
 	aboutDesc:SetText(L["ABOUT_DESCRIPTION"]);
 
-	-- Autor
-	local aboutAuthor = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight");
-	aboutAuthor:SetPoint("TOP", aboutDesc, "BOTTOM", 0, -16);
-	aboutAuthor:SetText(L["ABOUT_AUTHOR"]);
-
-	-- Separador
+	-- Separador 1
 	local aboutSep1 = panel:CreateTexture(nil, "ARTWORK");
 	aboutSep1:SetTexture(1, 1, 1, 0.15);
-	aboutSep1:SetPoint("TOP", aboutAuthor, "BOTTOM", 0, -14);
+	aboutSep1:SetPoint("TOP", aboutDesc, "BOTTOM", 0, -14);
 	aboutSep1:SetSize(400, 1);
 
 	-- Slash Commands header
@@ -63,9 +58,42 @@ function K.PopulateAboutTab(panel)
 	aboutSep2:SetPoint("TOP", prevCmd, "BOTTOM", 0, -14);
 	aboutSep2:SetSize(400, 1);
 
-	-- Contact / Link copiable (estilo Tidy Plates)
+	-- ── GitHub copiable ──────────────────────────────
+	local githubLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+	githubLabel:SetPoint("TOP", aboutSep2, "BOTTOM", 0, -14);
+	githubLabel:SetText(L["ABOUT_GITHUB_LABEL"]);
+
+	local githubBoxBorder = CreateFrame("Frame", nil, panel);
+	githubBoxBorder:SetSize(300, 28);
+	githubBoxBorder:SetPoint("TOP", githubLabel, "BOTTOM", 0, -8);
+	githubBoxBorder:SetBackdrop({
+		bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		tile     = true,
+		tileSize = 16,
+		edgeSize = 14,
+		insets   = { left = 3, right = 3, top = 3, bottom = 3 },
+	});
+	githubBoxBorder:SetBackdropColor(0, 0, 0, 0.8);
+	githubBoxBorder:SetBackdropBorderColor(0.6, 0.6, 0.6, 0.8);
+
+	local githubBox = CreateFrame("EditBox", nil, githubBoxBorder);
+	githubBox:SetPoint("TOPLEFT", 6, -6);
+	githubBox:SetPoint("BOTTOMRIGHT", -6, 6);
+	githubBox:SetFontObject("GameFontHighlightSmall");
+	githubBox:SetAutoFocus(false);
+	githubBox:SetText(L["ABOUT_GITHUB_LINK"]);
+	githubBox:SetCursorPosition(0);
+	githubBox:SetScript("OnEditFocusGained", function(self) self:HighlightText(); end);
+	githubBox:SetScript("OnEditFocusLost", function(self) self:HighlightText(0, 0); end);
+	githubBox:SetScript("OnEscapePressed", function(self) self:ClearFocus(); end);
+	githubBox:SetScript("OnTextChanged", function(self, userInput)
+		if userInput then self:SetText(L["ABOUT_GITHUB_LINK"]); end
+	end);
+
+	-- ── Discord copiable ─────────────────────────────
 	local contactLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
-	contactLabel:SetPoint("TOP", aboutSep2, "BOTTOM", 0, -14);
+	contactLabel:SetPoint("TOP", githubBoxBorder, "BOTTOM", 0, -14);
 	contactLabel:SetText(L["ABOUT_CONTACT_LABEL"]);
 
 	local editBoxBorder = CreateFrame("Frame", nil, panel);
@@ -92,7 +120,6 @@ function K.PopulateAboutTab(panel)
 	linkBox:SetScript("OnEditFocusGained", function(self) self:HighlightText(); end);
 	linkBox:SetScript("OnEditFocusLost", function(self) self:HighlightText(0, 0); end);
 	linkBox:SetScript("OnEscapePressed", function(self) self:ClearFocus(); end);
-	-- Impedir edicion: resetear el texto si el usuario escribe
 	linkBox:SetScript("OnTextChanged", function(self, userInput)
 		if userInput then self:SetText(L["ABOUT_CONTACT_LINK"]); end
 	end);
