@@ -45,6 +45,8 @@
 	<Script file="Config\OptionsPanelArena.lua"/>
 	<Script file="Config\OptionsPanelExtra.lua"/>
 	<Script file="Config\OptionsPanelAbout.lua"/>
+	<!-- ThemeManager must load before OptionsPanel so K.GetPanelThemes() is available -->
+	<Script file="Config\ThemeManager.lua"/>
 	<Script file="Config\OptionsPanel.lua"/>
 	<Script file="Core\Commands.lua"/>
 </Ui>
