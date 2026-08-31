@@ -6,13 +6,90 @@ local IsAddOnLoaded, LoadAddOn = IsAddOnLoaded, LoadAddOn;
 
 local MAX_ARENA_ENEMIES = MAX_ARENA_ENEMIES or 5;
 
+-- LORTI UI TAMBIEN EN LOS ESTILOS PROPIOS.
+--
+-- Lorti oscurece la textura del marco de arena, pero estos estilos la
+-- REEMPLAZAN por la suya y el tinte se perdia: en Compact 2 parecia que
+-- Lorti no hacia nada. Se le pregunta el color cada vez que se pone la
+-- textura; si Lorti esta apagado devuelve nil y queda el blanco normal.
+local function ApplyArenaTint(tex)
+	if not tex then return; end
+
+	-- SI LORTI ESTA APAGADO, NO SE TOCA NADA.
+	--
+	-- Aca estaba el error: cuando Lorti no tenia nada que decir, esto le
+	-- ponia blanco a la textura "por las dudas". Pero NUF nunca fue dueño
+	-- de ese color — el unico que lo escribe es Lorti, una sola vez, cuando
+	-- carga Blizzard_ArenaUI. Al reponer el blanco en cada aplicacion de
+	-- estilo le borrabamos el tinte, y dejaba de verse en TODOS los modos,
+	-- incluso en el de Blizzard, que ni siquiera pasa por el reemplazo de
+	-- textura.
+	--
+	-- Sin dueño no hay que reponer nada: se tiñe solo cuando corresponde.
+	if not K.ApplyLortiTint then return; end
+	if not (K.LortiTint and K.LortiTint("LortiUI_Arena")) then return; end
+	K.ApplyLortiTint(tex, "LortiUI_Arena");
+end
+
+
 local NidhausArenaEnemyFrames;
 local isInitialized = false;
 local hookRegistered = false;
 
 local Path;
 
+-- Tamaño del arte del marco de arena.
+--
+-- El recorte que se le hace a UI-TargetingFrame (TexCoord 0.09375..1.0
+-- horizontal, 0..0.78125 vertical) toma una region de 232x100 pixeles
+-- sobre una textura de 256x128, o sea una proporcion de 2.32.
+--
+-- Estaba dibujado a 124x48, que es 2.58: un 11% mas ancho de lo que
+-- corresponde, y por eso el marco se veia estirado. Con 124x53 la
+-- proporcion queda en 2.34, practicamente la original.
+--
+-- Para volver atras, poner 48 aca y listo: es el unico lugar.
+-- Posicion de fabrica de la barra de casteo en modo Flat (ver el uso mas
+-- abajo): salio de dejarla acomodada en el juego.
+local CASTBAR_FLAT_DEFAULT = { "CENTER", "CENTER", -106.1, 1.2 };
+
+local TEX_W, TEX_H = 124, 53;
+local TEX_X, TEX_Y = 0, 5;      -- donde se ancla el arte dentro del marco
+
+-- Barras de vida y mana.
+--
+-- Al pasar el arte de 48 a 53 de alto, el marco crecio 5 pixeles hacia
+-- abajo y las barras quedaron altas respecto del dibujo. Estos numeros
+-- las reacomodan: BAR_Y las baja, y los altos se repartieron para que
+-- las dos entren dentro del recuadro del arte.
+local BAR_X, BAR_Y = 4, -8;     -- esquina superior izquierda de la de vida
+local BAR_W        = 62;        -- ancho de las dos
+local BAR_HP_H     = 14;        -- alto de vida
+local BAR_MP_H     = 6;         -- alto de mana
+
+-- La de mana se ancla EXPLICITAMENTE debajo de la de vida. Antes se le
+-- daba solo el tamaño y la posicion la ponia Blizzard, asi que quedaba
+-- pegada arriba y no habia numero que tocar. Este es negativo: baja.
+local BAR_MP_GAP   = -1;
+
+-- Retrato de clase: corrimiento respecto del borde derecho del marco.
+-- Con el arte mas alto quedaba levantado respecto del hueco redondo.
+local PORT_X, PORT_Y = 0, -4;
+
 local function GetArenaTexturePath()
+	-- Compact 2: EXACTAMENTE la misma textura que usan el PlayerFrame en
+	-- modo Compact y el estilo Compact 2 del grupo, para que los tres
+	-- marcos se vean del mismo material.
+	--
+	-- Como las carpetas Light, Dark y pw comparten los mismos nombres de
+	-- archivo y el mismo dibujo, los TexCoord y el SetSize que usa el
+	-- estilo Custom valen igual: solo cambia de que carpeta sale.
+	--
+	-- Y aca NO hay que espejarla, a diferencia del marco de grupo: el de
+	-- arena ya lleva el retrato a la derecha, que es como esta dibujada.
+	if C.ArenaFrameStyle == "Compact2" then
+		return "Interface\\AddOns\\"..AddOnName.."\\Media\\pw\\UI-TargetingFrame";
+	end
 	if C.darkFrames then
 		return "Interface\\AddOns\\"..AddOnName.."\\Media\\Dark\\UI-TargetingFrame";
 	else
@@ -114,10 +191,33 @@ local function CaptureOriginals(index)
 
 	local castBar = _G["ArenaEnemyFrame"..index.."CastingBar"];
 	if castBar then
+		-- LOS ANCLAJES TAMBIEN.
+		--
+		-- Antes esta foto guardaba solo ancho, alto y escala. Los puntos
+		-- los guardaba MirrorMode... pero solo cuando se prendia el modo
+		-- espejo. Si nunca lo habias usado, nadie tenia la posicion de
+		-- fabrica, y el boton Reset no podia devolver la barra a su lugar
+		-- porque no sabia cual era: se quedaba donde la habias arrastrado.
+		--
+		-- Esta captura corre desde ApplyArenaTextures, o sea al estilar los
+		-- marcos, mucho antes de que se pueda arrastrar nada. Es el momento
+		-- correcto para sacarla.
+		local pts = {};
+		for p = 1, (castBar:GetNumPoints() or 0) do pts[p] = { castBar:GetPoint(p) }; end
+
+		local iconPts;
+		local icon = castBar.Icon or _G["ArenaEnemyFrame"..index.."CastingBarIcon"];
+		if icon then
+			iconPts = {};
+			for p = 1, (icon:GetNumPoints() or 0) do iconPts[p] = { icon:GetPoint(p) }; end
+		end
+
 		orig.castBar = {
 			width = castBar:GetWidth(),
 			height = castBar:GetHeight(),
 			scale = castBar:GetScale(),
+			points = (#pts > 0) and pts or nil,
+			iconPoints = (iconPts and #iconPts > 0) and iconPts or nil,
 		};
 	end
 
@@ -143,6 +243,9 @@ local function RestoreDefaultArenaTextures()
 			end
 			tex:SetTexCoord(unpack(orig.tex.texCoords));
 			tex:SetSize(orig.tex.width, orig.tex.height);
+			-- Volver a la textura de fabrica no deberia perder el tinte de
+			-- Lorti: el lo aplico una vez al cargar y nadie mas lo repone.
+			ApplyArenaTint(tex);
 			tex:Show();
 		end
 
@@ -207,7 +310,14 @@ end
 
 local function ApplyArenaTextures()
 	if not ArenaEnemyFrame1 then return; end
-	if not Path then Path = GetArenaTexturePath(); end
+	-- SIEMPRE se recalcula, nunca se reusa el cacheado.
+	--
+	-- Antes alcanzaba con calcularlo una vez porque solo dependia de
+	-- darkFrames. Desde que Compact 2 usa la carpeta pw, la ruta depende
+	-- del ESTILO: con el cache, el primer estilo que elegias en la sesion
+	-- le quedaba pegado a todos los demas — por eso Custom te salia con
+	-- la textura de Compact 2.
+	Path = GetArenaTexturePath();
 
 	for i = 1, MAX_ARENA_ENEMIES do
 		if _G["ArenaEnemyFrame"..i] then CaptureOriginals(i); end
@@ -215,7 +325,12 @@ local function ApplyArenaTextures()
 
 	local style = C.ArenaFrameStyle or "Blizzard";
 	local isFlat = (style == "Flat") or C.ArenaFlatMode;
-	local isCustom = (style == "Custom") or (C.ArenaCustomTexture and not isFlat);
+	-- Compact entra por la misma rama que Custom: comparten todo el
+	-- posicionamiento y solo se diferencian en el marco decorado, que se
+	-- esconde mas abajo.
+	local isCompact = (style == "Compact");
+	local isCustom = isCompact or (style == "Custom") or (style == "Compact2")
+		or (C.ArenaCustomTexture and not isFlat);
 
 	if isFlat then
 		RestoreDefaultArenaTextures();
@@ -239,27 +354,32 @@ local function ApplyArenaTextures()
 		if not arenaFrame then break; end
 
 		local tex = _G["ArenaEnemyFrame"..i.."Texture"];
-		if tex then
+		if tex and isCompact then
+			tex:Hide();
+		elseif tex then
 			tex:SetTexture(Path);
 			tex:ClearAllPoints();
-			tex:SetPoint("TOPLEFT", arenaFrame, "TOPLEFT", 0, 5);
+			tex:SetPoint("TOPLEFT", arenaFrame, "TOPLEFT", TEX_X, TEX_Y);
 			tex:SetTexCoord(0.09375, 1.0, 0, 0.78125);
-			tex:SetSize(124, 48);
+			tex:SetSize(TEX_W, TEX_H);
+			ApplyArenaTint(tex);
 			tex:Show();
 		end
 
-		arenaFrame.healthbar:SetPoint("TOPLEFT", arenaFrame, "TOPLEFT", 4, -6);
-		arenaFrame.healthbar:SetSize(62, 14);
+		arenaFrame.healthbar:SetPoint("TOPLEFT", arenaFrame, "TOPLEFT", BAR_X, BAR_Y);
+		arenaFrame.healthbar:SetSize(BAR_W, BAR_HP_H);
 		arenaFrame.name:ClearAllPoints();
 		arenaFrame.name:SetPoint("BOTTOM", arenaFrame.healthbar, "TOP", 0, 1);
-		arenaFrame.manabar:SetSize(62, 6);
+		arenaFrame.manabar:SetSize(BAR_W, BAR_MP_H);
+		arenaFrame.manabar:ClearAllPoints();
+		arenaFrame.manabar:SetPoint("TOPLEFT", arenaFrame.healthbar, "BOTTOMLEFT", 0, BAR_MP_GAP);
 		arenaFrame.healthbar.TextString:SetPoint("CENTER", arenaFrame.healthbar);
 		arenaFrame.manabar.TextString:SetPoint("CENTER", arenaFrame.manabar);
 		arenaFrame.healthbar.TextString:SetFont(unpack(Font));
 		arenaFrame.manabar.TextString:SetFont(unpack(Font));
 		arenaFrame.classPortrait:SetSize(34, 34);
 		arenaFrame.classPortrait:ClearAllPoints();
-		arenaFrame.classPortrait:SetPoint("RIGHT", arenaFrame, "RIGHT", 0, 0);
+		arenaFrame.classPortrait:SetPoint("RIGHT", arenaFrame, "RIGHT", PORT_X, PORT_Y);
 
 		if statusbarOn and statusbarTexture then
 			arenaFrame.healthbar:SetStatusBarTexture(statusbarTexture);
@@ -360,6 +480,8 @@ local function HookArenaFrameScale(index)
 			local petFrame = _G["ArenaEnemyFrame"..index.."PetFrame"];
 			if petFrame and petFrame:IsShown() then
 				K.ApplyFlatPetStyle(petFrame, index);
+				-- FIX: Restore saved position after style resets it
+				if K.RestorePetFramePositions then K.RestorePetFramePositions(); end
 			end
 		end
 	end);
@@ -368,7 +490,14 @@ end
 
 K.StyleSingleArenaFrame = function(frame, index)
 	if not frame then return; end
-	if not Path then Path = GetArenaTexturePath(); end
+	-- SIEMPRE se recalcula, nunca se reusa el cacheado.
+	--
+	-- Antes alcanzaba con calcularlo una vez porque solo dependia de
+	-- darkFrames. Desde que Compact 2 usa la carpeta pw, la ruta depende
+	-- del ESTILO: con el cache, el primer estilo que elegias en la sesion
+	-- le quedaba pegado a todos los demas — por eso Custom te salia con
+	-- la textura de Compact 2.
+	Path = GetArenaTexturePath();
 
 	local style = C.ArenaFrameStyle or "Blizzard";
 	local isFlat = (style == "Flat") or C.ArenaFlatMode;
@@ -378,25 +507,41 @@ K.StyleSingleArenaFrame = function(frame, index)
 		return;
 	end
 
-	local isCustom = (style == "Custom") or C.ArenaCustomTexture;
+	-- COMPACT: mismo armado que Custom pero SIN el marco decorado.
+	--
+	-- Es el equivalente en arena del estilo Compact del party (el de
+	-- pw_unitframes): barras limpias, nombre arriba y nada de arte
+	-- alrededor. Como el resto del bloque de Custom ya deja el nombre
+	-- sobre la barra de vida, alcanza con tratarlo como Custom y esconder
+	-- la textura, en vez de duplicar cuarenta lineas de posicionamiento.
+	local isCompact = (style == "Compact");
+	local isCustom  = isCompact or (style == "Custom") or (style == "Compact2")
+		or C.ArenaCustomTexture;
 	if not isCustom then return; end
 
 	local Font = C.ArenaFrameFont or {"Fonts\\FRIZQT__.TTF", 7, "OUTLINE"};
 	local tex = _G["ArenaEnemyFrame"..index.."Texture"];
 	if tex then
-		tex:SetTexture(Path);
-		tex:ClearAllPoints();
-		tex:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 5);
-		tex:SetTexCoord(0.09375, 1.0, 0, 0.78125);
-		tex:SetSize(124, 48);
-		tex:Show();
+		if isCompact then
+			tex:Hide();
+		else
+			tex:SetTexture(Path);
+			tex:ClearAllPoints();
+			tex:SetPoint("TOPLEFT", frame, "TOPLEFT", TEX_X, TEX_Y);
+			tex:SetTexCoord(0.09375, 1.0, 0, 0.78125);
+			tex:SetSize(TEX_W, TEX_H);
+			ApplyArenaTint(tex);
+			tex:Show();
+		end
 	end
 	frame.healthbar:ClearAllPoints();
-	frame.healthbar:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, -6);
-	frame.healthbar:SetSize(62, 14);
+	frame.healthbar:SetPoint("TOPLEFT", frame, "TOPLEFT", BAR_X, BAR_Y);
+	frame.healthbar:SetSize(BAR_W, BAR_HP_H);
 	frame.name:ClearAllPoints();
 	frame.name:SetPoint("BOTTOM", frame.healthbar, "TOP", 0, 1);
-	frame.manabar:SetSize(62, 6);
+	frame.manabar:SetSize(BAR_W, BAR_MP_H);
+	frame.manabar:ClearAllPoints();
+	frame.manabar:SetPoint("TOPLEFT", frame.healthbar, "BOTTOMLEFT", 0, BAR_MP_GAP);
 	frame.healthbar.TextString:ClearAllPoints();
 	frame.healthbar.TextString:SetPoint("CENTER", frame.healthbar);
 	frame.manabar.TextString:ClearAllPoints();
@@ -405,7 +550,7 @@ K.StyleSingleArenaFrame = function(frame, index)
 	frame.manabar.TextString:SetFont(unpack(Font));
 	frame.classPortrait:SetSize(34, 34);
 	frame.classPortrait:ClearAllPoints();
-	frame.classPortrait:SetPoint("RIGHT", frame, "RIGHT", 0, 0);
+	frame.classPortrait:SetPoint("RIGHT", frame, "RIGHT", PORT_X, PORT_Y);
 	if C.statusbarOn and C.statusbarTexture then
 		frame.healthbar:SetStatusBarTexture(C.statusbarTexture);
 		frame.manabar:SetStatusBarTexture(C.statusbarTexture);
@@ -498,6 +643,9 @@ function K.UpdateFlatStyle()
 	if K.ApplyAllFlatStyles then K.ApplyAllFlatStyles(); end
 	K.ApplyArenaSpacing();
 	if K.ApplyMirrorMode then K.ApplyMirrorMode(); end
+	-- FIX: Restore saved pet positions AFTER flat styles re-applied them to defaults.
+	-- Without this, any slider change or config update resets pet frame positions.
+	if K.RestorePetFramePositions then K.RestorePetFramePositions(); end
 end
 
 function K.IsFlatModeActive()
@@ -572,6 +720,14 @@ local castBarDragSetup = false;
 -- ═══════════════════════════════════════════════════════════
 function K.GetSavedCastBarPos()
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.CastBarPositions;
+
+	-- Igual que el trinket: en modo Flat, si todavia no se movio nada, se
+	-- usa la posicion de fabrica pensada para ese modo.
+	local isFlatNow = (C.ArenaFrameStyle == "Flat") or (C.ArenaFlatMode == true);
+	if isFlatNow then
+		local fkey = K.GetArenaPositionKey and K.GetArenaPositionKey() or "Flat_normal";
+		if not (db and db[fkey]) then return CASTBAR_FLAT_DEFAULT; end
+	end
 	if not db then return nil; end
 	-- Try composite key first (style + mirror), fallback to legacy keys
 	if K.GetArenaPositionKey then
@@ -661,6 +817,17 @@ local function SetupCastBarDrag()
 	castBarDragSetup = true;
 end
 
+-- La posicion de fabrica de la barra de casteo, para quien la necesite.
+--
+-- La usa K.PositionArenaCastBar (MirrorMode.lua) cuando no hay posicion
+-- guardada ni foto propia del modo espejo. Es lo que hace que el boton
+-- Reset devuelva la barra a su lugar aunque nunca hayas tocado el espejo.
+function K.GetArenaCastBarOriginalPoints(index)
+	local o = arenaOriginals[index];
+	if not o or not o.castBar then return nil; end
+	return o.castBar.points, o.castBar.iconPoints;
+end
+
 function K.RestoreCastBarPositions()
 	-- FIX 4: Delegate to single source of truth in MirrorMode.lua
 	-- K.PositionArenaCastBar reads saved positions, mirror state, flat state
@@ -689,10 +856,42 @@ function K.SetCastBarMouseState(state)
 	end
 end
 
+-- Reset COMPLETO de las barras de casteo de arena.
+--
+-- Antes esto solo borraba la tabla de posiciones guardadas. Como las
+-- barras ya estaban ancladas donde las habias arrastrado, no se movia
+-- nada hasta el proximo /reload: apretabas Reset y no pasaba nada.
+--
+-- Ahora hace las tres cosas que uno espera de un boton que dice Reset:
+--
+--   1. Borra las posiciones guardadas.
+--   2. Devuelve escala y ancho a los valores de fabrica.
+--   3. Vuelve a colocar las barras AHORA, sin recargar.
+--
+-- El tercer paso va por K.PositionArenaCastBar, que es el unico lugar
+-- que sabe combinar posicion guardada, modo espejo y modo flat. Si se
+-- reposicionara a mano aca habria dos calculos distintos para lo mismo.
 function K.ResetCastBarPositions()
 	if NidhausUnitFramesDB then
 		NidhausUnitFramesDB.CastBarPositions = nil;
 	end
+
+	local scale = 1.0;
+	local width = 80;
+
+	if K.SaveConfig then
+		K.SaveConfig("ArenaCastBarScale", scale);
+		K.SaveConfig("ArenaCastBarWidth", width);
+	end
+	C.ArenaCastBarScale = scale;
+	C.ArenaCastBarWidth = width;
+
+	if K.UpdateArenaCastBarScale then K.UpdateArenaCastBarScale(scale); end
+	if K.UpdateArenaCastBarWidth then K.UpdateArenaCastBarWidth(width); end
+
+	-- Sin las posiciones guardadas, esto las manda al lugar por defecto
+	-- del modo en el que estes.
+	if K.RestoreCastBarPositions then K.RestoreCastBarPositions(); end
 end
 
 function K.SetupArenaCtrlShiftDrag()

@@ -1,4 +1,4 @@
---[[
+﻿--[[
 	PartyCastingBars - Adapted for Nidhaus_UnitFrames
 	Original by: AnduinLothar / Mercedesa
 	Adapted by: Nidhaus integration
@@ -79,6 +79,77 @@ local PCB_Parented     = true;
 local PCB_Scale        = 0.7;
 
 --------------------------------------------------
+-- Guardado
+--
+-- Estas cuatro cosas — escala, iconos, anclaje y los ocho colores —
+-- vivian solo en memoria y volvian al default en cada relogueo. El
+-- comentario de arriba de la tabla de colores decia "saved as C.PCB_*
+-- via NUF DB", pero eso no pasaba en ningun lado.
+--
+-- No van en ConfigManager porque los colores son una tabla anidada y
+-- ese sistema copia los defaults por referencia y les aplica una
+-- conversion de tipo. Van en su propia SavedVariable, como PartyBuffs.
+--
+-- SIEMPRE por la funcion, nunca cacheada en una local de archivo: la
+-- SavedVariable recien existe en ADDON_LOADED, o sea DESPUES de que
+-- corren todos los .lua. Guardarse la tabla ahora seria quedarse con
+-- una huerfana que no se guarda nunca. Ya paso con ArenaPointsCalcDB.
+--------------------------------------------------
+
+local function PCB_DB()
+	if type(PartyCastingBarsDB) ~= "table" then PartyCastingBarsDB = {}; end
+	return PartyCastingBarsDB;
+end
+
+local function PCB_SaveColors()
+	local db = PCB_DB();
+	db.colors = {};
+	for reaction, types in pairs(PartyCastingBars_Colors) do
+		db.colors[reaction] = {};
+		for typeString, info in pairs(types) do
+			db.colors[reaction][typeString] = { r = info.r, g = info.g, b = info.b };
+		end
+	end
+end
+
+local function PCB_LoadSaved()
+	local db = PCB_DB();
+	if type(db.scale)    == "number"  then PCB_Scale        = db.scale;    end
+	if type(db.icons)    == "boolean" then PCB_IconsEnabled = db.icons;    end
+	if type(db.parented) == "boolean" then PCB_Parented     = db.parented; end
+
+	if type(db.colors) ~= "table" then return; end
+	for reaction, types in pairs(PartyCastingBars_Colors) do
+		local saved = db.colors[reaction];
+		if type(saved) == "table" then
+			for typeString, info in pairs(types) do
+				local c = saved[typeString];
+				if type(c) == "table" and type(c.r) == "number" then
+					info.r, info.g, info.b = c.r, c.g, c.b;
+				end
+			end
+		end
+	end
+end
+
+-- Lo que necesita el menu (PCB_Menu.lua) para dibujarse al dia.
+function PartyCastingBars.GetIcons()    return PCB_IconsEnabled; end
+function PartyCastingBars.GetParented() return PCB_Parented; end
+function PartyCastingBars.GetScale()    return PCB_Scale; end
+function PartyCastingBars.IsDragging()  return PartyCastingBars.draggable == true; end
+function PartyCastingBars.SaveColors()  PCB_SaveColors(); end
+function PartyCastingBars.GetDB()       return PCB_DB(); end
+
+function PartyCastingBars.ResetAllColors()
+	for reaction, types in pairs(PartyCastingBars_Colors) do
+		for typeString in pairs(types) do
+			PartyCastingBars.ResetBarColor(reaction, typeString);
+		end
+	end
+	PCB_SaveColors();
+end
+
+--------------------------------------------------
 -- Color Utilities
 --------------------------------------------------
 
@@ -98,6 +169,8 @@ local function setBarColor()
 	local typeString = ColorPickerFrame.extraInfo.typeString;
 	local info = PartyCastingBars_Colors[reaction][typeString];
 	info.r = r; info.g = g; info.b = b;
+	PCB_SaveColors();
+	if PartyCastingBars.RefreshMenu then PartyCastingBars.RefreshMenu(); end
 end
 
 local function cancelBarColorChange()
@@ -106,12 +179,16 @@ local function cancelBarColorChange()
 	local typeString = ColorPickerFrame.extraInfo.typeString;
 	local info = PartyCastingBars_Colors[reaction][typeString];
 	info.r = color.r; info.g = color.g; info.b = color.b;
+	PCB_SaveColors();
+	if PartyCastingBars.RefreshMenu then PartyCastingBars.RefreshMenu(); end
 end
 
 function PartyCastingBars.ResetBarColor(reaction, typeString)
 	local default = PartyCastingBars.DefaultColors[reaction][typeString];
 	local info = PartyCastingBars_Colors[reaction][typeString];
 	info.r = default.r; info.g = default.g; info.b = default.b;
+	PCB_SaveColors();
+	if PartyCastingBars.RefreshMenu then PartyCastingBars.RefreshMenu(); end
 end
 
 function PartyCastingBars.OpenColorPicker(info)
@@ -172,11 +249,54 @@ function PartyCastingBars.EventFrameOnLoad(frame)
 	frame:RegisterEvent("CHAT_MSG_ADDON");
 end
 
+--------------------------------------------------
+-- Reset de barras colgadas
+--
+-- BUG: al entrar a una arena la barra se quedaba pegada (p.ej. "Crimson
+-- Deathcharger" a 0.0s y sin desvanecerse). Motivo: durante la pantalla de
+-- carga la barra deja de recibir OnUpdate y el UNIT_SPELLCAST_STOP del
+-- lanzamiento se pierde, asi que se queda con estado a medias y visible.
+-- Nada en el modulo la devolvia a cero.
+--------------------------------------------------
+
+function PartyCastingBars.ResetBar(bar)
+	if not bar then return; end
+	bar.casting     = nil;
+	bar.channeling  = nil;
+	bar.flash       = nil;
+	bar.fadeOut     = nil;
+	bar.holdTime    = 0;
+	bar.targetName  = nil;
+	bar.hostileCast = nil;
+	bar.nextTargetName  = nil;
+	bar.nextHostileCast = nil;
+	if bar.barSpark then bar.barSpark:Hide(); end
+	if bar.barFlash then bar.barFlash:SetAlpha(0.0); bar.barFlash:Hide(); end
+	bar:SetAlpha(1.0);
+	bar:Hide();
+end
+
+-- onlyMissing = true  -> solo las barras cuya unidad ya no existe.
+function PartyCastingBars.ResetAllBars(onlyMissing)
+	if PartyCastingBars.draggable then return; end   -- en modo mover deben quedarse
+	for i, bar in ipairs(PartyCastingBars.Bars) do
+		if (not onlyMissing) or (bar.unit and not UnitExists(bar.unit)) then
+			PartyCastingBars.ResetBar(bar);
+		end
+	end
+end
+
 function PartyCastingBars.EventFrameOnEvent(event, newarg1, newarg2, newarg3, newarg4)
 	if event == "PLAYER_ENTERING_WORLD" then
+		-- Cambio de zona (arena, mazmorra, portal...): lo que hubiera en curso
+		-- ya no vale y su evento de fin se perdio en la carga.
+		PartyCastingBars.ResetAllBars(false);
 		PartyCastingBars.CachePartyMembers();
 
 	elseif event == "PARTY_MEMBERS_CHANGED" then
+		-- Aca solo se limpian las barras de gente que ya no esta, para no
+		-- cortar el lanzamiento de los que siguen en el grupo.
+		PartyCastingBars.ResetAllBars(true);
 		PartyCastingBars.CachePartyMembers();
 
 	elseif event == "PLAYER_TARGET_CHANGED" then
@@ -566,6 +686,15 @@ function PartyCastingBars.OnUpdate(bar)
 			bar.fadeOut = nil;
 			bar:Hide();
 		end
+
+	elseif bar:IsShown() then
+		-- Red de seguridad: visible pero sin lanzamiento, canalizacion, flash
+		-- ni fade pendientes = barra colgada. Antes se quedaba asi para
+		-- siempre porque ninguna rama la tocaba. Se comprueba ademas contra
+		-- la API por si el evento de fin llego a perderse.
+		if not (UnitCastingInfo(bar.unit) or UnitChannelInfo(bar.unit)) then
+			PartyCastingBars.ResetBar(bar);
+		end
 	end
 end
 
@@ -621,12 +750,16 @@ end
 
 function PartyCastingBars.EnableIcons(value)
 	PCB_IconsEnabled = value;
+	PCB_DB().icons = value and true or false;
 	for i, barFrame in ipairs(PartyCastingBars.Bars) do
 		if barFrame.barIcon then
 			if value then barFrame.barIcon:Show();
 			else           barFrame.barIcon:Hide(); end
 		end
 	end
+	-- Al final, no al principio: si no, el menu se repinta con el
+	-- estado viejo y la casilla queda al reves de lo que pasa.
+	if PartyCastingBars.RefreshMenu then PartyCastingBars.RefreshMenu(); end
 end
 
 --------------------------------------------------
@@ -635,9 +768,11 @@ end
 
 function PartyCastingBars.SetParents(value)
 	PCB_Parented = value;
+	PCB_DB().parented = value and true or false;
 	for i, barFrame in ipairs(PartyCastingBars.Bars) do
 		barFrame:SetParent(value and barFrame.partyFrame or UIParent);
 	end
+	if PartyCastingBars.RefreshMenu then PartyCastingBars.RefreshMenu(); end
 end
 
 --------------------------------------------------
@@ -646,6 +781,7 @@ end
 
 function PartyCastingBars.SetScales(value)
 	PCB_Scale = value;
+	PCB_DB().scale = value;
 	for i, barFrame in ipairs(PartyCastingBars.Bars) do
 		barFrame:SetScale(value);
 	end
@@ -721,6 +857,10 @@ local function PCB_ApplyInitialState()
 		PCB_IsActive = false;
 	end
 
+	-- Lo guardado manda sobre los defaults del archivo. Va ANTES de los
+	-- tres Enable/Set de abajo, que son los que lo aplican a las barras.
+	PCB_LoadSaved();
+
 	-- Apply internal defaults
 	PartyCastingBars.EnableIcons(PCB_IconsEnabled);
 	PartyCastingBars.SetParents(PCB_Parented);
@@ -758,9 +898,22 @@ end);
 SLASH_PARTYCASTINGBARS1 = "/partycastingbars";
 SLASH_PARTYCASTINGBARS2 = "/pcb";
 
+-- =====================================================================
+-- /pcb  ->  abre el menu.
+--
+-- Los subcomandos siguen andando (drag, icon, scale, parent, reset):
+-- no cuestan nada y sirven para macros. Lo que cambia es que /pcb
+-- pelado ya no imprime una lista de ayuda que nadie lee, sino que
+-- abre la ventana donde estan todos.
+-- =====================================================================
 SlashCmdList["PARTYCASTINGBARS"] = function(msg)
-	-- Si PCB está desactivado, ignorar completamente
-	if not C.PCB_Enabled then return; end
+	-- Con PCB apagado no hay barras que configurar. Antes esto era un
+	-- return mudo: escribias /pcb y no pasaba nada, sin explicacion.
+	if not C.PCB_Enabled then
+		DEFAULT_CHAT_FRAME:AddMessage(
+			"PCB - Party Cast Bars is turned off. Turn it on in Frames > Party.", 1, 0.5, 0);
+		return;
+	end
 
 	msg = msg or "";
 	local parts = { strsplit(" ", string.upper(msg)) };
@@ -818,8 +971,12 @@ SlashCmdList["PARTYCASTINGBARS"] = function(msg)
 	and PartyCastingBars_Colors[reaction][typeString] then
 		PartyCastingBars.OpenColorPicker(PartyCastingBars_Colors[reaction][typeString]);
 
-	elseif cmd == "HELP" or cmd == "" then
+	elseif cmd == "" then
+		if PartyCastingBars.ToggleMenu then PartyCastingBars.ToggleMenu(); end
+
+	elseif cmd == "HELP" then
 		DEFAULT_CHAT_FRAME:AddMessage("PartyCastingBars (/pcb) commands:", 0, 1, 0);
+		DEFAULT_CHAT_FRAME:AddMessage("  (no argument) — Open the options window");
 		DEFAULT_CHAT_FRAME:AddMessage("  drag    — Toggle drag/position mode");
 		DEFAULT_CHAT_FRAME:AddMessage("  icon    — Toggle spell icons");
 		DEFAULT_CHAT_FRAME:AddMessage("  scale <0.5-2.0> — Set bar scale");

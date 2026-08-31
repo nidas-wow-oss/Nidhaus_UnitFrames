@@ -23,9 +23,16 @@ C["statusbarBackdropColor"] = {0, 0, 0, 0.2};
 
 -- = FUENTES =
 C["PartyFrameFont"] = {"Fonts\\FRIZQT__.TTF", 9, "OUTLINE"};
+-- Contorno del texto de los miembros del grupo (ver PartyFrame.lua).
+-- Vacio = sin contorno. Valores usados: OUTLINE, THICKOUTLINE, o "Blizz"
+-- (modo especial: misma fuente y sombra que el texto de vida/mana).
+C["PartyFontOutline"] = "OUTLINE";
 C["ArenaFrameFont"] = {"Fonts\\FRIZQT__.TTF", 7, "OUTLINE"};
 
 -- = OFFSETS DE NOMBRES =
+-- 0,0 = donde lo pone Blizzard. Sin Asuri el nombre NO se toca; el ajuste
+-- de altura vive en la rama Asuri de PlayerFrame.lua, que es el unico modo
+-- donde el nombre queda mal ubicado.
 C["PlayerNameOffset"] = {0, 0};
 C["TargetNameOffset"] = {0, 0};
 

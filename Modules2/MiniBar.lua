@@ -156,12 +156,36 @@ end
 
 -- ============================================================
 -- Shared: Gryphon toggle (works for any action bar mode)
+--
+-- Offsets de los grifos en modo MiniBar. Van aca arriba y con nombre
+-- porque son puro ajuste visual y se tocan a ojo.
+-- Los dos se miden desde el borde correspondiente de MainMenuBar: el
+-- izquierdo hacia afuera (negativo) y el derecho hacia afuera (positivo).
+-- No tienen por que ser simetricos: las dos texturas de grifo no traen
+-- el mismo margen interno.
 -- ============================================================
+local MINIBAR_GRYPHON_LEFT_X  = -30;
+local MINIBAR_GRYPHON_RIGHT_X =  35;   -- estaba en 30, corrido un poco mas afuera
+
+-- Modo Unify. El Y no es fijo: sube 5px por cada barra visible (XP y
+-- reputacion) y despues resta 5. Con solo la de XP queda en 0, o sea igual
+-- que MiniBar; con las dos, 5px mas arriba.
+local UNIFY_GRYPHON_LEFT_X    = -30;
+-- OJO con las unidades: este numero NO son pixeles de pantalla. El offset de
+-- SetPoint va en el espacio del propio grifo, y ese espacio esta escalado a
+-- 0.730 (la escala de MainMenuBar). O sea que 3 aca son ~2 px en pantalla.
+local UNIFY_GRYPHON_RIGHT_X   = 283;   -- estaba en 280: corrido 2 px a la derecha
+local UNIFY_GRYPHON_Y_BASE    =  -5;
+local UNIFY_GRYPHON_Y_PER_BAR =   5;
+
 function K.ApplyGryphons()
 	if not MainMenuBarLeftEndCap or not MainMenuBarRightEndCap then return; end
 
-	-- If no bar mode is active, DO NOT TOUCH gryphons — let Blizzard handle them
-	if not K._unifyActive and not K._minibarActive then return; end
+	-- FIX: antes salia de una si no habia modo de barra activo, asi que
+	-- "Hide Gryphons" no hacia NADA con Unify y MiniBar apagados.
+	-- Ahora ocultar/mostrar siempre funciona; lo unico que depende del modo
+	-- es el reposicionamiento.
+	local anyBarMode = K._unifyActive or K._minibarActive;
 
 	if C.HideGryphons then
 		MainMenuBarLeftEndCap:Hide();
@@ -174,19 +198,25 @@ function K.ApplyGryphons()
 		MainMenuBarRightEndCap:SetAlpha(1);
 		MainMenuBarRightEndCap:Show();
 		-- Reposition gryphons based on active mode
-		if K._unifyActive then
-			local yOff = 0;
-			if MainMenuExpBar and MainMenuExpBar:IsShown() then yOff = yOff + 5; end
-			if ReputationWatchBar and ReputationWatchBar:IsShown() then yOff = yOff + 5; end
+		if not anyBarMode then
+			-- Sin modo de barra: Blizzard los coloca, no tocamos posicion
+		elseif K._unifyActive then
+			local yOff = UNIFY_GRYPHON_Y_BASE;
+			if MainMenuExpBar and MainMenuExpBar:IsShown() then
+				yOff = yOff + UNIFY_GRYPHON_Y_PER_BAR;
+			end
+			if ReputationWatchBar and ReputationWatchBar:IsShown() then
+				yOff = yOff + UNIFY_GRYPHON_Y_PER_BAR;
+			end
 			MainMenuBarLeftEndCap:ClearAllPoints();
 			MainMenuBarRightEndCap:ClearAllPoints();
-			MainMenuBarLeftEndCap:SetPoint("BOTTOM", MainMenuBar, "BOTTOMLEFT", -30, yOff - 5);
-			MainMenuBarRightEndCap:SetPoint("BOTTOM", MainMenuBar, "BOTTOMRIGHT", 280, yOff - 5);
+			MainMenuBarLeftEndCap:SetPoint("BOTTOM", MainMenuBar, "BOTTOMLEFT", UNIFY_GRYPHON_LEFT_X, yOff);
+			MainMenuBarRightEndCap:SetPoint("BOTTOM", MainMenuBar, "BOTTOMRIGHT", UNIFY_GRYPHON_RIGHT_X, yOff);
 		elseif K._minibarActive then
 			MainMenuBarLeftEndCap:ClearAllPoints();
 			MainMenuBarRightEndCap:ClearAllPoints();
-			MainMenuBarLeftEndCap:SetPoint("BOTTOM", MainMenuBar, "BOTTOMLEFT", -30, 0);
-			MainMenuBarRightEndCap:SetPoint("BOTTOM", MainMenuBar, "BOTTOMRIGHT", 30, 0);
+			MainMenuBarLeftEndCap:SetPoint("BOTTOM", MainMenuBar, "BOTTOMLEFT", MINIBAR_GRYPHON_LEFT_X, 0);
+			MainMenuBarRightEndCap:SetPoint("BOTTOM", MainMenuBar, "BOTTOMRIGHT", MINIBAR_GRYPHON_RIGHT_X, 0);
 		end
 	end
 end
@@ -389,6 +419,66 @@ local function MB_CaptureOriginals()
 end
 
 -- ============================================================
+-- FONDO DE LAS BARRAS DE ACCION
+--
+-- Es el arte de MainMenuBar: la chapa de fondo y las barras de
+-- experiencia y reputacion. El modo MiniBar lo dejaba a la vista; con
+-- este interruptor se puede sacar y quedan solo los botones.
+--
+-- No toca los grifos: esos tienen su propia opcion (Hide Gryphons), y
+-- mezclar las dos hacia imposible entender cual apagaba que.
+-- ============================================================
+local bgTextures;
+
+local function MiniBar_BackgroundTextures()
+	if bgTextures then return bgTextures; end
+	bgTextures = {};
+	local function add(tex)
+		if tex and tex.SetAlpha then
+			-- FOTO DEL ESTADO QUE LE DEJO MINIBAR.
+			--
+			-- Aca estaba el bug: al apagar el interruptor yo hacia
+			-- Show() + SetAlpha(1) sobre todas, y varias de estas
+			-- texturas MiniBar las esconde a proposito. O sea que
+			-- "no ocultar el fondo" terminaba REVELANDO arte que
+			-- antes no se veia, y aparecia ese marco feo.
+			--
+			-- Ahora se guarda como estaba y se repone eso mismo.
+			table.insert(bgTextures, {
+				tex   = tex,
+				alpha = tex:GetAlpha(),
+				shown = tex:IsShown(),
+			});
+		end
+	end
+	for i = 0, 3 do add(_G["MainMenuBarTexture" .. i]); end
+	add(MainMenuXPBarTextureLeftCap);
+	add(MainMenuXPBarTextureRightCap);
+	add(MainMenuXPBarTextureMid);
+	for i = 0, 8 do add(_G["ReputationWatchBarTexture" .. i]); end
+	return bgTextures;
+end
+
+function K.ApplyMiniBarBackground()
+	-- Solo manda en modo MiniBar: con el modo unificado el fondo ya lo
+	-- maneja ActionBars.lua, y con las barras de Blizzard sin tocar no
+	-- somos nadie para esconderle nada.
+	if C.MiniBarEnabled ~= true then return; end
+
+	local ocultar = (C.MiniBarHideBackground == true);
+	for _, e in ipairs(MiniBar_BackgroundTextures()) do
+		if ocultar then
+			e.tex:Hide();
+			e.tex:SetAlpha(0);
+		else
+			-- Se repone EXACTAMENTE como estaba, no "visible del todo".
+			e.tex:SetAlpha(e.alpha);
+			if e.shown then e.tex:Show(); else e.tex:Hide(); end
+		end
+	end
+end
+
+-- ============================================================
 -- MiniBar internal: MakeInvisible helper
 -- ============================================================
 local function MakeInvisible(frame)
@@ -400,9 +490,38 @@ end
 -- ============================================================
 -- MiniBar internal: UpdateActionBars (stack bars vertically)
 -- ============================================================
-local function MiniBar_UpdateActionBars()
+-- SEPARACION ENTRE FILAS
+--
+-- Logica tomada de el UI de origen (Modules/ActionBars/Bar2.lua): alli la
+-- primera tecla de cada fila se ancla a la primera de la fila de abajo
+-- con la MISMA distancia que se usa entre botones vecinos:
+--
+--     b:SetPoint("BOTTOM", ActionButton1, "TOP", 0, C.ActionBar.ButtonSpace)
+--
+-- Antes esta separacion vertical estaba fija en 4 pixeles, asi que el
+-- slider "Separacion entre botones" abria los botones a lo ancho pero
+-- las filas quedaban siempre igual de pegadas. Ahora el mismo numero
+-- vale para los dos ejes.
+local function RowGap()
+	local v = tonumber(C.ActionBarButtonSpace);
+	if not v or v < 0 then v = 6; end
+	return v;
+end
+
+-- Se expone para que el slider de separacion entre botones pueda volver
+-- a apilar las filas sin recargar: la distancia vertical sale del mismo
+-- numero (ver RowGap).
+local MiniBar_UpdateActionBars;
+
+function K.RefreshMiniBarLayout()
+	if C.MiniBarEnabled ~= true then return; end
+	if InCombatLockdown() then return; end
+	if MiniBar_UpdateActionBars then MiniBar_UpdateActionBars(); end
+end
+
+function MiniBar_UpdateActionBars()
 	local anchor;
-	local anchorOffset = 4;
+	local anchorOffset = RowGap();
 	local repOffset = 0;
 
 	if MainMenuExpBar:IsShown() then
@@ -418,10 +537,12 @@ local function MiniBar_UpdateActionBars()
 
 	if MultiBarBottomLeft:IsShown() then
 		anchor = MultiBarBottomLeft;
-		anchorOffset = 4;
+		anchorOffset = RowGap();
 	else
+		-- Sin segunda fila, la primera queda pegada a las barras de
+		-- experiencia y reputacion: ahi hace falta despegarla un poco mas.
 		anchor = ActionButton1;
-		anchorOffset = 12 + repOffset;
+		anchorOffset = RowGap() + 6 + repOffset;
 	end
 
 	-- Stack MultiBarBottomRight above
@@ -429,7 +550,7 @@ local function MiniBar_UpdateActionBars()
 		MultiBarBottomRight:ClearAllPoints();
 		MultiBarBottomRight:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, anchorOffset);
 		anchor = MultiBarBottomRight;
-		anchorOffset = 4;
+		anchorOffset = RowGap();
 	end
 
 	-- Shapeshift buttons (presencias para DK van más a la izquierda)
@@ -444,7 +565,7 @@ local function MiniBar_UpdateActionBars()
 		MultiCastActionBarFrame:ClearAllPoints();
 		MultiCastActionBarFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", config.TotemBar.offsetX, anchorOffset - 1.5);
 		anchor = MultiCastActionBarFrame;
-		anchorOffset = 4;
+		anchorOffset = RowGap();
 	end
 
 	-- Vehicle leave button
@@ -498,6 +619,9 @@ local function MiniBar_UpdateUI()
 	MakeInvisible(PossessBackground2);
 
 	MiniBar_UpdateActionBars();
+
+	-- Fondo de las barras segun el interruptor del panel.
+	if K.ApplyMiniBarBackground then K.ApplyMiniBarBackground(); end
 
 	-- Apply shared scale
 	K.ApplyActionBarScale(C.ActionBarScale or 1.0);
@@ -646,8 +770,26 @@ local minibarEvtFrame = CreateFrame("Frame", "NidhausMiniBarFrame", UIParent);
 -- ENABLE MiniBar
 -- ============================================================
 function K.EnableMiniBar()
+	-- Foto de los botones ANTES de acomodar nada: MiniBar reancla
+	-- ShapeshiftButton1 y el espaciado reancla el resto. Sin esta
+	-- captura previa, al apagar el modo se restauraria la posicion
+	-- del propio modo en vez de la de Blizzard.
+	if K.CaptureAllActionButtons then K.CaptureAllActionButtons(); end
+
 	if minibarEnabled then return; end
 	if InCombatLockdown() then return; end
+
+	-- Unify y MiniBar son excluyentes. Si el otro esta puesto hay que
+	-- apagarlo ANTES de fotografiar nada, o la foto sale contaminada.
+	if K._unifyActive and K.DisableUnifyActionBars then
+		K.DisableUnifyActionBars();
+	end
+
+	-- Foto compartida del estado limpio (ver Core/BarBaseline.lua). La
+	-- primera vez la saca; despues devuelve la que ya hay.
+	if K.EnsureBarBaseline then K.EnsureBarBaseline(); end
+	-- Y se parte SIEMPRE del mismo punto, sin restos del modo anterior.
+	if K.RestoreBarBaseline then K.RestoreBarBaseline(); end
 
 	-- Capturar estado original ANTES de tocar nada (pcall por si algún frame no existe)
 	local ok, err = pcall(MB_CaptureOriginals);
@@ -657,6 +799,8 @@ function K.EnableMiniBar()
 
 	minibarEnabled = true;
 	K._minibarActive = true;
+	-- Avisar a HideActionBarTextures: ahora las texturas las maneja MiniBar
+	if K._habReapply then K._habReapply(); end
 
 	-- Hook UIParent_ManageFramePositions (once, with guard)
 	if not minibarHooked then
@@ -664,6 +808,20 @@ function K.EnableMiniBar()
 			if minibarEnabled then MiniBar_UpdateUI(); end
 		end);
 		hooksecurefunc("VehicleMenuBar_MoveMicroButtons", MiniBar_VehicleMicroHook);
+		-- FIX (barra XP/rep que "sube"): MiniBar_UpdateActionBars calcula el
+		-- offset de apilado segun si la barra de XP y la de reputacion estan
+		-- visibles. Cuando aparecen o desaparecen, Blizzard dispara
+		-- MainMenuBar_UpdateExperienceBars — NO siempre ManageFramePositions —
+		-- asi que sin este hook las barras de accion no se re-apilaban y
+		-- quedaban corridas hacia arriba.
+		if MainMenuBar_UpdateExperienceBars then
+			hooksecurefunc("MainMenuBar_UpdateExperienceBars", function()
+				if minibarEnabled and not InCombatLockdown() then
+					if UnitInVehicle and UnitInVehicle("player") then return; end
+					MiniBar_UpdateUI();
+				end
+			end);
+		end
 		minibarHooked = true;
 	end
 
@@ -712,9 +870,17 @@ function K.EnableMiniBar()
 	MainMenuBarTexture1:SetPoint("BOTTOM", "MainMenuBarArtFrame", "BOTTOM", 128, 0);
 	-- Gryphon positioning handled by K.ApplyGryphons()
 
-	if PetActionBarFrame then
-		PetActionBarFrame:SetAttribute("unit", "pet");
-	end
+	-- SACADO A PROPOSITO: aca habia
+	--     PetActionBarFrame:SetAttribute("unit", "pet");
+	--
+	-- PetActionBarFrame es un frame PROTEGIDO de Blizzard. Escribirle un
+	-- atributo seguro desde codigo de addon lo mancha (taint) de forma
+	-- PERMANENTE, y desde ahi cualquier accion protegida que pase por el
+	-- queda bloqueada con "Interface action failed because of an AddOn".
+	--
+	-- Ademas no hacia falta: el "unit" de esa barra ya lo pone el propio
+	-- FrameXML de Blizzard, y no cambia nunca. Era una linea copiada de
+	-- otro addon que solo servia para ensuciar la ejecucion.
 
 	-- Fix blizzard misaligned positions
 	if BonusActionButton1 then
@@ -766,6 +932,13 @@ function K.DisableMiniBar()
 	if InCombatLockdown() then return; end
 	minibarEnabled = false;
 	K._minibarActive = false;
+
+	-- Mismo motivo que en Unify: los botones se reanclan uno por uno y
+	-- hay que devolverlos ANTES de restaurar los frames de las barras.
+	if K.RestoreActionBarButtonSpace then K.RestoreActionBarButtonSpace(); end
+	if K.DetachStanceButtons then K.DetachStanceButtons(); end
+	-- MiniBar solto las texturas: que HideActionBarTextures vuelva a aplicar
+	if K._habReapply then K._habReapply(); end
 
 	-- Unregister events
 	minibarEvtFrame:UnregisterAllEvents();

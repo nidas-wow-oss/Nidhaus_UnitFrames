@@ -187,22 +187,33 @@ local function rActionButtonStyler_AB_stylepet()
 		local bu  = _G[name]
 		local ic  = _G[name.."Icon"]
 		local fl  = _G[name.."Flash"]
-		local nt  = _G[name.."NormalTexture2"]
 
-		nt:SetAllPoints(bu)
-		nt:SetVertexColor(cfg.color.normal.r, cfg.color.normal.g, cfg.color.normal.b, 1)
+		if not bu.rABS_Styled then
+			fl:SetTexture(cfg.textures.flash)
+			bu:SetHighlightTexture(cfg.textures.hover)
+			bu:SetPushedTexture(cfg.textures.pushed)
+			bu:SetCheckedTexture(cfg.textures.checked)
 
-		fl:SetTexture(cfg.textures.flash)
-		bu:SetHighlightTexture(cfg.textures.hover)
-		bu:SetPushedTexture(cfg.textures.pushed)
-		bu:SetCheckedTexture(cfg.textures.checked)
-		bu:SetNormalTexture(cfg.textures.normal)
+			ic:SetTexCoord(0.1, 0.9, 0.1, 0.9)
+			ic:SetPoint("TOPLEFT", bu, "TOPLEFT", 2, -2)
+			ic:SetPoint("BOTTOMRIGHT", bu, "BOTTOMRIGHT", -2, 2)
 
-		ic:SetTexCoord(0.1, 0.9, 0.1, 0.9)
-		ic:SetPoint("TOPLEFT", bu, "TOPLEFT", 2, -2)
-		ic:SetPoint("BOTTOMRIGHT", bu, "BOTTOMRIGHT", -2, 2)
+			if not bu.bg then applyBackground(bu) end
 
-		if not bu.bg then applyBackground(bu) end
+			bu.rABS_Styled = true
+		end
+
+		-- Style NormalTexture2 directly — do NOT use SetNormalTexture().
+		-- Blizzard resets NormalTexture2 every PetActionBar_Update.
+		-- Using SetNormalTexture creates a SECOND texture that fights with
+		-- NormalTexture2, causing visual corruption. Style the one Blizzard
+		-- owns so there's only one texture, no conflict.
+		local nt2 = _G[name.."NormalTexture2"]
+		if nt2 then
+			nt2:SetTexture(cfg.textures.normal)
+			nt2:SetAllPoints(bu)
+			nt2:SetVertexColor(cfg.color.normal.r, cfg.color.normal.g, cfg.color.normal.b, 1)
+		end
 	end
 end
 
@@ -214,22 +225,29 @@ local function rActionButtonStyler_AB_styleshapeshift()
 		local bu  = _G[name]
 		local ic  = _G[name.."Icon"]
 		local fl  = _G[name.."Flash"]
-		local nt  = _G[name.."NormalTexture"]
 
-		nt:SetAllPoints(bu)
-		nt:SetVertexColor(cfg.color.normal.r, cfg.color.normal.g, cfg.color.normal.b, 1)
+		if not bu.rABS_Styled then
+			fl:SetTexture(cfg.textures.flash)
+			bu:SetHighlightTexture(cfg.textures.hover)
+			bu:SetPushedTexture(cfg.textures.pushed)
+			bu:SetCheckedTexture(cfg.textures.checked)
 
-		fl:SetTexture(cfg.textures.flash)
-		bu:SetHighlightTexture(cfg.textures.hover)
-		bu:SetPushedTexture(cfg.textures.pushed)
-		bu:SetCheckedTexture(cfg.textures.checked)
-		bu:SetNormalTexture(cfg.textures.normal)
+			ic:SetTexCoord(0.1, 0.9, 0.1, 0.9)
+			ic:SetPoint("TOPLEFT", bu, "TOPLEFT", 2, -2)
+			ic:SetPoint("BOTTOMRIGHT", bu, "BOTTOMRIGHT", -2, 2)
 
-		ic:SetTexCoord(0.1, 0.9, 0.1, 0.9)
-		ic:SetPoint("TOPLEFT", bu, "TOPLEFT", 2, -2)
-		ic:SetPoint("BOTTOMRIGHT", bu, "BOTTOMRIGHT", -2, 2)
+			if not bu.bg then applyBackground(bu) end
 
-		if not bu.bg then applyBackground(bu) end
+			bu.rABS_Styled = true
+		end
+
+		-- Style NormalTexture directly (same approach as pet bar)
+		local nt = _G[name.."NormalTexture"]
+		if nt then
+			nt:SetTexture(cfg.textures.normal)
+			nt:SetAllPoints(bu)
+			nt:SetVertexColor(cfg.color.normal.r, cfg.color.normal.g, cfg.color.normal.b, 1)
+		end
 	end
 end
 

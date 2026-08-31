@@ -32,8 +32,10 @@ end
 
 K.RegisterModule("ButtonRange", {
     name = "Button Range",
-    desc = "Pone rojos los botones fuera de rango.",
+    desc = "Colors out-of-range action buttons red.",
     default = false,
+    -- El checkbox vive en General > Barras, no repetirlo en la pestaña Modules
+    hideFromModulesTab = true,
     onEnable = EnableButtonRange,
     onDisable = function() brEnabled = false; end,
 });

@@ -81,6 +81,68 @@ local savedTextures = {};
 -- original SetPoint overrides
 local origSetPoints = {};
 
+-- FOTO DE LOS BOTONES, ANTES DE QUE NINGUN MODO LOS TOQUE.
+--
+-- Se declara aca arriba, con el resto de los stores, porque la captura
+-- tiene que ocurrir en CaptureOriginals — o sea ANTES de aplicar el
+-- modo. Si se capturara al momento de reanclar cada boton, y para
+-- entonces el modo unificado ya lo hubiera movido, estariamos guardando
+-- como "original" la posicion del modo. Al apagarlo, las barras
+-- volverian... a la posicion del modo. Que es exactamente lo que
+-- pasaba: la barra doblada no se desdoblaba, y la de auras quedaba a
+-- otra altura que la de Blizzard.
+local btnOrig = {};
+
+local function CaptureButton(btn, name)
+    if not btn or btnOrig[name] then return; end
+    local pts = {};
+    for i = 1, (btn:GetNumPoints() or 0) do pts[i] = { btn:GetPoint(i) }; end
+    btnOrig[name] = { points = pts, parent = btn:GetParent() };
+end
+
+local function RestoreButton(btn, name)
+    local o = btnOrig[name];
+    if not btn or not o then return; end
+    if o.parent then pcall(btn.SetParent, btn, o.parent); end
+    if #o.points > 0 then
+        btn:ClearAllPoints();
+        for _, pt in ipairs(o.points) do pcall(btn.SetPoint, btn, unpack(pt)); end
+    end
+end
+
+-- Todos los botones que algun modo puede llegar a reanclar.
+local BUTTON_SETS = {
+    { prefix = "ActionButton",              count = 12 },
+    { prefix = "MultiBarBottomLeftButton",  count = 12 },
+    { prefix = "MultiBarBottomRightButton", count = 12 },
+    { prefix = "MultiBarRightButton",       count = 12 },
+    { prefix = "MultiBarLeftButton",        count = 12 },
+    { prefix = "ShapeshiftButton",          count = 10 },
+};
+
+local function CaptureAllButtons()
+    for _, set in ipairs(BUTTON_SETS) do
+        for i = 1, set.count do
+            CaptureButton(_G[set.prefix .. i], set.prefix .. i);
+        end
+    end
+end
+
+-- Expuesta para MiniBar, que tambien mueve botones y necesita la foto
+-- tomada antes de empezar.
+function K.CaptureAllActionButtons()
+    CaptureAllButtons();
+end
+
+function K.RestoreAllButtons()
+    if InCombatLockdown() then return; end
+    for _, set in ipairs(BUTTON_SETS) do
+        for i = 1, set.count do
+            RestoreButton(_G[set.prefix .. i], set.prefix .. i);
+        end
+    end
+end
+
 -- ──────────────────────────────────────────────────────────────
 --  SAVE / RESTORE HELPERS
 -- ──────────────────────────────────────────────────────────────
@@ -169,6 +231,10 @@ end
 -- ──────────────────────────────────────────────────────────────
 
 local function CaptureOriginals()
+    -- Los BOTONES primero: el espaciado y el Holder de posturas los
+    -- reanclan uno por uno y hace falta saber de donde salieron.
+    CaptureAllButtons();
+
     -- Frames with positions
     SaveFrame("MainMenuBar",              MainMenuBar);
     SaveFrame("MainMenuBarBackpackButton",MainMenuBarBackpackButton);
@@ -276,6 +342,28 @@ end
 local function ApplyShapeshiftBar()
     if DeferIfCombat(ApplyShapeshiftBar) then return; end
     if not ShapeshiftBarFrame then return; end
+
+    -- SI EL USUARIO YA LA MOVIO CON "MOVER TODO", NO SE TOCA.
+    --
+    -- Este modulo la anclaba a MainMenuBar y ademas le ponia un candado
+    -- sobre SetPoint. Resultado: arrastrarla en el modo mover no hacia
+    -- absolutamente nada, porque el candado la devolvia al instante.
+    -- Dos sistemas moviendo el mismo frame; gana el que tiene posicion
+    -- guardada, que es el que eligio el usuario.
+    -- EL FRAME DE BLIZZARD YA NO SE MUEVE NI SE TRABA.
+    --
+    -- En modo unificado los botones cuelgan del Holder (ver
+    -- AttachStanceButtons), asi que reposicionar ShapeshiftBarFrame no
+    -- cambia nada de lo que se ve, y el candado sobre SetPoint solo
+    -- servia para impedir que el usuario la moviera.
+    --
+    -- Se lo deja suelto y en paz: la posicion la decide el Holder, que
+    -- tiene UNA sola posicion por defecto — la misma que repone el
+    -- boton Reset del modo mover.
+    UnlockSetPoint(ShapeshiftBarFrame);
+    if K.AttachStanceButtons then K.AttachStanceButtons(); end
+    do return; end
+
     UnlockSetPoint(ShapeshiftBarFrame);
     ShapeshiftBarFrame:ClearAllPoints();
     ShapeshiftBarFrame:SetPoint("BOTTOMLEFT", MainMenuBar, "TOPLEFT", 30, 40 + GetBarOffset());
@@ -338,15 +426,26 @@ local function ApplyPetBar()
     end
 end
 
+-- Altura de MainMenuBar en modo Unify.
+--
+-- ACA ESTABA LO DE "queda muy alto al pasar de MiniBar a Unify": si no
+-- estabas a nivel maximo, Unify subia la barra 11px para hacerle lugar a la
+-- barra de XP. MiniBar nunca hizo eso — la deja siempre en 0 — asi que al
+-- togglear entre los dos modos toda la barra (y con ella los grifos, que
+-- cuelgan de MainMenuBar) pegaba un salto para arriba.
+--
+-- Ahora los dos modos quedan a la misma altura. Si con la barra de XP
+-- visible algo se corta abajo, subir este numero.
+local UNIFY_BAR_Y_BELOW_MAXLEVEL = 0;   -- antes 11
+local UNIFY_BAR_Y_MAXLEVEL       = 0;
+local UNIFY_BAR_X                = -128;
+
 local function ApplyMainBar()
     if DeferIfCombat(ApplyMainBar) then return; end
-    if UnitLevel("player") < MAX_PLAYER_LEVEL then
-        MainMenuBar:ClearAllPoints();
-        MainMenuBar:SetPoint("BOTTOM", UIParent, -128, 11);
-    else
-        MainMenuBar:ClearAllPoints();
-        MainMenuBar:SetPoint("BOTTOM", UIParent, -128, 0);
-    end
+    local y = (UnitLevel("player") < MAX_PLAYER_LEVEL)
+        and UNIFY_BAR_Y_BELOW_MAXLEVEL or UNIFY_BAR_Y_MAXLEVEL;
+    MainMenuBar:ClearAllPoints();
+    MainMenuBar:SetPoint("BOTTOM", UIParent, UNIFY_BAR_X, y);
 end
 
 -- FIX: Función dedicada para re-posicionar XP y Rep bars.
@@ -361,11 +460,75 @@ local function ApplyXPRepBars()
 
     -- XP bar: anclada directamente a MainMenuBar, entre las dos filas de botones.
     -- Los action buttons son ~36px de alto; la barra va justo encima.
-    MainMenuExpBar:SetScale(0.735);
-    if ExhaustionTick then ExhaustionTick:SetScale(0.735); end
+    --
+    -- Los tres ajustes de abajo son los unicos que hay que tocar si algun dia
+    -- quieres reubicarla. Ojo con XP_WIDEN: estira los anclajes, o sea que
+    -- cambia el TAMANO del frame, no solo lo que se ve. Se deja moderado a
+    -- proposito; pasarse de ahi puede descuadrar el reparto de las otras
+    -- barras, porque Blizzard las coloca en funcion de este marco.
+    -- Los tres valores de abajo van en PIXELES DE PANTALLA, medidos desde los
+    -- bordes de MainMenuBar. La conversion la hace el codigo.
+    --
+    -- Por que hay que convertir: los offsets de SetPoint se expresan en el
+    -- espacio del PROPIO frame, y ese espacio va escalado. Y no por 0.735,
+    -- que es lo que le pasamos a SetScale, sino por su escala EFECTIVA: la
+    -- suya multiplicada por la del padre (0.735 x 0.730 = 0.537). Usar 0.735
+    -- dejaba todo un 27% corto, que es lo que pasaba antes.
+    --
+    -- Se lee con GetEffectiveScale en vez de escribir 0.537 a mano, para que
+    -- siga cuadrando si cambia la escala de la barra de accion o de la UI.
+    --
+    -- Valores medidos con /nufxp en esta interfaz:
+    --   MainMenuBar          izq  403   der  775
+    --   MultiBarBottomLeft   izq  409
+    --   MultiBarBottomRight              der 1143
+    -- De ahi salen los 6 y 368: dejan la barra de experiencia justo de punta
+    -- a punta de la fila de botones.
+    local XP_SCALE      = 0.735;
+    local XP_EDGE_LEFT  = 6;     -- alineada con el borde de MultiBarBottomLeft
+    -- Medido con /nufxp: MainMenuBar acaba en 775 y las flechas empiezan en
+    -- 959. 775 + 184 = 959 clavado, que es donde tiene que cortarse.
+    local XP_EDGE_RIGHT = 184;   -- tope; el limite real lo ponen las flechas
+    local XP_HEIGHT     = 31;    -- altura sobre MainMenuBar (la que estaba bien)
+    -- A cero a proposito: asi la cuenta por constante y la cuenta por flechas
+    -- dan EL MISMO borde. Con un hueco distinto, segun si al aplicar la
+    -- posicion de las flechas ya estaba resuelta o no, la barra salia en un
+    -- sitio u otro. Ahora da igual cual de los dos caminos gane.
+    local XP_GAP_FLECHAS = 0;
+
+    MainMenuExpBar:SetScale(XP_SCALE);
+    if ExhaustionTick then ExhaustionTick:SetScale(XP_SCALE); end
+
+    local es = MainMenuExpBar:GetEffectiveScale();
+    if not es or es <= 0 then es = XP_SCALE; end
+
+    -- Borde derecho: en vez de un numero fijo, se ata a las flechas de cambio
+    -- de pagina. Si no, cada vez que cambia la escala de la UI o el numero de
+    -- botones hay que volver a tantear a ojo, y la barra acaba pasandose de
+    -- largo por detras de las flechas.
+    --
+    -- La constante de arriba queda como tope maximo: manda la que resulte
+    -- MENOR de las dos, asi la barra nunca pisa las flechas ni se alarga sola.
+    local edgeRight = XP_EDGE_RIGHT;
+    local esBar     = MainMenuBar:GetEffectiveScale();
+    local barRight  = MainMenuBar:GetRight();
+    if ActionBarUpButton and barRight and esBar and esBar > 0 then
+        local esUp   = ActionBarUpButton:GetEffectiveScale();
+        local upLeft = ActionBarUpButton:GetLeft();
+        if upLeft and esUp and esUp > 0 then
+            -- Todo a pixeles de pantalla para poder compararlo.
+            local limite = (upLeft * esUp) - XP_GAP_FLECHAS - (barRight * esBar);
+            if limite < edgeRight then edgeRight = limite; end
+        end
+    end
+    -- Suelo de seguridad: si algo devolviera basura, que no quede invisible.
+    if edgeRight < 40 then edgeRight = 40; end
+
     MainMenuExpBar:ClearAllPoints();
-    MainMenuExpBar:SetPoint("BOTTOMLEFT",  MainMenuBar, "BOTTOMLEFT",  0, 38);
-    MainMenuExpBar:SetPoint("BOTTOMRIGHT", MainMenuBar, "BOTTOMRIGHT", 0, 38);
+    MainMenuExpBar:SetPoint("BOTTOMLEFT",  MainMenuBar, "BOTTOMLEFT",
+        XP_EDGE_LEFT  / es, XP_HEIGHT / es);
+    MainMenuExpBar:SetPoint("BOTTOMRIGHT", MainMenuBar, "BOTTOMRIGHT",
+        edgeRight / es, XP_HEIGHT / es);
     if MainMenuBarExpText then
         MainMenuBarExpText:ClearAllPoints();
         MainMenuBarExpText:SetPoint("TOP", MainMenuExpBar, 0, 1);
@@ -384,6 +547,39 @@ local function ApplyXPRepBars()
 
     -- Bloquear SetPoint en XP bar para que Blizzard no la mueva
     LockSetPoint(MainMenuExpBar);
+end
+
+-- ──────────────────────────────────────────────────────────────
+--  /nufxp — mide la geometria REAL en pantalla.
+--
+--  Sirve para encuadrar la barra de experiencia sin ir a ojo: dice donde
+--  empieza y acaba cada cosa de verdad, ya con la escala aplicada. Con esos
+--  numeros se calculan los dos bordes exactos en vez de tantear.
+-- ──────────────────────────────────────────────────────────────
+SLASH_NUFXP1 = "/nufxp";
+SlashCmdList["NUFXP"] = function()
+    local function Medir(nombre, f)
+        if not f then print("  " .. nombre .. ": no existe"); return; end
+        local es = f:GetEffectiveScale() or 1;
+        print(string.format("  %-16s izq %6.0f  der %6.0f  ancho %5.0f  escala %.3f",
+            nombre, (f:GetLeft() or 0) * es, (f:GetRight() or 0) * es,
+            ((f:GetRight() or 0) - (f:GetLeft() or 0)) * es, es));
+    end
+    print("|cff4FC3F7NUF|r - geometria real (pixeles de pantalla):");
+    print(string.format("  %-16s ancho %.0f", "PANTALLA",
+        (UIParent:GetRight() or 0) * (UIParent:GetEffectiveScale() or 1)));
+    Medir("MainMenuBar",    MainMenuBar);
+    Medir("MainMenuExpBar", MainMenuExpBar);
+    Medir("MultiBarBottomLeft",  MultiBarBottomLeft);
+    Medir("MultiBarBottomRight", MultiBarBottomRight);
+    Medir("ReputationWatchBar",  ReputationWatchBar);
+    Medir("MaxLevelBar",         MainMenuBarMaxLevelBar);
+    Medir("ExhaustionTick",      ExhaustionTick);
+    -- Las flechas de cambio de pagina: marcan donde tiene que cortarse la
+    -- barra de experiencia. Si "izq" de FlechaArriba es menor que "der" de
+    -- MainMenuExpBar, la barra se esta metiendo por detras de ellas.
+    Medir("FlechaArriba",   ActionBarUpButton);
+    Medir("FlechaAbajo",    ActionBarDownButton);
 end
 
 local function ApplyPagingButtons()
@@ -414,11 +610,13 @@ local function ApplyAll()
         return;
     end
     ApplyMainBar();
+    -- Las flechas van ANTES que la barra de experiencia: esta lee su posicion
+    -- para saber donde cortarse, asi que tienen que estar ya colocadas.
+    ApplyPagingButtons();
     ApplyXPRepBars();
     ApplyMicroAndBags();
     ApplyShapeshiftBar();
     ApplyPetBar();
-    ApplyPagingButtons();
     -- Apply gryphon visibility (Unify hides them via HideAllTextures,
     -- but user may want them shown if HideGryphons is false)
     if K.ApplyGryphons then K.ApplyGryphons(); end
@@ -477,6 +675,7 @@ local function UAB_OnEvent(self, event, unit)
         -- FIX: Re-aplicar TODAS las barras afectadas, no solo shapeshift/pet
         -- Blizzard reposiciona XP/Rep bars en estos eventos, hay que forzarlas de vuelta
         ApplyMainBar(); ApplyXPRepBars(); ApplyShapeshiftBar(); ApplyPetBar();
+        if K.ApplyGryphons then K.ApplyGryphons(); end
     elseif event == "UNIT_PET" then
         -- Pet apareció/desapareció (shadowfiend, ghoul, etc)
         if isEnabled and not InCombatLockdown() then
@@ -513,6 +712,384 @@ local function UAB_OnEvent(self, event, unit)
 end
 
 -- ──────────────────────────────────────────────────────────────
+--  CAJA QUE ABARCA TODAS LAS BARRAS
+--
+--  El recuadro de "Mover todo" apuntaba a MainMenuBar, que mide 510 de
+--  ancho: con el modo unificado puesto, las barras se extienden bastante
+--  mas a los costados y el cuadro tapaba solo el centro.
+--
+--  Este frame invisible calcula la union de todo lo que esta a la vista
+--  y GlobalUnlock dibuja el recuadro encima (overlayOn). No se mueve ni
+--  se ancla a nada: es puramente una caja de medida.
+-- ──────────────────────────────────────────────────────────────
+local barsBox;
+
+function K.UpdateActionBarsBox()
+    if not barsBox then
+        barsBox = CreateFrame("Frame", "NUF_ActionBarsBox", UIParent);
+        barsBox:SetFrameStrata("BACKGROUND");
+        barsBox:EnableMouse(false);
+    end
+
+    -- Se mide sobre los BOTONES, no sobre los frames de las barras.
+    --
+    -- MainMenuBar mide 510 fijos y MultiBarBottomRight es mas ancho que
+    -- los botones que tiene adentro, asi que midiendo los contenedores el
+    -- recuadro sobraba bastante por la derecha. Los botones dan el ancho
+    -- real de lo que se ve.
+    local parts = {};
+    for i = 1, 12 do
+        parts[#parts + 1] = _G["ActionButton" .. i];
+        parts[#parts + 1] = _G["MultiBarBottomLeftButton" .. i];
+        parts[#parts + 1] = _G["MultiBarBottomRightButton" .. i];
+    end
+
+    local l, r, t, b;
+    for _, f in ipairs(parts) do
+        if f and f:IsVisible() and f:GetLeft() then
+            l = math.min(l or f:GetLeft(),   f:GetLeft());
+            r = math.max(r or f:GetRight(),  f:GetRight());
+            b = math.min(b or f:GetBottom(), f:GetBottom());
+            t = math.max(t or f:GetTop(),    f:GetTop());
+        end
+    end
+    if not l then return barsBox; end
+
+    barsBox:ClearAllPoints();
+    barsBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b);
+    barsBox:SetSize(math.max(r - l, 10), math.max(t - b, 10));
+    return barsBox;
+end
+
+-- ──────────────────────────────────────────────────────────────
+--  CAJA DE LA BARRA DE POSTURAS / AURAS / FORMAS
+--
+--  ShapeshiftBarFrame es MAS ANCHO que sus botones: tiene lugar para
+--  diez y casi ninguna clase los usa todos. Un paladin tiene cuatro
+--  auras, asi que el recuadro del modo mover, que se dibujaba sobre el
+--  frame entero, quedaba corrido a la izquierda con la mitad vacia.
+--
+--  Esta caja mide solo los botones que se ven, igual que la de las
+--  barras de accion.
+-- ──────────────────────────────────────────────────────────────
+-- Cuanto esta corrido ShapeshiftButton1 DENTRO de ShapeshiftBarFrame.
+--
+-- Importa porque el Holder reemplaza a ese frame: si lo anclaramos en el
+-- mismo punto y despues pegaramos el boton en su esquina, la barra
+-- quedaria desplazada respecto de donde la deja el modo unificado, justo
+-- por ese margen interno. Sale de la foto que se toma antes de tocar
+-- nada, asi que es el valor real, no uno estimado.
+-- Separacion ORIGINAL entre dos botones de posturas.
+--
+-- El arte del marco de Blizzard trae las casillas dibujadas a una
+-- distancia fija. Si encadenamos los botones con el valor del slider
+-- (que es para las barras de accion), cada uno se corre un poco mas que
+-- el anterior: el primero coincide con su casilla y el ultimo termina
+-- afuera. Es exactamente el desfase acumulado que se ve en pantalla.
+--
+-- Este valor sale de la foto de fabrica: la distancia real entre el
+-- boton 2 y el 1 antes de que nadie los tocara.
+local function StanceButtonPitch()
+    local o2 = btnOrig["ShapeshiftButton2"];
+    if o2 and o2.points and o2.points[1] then
+        local x = o2.points[1][4];
+        if type(x) == "number" then return x; end
+    end
+    return 6;   -- respaldo, por si la foto no llego a tomarse
+end
+
+local function StanceButtonInset()
+    local o = btnOrig["ShapeshiftButton1"];
+    if not o or not o.points or not o.points[1] then return 0, 0; end
+    local pt = o.points[1];
+    -- { point, relativeTo, relativePoint, x, y }
+    return (pt[4] or 0), (pt[5] or 0);
+end
+
+-- ──────────────────────────────────────────────────────────────
+--  HOLDER DE LA BARRA DE POSTURAS / AURAS / FORMAS
+--
+--  Por que un contenedor propio y no mover ShapeshiftBarFrame:
+--
+--  Ese frame es de Blizzard, esta protegido, lo reposiciona
+--  UIParent_ManageFramePositions y ademas este mismo modulo le ponia un
+--  candado sobre SetPoint en el modo unificado. Arrastrarlo era pelear
+--  contra tres sistemas a la vez.
+--
+--  La solucion es la de el UI de origen (el patron del Holder):
+--  se crea un Holder, se le cuelgan los BOTONES, y se mueve el Holder.
+--  Los botones son hijos nuestros, asi que nadie mas los reancla.
+--
+--  SetParent sobre botones protegidos solo se puede fuera de combate,
+--  de ahi la comprobacion.
+-- ──────────────────────────────────────────────────────────────
+local stanceHolder;
+
+-- La posicion POR DEFECTO sale de la MISMA cuenta que usa el modo
+-- unificado para la barra de Blizzard (ApplyShapeshiftBar, mas arriba):
+--
+--     BOTTOMLEFT de MainMenuBar TOPLEFT, 30, 40 + GetBarOffset()
+--
+-- El GetBarOffset() no es decorativo: suma 6 por la barra de experiencia
+-- y otros 6 por la de reputacion cuando estan a la vista. Yo lo habia
+-- omitido al escribir el Holder, y por eso el Reset dejaba la barra unos
+-- pixeles corrida respecto de donde la pone el modo unificado.
+-- POSICION POR DEFECTO CON EL MODO UNIFICADO PUESTO.
+--
+-- Es LA MISMA cuenta que usa ApplyShapeshiftBar para la barra de
+-- Blizzard, mas el margen interno del primer boton. Con esto, la barra
+-- de estados queda exactamente donde el modo unificado la pone, y el
+-- boton Reset del modo mover la devuelve a ese mismo lugar: una sola
+-- posicion por defecto, no dos parecidas.
+local function StanceDefaultPoint(holder)
+    local ix, iy = StanceButtonInset();
+    holder:ClearAllPoints();
+    holder:SetPoint("BOTTOMLEFT", MainMenuBar or UIParent, "TOPLEFT",
+        30 + ix, 40 + GetBarOffset() + iy);
+end
+
+function K.EnsureStanceHolder()
+    if stanceHolder then return stanceHolder; end
+    stanceHolder = CreateFrame("Frame", "NUF_StanceBarHolder", UIParent);
+    stanceHolder:SetSize(40, 30);
+    -- Por encima del marco de Blizzard: si no, el arte de las casillas se
+    -- dibuja sobre los iconos y quedan opacados.
+    stanceHolder:SetFrameStrata("MEDIUM");
+    if ShapeshiftBarFrame then
+        stanceHolder:SetFrameLevel((ShapeshiftBarFrame:GetFrameLevel() or 0) + 5);
+    end
+    StanceDefaultPoint(stanceHolder);
+    return stanceHolder;
+end
+
+-- Crear el Holder AL CARGAR, no cuando alguien lo pide por primera vez.
+-- CaptureOriginals de GlobalUnlock fotografia los frames al abrir el modo
+-- mover; si el Holder no existia todavia, se quedaba sin "original" y el
+-- Reset no tenia a donde devolverlo.
+local holderInit = CreateFrame("Frame");
+holderInit:RegisterEvent("PLAYER_LOGIN");
+holderInit:SetScript("OnEvent", function(self)
+    self:UnregisterEvent("PLAYER_LOGIN");
+    -- La foto va primero, siempre: si el Holder engancha los botones
+    -- antes de capturarlos, se pierde la referencia de Blizzard.
+    CaptureAllButtons();
+    K.EnsureStanceHolder();
+    -- AttachStanceButtons se autolimita al modo unificado; en los otros
+    -- modos no hace nada y deja la barra como la dejo cada uno.
+    K.AttachStanceButtons();
+end);
+
+function K.AttachStanceButtons()
+    if InCombatLockdown() then return; end
+
+    -- SOLO EN MODO UNIFICADO.
+    --
+    -- MiniBar apila la barra de posturas con su propia logica: ancla
+    -- ShapeshiftButton1 a la fila de arriba en MiniBar_UpdateActionBars.
+    -- Si ademas la colgaramos del Holder, los dos estarian anclando el
+    -- mismo boton y ganaria el ultimo que corre — justo el tipo de
+    -- pelea que rompio el cambio de modo.
+    if C.UnifyActionBars ~= true then
+        if K.DetachStanceButtons then K.DetachStanceButtons(); end
+        return;
+    end
+    local holder = K.EnsureStanceHolder();
+
+    -- Sin posicion guardada por el usuario, la barra va SIEMPRE al lugar
+    -- por defecto del modo unificado. Con posicion guardada, manda la
+    -- del usuario y aca no se toca.
+    if not (K.HasGlobalPos and K.HasGlobalPos("StanceBar")) then
+        StanceDefaultPoint(holder);
+    end
+
+    -- OJO: aca NO se usa el slider de separacion. Estos botones tienen
+    -- que caer sobre las casillas del arte de Blizzard, que estan a una
+    -- distancia fija. El slider vale para las barras de accion, que no
+    -- tienen ese arte detras.
+    local space = StanceButtonPitch();
+    local shown, w, h = 0, 0, 0;
+
+    for i = 1, 10 do
+        local btn = _G["ShapeshiftButton" .. i];
+        if btn then
+            -- Foto ANTES de reparentar: el padre original es lo que hay
+            -- que devolver al salir del modo.
+            CaptureButton(btn, "ShapeshiftButton" .. i);
+            btn:SetParent(holder);
+            btn:ClearAllPoints();
+            if i == 1 then
+                btn:SetPoint("BOTTOMLEFT", holder, "BOTTOMLEFT", 0, 0);
+            else
+                btn:SetPoint("LEFT", _G["ShapeshiftButton" .. (i - 1)], "RIGHT", space, 0);
+            end
+            if btn:IsShown() then
+                shown = shown + 1;
+                w = (btn:GetWidth() or 30);
+                h = (btn:GetHeight() or 30);
+            end
+        end
+    end
+
+    -- El holder mide exactamente lo que ocupan los botones a la vista, asi
+    -- el recuadro del modo mover calza sin calculos aparte.
+    if shown > 0 then
+        holder:SetSize((w * shown) + (space * (shown - 1)), h);
+    end
+
+    -- EL MARCO DE BLIZZARD SIGUE AL HOLDER.
+    --
+    -- Ese marco trae el arte de las casillas, que aparece cuando no
+    -- tenes la barra inferior izquierda puesta. Si el Holder se mueve y
+    -- el marco se queda, el arte queda como una fila fantasma abajo, sin
+    -- botones adentro.
+    --
+    -- Se lo ancla al Holder corriendolo por el margen interno que tiene
+    -- el primer boton dentro suyo: asi las casillas caen JUSTO detras de
+    -- los botones, que es como se ve en la interfaz de Blizzard.
+    if ShapeshiftBarFrame then
+        local ix, iy = StanceButtonInset();
+        UnlockSetPoint(ShapeshiftBarFrame);
+        ShapeshiftBarFrame:ClearAllPoints();
+        ShapeshiftBarFrame:SetPoint("BOTTOMLEFT", holder, "BOTTOMLEFT", -ix, -iy);
+        -- Y el Holder por encima, cada vez: al reanclarse, el marco puede
+        -- quedar en un nivel de dibujo distinto y tapar los iconos.
+        holder:SetFrameLevel((ShapeshiftBarFrame:GetFrameLevel() or 0) + 5);
+    end
+end
+
+local stanceBox;
+
+-- Vuelve el Holder a su lugar de fabrica. Lo llama el Reset del modo
+-- mover: como el Holder es un frame NUESTRO creado al vuelo, el sistema
+-- de "originales" de GlobalUnlock puede no haberlo fotografiado todavia,
+-- y sin esto quedaba donde lo hubieras dejado.
+-- Devuelve los botones de posturas a ShapeshiftBarFrame. Sin esto,
+-- cambiar de modo dejaba las auras colgadas del Holder, flotando.
+function K.DetachStanceButtons()
+    if InCombatLockdown() then return; end
+    for i = 1, 10 do
+        RestoreButton(_G["ShapeshiftButton" .. i], "ShapeshiftButton" .. i);
+    end
+end
+
+function K.ResetStanceHolder()
+    local holder = K.EnsureStanceHolder();
+    if not holder then return; end
+    if InCombatLockdown() then return; end
+    StanceDefaultPoint(holder);
+    holder:SetScale(1);
+    K.AttachStanceButtons();
+end
+
+function K.UpdateStanceBarBox()
+    if not stanceBox then
+        stanceBox = CreateFrame("Frame", "NUF_StanceBarBox", UIParent);
+        stanceBox:SetFrameStrata("BACKGROUND");
+        stanceBox:EnableMouse(false);
+    end
+
+    local l, r, t, b;
+    for i = 1, 10 do
+        local btn = _G["ShapeshiftButton" .. i];
+        if btn and btn:IsVisible() and btn:GetLeft() then
+            l = math.min(l or btn:GetLeft(),   btn:GetLeft());
+            r = math.max(r or btn:GetRight(),  btn:GetRight());
+            b = math.min(b or btn:GetBottom(), btn:GetBottom());
+            t = math.max(t or btn:GetTop(),    btn:GetTop());
+        end
+    end
+    if not l then return stanceBox; end
+
+    stanceBox:ClearAllPoints();
+    stanceBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b);
+    stanceBox:SetSize(math.max(r - l, 10), math.max(t - b, 10));
+    return stanceBox;
+end
+
+-- ──────────────────────────────────────────────────────────────
+--  SEPARACION ENTRE BOTONES  ("Buttons space")
+--
+--  Portado de la idea de el UI de origen (C.ActionBar.ButtonSpace): alla cada
+--  boton se ancla al anterior con esa distancia. Aca hay que hacerlo
+--  sobre las barras de Blizzard, que vienen con los botones pegados a
+--  mano en su XML, asi que se los vuelve a anclar uno por uno.
+--
+--  Las barras verticales (MultiBarRight / MultiBarLeft) crecen hacia
+--  ABAJO, de ahi que usen TOP/BOTTOM en vez de LEFT/RIGHT.
+--
+--  OJO CON EL COMBATE: los botones de accion son frames protegidos.
+--  Reubicarlos en combate lo bloquea el juego, asi que si estamos
+--  peleando se sale y se vuelve a intentar al terminar.
+-- ──────────────────────────────────────────────────────────────
+local SPACED_BARS = {
+    { prefix = "ActionButton",              count = 12, vertical = false },
+    { prefix = "MultiBarBottomLeftButton",  count = 12, vertical = false },
+    { prefix = "MultiBarBottomRightButton", count = 12, vertical = false },
+    { prefix = "MultiBarRightButton",       count = 12, vertical = true  },
+    { prefix = "MultiBarLeftButton",        count = 12, vertical = true  },
+};
+
+local spaceWaiter;
+
+function K.ApplyActionBarButtonSpace()
+    -- Solo con alguno de los dos modos de barras puesto: sin eso las
+    -- barras son las de Blizzard y no nos toca reacomodarlas.
+    if not (C.UnifyActionBars == true or C.MiniBarEnabled == true) then return; end
+
+    if InCombatLockdown() then
+        if not spaceWaiter then
+            spaceWaiter = CreateFrame("Frame");
+            spaceWaiter:SetScript("OnEvent", function(self)
+                self:UnregisterEvent("PLAYER_REGEN_ENABLED");
+                K.ApplyActionBarButtonSpace();
+            end);
+        end
+        spaceWaiter:RegisterEvent("PLAYER_REGEN_ENABLED");
+        return;
+    end
+
+    local space = tonumber(C.ActionBarButtonSpace);
+    if not space then space = 6; end
+
+    for _, bar in ipairs(SPACED_BARS) do
+        for i = 2, bar.count do
+            local btn  = _G[bar.prefix .. i];
+            local prev = _G[bar.prefix .. (i - 1)];
+            if btn and prev then
+                CaptureButton(btn, bar.prefix .. i);
+                btn:ClearAllPoints();
+                if bar.vertical then
+                    btn:SetPoint("TOP", prev, "BOTTOM", 0, -space);
+                else
+                    btn:SetPoint("LEFT", prev, "RIGHT", space, 0);
+                end
+            end
+        end
+    end
+
+    -- En MiniBar el espaciado tambien manda sobre la separacion ENTRE
+    -- FILAS, asi que hay que re-armar el apilado.
+    if C.MiniBarEnabled == true and K.RefreshMiniBarLayout then
+        pcall(K.RefreshMiniBarLayout);
+    end
+
+    -- MultiBarBottomRightButton7 tiene ancla propia en el modo unificado
+    -- (arranca la segunda fila), asi que se la vuelve a poner despues del
+    -- bucle o queda pegada al boton 6.
+    if C.UnifyActionBars == true and MultiBarBottomRightButton7 and MainMenuBar then
+        MultiBarBottomRightButton7:ClearAllPoints();
+        MultiBarBottomRightButton7:SetPoint("LEFT", MainMenuBar, "LEFT", 513, -5);
+    end
+end
+
+-- Devuelve todos los botones a su anclaje de fabrica. La llaman los dos
+-- modos de barra al apagarse, y el camino que deja las barras como las
+-- tiene Blizzard.
+function K.RestoreActionBarButtonSpace()
+    K.RestoreAllButtons();
+end
+
+-- ──────────────────────────────────────────────────────────────
 --  ENABLE
 -- ──────────────────────────────────────────────────────────────
 
@@ -533,6 +1110,13 @@ function K.EnableUnifyActionBars()
         K.SaveConfig("MiniBarEnabled", false);
     end
 
+    -- Foto compartida del estado limpio (ver Core/BarBaseline.lua). La
+    -- primera vez la saca; despues devuelve la que ya hay.
+    if K.EnsureBarBaseline then K.EnsureBarBaseline(); end
+    -- Se parte SIEMPRE del mismo punto: sin esto, la captura de abajo se
+    -- quedaba con los restos que MiniBar no habia terminado de revertir.
+    if K.RestoreBarBaseline then K.RestoreBarBaseline(); end
+
     -- FIX: Forzar que Blizzard recalcule TODAS las posiciones ANTES de capturar.
     if UIParent_ManageFramePositions then pcall(UIParent_ManageFramePositions); end
     if MainMenuBar_UpdateExperienceBars then pcall(MainMenuBar_UpdateExperienceBars); end
@@ -542,6 +1126,7 @@ function K.EnableUnifyActionBars()
 
     isEnabled = true;
     K._unifyActive = true;
+    if K._habReapply then K._habReapply(); end
 
     -- Hide decorations
     HideAllTextures();
@@ -573,6 +1158,12 @@ function K.EnableUnifyActionBars()
     MultiBarBottomRightButton7:SetPoint("LEFT", MainMenuBar, "LEFT", 513, -5);
 
     ApplyAll();
+
+    -- Separacion entre botones (slider "Buttons space" del panel).
+    if K.ApplyActionBarButtonSpace then K.ApplyActionBarButtonSpace(); end
+
+    -- Los botones de posturas pasan a colgar de nuestro Holder.
+    if K.AttachStanceButtons then K.AttachStanceButtons(); end
 
     -- Apply gryphons (shared with MiniBar, must be after HideAllTextures)
     if K.ApplyGryphons then K.ApplyGryphons(); end
@@ -656,7 +1247,18 @@ function K.EnableUnifyActionBars()
     if MainMenuBar_UpdateExperienceBars and not K._uabExpBarHooked then
         hooksecurefunc("MainMenuBar_UpdateExperienceBars", function()
             if isEnabled and not InCombatLockdown() then
+                if UnitInVehicle and UnitInVehicle("player") then return; end
+                -- FIX (desalineo): cuando aparece o desaparece la barra de XP o
+                -- de reputacion, MainMenuBar cambia de alto y GetBarOffset()
+                -- cambia. Antes solo se reposicionaban las barras de XP/rep,
+                -- pero la pet bar, la de formas y los grifos cuelgan del TOP de
+                -- MainMenuBar y NO se movian: quedaban a distinta altura. Hay
+                -- que re-aplicar TODO lo que depende de ese offset, en el mismo
+                -- frame, para que suban o bajen juntos.
                 ApplyXPRepBars();
+                ApplyShapeshiftBar();
+                ApplyPetBar();
+                if K.ApplyGryphons then K.ApplyGryphons(); end
             end
         end);
         K._uabExpBarHooked = true;
@@ -669,8 +1271,13 @@ function K.EnableUnifyActionBars()
             if isEnabled and not InCombatLockdown() then
                 -- FIX: Skip during vehicle — Blizzard manages all frame positions
                 if UnitInVehicle and UnitInVehicle("player") then return; end
+                -- Mismo motivo que arriba: re-aplicar todo el bloque dependiente
+                -- del alto de MainMenuBar, no solo las barras de XP/rep.
                 ApplyMainBar();
                 ApplyXPRepBars();
+                ApplyShapeshiftBar();
+                ApplyPetBar();
+                if K.ApplyGryphons then K.ApplyGryphons(); end
             end
         end);
         K._uabManageHooked = true;
@@ -693,6 +1300,14 @@ function K.DisableUnifyActionBars()
 
     isEnabled = false;
     K._unifyActive = false;
+
+    -- LO PRIMERO: devolver los BOTONES a su anclaje y su padre.
+    --
+    -- Va antes de restaurar los frames de las barras porque los botones
+    -- cuelgan de ellos: si se restaura al reves, quedan anclados a un
+    -- frame que todavia esta en la posicion del modo.
+    if K.RestoreActionBarButtonSpace then K.RestoreActionBarButtonSpace(); end
+    if K.DetachStanceButtons then K.DetachStanceButtons(); end
 
     -- Stop events
     if uabEventsFrame then

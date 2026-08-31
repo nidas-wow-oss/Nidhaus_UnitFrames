@@ -1,3 +1,9 @@
+## NOTA: este .toc NO se usa.
+## PartyTargets vive DENTRO de Nidhaus_UnitFrames, y WoW solo lee el .toc de
+## la carpeta raiz de un addon. Los archivos se cargan desde
+## Nidhaus_UnitFrames.xml y PartyTargetsDB esta declarado en el .toc de NUF.
+## Se deja como referencia de cual era el addon original.
+
 ## Interface: 30300
 ## Version: 3.3-5
 ## Author: Nidhaus

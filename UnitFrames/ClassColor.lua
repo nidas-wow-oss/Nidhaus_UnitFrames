@@ -15,7 +15,18 @@ local function unitClassColors(healthbar, unit)
 	if not UnitIsPlayer(unit) or unit ~= healthbar.unit then return; end
 	if not UnitClass(unit) then return; end
 	
-	if C.classColor then
+	-- LOS FRAMES DE ARENA VAN SIEMPRE POR CLASE.
+	--
+	-- "Class Color Health Bars" es una preferencia estetica para los marcos
+	-- normales. En arena el color de clase no es decoracion: es como
+	-- identificas de un vistazo a quien le estas pegando. Apagar la opcion
+	-- les ponia verde a todos y dejaba los tres marcos iguales.
+	--
+	-- Los marcos de arena no tienen coloreo propio en otro lado: dependen de
+	-- este mismo hook, asi que la excepcion tiene que estar aca.
+	local isArena = unit and string.find(unit, "^arena%d") ~= nil;
+
+	if C.classColor or isArena then
 		if not UnitIsConnected(unit) then
 			healthbar:SetStatusBarColor(0.6, 0.6, 0.6, 0.5);
 			return;

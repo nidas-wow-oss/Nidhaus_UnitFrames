@@ -4,7 +4,14 @@ local K, C, L = unpack(ns);
 local _G, string_lower, print = _G, string.lower, print;
 local MAX_BOSS_FRAMES = MAX_BOSS_FRAMES;
 
+-- La ayuda ahora es la lista COMPLETA (Core/CommandList.lua), no cinco
+-- lineas sueltas. Si por lo que sea ese archivo no cargo, se cae en la
+-- ayuda vieja para no dejar al usuario sin nada.
 local function PrintHelpInfo()
+	if K.PrintCommandList then
+		K.PrintCommandList();
+		return;
+	end
 	print(L["CMD_HEADER"]);
 	print(L["CMD_HELP"]);
 	print(L["CMD_OPTIONS"] or "  |cff00FF00/nuf options|r — Open options panel");
@@ -61,9 +68,28 @@ local function ShowBossFrames()
 	end
 end
 
+-- API para el modo mover: mostrar/ocultar los marcos de boss de prueba
+function K.SetBossTestFrames(state)
+	if state and not IsBossFramesShown then
+		ShowBossFrames();
+	elseif not state and IsBossFramesShown then
+		ShowBossFrames();
+	end
+end
+
+function K.IsBossTestShown()
+	return IsBossFramesShown;
+end
+
 SLASH_NUF1 = "/nuf";
 SlashCmdList["NUF"] = function(msg)
-	if not msg or msg == "" or string_lower(msg) == "help" then
+	-- /nuf SOLO abre el panel. Es lo que uno quiere el 95% de las veces, y
+	-- antes escupia una ayuda de cinco lineas que ademas estaba incompleta.
+	-- La lista entera quedo en /nuf help.
+	if not msg or msg == "" then
+		if K.ToggleOptionsPanel then K.ToggleOptionsPanel(); end
+	elseif string_lower(msg) == "help" or string_lower(msg) == "ayuda"
+		or string_lower(msg) == "cmd" or string_lower(msg) == "comandos" then
 		PrintHelpInfo();
 	elseif string_lower(msg) == "options" or string_lower(msg) == "config" then
 		if K.ToggleOptionsPanel then K.ToggleOptionsPanel(); end

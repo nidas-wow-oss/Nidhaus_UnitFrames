@@ -58,16 +58,17 @@ end
 local arenaFrame = CreateFrame("Frame");
 arenaFrame:Hide();
 
--- FIX PERF: Throttle arena portrait updates to 5x/sec.
--- Portraits don't change 60+ times per second — class icons only need
--- refreshing when opponents appear or UnitFramePortrait_Update fires.
-local arenaUpdateElapsed = 0;
+-- Este OnUpdate corria 60 veces por segundo de forma permanente y, dentro de
+-- una arena, repintaba el retrato de hasta 5 frames en CADA fotograma. Los
+-- retratos no cambian tan rapido: con revisarlos 5 veces por segundo sobra.
+local ARENA_THROTTLE = 0.2;
 
-local function ArenaUpdate(self, dt)
+local function ArenaUpdate(self, elapsed)
+    self.acc = (self.acc or 0) + (elapsed or 0);
+    if self.acc < ARENA_THROTTLE then return; end
+    self.acc = 0;
+
     if not isActive or iconStyle == "default" then return; end
-    arenaUpdateElapsed = arenaUpdateElapsed + dt;
-    if arenaUpdateElapsed < 0.2 then return; end
-    arenaUpdateElapsed = 0;
     if not _G.ArenaEnemyFrames or not _G.ArenaEnemyFrames:IsShown() then return; end
 
     for i = 1, GetNumArenaOpponents() do
@@ -158,7 +159,7 @@ end
 
 K.RegisterModule("ClassIcons", {
     name = "Class Icons",
-    desc = "Reemplaza los retratos por iconos de clase (default, modern, hs, ex)",
+    desc = "Replaces portraits with class icons (default, modern, hs, ex)",
     default = false,
 
     onEnable = function()
@@ -210,7 +211,7 @@ K.RegisterModule("ClassIcons", {
 
         local label = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
         label:SetPoint("TOPLEFT", 36, yPos);
-        label:SetText("|cffAAAAAAEstilo:|r");
+        label:SetText("|cffAAAAAA" .. (L["LBL_STYLE"] or "Style:") .. "|r");
 
         local btnX = 85;
         local styleBtns = {};
@@ -247,7 +248,10 @@ K.RegisterModule("ClassIcons", {
             btnX = btnX + 78;
         end
 
-        return yPos - 28;
+        -- FIX: tiene que devolver el ALTO USADO (positivo). Antes devolvia
+        -- yPos - 28, o sea un negativo, y el contenedor quedaba con altura
+        -- invalida: por eso Class Icons se pisaba con Spec Icons.
+        return 28;
     end,
 });
 

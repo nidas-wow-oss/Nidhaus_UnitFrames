@@ -235,8 +235,10 @@ end
 
 K.RegisterModule("ArenaTimes", {
     name = "Arena Times",
-    desc = "Timer en el invite popup + tiempo en cola junto al minimapa.",
+    desc = "Timer on arena invite popup + queue time next to minimap.",
     default = true,
+    -- El checkbox vive en Arena > Options, no repetirlo aca
+    hideFromModulesTab = true,
     onEnable = Init,
     onDisable = Disable,
 });

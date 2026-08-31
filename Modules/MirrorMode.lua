@@ -103,18 +103,37 @@ function K.PositionArenaCastBar(index)
 			icon:SetPoint("RIGHT", castBar, "LEFT", -2, 0);
 		end
 	else
-		-- Normal (non-flat, non-mirror): restore original or default Blizzard position
+		-- Normal (ni flat ni espejo): devolver la barra a su lugar de fabrica.
+		--
+		-- DOS FUENTES, en este orden:
+		--
+		--   1. arenaOrigState, la foto que saca este archivo. OJO: solo se
+		--      saca al prender el modo espejo. Si nunca lo usaste, esta
+		--      vacia.
+		--   2. La foto de ArenaFrame.lua, que se saca SIEMPRE al estilar
+		--      los marcos.
+		--
+		-- La segunda es la que faltaba. Sin ella, para quien nunca prendio
+		-- el espejo esta rama no hacia absolutamente nada: el boton Reset
+		-- borraba las posiciones guardadas y despues no tenia con que
+		-- reemplazarlas, asi que la barra se quedaba donde la habias
+		-- arrastrado hasta el proximo /reload.
 		local s = arenaOrigState[index];
-		if s and s.cbPoints then
+		local cbPoints, cbIconPoints = s and s.cbPoints, s and s.cbIconPoints;
+
+		if not cbPoints and K.GetArenaCastBarOriginalPoints then
+			cbPoints, cbIconPoints = K.GetArenaCastBarOriginalPoints(index);
+		end
+
+		if cbPoints then
 			castBar:ClearAllPoints();
-			for _, pt in ipairs(s.cbPoints) do castBar:SetPoint(unpack(pt)); end
+			for _, pt in ipairs(cbPoints) do castBar:SetPoint(unpack(pt)); end
 			local icon = castBar.Icon or _G[castBar:GetName().."Icon"];
 			if icon then
-				if s.cbIconPoints then
-					icon:ClearAllPoints();
-					for _, pt in ipairs(s.cbIconPoints) do icon:SetPoint(unpack(pt)); end
+				icon:ClearAllPoints();
+				if cbIconPoints then
+					for _, pt in ipairs(cbIconPoints) do icon:SetPoint(unpack(pt)); end
 				else
-					icon:ClearAllPoints();
 					icon:SetPoint("RIGHT", castBar, "LEFT", -2, 0);
 				end
 			end

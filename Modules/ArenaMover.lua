@@ -231,6 +231,127 @@ local function RestoreTrinketPositions()
 end
 
 -- ═══════════════════════════════════════════════════════════
+-- PET FRAME DRAG SYSTEM
+-- Same pattern as castbar/trinket drag: Shift+Alt+Click to move,
+-- saves offset relative to parent ArenaEnemyFrame per style+mirror key.
+-- ═══════════════════════════════════════════════════════════
+
+function K.GetSavedPetFramePos()
+	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.PetFramePositions;
+	if not db then return nil; end
+	if K.GetArenaPositionKey then
+		local compositeKey = K.GetArenaPositionKey();
+		if db[compositeKey] then return db[compositeKey]; end
+	end
+	local key = C.ArenaMirrorMode and "mirror" or "normal";
+	return db[key];
+end
+
+local function RestorePetFramePositions()
+	local saved = K.GetSavedPetFramePos();
+	if not saved then return; end
+	for i = 1, MAX_ARENA_ENEMIES do
+		local petFrame = _G["ArenaEnemyFrame"..i.."PetFrame"];
+		local arenaFrame = _G["ArenaEnemyFrame"..i];
+		if petFrame and arenaFrame then
+			petFrame:ClearAllPoints();
+			petFrame:SetPoint(saved[1], arenaFrame, saved[2], saved[3], saved[4]);
+		end
+	end
+end
+K.RestorePetFramePositions = RestorePetFramePositions;
+
+local function CreatePetFrameDragOverlays()
+	for i = 1, MOVER_ARENA_COUNT do
+		local petFrame = _G["ArenaEnemyFrame"..i.."PetFrame"];
+		if petFrame and petFrame:IsShown() then
+			local overlayName = "NUF_PetFrameDragOverlay"..i;
+			local overlay = _G[overlayName];
+			if not overlay then
+				overlay = CreateFrame("Frame", overlayName, petFrame);
+				overlay:SetAllPoints(petFrame);
+				overlay:SetFrameStrata("TOOLTIP");
+				overlay:EnableMouse(true);
+				overlay:SetMovable(true);
+				overlay._petFrame = petFrame;
+				overlay._index = i;
+
+				overlay:SetScript("OnMouseDown", function(self, button)
+					if button ~= "LeftButton" then return; end
+					if InCombatLockdown() then return; end
+					if IsShiftKeyDown() and IsAltKeyDown() then
+						local pf = self._petFrame;
+						pf:SetMovable(true);
+						pf:StartMoving();
+						pf:SetUserPlaced(false);
+						pf._isMoving = true;
+					end
+				end);
+
+				overlay:SetScript("OnMouseUp", function(self, button)
+					if button ~= "LeftButton" then return; end
+					local pf = self._petFrame;
+					if not pf._isMoving then return; end
+					pf:StopMovingOrSizing();
+					pf._isMoving = false;
+
+					local idx = self._index;
+					local arenaFrame = _G["ArenaEnemyFrame"..idx];
+					if not arenaFrame then return; end
+
+					local parentX, parentY = arenaFrame:GetCenter();
+					local frameX, frameY = pf:GetCenter();
+					if not parentX or not frameX then return; end
+
+					local scale = pf:GetEffectiveScale() / arenaFrame:GetEffectiveScale();
+					local offsetX = (frameX - parentX) * (pf:GetEffectiveScale() / arenaFrame:GetEffectiveScale());
+					local offsetY = (frameY - parentY) * (pf:GetEffectiveScale() / arenaFrame:GetEffectiveScale());
+					offsetX = math.floor(offsetX * 10 + 0.5) / 10;
+					offsetY = math.floor(offsetY * 10 + 0.5) / 10;
+
+					pf:ClearAllPoints();
+					pf:SetPoint("CENTER", arenaFrame, "CENTER", offsetX, offsetY);
+
+					-- Save to DB
+					if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
+					if not NidhausUnitFramesDB.PetFramePositions then NidhausUnitFramesDB.PetFramePositions = {}; end
+					local posKey = K.GetArenaPositionKey and K.GetArenaPositionKey() or (C.ArenaMirrorMode and "mirror" or "normal");
+					NidhausUnitFramesDB.PetFramePositions[posKey] = {"CENTER", "CENTER", offsetX, offsetY};
+
+					-- Apply to ALL pet frames
+					for j = 1, MAX_ARENA_ENEMIES do
+						local otherPet = _G["ArenaEnemyFrame"..j.."PetFrame"];
+						local otherAF = _G["ArenaEnemyFrame"..j];
+						if otherPet and otherAF and j ~= idx then
+							otherPet:ClearAllPoints();
+							otherPet:SetPoint("CENTER", otherAF, "CENTER", offsetX, offsetY);
+						end
+					end
+				end);
+
+				overlay:SetScript("OnHide", function(self)
+					local pf = self._petFrame;
+					if pf and pf._isMoving then
+						pf:StopMovingOrSizing();
+						pf._isMoving = false;
+					end
+				end);
+			end
+			overlay:Show();
+		end
+	end
+end
+
+local function HidePetFrameDragOverlays()
+	for i = 1, MOVER_ARENA_COUNT do
+		local overlay = _G["NUF_PetFrameDragOverlay"..i];
+		if overlay then overlay:Hide(); end
+	end
+end
+K.CreatePetFrameDragOverlays = CreatePetFrameDragOverlays;
+K.HidePetFrameDragOverlays = HidePetFrameDragOverlays;
+
+-- ═══════════════════════════════════════════════════════════
 -- "Drag to move" overlay — estilo Gladius
 -- Barra de título oscura arriba del anchor, draggable, con botón X
 -- ═══════════════════════════════════════════════════════════
@@ -263,7 +384,7 @@ local function CreateDragOverlay(anchor)
 	-- Title text: "NUF - drag to move" (top portion)
 	local text = dragOverlay:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 	text:SetPoint("TOP", dragOverlay, "TOP", 0, -6);
-	text:SetText("NUF - drag to move");
+	text:SetText(L["MOVER_DRAG"] or "NUF - drag to move");
 	text:SetTextColor(1, 1, 1, 1);
 	text:SetShadowOffset(1, -1);
 	text:SetShadowColor(0, 0, 0, 1);
@@ -272,7 +393,7 @@ local function CreateDragOverlay(anchor)
 	-- Hint text: "†Shift+Alt+Click to move various elements" (below title)
 	local hint = dragOverlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 	hint:SetPoint("TOP", text, "BOTTOM", 0, -1);
-	hint:SetText("|cffFFAA00\226\128\160Shift+Alt+Click to move various elements|r");
+	hint:SetText("|cffFFAA00\226\128\160" .. (L["MOVER_HINT"] or "Shift+Alt+Click to move various elements") .. "|r");
 	hint:SetFont("Fonts\\FRIZQT__.TTF", 8, "");
 	dragOverlay.hint = hint;
 
@@ -496,6 +617,14 @@ local function ToggleTestMode()
 
 				local petFrame = _G["ArenaEnemyFrame"..i.."PetFrame"];
 				if petFrame then
+					-- FIX: Capture Blizzard default position BEFORE any drag/flat changes.
+					-- Only capture once — subsequent opens keep the original.
+					if not petFrame._blizzDefaultPoints then
+						petFrame._blizzDefaultPoints = {};
+						for p = 1, petFrame:GetNumPoints() do
+							petFrame._blizzDefaultPoints[p] = {petFrame:GetPoint(p)};
+						end
+					end
 					if C.ArenaPetFrameShow then
 						if not petFrame._origHide then
 							petFrame._origHide = petFrame.Hide;
@@ -574,6 +703,8 @@ local function ToggleTestMode()
 		if C.ArenaPetFrameShow and K.IsFlatModeActive and K.IsFlatModeActive() and C.ArenaFlatPetStyle then
 			if K.ApplyFlatPetFrames then K.ApplyFlatPetFrames(); end
 		end
+		-- FIX: Restore saved pet frame positions after showing
+		if C.ArenaPetFrameShow then RestorePetFramePositions(); end
 
 		-- Crear overlay frames para drag de castbars (Shift+Alt+Click)
 		for i = 1, MOVER_ARENA_COUNT do
@@ -645,6 +776,9 @@ local function ToggleTestMode()
 
 		if K.RestoreCastBarPositions then K.RestoreCastBarPositions(); end
 
+		-- FIX: Create pet frame drag overlays (Shift+Alt+Click to move)
+		if C.ArenaPetFrameShow then CreatePetFrameDragOverlays(); end
+
 		if K.SetTrinketMouseState then K.SetTrinketMouseState(true); end
 
 		NidhausUnitFramesDB.ArenaMover.IsShown = true;
@@ -673,6 +807,7 @@ local function ToggleTestMode()
 			local overlay = _G["NUF_CastBarDragOverlay"..i];
 			if overlay then overlay:Hide(); end
 		end
+		HidePetFrameDragOverlays();
 		NidhausUnitFramesDB.ArenaMover.IsShown = false;
 		K._testModeActive = false;
 		if K.SetTrinketMouseState then K.SetTrinketMouseState(false); end

@@ -24,6 +24,13 @@ local origFont, origFontSize, origFontFlags;
 local function CaptureOriginalFont(nameStr)
 	if origFont then return; end
 	local f, s, fl = nameStr:GetFont();
+	-- PartyFrame.lua guarda el tamaño de fabrica ANTES de aplicar el slider
+	-- del panel. Si existe, se usa ese: capturar el actual podia congelar
+	-- para siempre un tamaño ya modificado por el usuario.
+	if nameStr._nufBaseSize then
+		f = nameStr._nufBaseFont or f;
+		s = nameStr._nufBaseSize;
+	end
 	if f and s then
 		origFont, origFontSize, origFontFlags = f, s, fl;
 	end
@@ -373,7 +380,10 @@ local function StylePartyMemberFrame(id)
 		if origFont then
 			name:ClearAllPoints();
 			name:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", barLeft + 2, -14);
-			name:SetFont(origFont, origFontSize - 1, origFontFlags);
+			-- math.max: si el tamaño capturado llega a ser 1, el "-1" daba 0
+			-- y SetFont revienta ("invalid fontHeight: 0"). Pasaba al arrastrar
+			-- el slider de tamaño del party hasta el minimo.
+			name:SetFont(origFont, math.max(6, (origFontSize or 10) - 1), origFontFlags);
 		end
 	end
 

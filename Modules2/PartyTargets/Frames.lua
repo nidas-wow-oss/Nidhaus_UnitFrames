@@ -26,6 +26,8 @@ local DEFAULTS = {
 	anchor = true,
 	scale = 1.0,
 	locked = false,
+	style = "Classic",   -- "Classic" (Target-of-Target) o "Square"
+	hideName = false,    -- ocultar el nombre del objetivo
 }
 
 local function EnsureDefaults()
@@ -77,16 +79,36 @@ local function AnchorAllToParty(offX, offY)
 	end
 end
 
+-- Offset del marco de objetivo respecto del marco de su compañero.
+--
+-- LAS ESCALAS. GetLeft/GetTop devuelven coordenadas en el espacio PROPIO de
+-- cada frame, y ese espacio depende de su escala. El marco de objetivo tiene
+-- la suya (PartyTargetsDB.scale) y el del compañero la suya — que ademas en
+-- modo 3v3 es 1.5 o 1.3 segun el miembro.
+--
+-- Restar los valores crudos de dos frames con escalas distintas da un numero
+-- que no significa nada. Ese era el "se imanta al techo": con el objetivo al
+-- 1.0 y el compañero al 1.5, el offset vertical salia enorme y el marco se
+-- iba arriba de todo.
+--
+-- Se pasa todo a pixeles de PANTALLA para restar, y el resultado se traduce
+-- al espacio del marco de objetivo, que es donde SetPoint lo va a interpretar.
 local function ComputeAnchorOffset(frame)
 	local id = frame:GetID()
 	local parent = _G["PartyMemberFrame"..id]
 	if not parent then return DEFAULT_ANCHOR_X, DEFAULT_ANCHOR_Y end
-	local fl = frame:GetLeft()
-	local ft = frame:GetTop()
-	local pl = parent:GetLeft()
-	local pb = parent:GetBottom()
+
+	local fs = frame:GetEffectiveScale()
+	local ps = parent:GetEffectiveScale()
+	if not fs or fs == 0 then fs = 1 end
+	if not ps or ps == 0 then ps = 1 end
+
+	local fl, ft = frame:GetLeft(), frame:GetTop()
+	local pl, pb = parent:GetLeft(), parent:GetBottom()
 	if fl and ft and pl and pb then
-		return fl - pl, ft - pb
+		local dx = (fl * fs) - (pl * ps)
+		local dy = (ft * fs) - (pb * ps)
+		return dx / fs, dy / fs
 	end
 	return DEFAULT_ANCHOR_X, DEFAULT_ANCHOR_Y
 end
@@ -120,19 +142,21 @@ local function MakeDraggable(frame)
 	frame:HookScript("OnDragStop", function(self)
 		self:StopMovingOrSizing()
 		
-		if PartyTargets_configOpen and PartyTargetsDB.anchor then
-			-- Anchor mode: move all together
+		-- En modo anclado, mover uno mueve los cuatro. SIEMPRE.
+		--
+		-- Antes esto pedia ademas que el panel estuviera abierto, o que
+		-- Shift+Alt siguieran apretados AL SOLTAR. Lo segundo es facil de
+		-- fallar: arrastras con Shift+Alt, largas las teclas y despues el
+		-- boton, y el marco quedaba solo, desalineado de los otros tres.
+		--
+		-- Si el arrastre llego hasta aca es porque OnDragStart lo permitio;
+		-- no hace falta volver a preguntar por que.
+		if PartyTargetsDB.anchor then
 			local offX, offY = ComputeAnchorOffset(self)
 			PartyTargetsDB.anchorX = offX
 			PartyTargetsDB.anchorY = offY
 			AnchorAllToParty(offX, offY)
-		elseif PartyTargetsDB.anchor and IsShiftKeyDown() and IsAltKeyDown() then
-			-- Shift+Alt in anchor mode: also move all
-			local offX, offY = ComputeAnchorOffset(self)
-			PartyTargetsDB.anchorX = offX
-			PartyTargetsDB.anchorY = offY
-			AnchorAllToParty(offX, offY)
-		elseif not PartyTargetsDB.anchor then
+		else
 			SavePosition(self)
 		end
 	end)
@@ -598,6 +622,20 @@ function PartyTargets_AnchorToParty()
 	AnchorAllToParty()
 end
 
+-- Recalcula el offset compartido a partir de donde quedo UN marco, y
+-- reancla los cuatro.
+--
+-- Es lo mismo que hace OnDragStop, pero expuesto para que el modo mover
+-- global de NUF lo pueda usar: ese arrastra el frame por su cuenta y
+-- despues necesita que el modulo se entere.
+function PartyTargets_AnchorFromFrame(frame)
+	if not frame or not PartyTargetsDB.anchor then return end
+	local offX, offY = ComputeAnchorOffset(frame)
+	PartyTargetsDB.anchorX = offX
+	PartyTargetsDB.anchorY = offY
+	AnchorAllToParty(offX, offY)
+end
+
 function PartyTargets_LoadFreePositions()
 	for i = 1, MAX_PARTY_MEMBERS do
 		local f = _G["PartyTargetFrame"..i]
@@ -618,11 +656,40 @@ function PartyTargets_ApplyAnchorSetting()
 	end
 end
 
+-- Cambiar la escala NO tiene que mover el marco.
+--
+-- El offset guardado esta en el espacio del marco de objetivo, o sea que
+-- depende de su escala: al pasar de 1.0 a 1.5, el mismo numero pasa a valer
+-- un 50% mas de pixeles reales y los marcos se corrian solos.
+--
+-- Se anota donde estaba el primero EN PANTALLA, se escala, y se recalcula
+-- el offset para dejarlo donde estaba. La escala cambia el tamaño; la
+-- posicion la decide el usuario arrastrando, no el slider.
 function PartyTargets_ApplyScale()
 	local s = PartyTargetsDB.scale or 1.0
+
+	local ref = _G["PartyTargetFrame1"]
+	local keepL, keepT
+	if ref and ref:GetLeft() and ref:GetTop() then
+		local es = ref:GetEffectiveScale() or 1
+		keepL, keepT = ref:GetLeft() * es, ref:GetTop() * es
+	end
+
 	for i = 1, MAX_PARTY_MEMBERS do
 		local f = _G["PartyTargetFrame"..i]
 		if f then f:SetScale(s) end
+	end
+
+	if keepL and PartyTargetsDB.anchor then
+		local parent = _G["PartyMemberFrame1"]
+		if parent and parent:GetLeft() and parent:GetBottom() then
+			local es = ref:GetEffectiveScale();    if not es or es == 0 then es = 1 end
+			local ps = parent:GetEffectiveScale(); if not ps or ps == 0 then ps = 1 end
+			local offX = (keepL - parent:GetLeft()   * ps) / es
+			local offY = (keepT - parent:GetBottom() * ps) / es
+			PartyTargetsDB.anchorX, PartyTargetsDB.anchorY = offX, offY
+			AnchorAllToParty(offX, offY)
+		end
 	end
 end
 
@@ -665,12 +732,37 @@ end
 
 local function StyleNameText(self)
 	local nameText = _G[self:GetName().."Name"]
-	if nameText then
+	if not nameText then return end
+
+	-- Mostrar u ocultar va ACA y no en un sitio aparte porque esta funcion
+	-- es el unico punto por el que pasa el nombre, y ya la llaman tanto
+	-- OnLoad como OnEvent. Cualquier otro lugar habria quedado a merced de
+	-- que Blizzard reescriba el texto en la proxima actualizacion.
+	--
+	-- Se oculta el FontString, no se le pone texto vacio: con SetText("")
+	-- el nombre reaparece solo en cuanto UnitFrame_Update lo repinta.
+	if PartyTargetsDB.hideName then
+		nameText:Hide()
+		return
+	end
+	nameText:Show()
+
+	-- El estilo Square le pone su propia fuente y posicion. Si aca se
+	-- forzara la de Classic, cambiar de objetivo se la pisaria.
+	if PartyTargetsDB.style ~= "Square" then
 		nameText:SetFont("Fonts\\FRIZQT__.TTF", 7)
 		nameText:SetTextColor(1.0, 0.82, 0)
 		nameText:SetShadowOffset(0.6, -0.6)
 		nameText:SetShadowColor(0, 0, 0, 0.9)
-		TruncateName(nameText)
+	end
+	TruncateName(nameText)
+end
+
+-- Reaplicar a los cuatro, para el checkbox del panel.
+function PartyTargets_ApplyNameVisibility()
+	for i = 1, MAX_PARTY_MEMBERS do
+		local f = _G["PartyTargetFrame"..i]
+		if f then StyleNameText(f) end
 	end
 end
 
@@ -854,6 +946,23 @@ addon.DropDownOnLoad = function(self)
 end
 
 addon.DropDownInitialize = function(self)
-	local dropdown = UIDROPDOWNMENU_OPEN_MENU or self
-	UnitPopup_ShowMenu(dropdown, "TARGET", "party" .. dropdown:GetParent():GetID() .. "target")
+	-- OJO: antes esto era "UIDROPDOWNMENU_OPEN_MENU or self".
+	--
+	-- Esa global apunta al menu desplegable que este abierto en ese momento,
+	-- que NO tiene por que ser el nuestro: si el jugador abria el menu de un
+	-- nombre del chat, era FriendsDropDown. Y UnitPopup_ShowMenu escribe
+	-- .unit y .name en el frame que recibe, asi que le pisabamos al menu del
+	-- chat su unidad con "partyNtarget".
+	--
+	-- Consecuencia: las opciones que dependen de resolver la unidad por
+	-- nombre (Target y Report player Away) desaparecian de ese menu.
+	--
+	-- La funcion de inicializacion ya recibe el dropdown correcto en self.
+	local parent = self and self:GetParent();
+	if not (parent and parent.GetID) then return; end
+
+	local id = parent:GetID();
+	if not id or id < 1 then return; end
+
+	UnitPopup_ShowMenu(self, "TARGET", "party" .. id .. "target")
 end

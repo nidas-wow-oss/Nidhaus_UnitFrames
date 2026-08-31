@@ -17,6 +17,8 @@ ACDFrame:RegisterEvent("CHAT_MSG_BG_SYSTEM_NEUTRAL")
 ACDFrame:Hide()
 
 local ACDNumFrame = CreateFrame("Frame", "ACDNumFrame", UIParent)
+-- Escala configurable desde el panel (registro central en ScaleAPI).
+if K.RegisterScalable then K.RegisterScalable("ArenaCountDown", ACDNumFrame, 1.0); end
 ACDNumFrame:SetHeight(256)
 ACDNumFrame:SetWidth(256)
 ACDNumFrame:SetPoint("CENTER", 0, 128)

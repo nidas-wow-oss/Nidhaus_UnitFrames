@@ -43,10 +43,17 @@ local function ShowDecorations()
     end
 end
 
+-- Con Unify o MiniBar activos, esos modos manejan las texturas ellos mismos.
+-- FIX: antes solo se miraba _unifyActive; MiniBar quedaba afuera y los dos
+-- terminaban peleando por las mismas texturas (de ahi que solo se acomodara
+-- con /reload).
+local function AnyBarModeActive()
+    return (K._unifyActive == true) or (K._minibarActive == true);
+end
+
 local function ApplyState()
     if #textures == 0 then SetupTextures(); end
-    -- Si UnifyActionBars está activo, no tocar — ActionBars maneja las texturas
-    if K._unifyActive then return; end
+    if AnyBarModeActive() then return; end
     if habEnabled then
         HideDecorations();
     else
@@ -55,10 +62,16 @@ local function ApplyState()
 end
 
 -- Exponer función para que ActionBars pueda pedirle re-aplicar
+-- La llaman ActionBars y MiniBar despues de cambiar de modo, para que las
+-- texturas queden como corresponde sin necesidad de /reload.
 K._habReapply = function()
+    -- Reconstruir la lista: al cambiar de modo algunas texturas se recrean
+    SetupTextures();
+    if AnyBarModeActive() then return; end
     if habEnabled then
-        if #textures == 0 then SetupTextures(); end
         HideDecorations();
+    else
+        ShowDecorations();
     end
 end
 
@@ -71,7 +84,7 @@ retryFrame:Hide();
 retryFrame:SetScript("OnUpdate", function(self, dt)
     retryElapsed = retryElapsed + dt;
     if retryElapsed >= 0.4 then
-        if habEnabled and not K._unifyActive then
+        if habEnabled and not AnyBarModeActive() then
             if #textures == 0 then SetupTextures(); end
             HideDecorations();
         end
@@ -87,36 +100,52 @@ eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 eventFrame:RegisterEvent("PLAYER_LOGIN");
 eventFrame:SetScript("OnEvent", function()
     if not habEnabled then return; end
-    -- Si UnifyActionBars está activo, no pelear
-    if K._unifyActive then return; end
+    if AnyBarModeActive() then return; end
     retryAttempts = 0;
     retryElapsed = 0;
     retryFrame:Show();
 end);
 
+-- FIX: el slash ahora pasa por SetModuleEnabled para que quede guardado en la DB
+-- y el checkbox del panel no se desincronice.
 SLASH_HIDEACTIONBAR1 = "/hidebar";
 SlashCmdList["HIDEACTIONBAR"] = function()
-    if habEnabled then
-        habEnabled = false;
-        if not K._unifyActive then ShowDecorations(); end
-        print("HideBar: fondos visibles.");
+    local newState = not habEnabled;
+    if K.SetModuleEnabled then
+        K.SetModuleEnabled("HideActionBarTextures", newState);
     else
-        habEnabled = true;
-        if not K._unifyActive then HideDecorations(); end
-        print("HideBar: fondos ocultos.");
+        habEnabled = newState;
+        ApplyState();
     end
+    if newState then
+        print("|cff4FC3F7NUF:|r HideBar: textures hidden.");
+    else
+        print("|cff4FC3F7NUF:|r HideBar: textures visible.");
+    end
+    -- Refrescar el checkbox del panel si esta creado
+    if K.RefreshModuleCheckbox then K.RefreshModuleCheckbox("HideActionBarTextures"); end
 end
 
 K.RegisterModule("HideActionBarTextures", {
     name = "Hide Action Bar Textures",
-    desc = "Oculta decoraciones visuales de la barra de accion.",
+    desc = "Hides action bar decorative textures.",
     default = false,
+    -- El checkbox vive en General > Barras, no repetirlo en la pestaña Modules
+    hideFromModulesTab = true,
     onEnable = function()
         habEnabled = true;
+        -- FIX: una sola pasada no alcanzaba (Blizzard vuelve a mostrar las
+        -- texturas justo despues), por eso solo funcionaba tras /reload.
+        -- Se rearma la rafaga de reintentos igual que al entrar al mundo.
+        SetupTextures();
         ApplyState();
+        retryAttempts = 0;
+        retryElapsed = 0;
+        retryFrame:Show();
     end,
     onDisable = function()
         habEnabled = false;
+        retryFrame:Hide();
         ApplyState();
     end,
 });

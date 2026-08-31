@@ -80,14 +80,14 @@ local function TextStatusBar_Update(self)
 	local _, MaxValue = self:GetMinMaxValues();
 	
 	if MaxValue == 0 then
-		Core.Text:SetText("N/A");
+		Core.Text:SetText(L["HP_NA"] or "N/A");
 		return;
 	end
 	
 	local HealthPercent = (Value / MaxValue) * 100;
 	
 	if Value == 0 then
-		Core.Text:SetText("Dead");
+		Core.Text:SetText(L["HP_DEAD"] or "Dead");
 	else
 		Core.Text:SetText(math_ceil(HealthPercent).."%");
 	end;

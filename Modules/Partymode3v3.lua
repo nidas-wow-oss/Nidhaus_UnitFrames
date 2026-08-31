@@ -6,15 +6,33 @@ local K, C, L = unpack(ns);
 local _G = _G;
 
 local PARTY_3V3_CONFIG = {
-	[1] = { scale = 1.5, point = "TOPLEFT", x = 40,  y = -140 },
-	[2] = { scale = 1.5, point = "TOPLEFT", x = 40,  y = -260 },
-	[3] = { scale = 1.3, point = "TOPLEFT", x = 10,  y = -390 },
-	[4] = { scale = 1.3, point = "TOPLEFT", x = 10,  y = -460 },
+	[1] = { defScale = 1.5, point = "TOPLEFT", x = 40,  y = -140 },
+	[2] = { defScale = 1.5, point = "TOPLEFT", x = 40,  y = -260 },
+	[3] = { defScale = 1.3, point = "TOPLEFT", x = 10,  y = -390 },
+	[4] = { defScale = 1.3, point = "TOPLEFT", x = 10,  y = -460 },
 };
+
+-- La escala de cada miembro ahora es configurable desde el panel
+local function Get3v3Scale(i)
+	local cfg = PARTY_3V3_CONFIG[i];
+	if not cfg then return 1.0; end
+	local v = C["Party3v3Scale"..i];
+	if type(v) == "number" and v > 0 then return v; end
+	return cfg.defScale;
+end
+K.Get3v3Scale = Get3v3Scale;
+
+-- Aplicar la escala de un solo miembro (para los sliders en vivo)
+function K.Apply3v3MemberScale(i)
+	if not C.PartyMode3v3 then return; end
+	local pf = _G["PartyMemberFrame"..i];
+	if pf then pf:SetScale(Get3v3Scale(i)); end
+	if K.PartyBuffs_OnFramesMoved then K.PartyBuffs_OnFramesMoved(); end
+end
 
 -- Apply3v3PartyMode
 function K.Apply3v3PartyMode()
-	if not C.SetPositions then return; end;
+	-- FIX: antes exigia C.SetPositions y sin eso el checkbox no hacia NADA
 	if not C.PartyMode3v3 then return; end;
 
 	for i = 1, MAX_PARTY_MEMBERS do
@@ -25,19 +43,19 @@ function K.Apply3v3PartyMode()
 			if C.PartyIndividualMove and K.GetSavedPosition then
 				local saved = K.GetSavedPosition("PartyMemberFrame"..i);
 				if saved then
-					partyFrame:SetScale(cfg.scale);
+					partyFrame:SetScale(Get3v3Scale(i));
 					partyFrame:ClearAllPoints();
 					partyFrame:SetParent(UIParent);
 					local relFrame = _G[saved.relativeTo] or UIParent;
 					partyFrame:SetPoint(saved.point, relFrame, saved.relativePoint, saved.x, saved.y);
 				else
-					partyFrame:SetScale(cfg.scale);
+					partyFrame:SetScale(Get3v3Scale(i));
 					partyFrame:ClearAllPoints();
 					partyFrame:SetParent(UIParent);
 					partyFrame:SetPoint(cfg.point, cfg.x, cfg.y);
 				end
 			else
-				partyFrame:SetScale(cfg.scale);
+				partyFrame:SetScale(Get3v3Scale(i));
 				partyFrame:ClearAllPoints();
 				partyFrame:SetParent(UIParent);
 				partyFrame:SetPoint(cfg.point, cfg.x, cfg.y);
@@ -57,7 +75,6 @@ end;
 
 -- Disable3v3PartyMode
 function K.Disable3v3PartyMode()
-	if not C.SetPositions then return; end;
 	if not K.NidhausPartyFrame then return; end;
 
 	for i = 1, MAX_PARTY_MEMBERS do
@@ -84,14 +101,13 @@ function K.Disable3v3PartyMode()
 end;
 
 K.RegisterConfigEvent("CONFIG_LOADED", function()
-	if C.SetPositions and C.PartyMode3v3 then
-		-- Apply3v3PartyMode ya incluye la llamada a PartyBuffs_OnFramesMoved
+	if C.PartyMode3v3 then
 		K.Apply3v3PartyMode();
 	end
 end);
 
 K.RegisterConfigEvent("CONFIG_CHANGED", function()
-	if C.SetPositions and C.PartyMode3v3 then
+	if C.PartyMode3v3 then
 		if C.PartyIndividualMove then
 			-- No re-posicionar si el usuario está arrastrando frames individualmente
 			return;

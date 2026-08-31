@@ -1,15 +1,17 @@
-Changelog
-v3.6
-
-Fix style menu options
-Fix text display issues
-Fix various frame bugs
-
 # Nidhaus UnitFrames (NUF)
 
 A PvP-focused UI addon for World of Warcraft WotLK 3.3.5a (Warmane Blackrock and other private servers).
 
 NUF was built by combining and reworking several existing addons — including Eazy Frames and Sarena — along with new custom features, especially around party frames. Everything has been unified into a single package focused entirely on UI and PvP, giving arena and battleground players fully customizable unit frames, arena-specific tools (trinket tracking, spec detection, countdown timers, frame positioning per style), and a modular system of optional features — all configurable from a single in-game options panel.
+
+> ## Download
+>
+> **Latest version: 3.6** — this is the current, recommended build and the one actively in use.
+>
+> **[Download v3.6 (latest release)](../../releases/latest)**
+>
+> Grab the `.zip` from the release page rather than the green *Code* button: the release is the packaged,
+> ready-to-install version with the correct folder name.
 
 ![WoW 3.3.5a](https://img.shields.io/badge/WoW-3.3.5a-blue)
 ![Client](https://img.shields.io/badge/Client-WotLK-orange)
@@ -95,10 +97,19 @@ A full in-game configuration interface organized into tabs:
 
 ## Installation
 
-1. Download or clone this repository.
-2. Copy the `Nidhaus_UnitFrames` folder into your WoW `Interface/AddOns/` directory.
-3. Restart the WoW client or type `/reload` if already in-game.
-4. Delete " -main " in the name addon.
+1. Download **v3.6** from the [releases page](../../releases/latest).
+2. Extract it and copy the `Nidhaus_UnitFrames` folder into your WoW `Interface/AddOns/` directory.
+3. For the full options panel, also install the companion addon
+   **[Nidhaus_UnitFrames_Config](https://github.com/nidas-wow-oss/Nidhaus_UnitFrames_Config)**
+   into the same `Interface/AddOns/` directory.
+4. Restart the WoW client, or type `/reload` if you are already in-game.
+
+> **Updating from an older version?** Delete the old `Nidhaus_UnitFrames` folder before copying the new
+> one instead of overwriting it — 3.6 reorganised files, and leftovers from a previous build can cause
+> errors. Your saved settings live in the `WTF` folder and are preserved.
+
+> If you downloaded the repository with the green *Code* button, the extracted folder will be named
+> `Nidhaus_UnitFrames-main`. Rename it to `Nidhaus_UnitFrames` or the addon will not load.
 
 ## Slash Commands
 
@@ -127,6 +138,15 @@ The minimap button also provides quick access: left-click opens the options pane
 ## Author
 
 **Nidhaus**
+
+---
+
+## Changelog
+
+### v3.6
+- Fixed style menu options
+- Fixed text display issues
+- Fixed various frame bugs
 
 ---
 

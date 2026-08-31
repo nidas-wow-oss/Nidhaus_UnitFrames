@@ -1,22 +1,28 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/">
+﻿<Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<Script file="Core\Init.lua"/>
 	<Script file="Core\Localization.lua"/>
 	<Script file="Config\ConfigManager.lua"/>
 	<Script file="Config\Settings.lua"/>
 	<Script file="Core\API.lua"/>
 	<Script file="Core\ModuleManager.lua"/>
+	<!-- Foto compartida del layout limpio de las barras. Tiene que cargar
+	     ANTES que ActionBars.lua y MiniBar.lua: los dos la usan. -->
+	<Script file="Core\BarBaseline.lua"/>
+	<!-- Registro central de escalas: debe cargar antes que los modulos -->
+	<Script file="Core\ScaleAPI.lua"/>
 	<Script file="Modules\ArenaFramePositionSaver.lua"/>
 	<Script file="UnitFrames\PlayerFrame.lua"/>
 	<Script file="UnitFrames\TargetFrame.lua"/>
 	<Script file="UnitFrames\PartyFrame.lua"/>
-	<Script file="Modules\PartyMode3v3.lua"/>
+	<Script file="Modules\Partymode3v3.lua"/>
 	<Script file="UnitFrames\BossFrame.lua"/>
-	<Script file="UnitFrames\ArenaFlat.lua"/>
+	<Script file="UnitFrames\Arenaflat.lua"/>
 	<Script file="UnitFrames\ArenaFrame.lua"/>
 	<Script file="UnitFrames\ClassColor.lua"/>
 	<Script file="Core\FramePositions.lua"/>
 	<Script file="Core\FrameDragger.lua"/>
 	<Script file="Modules\HealthPercentage.lua"/>
+	<Script file="Modules\CastingBarTimer.lua"/>
 	<Script file="Modules\ArenaFrame_Trinkets.lua"/>
 	<Script file="Modules\MirrorMode.lua"/>
 	<Script file="Modules\ArenaMover.lua"/>
@@ -26,27 +32,128 @@
 	<Script file="Modules2\PartyTargets\LibStub\LibStub.lua"/>
 	<Script file="Modules2\PartyTargets\Frames.lua"/>
 	<Include file="Modules2\PartyTargets\FrameTemplate.xml"/>
+	<!-- Despues del template a proposito: reubica las piezas que ese XML
+	     crea, asi que los frames tienen que existir antes. -->
+	<Script file="Modules2\PartyTargets\SquareStyle.lua"/>
 	<Script file="Modules2\PartyTargets\Options.lua"/>
 	<Script file="Modules2\PartyTargets\PartyTargets_Integration.lua"/>
 	<!-- PartyCastingBars -->
 	<Script file="Modules2\PartyCastingBars\localization.en.lua"/>
 	<Script file="Modules2\PartyCastingBars\localization.de.lua"/>
 	<Script file="Modules2\PartyCastingBars\PartyCastingBars.lua"/>
+	<Script file="Modules2\PartyCastingBars\PCB_Menu.lua"/>
 	<Include file="Modules2\PartyCastingBars\PartyCastingBars_Frames.xml"/>
-	<!-- NiceDamage + SpecIcons -->
 	<Script file="Modules2\NiceDamage\NiceDamage.lua"/>
 	<Script file="Modules2\SpecIcons\SpecDB.lua"/>
 	<Script file="Modules2\SpecIcons\SpecIcons.lua"/>
+	<Script file="Modules2\ArenaTargetOfTarget.lua"/>
 	<Script file="Modules2\AutoSell.lua"/>
 	<Script file="Modules2\AutoRepair.lua"/>
 	<Script file="Modules2\ErrorHide.lua"/>
+	<Script file="Modules2\SystemSpamFilter.lua"/>
 	<Script file="Core\MinimapButton.lua"/>
-	<Script file="Config\OptionsPanelFrames.lua"/>
-	<Script file="Config\OptionsPanelArena.lua"/>
-	<Script file="Config\OptionsPanelExtra.lua"/>
-	<Script file="Config\OptionsPanelAbout.lua"/>
+	<Script file="Config\UIKit.lua"/>
+	<!-- El panel de opciones vive en Nidhaus_UnitFrames_Config
+	     (LoadOnDemand). Esto es solo el gatillo que lo carga. -->
+	<Script file="Core\ConfigLoader.lua"/>
+	<!-- SideList: lista vertical de secciones. La usan Interface, Frames, Arena, Addons y PvP -->
 	<!-- ThemeManager must load before OptionsPanel so K.GetPanelThemes() is available -->
-	<Script file="Config\ThemeManager.lua"/>
-	<Script file="Config\OptionsPanel.lua"/>
+	<!-- La lista de comandos: la usa la ayuda de /nuf, tiene que cargar antes. -->
+	<Script file="Core\CommandList.lua"/>
 	<Script file="Core\Commands.lua"/>
+
+	<!-- ═══════════════════════════════════════════════════════════════
+	     MODULOS INDEPENDIENTES
+	     Antes estaban listados en el .toc, que carga DESPUES de este XML.
+	     Se movieron aca al final para respetar ese mismo orden y para que
+	     todo el orden de carga se pueda leer en un solo archivo.
+	     ═══════════════════════════════════════════════════════════════ -->
+	<Script file="Modules2\NewPartyFrame.lua"/>
+	<Script file="Modules2\PartyBuffs.lua"/>
+	<Script file="Modules2\ArenaTimes.lua"/>
+	<Script file="Modules2\ArenaDalaranPipeTimer.lua"/>
+	<Script file="Modules2\ArenaRoVPillarTimer.lua"/>
+	<Script file="Modules2\ArenaEndTimer.lua"/>
+	<Script file="Modules2\HideBindsAndMacros.lua"/>
+	<Script file="Modules2\UnitNameColor.lua"/>
+	<Script file="Modules2\ChatCopy.lua"/>
+	<Script file="Modules2\ChatURLs.lua"/>
+	<Script file="Modules2\ArrowCount.lua"/>
+	<Script file="Modules2\DungeonRoles.lua"/>
+	<Script file="Modules2\AutoShotTimer.lua"/>
+	<Script file="Modules2\MeleeSwingTimer.lua"/>
+	<Script file="Modules2\ClassTimers.lua"/>
+	<Script file="Modules2\ComboWatch\ComboWatch.lua"/>
+	<Script file="Modules2\HunterPetBuffs.lua"/>
+	<Script file="Modules2\PowerBar.lua"/>
+	<Script file="Modules2\MinimapStyle.lua"/>
+	<Script file="Modules2\PartyFramesImproved\PartyFramesImproved.lua"/>
+	<Script file="Modules2\PartyFramePW.lua"/>
+	<Script file="Modules2\CastBarPW.lua"/>
+	<Script file="Modules2\AuraBorders.lua"/>
+	<!-- Coordinador: carga despues de NewPartyFrame, PartyFramesImproved y PW -->
+	<Script file="Modules2\PartyFrameStyle.lua"/>
+	<!-- ShieldWatch: FUERA DEL LOAD. Tilda el cliente (deja de responder).
+	     NO reactivar sin poder reproducir y probar la causa.
+
+	     Intento 1 - FALLIDO: encontre un nil-index en su OnUpdate
+	     (shieldstore[nil]) que tiraba error una vez por frame. Era un bug
+	     real y quedo arreglado en ShieldWatch.lua, pero NO era la causa:
+	     con eso corregido el WoW se sigue tildando igual.
+	     O sea que el culpable sigue sin identificar.
+
+	     Descartado por lectura: no hay bucles infinitos. Los tres while
+	     avanzan el indice en todas las ramas y los cuatro for estan
+	     acotados (40, #TALENT_CHECKS, GetNumGlyphSockets).
+
+	     Pendiente de revisar: el OnLoad del XML de opciones, que llama a
+	     InterfaceOptions_AddCategory al cargar, y el CreateFrame de
+	     "shieldwatchTooltip" en PLAYER_ENTERING_WORLD.
+
+	     Para reactivar, descomentar estas dos lineas:
+	<Script file="Modules2\ShieldWatch\ShieldWatch.lua"/>
+	<Include file="Modules2\ShieldWatch\ShieldWatch.xml"/>
+	-->
+
+	<Script file="Modules2\DuelBlocker.lua"/>
+	<Script file="Modules2\ArenaPointsCalc.lua"/>
+	<Script file="Modules2\MinimapIconToggle.lua"/>
+	<Script file="Modules2\AuraAnchor.lua"/>
+	<Script file="Modules2\PartyTestMode.lua"/>
+	<Script file="Modules2\GlobalUnlock.lua"/>
+	<Script file="Modules2\HideActionBarTextures.lua"/>
+	<Script file="Modules2\HideChatButton.lua"/>
+	<Script file="Modules2\ButtonRange.lua"/>
+	<Script file="Modules2\Lorti UI\Lorti UI.lua"/>
+	<Script file="Modules2\Lorti UI\func\functions.lua"/>
+	<Script file="Modules2\ClassIcons\ClassIcons.lua"/>
+	<Script file="Modules2\ClassOutline\ClassOutline.lua"/>
+	<Script file="Modules2\HealthTextFormat.lua"/>
+	<Script file="Modules2\PaladinAuras.lua"/>
+	<Script file="Modules2\SlotProfiles.lua"/>
+	<Script file="Modules2\MiniBar.lua"/>
+	<Script file="Modules2\SideBarHover.lua"/>
+
+	<!-- Modulos de esta sesion. Cargan pero arrancan APAGADOS (reset de
+	     emergencia + default off). El panel se arma diferido al abrirlo. -->
+	<Script file="Modules2\AbbreviatedStatus\NUF_AbbreviatedStatus.lua"/>
+	<Script file="Modules2\NidhausTools\DTSU.lua"/>
+	<Script file="Modules2\NidhausTools\PaladinICD.lua"/>
+	<Script file="Modules2\NidhausTools\SacredShield.lua"/>
+	<Script file="Modules2\NidhausTools\SacredShieldTracker.lua"/>
+	<Script file="Modules2\NidhausTools\SeductionAlert.lua"/>
+	<Script file="Modules2\EnemySpellAlert.lua"/>
+	<Script file="Modules2\TooltipExtras.lua"/>
+	<Script file="Modules2\TabBinder.lua"/>
+
+	<!-- Party1 Pet Frame (marco propio para la mascota del compa 1) -->
+	<Script file="Modules2\PartyPetFrame\PartyPetTargetFrame.lua"/>
+
+	<!-- Gargoyle Tracker (DK enemigo) -->
+	<Script file="Modules2\GargoyleTracker\GargoyleTracker.lua"/>
+
+	<!-- ULTIMO: envuelve los comandos de los modulos para que no hagan nada
+	     con el modulo apagado. Tiene que cargar despues de todos, porque lo
+	     que hace es tomar los handlers que cada uno dejo en SlashCmdList. -->
+	<Script file="Core\CommandGuard.lua"/>
 </Ui>

@@ -2,7 +2,6 @@ local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
 local HCBframe = nil;
-local HCBActivateChat = ChatEdit_ActivateChat;
 
 -- FIX: Variables locales en vez de globales sueltas
 -- Se cargan desde NidhausUnitFramesDB en ADDON_LOADED
@@ -187,23 +186,51 @@ HCBframe:SetScript("OnMouseWheel", function(frame, delta)
     end
 end);
 
--- FIX: Nil guard en caso de que otro addon haya modificado la referencia
-function ChatEdit_ActivateChat(frame)
-    if HCBkeyable == true and HCBframe.ChatIsShown == false then
-        HCBframe:ToggleVisible();
-    end
-    if HCBActivateChat then HCBActivateChat(frame); end
+local HCBmoduleOn = false;
+
+-- Enganche a ChatEdit_ActivateChat.
+--
+-- ANTES se pisaba la global directamente (function ChatEdit_ActivateChat...),
+-- guardando la original en un local y llamandola al final. Funcionaba, pero
+-- ensuciaba (taint) toda la cadena del chat: el taint.log mostraba
+--
+--   Execution tainted by Nidhaus_UnitFrames while reading ACTIVE_CHAT_EDIT_BOX
+--     - ChatFrame.lua:3363 ChatEdit_OnHide()
+--
+-- y de ahi salia el cartel "Interface action failed because of an AddOn" al
+-- cambiar de canal. Al reemplazar la global, TODO lo que Blizzard ejecuta
+-- despues queda marcado como codigo de addon, y cuando esa cadena toca algo
+-- protegido el cliente la corta.
+--
+-- hooksecurefunc hace lo mismo sin ensuciar nada: Blizzard corre su funcion
+-- normalmente y despues nos llama. Lo unico que cambia es el orden — antes
+-- mostrabamos el boton antes de activar el chat, ahora despues — y para
+-- mostrar un boton propio eso da igual.
+if type(ChatEdit_ActivateChat) == "function" then
+    hooksecurefunc("ChatEdit_ActivateChat", function(frame)
+        if HCBmoduleOn and HCBkeyable == true and HCBframe and HCBframe.ChatIsShown == false then
+            HCBframe:ToggleVisible();
+        end
+    end);
 end
 
-HCBframe:RegisterEvent("CHAT_MSG_BATTLEGROUND");
-HCBframe:RegisterEvent("CHAT_MSG_BATTLEGROUND_LEADER");
-HCBframe:RegisterEvent("CHAT_MSG_GUILD");
-HCBframe:RegisterEvent("CHAT_MSG_OFFICER");
-HCBframe:RegisterEvent("CHAT_MSG_PARTY");
-HCBframe:RegisterEvent("CHAT_MSG_PARTY_LEADER");
-HCBframe:RegisterEvent("CHAT_MSG_RAID");
-HCBframe:RegisterEvent("CHAT_MSG_RAID_LEADER");
-HCBframe:RegisterEvent("CHAT_MSG_WHISPER");
+-- Estos 10 eventos solo sirven para pintar el aviso de mensaje nuevo
+-- sobre el boton. Con el modulo apagado no hay boton que pintar, asi
+-- que antes se despachaban 10 eventos de chat por gusto.
+local function HCB_RegisterEvents()
+    HCBframe:RegisterEvent("CHAT_MSG_BATTLEGROUND");
+    HCBframe:RegisterEvent("CHAT_MSG_BATTLEGROUND_LEADER");
+    HCBframe:RegisterEvent("CHAT_MSG_GUILD");
+    HCBframe:RegisterEvent("CHAT_MSG_OFFICER");
+    HCBframe:RegisterEvent("CHAT_MSG_PARTY");
+    HCBframe:RegisterEvent("CHAT_MSG_PARTY_LEADER");
+    HCBframe:RegisterEvent("CHAT_MSG_RAID");
+    HCBframe:RegisterEvent("CHAT_MSG_RAID_LEADER");
+    HCBframe:RegisterEvent("CHAT_MSG_WHISPER");
+end
+
+-- ADDON_LOADED se necesita SIEMPRE: es donde se cargan los settings
+-- guardados, y si el modulo arranca activo tiene que haber corrido antes.
 HCBframe:RegisterEvent("ADDON_LOADED");
 
 -- FIX: Tabla movida fuera de OnEvent (no recrearla en cada evento)
@@ -251,13 +278,18 @@ end
 
 K.RegisterModule("HideChatButton", {
     name = "Hide Chat Button",
-    desc = "Boton para ocultar/mostrar el chat.",
+    desc = "Small button to hide or show the chat frame.",
     default = true,
     onEnable = function()
+        HCBmoduleOn = true;
+        HCB_RegisterEvents();
         HCBframe:Show();
         HCBframe:Paint();
     end,
     onDisable = function()
+        HCBmoduleOn = false;
+        -- ADDON_LOADED ya cumplio su funcion, se puede soltar todo
+        HCBframe:UnregisterAllEvents();
         if HCBframe.ChatIsShown == false then
             HCBframe:ShowChat();
         end

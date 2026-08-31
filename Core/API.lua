@@ -102,3 +102,87 @@ function K.GetArenaPositionKey()
 	local mirror = C.ArenaMirrorMode and "mirror" or "normal";
 	return style .. "_" .. mirror;
 end
+-- ═══════════════════════════════════════════════════════════
+-- Skin state capture/restore (para el checkbox "Custom Skin").
+-- Guarda UNA sola vez el estado original de un elemento (textura,
+-- geometría de una statusbar, o el punto de anclaje de un texto)
+-- la primera vez que se llama, y permite restaurarlo tal cual.
+--
+-- Por qué "una sola vez": la primera captura ocurre justo antes de
+-- que el addon pise el valor por primera vez, así siempre agarra el
+-- default real de Blizzard (sin importar el core ni el timing). Las
+-- llamadas siguientes NO re-capturan, así que nunca se guarda un
+-- valor ya modificado por el addon.
+-- ═══════════════════════════════════════════════════════════
+local skinCapture = {};
+
+-- Captura (una vez) y devuelve la textura original de una region.
+function K.CaptureTexture(region, id)
+	if not region then return; end
+	if skinCapture[id] == nil then
+		skinCapture[id] = region:GetTexture() or false;
+	end
+end
+
+function K.RestoreTexture(region, id)
+	if not region then return; end
+	local tex = skinCapture[id];
+	if tex ~= nil and tex ~= false then
+		region:SetTexture(tex);
+	end
+end
+
+-- Captura (una vez) la geometría original (point + size) de una statusbar.
+function K.CaptureBarGeometry(bar, id)
+	if not bar then return; end
+	if skinCapture[id] == nil then
+		local point, relativeTo, relativePoint, x, y = bar:GetPoint(1);
+		skinCapture[id] = {
+			point = point,
+			relativeTo = relativeTo,
+			relativePoint = relativePoint,
+			x = x or 0,
+			y = y or 0,
+			w = bar:GetWidth(),
+			h = bar:GetHeight(),
+		};
+	end
+end
+
+function K.RestoreBarGeometry(bar, id)
+	if not bar then return; end
+	local d = skinCapture[id];
+	if type(d) ~= "table" then return; end
+	bar:ClearAllPoints();
+	if d.point then
+		bar:SetPoint(d.point, d.relativeTo or bar:GetParent(), d.relativePoint, d.x, d.y);
+	end
+	if d.h and d.h > 0 then bar:SetHeight(d.h); end
+end
+
+-- Captura (una vez) el/los anclaje(s) original(es) de un texto/region
+-- y permite restaurarlos. Guarda TODOS los points (un texto puede tener
+-- varios), para reproducir exactamente el anclaje default.
+function K.CaptureAnchors(region, id)
+	if not region then return; end
+	if skinCapture[id] == nil then
+		local pts = {};
+		for i = 1, region:GetNumPoints() do
+			local point, relativeTo, relativePoint, x, y = region:GetPoint(i);
+			pts[i] = { point = point, relativeTo = relativeTo, relativePoint = relativePoint, x = x or 0, y = y or 0 };
+		end
+		skinCapture[id] = pts;
+	end
+end
+
+function K.RestoreAnchors(region, id)
+	if not region then return; end
+	local pts = skinCapture[id];
+	if type(pts) ~= "table" then return; end
+	region:ClearAllPoints();
+	for _, p in ipairs(pts) do
+		if p.point then
+			region:SetPoint(p.point, p.relativeTo, p.relativePoint, p.x, p.y);
+		end
+	end
+end

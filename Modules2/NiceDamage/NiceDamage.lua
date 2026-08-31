@@ -143,7 +143,7 @@ local function BuildMenu()
 
 	local title = menuFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge");
 	title:SetPoint("TOP", menuFrame, "TOP", 0, -12);
-	title:SetText("|cff88aaffNiceDamage|r |cffaaaaaaFont Selector|r");
+	title:SetText("|cff88aaffNiceDamage|r |cffaaaaaa" .. (L["ND_TITLE"] or "Font Selector") .. "|r");
 
 	local closeBtn = CreateFrame("Button", nil, menuFrame, "UIPanelCloseButton");
 	closeBtn:SetPoint("TOPRIGHT", menuFrame, "TOPRIGHT", -2, -2);
@@ -152,7 +152,7 @@ local function BuildMenu()
 	local headerY = -34;
 	local lblFont = menuFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 	lblFont:SetPoint("TOPLEFT", menuFrame, "TOPLEFT", 12, headerY);
-	lblFont:SetText("|cffffff88Font|r");
+	lblFont:SetText("|cffffff88" .. (L["ND_FONT"] or "Font") .. "|r");
 
 	local lblD = menuFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 	lblD:SetPoint("TOPRIGHT", menuFrame, "TOPRIGHT", -38, headerY);
@@ -206,7 +206,7 @@ local function BuildMenu()
 		end);
 		btnD:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-			GameTooltip:SetText("|cffff8844Enemy Damage|r\n|cffaaaaaaRequires reopening WoW|r", nil, nil, nil, nil, true);
+			GameTooltip:SetText("|cffff8844" .. (L["ND_TIP_D"] or "Enemy Damage") .. "|r\n|cffaaaaaa" .. (L["ND_TIP_D_NOTE"] or "Requires reopening WoW") .. "|r", nil, nil, nil, nil, true);
 			GameTooltip:Show();
 		end);
 		btnD:SetScript("OnLeave", function() GameTooltip:Hide(); end);
@@ -229,7 +229,7 @@ local function BuildMenu()
 		end);
 		btnH:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-			GameTooltip:SetText("|cff44ff88Heals, Auras & Self Text|r\n|cffaaaaaaApplies instantly|r", nil, nil, nil, nil, true);
+			GameTooltip:SetText("|cff44ff88" .. (L["ND_TIP_H"] or "Heals, Auras & Self Text") .. "|r\n|cffaaaaaa" .. (L["ND_TIP_H_NOTE"] or "Applies instantly") .. "|r", nil, nil, nil, nil, true);
 			GameTooltip:Show();
 		end);
 		btnH:SetScript("OnLeave", function() GameTooltip:Hide(); end);
@@ -247,11 +247,11 @@ local function BuildMenu()
 
 	local legD = menuFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 	legD:SetPoint("TOPLEFT", menuFrame, "TOPLEFT", 12, sepY - 8);
-	legD:SetText("|cffff8844D|r |cffaaaaaa= Enemy Damage (requires reopening WoW)|r");
+	legD:SetText("|cffff8844D|r |cffaaaaaa" .. (L["ND_LEG_D"] or "= Enemy Damage (requires reopening WoW)") .. "|r");
 
 	local legH = menuFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 	legH:SetPoint("TOPLEFT", legD, "BOTTOMLEFT", 0, -4);
-	legH:SetText("|cff44ff88H|r |cffaaaaaa= Heals / Auras / Self Text (instant)|r");
+	legH:SetText("|cff44ff88H|r |cffaaaaaa" .. (L["ND_LEG_H"] or "= Heals / Auras / Self Text (instant)") .. "|r");
 
 	function menuFrame:RefreshSelection()
 		for i, row in ipairs(self.rows) do
@@ -312,7 +312,7 @@ local function NiceDamage_CreateUI(parent, yOffset, mainCheck)
 	local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate");
 	btn:SetPoint("TOPLEFT", 36, yOffset - 4);
 	btn:SetSize(140, 20);
-	btn:SetText("Open Font Selector");
+	btn:SetText(L["ND_OPEN"] or "Open Font Selector");
 	btn:SetScript("OnClick", function()
 		ToggleMenu();
 	end);

@@ -22,7 +22,7 @@ NidhausBossFrame.bg:SetTexture(0.2, 0.6, 0.8, 0.7);
 
 local label = NidhausBossFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 label:SetAllPoints();
-label:SetText("|cffFFFF00BOSS FRAMES [drag]|r");
+label:SetText("|cffFFFF00" .. (L["BOSS_DRAG"] or "BOSS FRAMES [drag]") .. "|r");
 label:SetJustifyH("CENTER");
 
 NidhausBossFrame:SetScript("OnDragStart", function(self)

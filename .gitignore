@@ -1,0 +1,15 @@
+# Archivos de sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Comprimidos y respaldos
+*.rar
+*.zip
+*.7z
+*.bak
+*.old
+
+# Material no usado
+_unused/
+*.xml.bak

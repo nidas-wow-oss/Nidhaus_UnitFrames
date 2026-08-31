@@ -432,7 +432,7 @@ local function SpecIcons_CreateUI(parent, yOffset, mainCheck)
 	y = y - 14;
 	local hint = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
 	hint:SetPoint("TOPLEFT", 38, y);
-	hint:SetText("|cffAAAAAARound icon on Blizzard/Custom, rectangular on Flat style.|r");
+	hint:SetText("|cffAAAAAA" .. (L["SPECICONS_HINT"] or "Round icon on Blizzard/Custom, rectangular on Flat style.") .. "|r");
 	hint:SetWidth(280);
 	hint:SetJustifyH("LEFT");
 
