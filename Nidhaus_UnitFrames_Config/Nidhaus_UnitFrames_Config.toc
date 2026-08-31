@@ -1,0 +1,18 @@
+## Interface: 30300
+## Title: |cffffffffN|r|cffffffffi|r|cffffffffd|r|cffffffffh|r|cffffffffa|r|cffffffffu|r|cffffffffs|r|cffffffff |r|cff00ff00U|r|cff00ff00n|r|cff00ff00i|r|cff00ff00t|r|cff00ff00F|r|cff00ff00r|r|cff00ff00a|r|cff00ff00m|r|cff00ff00e|r|cff00ff00s|r|cff00ff00 |r|cff00ff00C|r|cff00ff00o|r|cff00ff00n|r|cff00ff00f|r|cff00ff00i|r|cff00ff00g|r
+## Notes: Panel de opciones de Nidhaus UnitFrames. Se carga solo cuando lo abris.
+## Author: Nidhaus
+## Version: 3.6
+## Dependencies: Nidhaus_UnitFrames
+## LoadOnDemand: 1
+
+# El orden importa: UIKit vive en el addon principal y ya esta cargado.
+SubTabs.lua
+SideList.lua
+OptionsPanelFrames.lua
+OptionsPanelArena.lua
+OptionsPanelPvP.lua
+OptionsPanelExtra.lua
+OptionsPanelAbout.lua
+ThemeManager.lua
+OptionsPanel.lua

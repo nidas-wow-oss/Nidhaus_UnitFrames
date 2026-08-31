@@ -10,8 +10,7 @@ NUF was built by combining and reworking several existing addons — including E
 >
 > **[Download v3.6 (latest release)](../../releases/latest)**
 >
-> Grab the `.zip` from the release page rather than the green *Code* button: the release is the packaged,
-> ready-to-install version with the correct folder name.
+> One download, everything included: the addon and its options panel.
 
 ![WoW 3.3.5a](https://img.shields.io/badge/WoW-3.3.5a-blue)
 ![Client](https://img.shields.io/badge/Client-WotLK-orange)
@@ -95,21 +94,30 @@ A full in-game configuration interface organized into tabs:
 
 ---
 
+## What's in this repository
+
+This repository contains **both addons**. You need both for the full experience:
+
+| Folder | What it is |
+|---|---|
+| `Nidhaus_UnitFrames/` | The addon itself. Required. |
+| `Nidhaus_UnitFrames_Config/` | The in-game options panel (`/nufconfig`). Strongly recommended — without it there is no configuration UI. |
+
 ## Installation
 
 1. Download **v3.6** from the [releases page](../../releases/latest).
-2. Extract it and copy the `Nidhaus_UnitFrames` folder into your WoW `Interface/AddOns/` directory.
-3. For the full options panel, also install the companion addon
-   **[Nidhaus_UnitFrames_Config](https://github.com/nidas-wow-oss/Nidhaus_UnitFrames_Config)**
-   into the same `Interface/AddOns/` directory.
+2. Extract the archive. You will get two folders: `Nidhaus_UnitFrames` and `Nidhaus_UnitFrames_Config`.
+3. Copy **both** folders into your WoW `Interface/AddOns/` directory.
 4. Restart the WoW client, or type `/reload` if you are already in-game.
+5. Enable both addons on the character selection screen.
 
 > **Updating from an older version?** Delete the old `Nidhaus_UnitFrames` folder before copying the new
 > one instead of overwriting it — 3.6 reorganised files, and leftovers from a previous build can cause
 > errors. Your saved settings live in the `WTF` folder and are preserved.
 
-> If you downloaded the repository with the green *Code* button, the extracted folder will be named
-> `Nidhaus_UnitFrames-main`. Rename it to `Nidhaus_UnitFrames` or the addon will not load.
+> If you download the repository with the green *Code* button instead of the release, the extracted folder
+> will be named `Nidhaus_UnitFrames-main` and will contain both addon folders inside it. Copy the two
+> folders out of it into `Interface/AddOns/` — do not copy `Nidhaus_UnitFrames-main` itself.
 
 ## Slash Commands
 
