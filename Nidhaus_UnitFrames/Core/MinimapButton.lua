@@ -5,6 +5,7 @@ local K, C, L = unpack(ns);
 --
 -- Click izquierdo: Abre/cierra el panel de opciones
 -- Click derecho: Toggle Arena Mover
+-- Ctrl+Click: Modo "mover todo" (GlobalUnlock, el mismo de /move)
 -- Shift+Click: /reload
 -- Arrastrar: Mover alrededor del minimapa
 
@@ -101,6 +102,8 @@ local function CreateMinimapButton()
 		GameTooltip:AddLine(" ");
 		GameTooltip:AddLine(L["MINIMAP_LEFT_CLICK"], 0.8, 0.8, 0.8);
 		GameTooltip:AddLine(L["MINIMAP_RIGHT_CLICK"], 0.8, 0.8, 0.8);
+		GameTooltip:AddLine(L["MINIMAP_CTRL_CLICK"]
+			or "|cffFFFFFFCtrl + Click:|r Move Everything", 0.8, 0.8, 0.8);
 		GameTooltip:AddLine(L["MINIMAP_SHIFT_CLICK"], 0.8, 0.8, 0.8);
 		GameTooltip:AddLine(L["MINIMAP_DRAG"], 0.8, 0.8, 0.8);
 		GameTooltip:Show();
@@ -114,6 +117,11 @@ local function CreateMinimapButton()
 		if btn == "LeftButton" then
 			if IsShiftKeyDown() then
 				ReloadUI();
+			elseif IsControlKeyDown() then
+				-- Mismo modo que /move: overlay arrastrable sobre todo lo movible.
+				if K.ToggleGlobalUnlock then
+					K.ToggleGlobalUnlock("all");
+				end
 			else
 				if K.ToggleOptionsPanel then K.ToggleOptionsPanel(); end
 			end

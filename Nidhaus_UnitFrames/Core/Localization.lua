@@ -931,6 +931,7 @@ L["ABOUT_COPY_HINT"]             = "|cffAAAAAA(Click to select, Ctrl+C to copy)|
 L["MINIMAP_TITLE"]               = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["MINIMAP_LEFT_CLICK"]          = "|cffFFFFFFLeft Click:|r Open Options";
 L["MINIMAP_RIGHT_CLICK"]         = "|cffFFFFFFRight Click:|r Toggle Arena Mover";
+L["MINIMAP_CTRL_CLICK"]          = "|cffFFFFFFCtrl + Click:|r Move Everything";
 L["MINIMAP_SHIFT_CLICK"]         = "|cffFFFFFFShift + Click:|r Reload UI";
 L["MINIMAP_DRAG"]                = "|cffFFFFFFDrag:|r Move icon";
 
@@ -1858,6 +1859,7 @@ L["ABOUT_COPY_HINT"]             = "|cffAAAAAA(Click para seleccionar, Ctrl+C pa
 -- === MINIMAP BUTTON ===
 L["MINIMAP_LEFT_CLICK"]          = "|cffFFFFFFClick Izquierdo:|r Abrir Opciones";
 L["MINIMAP_RIGHT_CLICK"]         = "|cffFFFFFFClick Derecho:|r Toggle Arena Mover";
+L["MINIMAP_CTRL_CLICK"]          = "|cffFFFFFFCtrl + Click:|r Mover todo";
 L["MINIMAP_SHIFT_CLICK"]         = "|cffFFFFFFShift + Click:|r Recargar UI";
 L["MINIMAP_DRAG"]                = "|cffFFFFFFArrastrar:|r Mover icono";
 
