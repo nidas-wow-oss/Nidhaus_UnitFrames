@@ -16,6 +16,10 @@ local K, C, L = unpack(ns);
 
 local apcEnabled = false;
 
+-- FontString del boton que vive en la ventana de PvP. Lo llena
+-- AddPvPButton() y lo refresca UpdatePvPButton().
+local pvpBtnLabel;
+
 local function APC_DB()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.ArenaPointsCalc then
@@ -90,6 +94,11 @@ mainFrame:SetScript("OnDragStop", function(self)
 end)
 mainFrame:SetClampedToScreen(true)
 mainFrame:Hide()
+
+-- Escape cierra la ventana, como cualquier panel del juego. UISpecialFrames
+-- es la lista que mira el cliente al apretar Escape; alcanza con estar en
+-- ella y tener nombre global (APC_MainFrame).
+tinsert(UISpecialFrames, "APC_MainFrame")
 mainFrame:SetBackdrop({
     bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
     edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -178,9 +187,11 @@ resultText:SetText("")
 -- ============================================================
 -- AUTO DETECTION LOGIC
 -- ============================================================
-local function UpdateAutoSection()
-    local teams = {}
-    local hasTeam = false
+-- Lee los equipos de arena del personaje y los devuelve ordenados de mas
+-- a menos puntos. Se usa desde tres lados: la ventana, el texto del boton
+-- y su tooltip, asi que vive aparte en vez de estar metido en la ventana.
+local function GetTeams()
+    local teams, hasTeam = {}, false
     for i = 1, MAX_ARENA_TEAMS do
         local teamName, teamSize, teamRating, teamPlayed, teamWins, seasonPlayed, seasonWins, playerPlayed, seasonPlayerPlayed, teamRank, playerRating = GetArenaTeam(i)
         if teamName and teamName ~= "" then
@@ -195,11 +206,48 @@ local function UpdateAutoSection()
         end
     end
     table.sort(teams, function(a, b) return a.points > b.points end)
+    return teams, hasTeam
+end
+
+-- Solo cobras los puntos del mejor equipo en el que hayas jugado al menos
+-- una partida, asi que los que no califican no cuentan para este numero.
+local function GetBest(teams)
+    local bestPts, bestBracket = 0, ""
+    for _, t in ipairs(teams) do
+        if t.qualified and t.points > bestPts then
+            bestPts = t.points
+            bestBracket = BRACKET_NAMES[t.size] or "?"
+        end
+    end
+    return bestPts, bestBracket
+end
+
+-- Texto del boton que aparece dentro de la ventana de PvP.
+-- Muestra los puntos de la semana directamente, sin tener que abrir nada.
+local function UpdatePvPButton()
+    if not pvpBtnLabel then return end
+    DetectServer()
+    local teams, hasTeam = GetTeams()
+    if not hasTeam then
+        pvpBtnLabel:SetText("|cffcccccc" .. (L["APC_SHORT"] or "Arena Calculator") .. "|r")
+        return
+    end
+    local bestPts, bestBracket = GetBest(teams)
+    if bestPts > 0 then
+        pvpBtnLabel:SetText(string.format("|cff00ff00%d|r  |cffaaaaaa%s|r", bestPts, bestBracket))
+    else
+        pvpBtnLabel:SetText("|cffff4444" .. (L["APC_BTN_NO_GAMES"] or "No games") .. "|r")
+    end
+end
+
+local function UpdateAutoSection()
+    local teams, hasTeam = GetTeams()
 
     if not hasTeam then
         noTeamsText:Show()
         for i = 1, 3 do teamLines[i]:SetText("") end
         bestPointsText:SetText("")
+        UpdatePvPButton()
         return
     end
     noTeamsText:Hide()
@@ -216,10 +264,7 @@ local function UpdateAutoSection()
         end
     end
 
-    local bestPts, bestBracket = 0, ""
-    for _, t in ipairs(teams) do
-        if t.qualified and t.points > bestPts then bestPts = t.points; bestBracket = BRACKET_NAMES[t.size] or "?" end
-    end
+    local bestPts, bestBracket = GetBest(teams)
     if bestPts > 0 then
         local multTag = (serverMult ~= 1.0) and string.format(" |cffFFD700(x%.0f)|r", serverMult) or ""
         bestPointsText:SetText(string.format(
@@ -227,6 +272,8 @@ local function UpdateAutoSection()
     else
         bestPointsText:SetText("|cffff4444" .. (L["APC_NEED_GAMES"] or ">>> 0 points - you need to play games!") .. "|r")
     end
+
+    UpdatePvPButton()
 end
 
 -- ============================================================
@@ -317,18 +364,72 @@ local function AddPvPButton()
     if pvpBtnAdded or not PVPFrame then return end
     pvpBtnAdded = true
     local b = CreateFrame("Button", "APC_PvPButton", PVPFrame)
-    b:SetWidth(110); b:SetHeight(18)
-    b:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", 255, -128)
+    b:SetWidth(95); b:SetHeight(18)
+    b:SetAlpha(0.9)
+    -- Posicion por defecto dentro de la ventana de PvP. Se puede mover con
+    -- Alt + arrastrar y queda guardada en la DB (btnX / btnY).
+    local db = APC_DB()
+    b:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", db.btnX or 205, db.btnY or -152)
+    b:SetMovable(true)
+    b:RegisterForDrag("LeftButton")
+    b:SetScript("OnDragStart", function(self)
+        if IsAltKeyDown() then self:StartMoving() end
+    end)
+    b:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        -- Guardar el offset relativo al PVPFrame, no la posicion absoluta:
+        -- la ventana de PvP no siempre aparece en el mismo lugar.
+        if not PVPFrame then return end
+        local x = self:GetLeft() - PVPFrame:GetLeft()
+        local y = self:GetTop() - PVPFrame:GetTop()
+        local d = APC_DB(); d.btnX = x; d.btnY = y
+        self:ClearAllPoints()
+        self:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", x, y)
+    end)
     b:SetFrameLevel(PVPFrame:GetFrameLevel() + 5)
-    b:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", tile = true, tileSize = 16, edgeSize = 10, insets = { left = 2, right = 2, top = 2, bottom = 2 } })
-    b:SetBackdropColor(0.08, 0.08, 0.08, 0.95)
-    b:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.9)
-    local l = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    l:SetPoint("CENTER"); l:SetText("|cffcccccc" .. (L["APC_SHORT"] or "Arena Calculator") .. "|r"); l:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
+    -- Sin fondo ni borde: el numero tiene que leerse como una linea mas de
+    -- la ventana de PvP, al lado de HONOR y ARENA, no como un boton pegado.
+    -- GameFontNormal es la fuente estandar de la interfaz (Friz Quadrata),
+    -- la misma con la que la ventana escribe HONOR y ARENA. No se le pisa
+    -- con SetFont a proposito, para que combine.
+    local l = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    l:SetPoint("CENTER")
+    l:SetText("|cffcccccc" .. (L["APC_SHORT"] or "Arena Calculator") .. "|r")
+    pvpBtnLabel = l
     b:EnableMouse(true)
-    b:SetScript("OnEnter", function(self) self:SetBackdropBorderColor(0.9, 0.8, 0.1, 1); GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(L["APC_TITLE"] or "Arena Points Calculator", 0, 0.8, 1); GameTooltip:Show() end)
-    b:SetScript("OnLeave", function(self) self:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.9); GameTooltip:Hide() end)
+    b:SetScript("OnEnter", function(self)
+        self:SetAlpha(1)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(L["APC_TITLE"] or "Arena Points Calculator", 0, 0.8, 1)
+        DetectServer()
+        local teams, hasTeam = GetTeams()
+        if not hasTeam then
+            GameTooltip:AddLine(L["APC_NO_TEAMS"] or "You are not in any arena team.", 1, 0.5, 0.5, true)
+        else
+            for _, t in ipairs(teams) do
+                local qualTag = t.qualified and "" or " |cffff4444*|r"
+                GameTooltip:AddDoubleLine(
+                    string.format("%s  |cffffff00%d|r", BRACKET_NAMES[t.size] or "?", t.rating),
+                    string.format("|cff00ff00%d|r |cffcccccc%s|r%s", t.points, L["APC_BTN_PTS"] or "pts", qualTag))
+            end
+            local bestPts, bestBracket = GetBest(teams)
+            GameTooltip:AddLine(" ")
+            if bestPts > 0 then
+                local multTag = (serverMult ~= 1.0) and string.format(" (x%.0f)", serverMult) or ""
+                GameTooltip:AddLine(string.format("%s: |cff00ff00%d|r%s  (%s)",
+                    L["APC_BTN_TIP_BEST"] or "Points you will receive this week", bestPts, multTag, bestBracket), 1, 0.84, 0, true)
+            else
+                GameTooltip:AddLine(L["APC_NEED_GAMES"] or ">>> 0 points - you need to play games!", 1, 0.3, 0.3, true)
+            end
+        end
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(L["APC_BTN_TIP_CLICK"] or "Click to open the calculator", 0.6, 0.6, 0.6)
+        GameTooltip:AddLine(L["APC_BTN_TIP_DRAG"] or "Alt + drag to move it", 0.6, 0.6, 0.6)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function(self) self:SetAlpha(0.9); GameTooltip:Hide() end)
     b:SetScript("OnClick", function() if mainFrame:IsShown() then mainFrame:Hide() else mainFrame:Show() end end)
+    UpdatePvPButton()
 end
 
 -- ============================================================
@@ -352,6 +453,22 @@ SlashCmdList["ARENACALC"] = function(msg)
         if not found then print("|cff00ccff[APC]|r |cffff8080No arena teams.|r") end
         return
     end
+    if msg == "btnpos" then
+        local d = APC_DB()
+        print(string.format("|cff00ccff[APC]|r x = %s, y = %s",
+            tostring(d.btnX and math.floor(d.btnX + 0.5) or "default"),
+            tostring(d.btnY and math.floor(d.btnY + 0.5) or "default")))
+        return
+    end
+    if msg == "btnreset" then
+        local d = APC_DB(); d.btnX = nil; d.btnY = nil
+        if APC_PvPButton and PVPFrame then
+            APC_PvPButton:ClearAllPoints()
+            APC_PvPButton:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", 205, -152)
+        end
+        print("|cff00ccff[APC]|r " .. (L["APC_BTN_RESET_DONE"] or "Button position reset."))
+        return
+    end
     local r = tonumber(msg)
     if r then
         DetectServer()
@@ -373,16 +490,22 @@ APC:SetScript("OnEvent", function(self, event, arg1)
         DetectServer()
         local e = 0
         local t = CreateFrame("Frame")
-        t:SetScript("OnUpdate", function(f, dt) e = e + dt; if e >= 2 then f:SetScript("OnUpdate", nil); f:Hide(); AddPvPButton(); teamFrame = FindTeamFrame() end end)
+        t:SetScript("OnUpdate", function(f, dt) e = e + dt; if e >= 2 then f:SetScript("OnUpdate", nil); f:Hide(); AddPvPButton(); UpdatePvPButton(); teamFrame = FindTeamFrame() end end)
     elseif event == "ARENA_TEAM_UPDATE" or event == "ARENA_TEAM_ROSTER_UPDATE" then
-        if mainFrame:IsShown() then UpdateAutoSection() end
+        if mainFrame:IsShown() then
+            UpdateAutoSection()
+        else
+            -- El boton muestra los puntos aunque la ventana este cerrada,
+            -- asi que hay que refrescarlo igual.
+            UpdatePvPButton()
+        end
     end
 end)
 
 -- El escaneo se despierta al abrir la ventana de PvP y se duerme solo
 if PVPFrame then
     PVPFrame:HookScript("OnShow", function()
-        if apcEnabled then scanTimer = 0; scanFrame:Show(); end
+        if apcEnabled then scanTimer = 0; scanFrame:Show(); UpdatePvPButton(); end
     end)
 end
 
@@ -407,6 +530,7 @@ K.RegisterModule("ArenaPointsCalc", {
 		DetectServer();
 		AddPvPButton();
 		if APC_PvPButton then APC_PvPButton:Show(); end
+		UpdatePvPButton();
 		if PVPFrame and PVPFrame:IsShown() then scanTimer = 0; scanFrame:Show(); end
 	end,
 	onDisable = function()

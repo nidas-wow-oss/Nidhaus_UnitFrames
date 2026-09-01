@@ -40,6 +40,13 @@ local ARENA_STATS = {
 	596,   -- 5 contra 5
 };
 
+-- El nombre de cada linea sale de GetAchievementInfo, o sea del cliente.
+-- En Warmane el bracket de 5 se usa para el Solo Queue, asi que esa linea
+-- se renombra; las otras dos quedan con el texto del juego.
+local ARENA_STAT_LABELS = {
+	[596] = L["TT_SOLO_QUEUE"] or "Solo Queue",
+};
+
 -- Verde a rojo segun el valor: 0 rojo, 100+ verde. Es del original.
 local function Gradient(val, low, high)
 	local percent, r, g;
@@ -69,7 +76,7 @@ arenaFrame:SetScript("OnEvent", function(self, event)
 	for _, id in ipairs(ARENA_STATS) do
 		local v = tonumber(GetComparisonStatistic(id));
 		if v and v > 0 then
-			gtt:AddDoubleLine(select(2, GetAchievementInfo(id)), Gradient(v, 0, 100));
+			gtt:AddDoubleLine(ARENA_STAT_LABELS[id] or select(2, GetAchievementInfo(id)), Gradient(v, 0, 100));
 			shown = true;
 		end
 	end

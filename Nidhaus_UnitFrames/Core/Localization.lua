@@ -599,6 +599,13 @@ L["APC_NEED_GAMES"]              = ">>> 0 points - you need to play games!";
 L["APC_SERVER_X2"]               = "Warmane Blackrock \226\128\148 Points x2";
 L["APC_INVALID_RATING"]          = "Enter a valid rating.";
 L["APC_SHORT"]                   = "Arena Calculator";
+L["APC_BTN_PTS"]                 = "pts";
+L["APC_BTN_NO_GAMES"]            = "No games";
+L["APC_BTN_TIP_BEST"]            = "Points you will receive this week";
+L["APC_BTN_TIP_CLICK"]           = "Click to open the calculator";
+L["APC_BTN_TIP_DRAG"]            = "Alt + drag to move it";
+L["APC_BTN_RESET_DONE"]          = "Button position reset.";
+L["TT_SOLO_QUEUE"]               = "Solo Queue";
 
 -- Party Targets
 L["PT_HIDE_NAME"]                = "Hide target name";
@@ -1520,6 +1527,13 @@ L["APC_NEED_GAMES"]              = ">>> 0 puntos - ¡tenés que jugar partidas!"
 L["APC_SERVER_X2"]               = "Warmane Blackrock \226\128\148 Puntos x2";
 L["APC_INVALID_RATING"]          = "Ingresá un rating válido.";
 L["APC_SHORT"]                   = "Calc. de Arena";
+L["APC_BTN_PTS"]                 = "pts";
+L["APC_BTN_NO_GAMES"]            = "Sin partidas";
+L["APC_BTN_TIP_BEST"]            = "Puntos que vas a recibir esta semana";
+L["APC_BTN_TIP_CLICK"]           = "Click para abrir la calculadora";
+L["APC_BTN_TIP_DRAG"]            = "Alt + arrastrar para moverlo";
+L["APC_BTN_RESET_DONE"]          = "Posición del botón restablecida.";
+L["TT_SOLO_QUEUE"]               = "Solo Queue";
 
 -- Party Targets
 L["PT_HIDE_NAME"]                = "Ocultar el nombre del objetivo";
