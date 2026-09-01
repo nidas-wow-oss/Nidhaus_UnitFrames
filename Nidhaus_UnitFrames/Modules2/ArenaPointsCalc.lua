@@ -369,7 +369,7 @@ local function AddPvPButton()
     -- Posicion por defecto dentro de la ventana de PvP. Se puede mover con
     -- Alt + arrastrar y queda guardada en la DB (btnX / btnY).
     local db = APC_DB()
-    b:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", db.btnX or 205, db.btnY or -152)
+    b:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", db.btnX or 233, db.btnY or -132)
     b:SetMovable(true)
     b:RegisterForDrag("LeftButton")
     b:SetScript("OnDragStart", function(self)
@@ -464,7 +464,7 @@ SlashCmdList["ARENACALC"] = function(msg)
         local d = APC_DB(); d.btnX = nil; d.btnY = nil
         if APC_PvPButton and PVPFrame then
             APC_PvPButton:ClearAllPoints()
-            APC_PvPButton:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", 205, -152)
+            APC_PvPButton:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", 233, -132)
         end
         print("|cff00ccff[APC]|r " .. (L["APC_BTN_RESET_DONE"] or "Button position reset."))
         return
