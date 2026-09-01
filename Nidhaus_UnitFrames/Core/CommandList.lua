@@ -27,7 +27,6 @@ local GROUPS = {
 		{ "/nuf reset",       L["CMDLIST_NUF_RESET"]  or "Reset every setting" },
 		{ "/nufconfig db",    L["CMDLIST_CFG_DB"]     or "Dump the saved settings to chat" },
 		{ "/nufconfig reset", L["CMDLIST_CFG_SIZE"]   or "Restore the panel window size" },
-		{ "/nufcmd",          L["CMDLIST_NUFCMD"]     or "Which module commands are on or off" },
 	}},
 	{ title = L["CMDLIST_MOVING"] or "Moving things", cmds = {
 		{ "/nufmove",      L["CMDLIST_MOVE"]      or "Move Everything (also /move, /nufunlock)" },
@@ -68,8 +67,6 @@ local GROUPS = {
 	{ title = L["CMDLIST_INTERFACE"] or "Interface", cmds = {
 		{ "/nufmap",     L["CMDLIST_MAP"]    or "Minimap shape: square | round" },
 		{ "/nufminimap", L["CMDLIST_MMICON"] or "Show or hide the addon icons", mod = "MinimapIconToggle" },
-		{ "/nufbars",    L["CMDLIST_BARS"]   or "Action bar diagnostics" },
-		{ "/nufxp",      L["CMDLIST_XP"]     or "Experience bar" },
 		{ "/hidebar",    L["CMDLIST_HIDEBAR"]or "Hide the action bar art", mod = "HideActionBarTextures" },
 		{ "/hcb",        L["CMDLIST_HCB"]    or "Hide the chat buttons", mod = "HideChatButton" },
 		{ "/nufcopy",    L["CMDLIST_COPY"]   or "Copy chat text" },

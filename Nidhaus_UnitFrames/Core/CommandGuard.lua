@@ -124,23 +124,3 @@ guard:SetScript("OnEvent", function(self)
 	K._cmdGuardMiss  = miss;
 end);
 
--- Diagnostico: /nufcmd dice cuales quedaron protegidos y cuales no.
--- Sirve para detectar a tiempo si alguien renombra una clave de
--- SlashCmdList y la tabla de arriba queda desincronizada.
-SLASH_NUFCMD1 = "/nufcmd";
-SlashCmdList["NUFCMD"] = function()
-	print("|cff4FC3F7NUF comandos:|r");
-	print("   protegidos: " .. tostring(K._cmdGuardOK or 0)
-		.. " de " .. tostring(K._cmdGuardTotal or #GUARDED));
-	local miss = K._cmdGuardMiss;
-	if miss and #miss > 0 then
-		print("   |cffFF5555sin encontrar:|r " .. table.concat(miss, ", "));
-	end
-	for _, entry in ipairs(GUARDED) do
-		-- Un opcional que no se cargo no se lista: no tiene comando que usar.
-		if SlashCmdList[entry.key] or not entry.optional then
-			print(string.format("   %-16s %s", entry.key,
-				AnyEnabled(entry.module) and "|cff88FF88activo|r" or "|cff8A8A8Aapagado|r"));
-		end
-	end
-end

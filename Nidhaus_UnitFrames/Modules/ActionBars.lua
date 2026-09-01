@@ -478,7 +478,7 @@ local function ApplyXPRepBars()
     -- Se lee con GetEffectiveScale en vez de escribir 0.537 a mano, para que
     -- siga cuadrando si cambia la escala de la barra de accion o de la UI.
     --
-    -- Valores medidos con /nufxp en esta interfaz:
+    -- Valores medidos sobre la geometria real de esta interfaz:
     --   MainMenuBar          izq  403   der  775
     --   MultiBarBottomLeft   izq  409
     --   MultiBarBottomRight              der 1143
@@ -486,7 +486,7 @@ local function ApplyXPRepBars()
     -- a punta de la fila de botones.
     local XP_SCALE      = 0.735;
     local XP_EDGE_LEFT  = 6;     -- alineada con el borde de MultiBarBottomLeft
-    -- Medido con /nufxp: MainMenuBar acaba en 775 y las flechas empiezan en
+    -- Medido: MainMenuBar acaba en 775 y las flechas empiezan en
     -- 959. 775 + 184 = 959 clavado, que es donde tiene que cortarse.
     local XP_EDGE_RIGHT = 184;   -- tope; el limite real lo ponen las flechas
     local XP_HEIGHT     = 31;    -- altura sobre MainMenuBar (la que estaba bien)
@@ -547,39 +547,6 @@ local function ApplyXPRepBars()
 
     -- Bloquear SetPoint en XP bar para que Blizzard no la mueva
     LockSetPoint(MainMenuExpBar);
-end
-
--- ──────────────────────────────────────────────────────────────
---  /nufxp — mide la geometria REAL en pantalla.
---
---  Sirve para encuadrar la barra de experiencia sin ir a ojo: dice donde
---  empieza y acaba cada cosa de verdad, ya con la escala aplicada. Con esos
---  numeros se calculan los dos bordes exactos en vez de tantear.
--- ──────────────────────────────────────────────────────────────
-SLASH_NUFXP1 = "/nufxp";
-SlashCmdList["NUFXP"] = function()
-    local function Medir(nombre, f)
-        if not f then print("  " .. nombre .. ": no existe"); return; end
-        local es = f:GetEffectiveScale() or 1;
-        print(string.format("  %-16s izq %6.0f  der %6.0f  ancho %5.0f  escala %.3f",
-            nombre, (f:GetLeft() or 0) * es, (f:GetRight() or 0) * es,
-            ((f:GetRight() or 0) - (f:GetLeft() or 0)) * es, es));
-    end
-    print("|cff4FC3F7NUF|r - geometria real (pixeles de pantalla):");
-    print(string.format("  %-16s ancho %.0f", "PANTALLA",
-        (UIParent:GetRight() or 0) * (UIParent:GetEffectiveScale() or 1)));
-    Medir("MainMenuBar",    MainMenuBar);
-    Medir("MainMenuExpBar", MainMenuExpBar);
-    Medir("MultiBarBottomLeft",  MultiBarBottomLeft);
-    Medir("MultiBarBottomRight", MultiBarBottomRight);
-    Medir("ReputationWatchBar",  ReputationWatchBar);
-    Medir("MaxLevelBar",         MainMenuBarMaxLevelBar);
-    Medir("ExhaustionTick",      ExhaustionTick);
-    -- Las flechas de cambio de pagina: marcan donde tiene que cortarse la
-    -- barra de experiencia. Si "izq" de FlechaArriba es menor que "der" de
-    -- MainMenuExpBar, la barra se esta metiendo por detras de ellas.
-    Medir("FlechaArriba",   ActionBarUpButton);
-    Medir("FlechaAbajo",    ActionBarDownButton);
 end
 
 local function ApplyPagingButtons()
