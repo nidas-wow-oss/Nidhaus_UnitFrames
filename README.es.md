@@ -71,6 +71,13 @@ El botón del minimapa también sirve de atajo: click izquierdo abre las opcione
 ### Sistemas de arena
 
 - **Marcos de arena** — dos estilos completos: **Default** (Blizzard mejorado) y **Flat** (minimalista, competitivo).
+
+<img width="215" alt="Marcos de arena" src="https://github.com/user-attachments/assets/ace03d46-ccb9-4952-b3c1-bdbd25d2b891" />
+
+<img width="220" alt="Marcos de arena" src="https://github.com/user-attachments/assets/ba6e5101-b017-4d48-a4bc-9b57ba7d2023" />
+
+<img width="212" alt="Marcos de arena" src="https://github.com/user-attachments/assets/431c3a78-f485-40e2-b942-b1a4e6202e0c" />
+
 - **Arena Mover** — modo de prueba con vista previa de clases, para acomodar los marcos fuera de una partida.
 - **Tracker de trinkets** — sigue el uso del trinket de PvP enemigo con indicador de cooldown.
 - **Detección de especialización** — por combat log, con una base de más de 600 hechizos.
@@ -124,12 +131,12 @@ Cada función se prende o apaga por separado desde el panel, y al apagarla resta
 
 | Módulo | Descripción |
 |--------|-------------|
-| **NewPartyFrame** | Marcos de grupo con texturas propias, integrados con Party Buffs y Party Targets. |
+| **NewPartyFrame** | Marcos de grupo con texturas propias, integrados con Party Buffs y Party Targets. <br><img width="75" alt="NewPartyFrame" src="https://github.com/user-attachments/assets/79210886-68ca-4a54-adaf-a69cfa139953" /> |
 | **PartyFramePW** | Un cuarto estilo de marco de grupo, tomado de pw_unitframes. |
 | **PartyFrameStyle** | Coordina el aspecto de los marcos de grupo: los estilos son excluyentes, así que se asegura de que solo uno retexturice a la vez. `/nufpartystyle` |
 | **PartyFramesImproved** | Mejoras sobre los marcos de grupo. `/nufpfi` |
 | **PartyBuffs** | Buffs y debuffs extendidos (1 a 20 iconos) sobre los marcos de grupo, con posiciones independientes por modo. `/pbuffs` |
-| **PartyTargets** | Muestra a quién apunta cada compañero, con espejo opcional y un estilo Square inspirado en pw_unitframes. `/ptarget`, `/ptstyle` |
+| **PartyTargets** | Muestra a quién apunta cada compañero, con espejo opcional y un estilo Square inspirado en pw_unitframes. `/ptarget`, `/ptstyle` <br><img width="100" alt="PartyTargets" src="https://github.com/user-attachments/assets/6ac41efa-3557-4d9f-aeb2-bbe5dc4608d0" /> |
 | **PartyCastingBars** | Barras de casteo de los compañeros, con ventana de opciones propia. `/pcb` |
 | **PartyPetFrame** | Marco dedicado a la mascota del compañero 1: retrato, vida/maná, casteo, buffs/debuffs y aviso de CC. `/ppf` |
 | **Partymode3v3** | Disposición 3v3 para arena, con escala por integrante desde el panel. |
@@ -181,7 +188,7 @@ Cada función se prende o apaga por separado desde el panel, y al apagarla resta
 | **UnitNameColor** | Color de los nombres: Default, Blanco o por Clase. |
 | **MinimapStyle** | Minimapa redondo o cuadrado, y limpieza de los adornos que casi nadie usa: nombre de zona, reloj, botones de zoom. `/nufmap` |
 | **MinimapIconToggle** | Botón en la esquina del minimapa que oculta o muestra todos los iconos de una. `/nufminimap` |
-| **NiceDamage** | Reemplazo del texto de combate flotante con selector de fuente doble: una para daño y otra para sanación y auras, con vista previa. `/nd` |
+| **NiceDamage** | Reemplazo del texto de combate flotante con selector de fuente doble: una para daño y otra para sanación y auras, con vista previa. `/nd` <br><img width="200" alt="NiceDamage" src="https://github.com/user-attachments/assets/fcb8a2a1-1adb-40fc-be00-0c09d2f801ec" /> |
 
 ### Chat y comodidades
 

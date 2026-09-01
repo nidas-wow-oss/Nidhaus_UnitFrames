@@ -93,12 +93,12 @@ options panel, and each one restores the original state when disabled.
 
 | Module | Description |
 |--------|-------------|
-| **NewPartyFrame** | Custom-styled party frames with reworked textures, integrated with Party Buffs and Party Targets. |
+| **NewPartyFrame** | Custom-styled party frames with reworked textures, integrated with Party Buffs and Party Targets. <br><img width="75" alt="NewPartyFrame" src="https://github.com/user-attachments/assets/79210886-68ca-4a54-adaf-a69cfa139953" /> |
 | **PartyFramePW** | A fourth party frame style, taken from pw_unitframes. |
 | **PartyFrameStyle** | Coordinator for party frame appearance — the styles are mutually exclusive, so this makes sure only one retextures the frames at a time. `/nufpartystyle` |
 | **PartyFramesImproved** | Party frame enhancements. `/nufpfi` |
 | **PartyBuffs** | Extended buffs and debuffs (1-20 icons) on party frames, with independent positions per party frame mode. `/pbuffs`, `/partybuffs` |
-| **PartyTargets** | Shows who each party member is targeting, with an optional mirror and a Square style inspired by pw_unitframes. `/ptarget`, `/ptstyle` |
+| **PartyTargets** | Shows who each party member is targeting, with an optional mirror and a Square style inspired by pw_unitframes. `/ptarget`, `/ptstyle` <br><img width="100" alt="PartyTargets" src="https://github.com/user-attachments/assets/6ac41efa-3557-4d9f-aeb2-bbe5dc4608d0" /> |
 | **PartyCastingBars** | Casting bars for party members, with an options window instead of subcommands. `/pcb` |
 | **PartyPetFrame** | Dedicated frame for party member 1's pet: portrait, health/mana, cast bar, buffs/debuffs and CC warning. `/ppf` |
 | **Partymode3v3** | Dedicated 3v3 party layout for arena, with per-member scaling from the panel. |
@@ -150,7 +150,7 @@ options panel, and each one restores the original state when disabled.
 | **UnitNameColor** | Unit name colouring: Default, White or Class. |
 | **MinimapStyle** | Round or square minimap, and removal of the decorations nobody uses — zone name, clock, zoom buttons. `/nufmap` |
 | **MinimapIconToggle** | Small button on the minimap corner that hides or shows every minimap icon at once. `/nufminimap` |
-| **NiceDamage** | Floating combat text replacement with a dual font selector: one font for damage, another for heals and auras, with live preview. `/nd` |
+| **NiceDamage** | Floating combat text replacement with a dual font selector: one font for damage, another for heals and auras, with live preview. `/nd` <br><img width="200" alt="NiceDamage" src="https://github.com/user-attachments/assets/fcb8a2a1-1adb-40fc-be00-0c09d2f801ec" /> |
 
 #### Chat and quality of life
 
