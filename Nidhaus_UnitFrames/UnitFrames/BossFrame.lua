@@ -111,10 +111,38 @@ local function InitializeBossFrames()
 	isInitialized = true;
 end
 
+-- LOS MARCOS DE BOSS SON PROTEGIDOS.
+--
+-- Los Boss<i>TargetFrame son de Blizzard y los Nidhaus<i>BossTargetFrame los
+-- crea K.MoveFrame como Button con SecureUnitButtonTemplate, asi que en los
+-- dos casos SetPoint, ClearAllPoints y SetScale estan vedados en combate:
+-- el cliente corta la accion y escribe "Interface action failed because of
+-- an AddOn". Y esto se reaplica desde CONFIG_CHANGED, que salta cada vez
+-- que se toca un slider del panel, tambien con el boss ya pegando.
+--
+-- Se posterga: en combate se anota que quedo pendiente y al salir se
+-- aplica de una sola pasada, que ademas es cuando se puede ver.
+local pendingScale, pendingSpacing = false, false;
+
+local combatWatcher = CreateFrame("Frame");
+combatWatcher:RegisterEvent("PLAYER_REGEN_ENABLED");
+combatWatcher:SetScript("OnEvent", function()
+	if pendingScale then
+		pendingScale = false;
+		K.ApplyBossFrameScale(C.BossFrameScale);
+	end
+	if pendingSpacing then
+		pendingSpacing = false;
+		K.ApplyBossFrameSpacing();
+	end
+end);
+
 function K.ApplyBossFrameScale(scale)
 	if not isInitialized then return; end
 	if type(scale) ~= "number" or scale <= 0 or scale > 3 then return; end
-	
+	if InCombatLockdown() then pendingScale = true; return; end
+	pendingScale = false;
+
 	for i = 1, MAX_BOSS_FRAMES do
 		local bossFrame = _G["Boss"..i.."TargetFrame"];
 		if bossFrame then bossFrame:SetScale(scale); end
@@ -123,6 +151,9 @@ end
 
 function K.ApplyBossFrameSpacing()
 	if not isInitialized then return; end
+	if InCombatLockdown() then pendingSpacing = true; return; end
+	pendingSpacing = false;
+
 	local spacing = C.BossTargetFrameSpacing or 0;
 	if type(spacing) ~= "number" then spacing = 0; end
 	-- FIX: Negate so positive slider values = more separation (downward)
