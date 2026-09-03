@@ -809,10 +809,12 @@ function K.PopulateFramesTab(panel)
 	do
 		cbHide = CreateFrame("CheckButton", "NidhausPartyHideTextCB", paneParty,
 			"InterfaceOptionsCheckButtonTemplate");
-		-- Pegado al bloque de texto: oculta los NUMEROS de vida y mana, o
-		-- sea que es parte de "Text", no una opcion suelta. A -16 quedaba
-		-- flotando entre dos secciones y no se sabia a cual pertenecia.
-		cbHide:SetPoint("TOPLEFT", fontBody, "BOTTOMLEFT", 0, -8);
+		-- Oculta los NUMEROS de vida y mana, o sea que es parte de "Text".
+		-- Va a la DERECHA del slider de tamaño, no debajo del bloque: los
+		-- dos ocupaban una fila entera cada uno y sobraba media pantalla a
+		-- la derecha. El parent sigue siendo paneParty, no fontBody, para
+		-- que no se esconda cuando el bloque de fuente se colapsa.
+		cbHide:SetPoint("TOPLEFT", fontBody, "TOPLEFT", 250, -62);
 		cbHide:SetHitRectInsets(0, 0, 0, 0);
 		local fs = _G["NidhausPartyHideTextCBText"];
 		if fs then fs:SetText(L["CB_PARTY_HIDE_TEXT"] or "Hide health / mana numbers"); end
@@ -841,7 +843,9 @@ function K.PopulateFramesTab(panel)
 	-- parte de cualquiera de los dos.
 	local petSep = K.UI.Separator(paneParty, 0, 0, 440);
 	petSep:ClearAllPoints();
-	petSep:SetPoint("TOPLEFT", cbHide, "BOTTOMLEFT", -4, -14);
+	-- Colgaba de cbHide, que ahora esta arriba, al lado del slider. Cuelga
+	-- del bloque de fuente, que es lo que de verdad cierra esta seccion.
+	petSep:SetPoint("TOPLEFT", fontBody, "BOTTOMLEFT", -4, -10);
 
 	local petHeader = FHeader(paneParty, L["HEADER_PARTY_PETS"] or "Pets", 0, 0);
 	petHeader:ClearAllPoints();
