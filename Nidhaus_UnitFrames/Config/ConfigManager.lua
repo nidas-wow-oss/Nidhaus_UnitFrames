@@ -1,4 +1,4 @@
-﻿local AddOnName, ns = ...;
+local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
 -- ConfigManager

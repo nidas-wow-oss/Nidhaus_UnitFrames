@@ -1,4 +1,4 @@
-﻿<Ui xmlns="http://www.blizzard.com/wow/ui/">
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<Script file="Core\Init.lua"/>
 	<Script file="Core\Localization.lua"/>
 	<Script file="Config\ConfigManager.lua"/>

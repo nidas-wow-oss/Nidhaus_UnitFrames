@@ -1,4 +1,4 @@
-﻿--[[
+--[[
 	PartyCastingBars - Adapted for Nidhaus_UnitFrames
 	Original by: AnduinLothar / Mercedesa
 	Adapted by: Nidhaus integration

@@ -1,4 +1,4 @@
-﻿-- PartyBuffs
+-- PartyBuffs
 -- Muestra buffs/debuffs extendidos del grupo (slots 1-20)
 -- Posiciones independientes por modo: Blizzard / NewPartyFrame
 -- Offsets guardados en espacio LOCAL del party frame (compatibles con 3v3)

@@ -1,4 +1,4 @@
-﻿-- Este archivo vive en Nidhaus_UnitFrames_Config, un addon aparte que se
+-- Este archivo vive en Nidhaus_UnitFrames_Config, un addon aparte que se
 -- carga SOLO cuando abris el panel (LoadOnDemand). Por eso no recibe el
 -- namespace por "...", que es privado de cada addon: lo toma de la global
 -- que publica el addon principal en Core/Init.lua.
