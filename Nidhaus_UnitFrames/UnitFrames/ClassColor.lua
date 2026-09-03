@@ -15,25 +15,36 @@ local function unitClassColors(healthbar, unit)
 	if not UnitIsPlayer(unit) or unit ~= healthbar.unit then return; end
 	if not UnitClass(unit) then return; end
 	
-	-- LOS FRAMES DE ARENA VAN SIEMPRE POR CLASE.
+	-- QUIEN DECIDE EL COLOR DE ESTA BARRA.
 	--
-	-- "Class Color Health Bars" es una preferencia estetica para los marcos
-	-- normales. En arena el color de clase no es decoracion: es como
-	-- identificas de un vistazo a quien le estas pegando. Apagar la opcion
-	-- les ponia verde a todos y dejaba los tres marcos iguales.
+	-- Los marcos de arena no tienen coloreo propio en ningun otro lado:
+	-- dependen de este mismo hook, asi que la regla entera vive aca.
 	--
-	-- Los marcos de arena no tienen coloreo propio en otro lado: dependen de
-	-- este mismo hook, asi que la excepcion tiene que estar aca.
+	--   Arena, estilo retocado -> SIEMPRE por clase. Ahi el color no es
+	--     decoracion: es como identificas de un vistazo a quien le estas
+	--     pegando, y apagarlo deja los tres marcos iguales.
 	--
-	-- CON UNA SALVEDAD: el estilo Blizzard. Ahi los marcos de arena son los
-	-- de fabrica, sin retocar, y forzarles el color de clase los deja
-	-- distintos de todo el resto de la interfaz de Blizzard. Ese estilo, y
-	-- solo ese, tiene su propia casilla al lado del desplegable: si esta
-	-- tildada vuelve el color de clase, y si no manda la opcion general.
-	local isArena = unit and string.find(unit, "^arena%d") ~= nil
-		and (C.ArenaFrameStyle ~= "Blizzard" or C.ArenaBlizzardClassColor == true);
+	--   Arena, estilo Blizzard -> manda su casilla, y manda SOLA. Los
+	--     marcos son los de fabrica y hay quien los quiere tal cual,
+	--     verdes, aunque tenga el color de clase prendido para el resto de
+	--     la interfaz. Por eso no se mira C.classColor aca: si se mirara,
+	--     con la opcion general puesta la casilla no podria apagar nada.
+	--
+	--   Cualquier otro marco -> la opcion general de siempre.
+	local isArena = unit and string.find(unit, "^arena%d") ~= nil;
+	local useClass;
 
-	if C.classColor or isArena then
+	if isArena then
+		if (C.ArenaFrameStyle or "Custom") == "Blizzard" then
+			useClass = (C.ArenaBlizzardClassColor == true);
+		else
+			useClass = true;
+		end
+	else
+		useClass = C.classColor and true or false;
+	end
+
+	if useClass then
 		if not UnitIsConnected(unit) then
 			healthbar:SetStatusBarColor(0.6, 0.6, 0.6, 0.5);
 			return;
