@@ -38,7 +38,7 @@ local settings = {
 }
 
 local petFrame = CreateFrame("Button", "CustomParty1PetFrame", UIParent, "SecureUnitButtonTemplate")
-petFrame:SetSize(160, 80)
+petFrame:SetSize(160, 96)   -- +16: la barra de casteo y el nombre del objetivo van uno debajo del otro
 petFrame:SetPoint("CENTER", UIParent, "CENTER", 300, 100)
 petFrame:SetMovable(true)
 petFrame:EnableMouse(true)
@@ -109,7 +109,10 @@ petFrame.manaBar:SetFrameLevel(0)
 
 -- Texto objetivo
 petFrame.targetText = petFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-petFrame.targetText:SetPoint("BOTTOMLEFT", 40, 10)
+-- Cuelga de la barra de casteo, no del borde del marco. Un frame oculto
+-- conserva su posicion, asi que el texto queda en el mismo sitio castee o
+-- no la mascota, y deja de superponerse cuando la barra aparece.
+-- El anclaje real se pone mas abajo, cuando castBar ya existe.
 
 -- Debuffs
 petFrame.debuffs = {}
@@ -178,6 +181,9 @@ castBar.icon = castBar:CreateTexture(nil, "ARTWORK")
 castBar.icon:SetSize(14, 14)
 castBar.icon:SetPoint("RIGHT", castBar, "LEFT", -3, 0)
 castBar.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- sin el borde del icono
+
+-- Ahora si: el nombre del objetivo, debajo de la barra de casteo.
+petFrame.targetText:SetPoint("TOPLEFT", castBar, "BOTTOMLEFT", 0, -2)
 
 -- ---------------------------------------------------------
 -- Tinte de Lorti UI
@@ -313,6 +319,14 @@ local function UpdatePetFrame()
         local targetName = UnitName(targetUnit) or "Desconocido"
         if #targetName > 15 then
             targetName = strsub(targetName,1,12).."..."
+        end
+        -- Nombre en color de clase. Solo tiene sentido con jugadores: los
+        -- NPC no tienen clase, asi que esos quedan con el color de siempre.
+        local _, class = UnitClass(targetUnit)
+        local col = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+        if col and UnitIsPlayer(targetUnit) then
+            targetName = string.format("|cff%02x%02x%02x%s|r",
+                col.r * 255, col.g * 255, col.b * 255, targetName)
         end
         petFrame.targetText:SetText((L["PETTARGET_PREFIX"] or "Target: ")..targetName)
     else

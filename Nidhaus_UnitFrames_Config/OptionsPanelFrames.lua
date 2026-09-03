@@ -562,14 +562,67 @@ function K.PopulateFramesTab(panel)
 	-- cualquier otra cosa de esta pestaña, porque sin grupo real no hay
 	-- marcos que mirar mientras elegis estilo, escala o posicion.
 	-- No depende del 3v3 ni de ningun estilo: sirve para todos.
-	local testBtn = CreateFrame("Button", nil, paneParty, "UIPanelButtonTemplate");
+	-- Mismo recuadro que Move Everything en el pie del panel: fondo azul
+	-- oscuro, borde de un pixel en cuatro texturas y texto celeste. En
+	-- 3.3.5a los Button no aceptan SetBackdrop, de ahi las cuatro texturas.
+	local testBtn = CreateFrame("Button", nil, paneParty);
 	testBtn:SetPoint("TOPLEFT", x, py);
-	testBtn:SetSize(180, 22);
-	testBtn:SetText(L["BTN_PARTY_TEST"] or "Test mode (4 fake members)");
+	testBtn:SetSize(200, 24);
+	testBtn:SetFrameLevel(paneParty:GetFrameLevel() + 3);
+	testBtn:EnableMouse(true);
+
+	local tbBg = testBtn:CreateTexture(nil, "ARTWORK");
+	tbBg:SetTexture("Interface\\Buttons\\WHITE8X8");
+	tbBg:SetAllPoints(testBtn);
+	tbBg:SetVertexColor(0.03, 0.08, 0.20, 0.95);
+
+	local TB_BW = 1;
+	local function TBEdge()
+		local t = testBtn:CreateTexture(nil, "OVERLAY");
+		t:SetTexture("Interface\\Buttons\\WHITE8X8");
+		return t;
+	end
+	local tbTop = TBEdge();
+	tbTop:SetPoint("TOPLEFT", testBtn, "TOPLEFT", 0, 0);
+	tbTop:SetPoint("TOPRIGHT", testBtn, "TOPRIGHT", 0, 0);
+	tbTop:SetHeight(TB_BW);
+	local tbBot = TBEdge();
+	tbBot:SetPoint("BOTTOMLEFT", testBtn, "BOTTOMLEFT", 0, 0);
+	tbBot:SetPoint("BOTTOMRIGHT", testBtn, "BOTTOMRIGHT", 0, 0);
+	tbBot:SetHeight(TB_BW);
+	local tbLeft = TBEdge();
+	tbLeft:SetPoint("TOPLEFT", testBtn, "TOPLEFT", 0, 0);
+	tbLeft:SetPoint("BOTTOMLEFT", testBtn, "BOTTOMLEFT", 0, 0);
+	tbLeft:SetWidth(TB_BW);
+	local tbRight = TBEdge();
+	tbRight:SetPoint("TOPRIGHT", testBtn, "TOPRIGHT", 0, 0);
+	tbRight:SetPoint("BOTTOMRIGHT", testBtn, "BOTTOMRIGHT", 0, 0);
+	tbRight:SetWidth(TB_BW);
+
+	local tbLabel = testBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+	tbLabel:SetPoint("CENTER", testBtn, "CENTER", 0, 0);
+	tbLabel:SetText("|cff4fc3f7" .. (L["BTN_PARTY_TEST"] or "Test mode (4 fake members)") .. "|r");
+
+	local function TestBtnRest()
+		tbBg:SetVertexColor(0.03, 0.08, 0.20, 0.95);
+		tbTop:SetVertexColor(0.30, 0.65, 1.00, 1.00);
+		tbBot:SetVertexColor(0.25, 0.55, 0.90, 0.80);
+		tbLeft:SetVertexColor(0.25, 0.55, 0.90, 0.80);
+		tbRight:SetVertexColor(0.25, 0.55, 0.90, 0.80);
+	end
+	TestBtnRest();
+
+	testBtn:SetScript("OnEnter", function()
+		tbTop:SetVertexColor(0.60, 0.85, 1.00, 1.00);
+		tbBot:SetVertexColor(0.60, 0.85, 1.00, 1.00);
+		tbLeft:SetVertexColor(0.60, 0.85, 1.00, 1.00);
+		tbRight:SetVertexColor(0.60, 0.85, 1.00, 1.00);
+	end);
+	testBtn:SetScript("OnLeave", TestBtnRest);
 	testBtn:SetScript("OnClick", function()
 		if K.TogglePartyTestMode then K.TogglePartyTestMode(); end
 	end);
-	py = py - 32;
+	py = py - 34;
 
 	-- ── ESTILO DE LOS MARCOS (excluyente) ──
 	FHeader(paneParty, L["HEADER_PARTY_STYLE"] or "Frame Style", x, py);
@@ -821,7 +874,9 @@ function K.PopulateFramesTab(panel)
 	local cbPet;
 	do
 		cbPet = CreateFrame("CheckButton", "NidhausPartyPetCB", paneParty, "UICheckButtonTemplate");
-		cbPet:SetPoint("TOPLEFT", cbPPF, "BOTTOMLEFT", 0, -4);
+		-- Al lado del anterior, no debajo: son dos opciones cortas y la
+		-- columna de la derecha estaba vacia.
+		cbPet:SetPoint("LEFT", cbPPF, "LEFT", 230, 0);
 		cbPet.text = cbPet:CreateFontString(nil, "ARTWORK", "GameFontHighlight");
 		cbPet.text:SetPoint("LEFT", cbPet, "RIGHT", 4, 0);
 		-- Redactado en NEGATIVO, como sus vecinos ("Hide health / mana
@@ -856,7 +911,9 @@ function K.PopulateFramesTab(panel)
 
 	local modeSep = K.UI.Separator(paneParty, 0, 0, 440);
 	modeSep:ClearAllPoints();
-	modeSep:SetPoint("TOPLEFT", cbPet, "BOTTOMLEFT", -4, -14);
+	-- Cuelga del checkbox de la IZQUIERDA: cbPet ahora esta en la segunda
+	-- columna y anclarse a el corria el separador media pantalla.
+	modeSep:SetPoint("TOPLEFT", cbPPF, "BOTTOMLEFT", -4, -14);
 
 	local modeHeader = FHeader(paneParty, L["HEADER_PARTY_MODE"] or "Mode", 0, 0);
 	modeHeader:ClearAllPoints();
