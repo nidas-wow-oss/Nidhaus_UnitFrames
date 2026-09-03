@@ -38,7 +38,12 @@ local settings = {
 }
 
 local petFrame = CreateFrame("Button", "CustomParty1PetFrame", UIParent, "SecureUnitButtonTemplate")
-petFrame:SetSize(160, 96)   -- +16: la barra de casteo y el nombre del objetivo van uno debajo del otro
+-- 160x80, el tamano de siempre. El fondo es UI-PetFrame con SetAllPoints,
+-- asi que agrandar el marco estiraba el arte y el aro del retrato salia
+-- deformado. La barra de casteo y el nombre del objetivo cuelgan de la
+-- barra de mana y no necesitan sitio extra: un hijo puede salirse del
+-- marco, nadie lo recorta.
+petFrame:SetSize(160, 80)
 petFrame:SetPoint("CENTER", UIParent, "CENTER", 300, 100)
 petFrame:SetMovable(true)
 petFrame:EnableMouse(true)

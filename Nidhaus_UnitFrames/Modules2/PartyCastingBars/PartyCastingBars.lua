@@ -119,6 +119,29 @@ local function PCB_SaveColors()
 	end
 end
 
+-- Cada estilo de barra guarda su propia escala. Arcane y Blizzard dibujan
+-- marco propio, Arena no lo dibuja y ademas copia el tamano de las barras
+-- de casteo de arena: son barras de tamanos muy distintos, asi que un solo
+-- numero de escala obligaba a reajustar el slider en cada cambio. La
+-- db.scale de antes se sigue leyendo como punto de partida, asi que nadie
+-- arranca de cero.
+local function PCB_StyleScale(style)
+	local db  = PCB_DB();
+	local key = style or PCB_BarStyle;
+	local t   = db.scaleByStyle;
+	if type(t) == "table" and type(t[key]) == "number" then return t[key]; end
+	if type(db.scale) == "number" then return db.scale; end
+	return PCB_Scale;
+end
+
+local function PCB_SaveStyleScale(value, style)
+	local db  = PCB_DB();
+	local key = style or PCB_BarStyle;
+	if type(db.scaleByStyle) ~= "table" then db.scaleByStyle = {}; end
+	db.scaleByStyle[key] = value;
+	db.scale = value;
+end
+
 local function PCB_LoadSaved()
 	local db = PCB_DB();
 	if type(db.scale)    == "number"  then PCB_Scale        = db.scale;    end
@@ -128,6 +151,8 @@ local function PCB_LoadSaved()
 		or db.barStyle == "Arena" then
 		PCB_BarStyle = db.barStyle;
 	end
+	-- El estilo ya quedo resuelto: su escala pisa a la escala suelta.
+	PCB_Scale = PCB_StyleScale(PCB_BarStyle);
 
 	if type(db.colors) ~= "table" then return; end
 	for reaction, types in pairs(PartyCastingBars_Colors) do
@@ -501,6 +526,9 @@ function PartyCastingBars.SetBarStyle(value)
 	for i, barFrame in ipairs(PartyCastingBars.Bars) do
 		PartyCastingBars.ApplyBarStyle(barFrame);
 	end
+	-- Y con el estilo viaja su escala: el RefreshMenu de abajo lleva el
+	-- slider al valor que este estilo tenia guardado.
+	PartyCastingBars.SetScales(PCB_StyleScale(PCB_BarStyle));
 	if PartyCastingBars.RefreshMenu then PartyCastingBars.RefreshMenu(); end
 end
 
@@ -927,7 +955,7 @@ end
 
 function PartyCastingBars.SetScales(value)
 	PCB_Scale = value;
-	PCB_DB().scale = value;
+	PCB_SaveStyleScale(value);
 	for i, barFrame in ipairs(PartyCastingBars.Bars) do
 		barFrame:SetScale(value);
 	end
