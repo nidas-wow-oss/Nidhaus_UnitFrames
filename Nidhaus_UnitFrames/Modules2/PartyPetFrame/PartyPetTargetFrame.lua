@@ -164,24 +164,32 @@ castBar:SetStatusBarColor(1, 0.7, 0.2)
 castBar:Hide()
 petFrame.castBar = castBar
 
-local border = castBar:CreateTexture(nil, "OVERLAY")
-border:SetTexture("Interface\\CastingBar\\UI-CastingBar-Border")
-border:SetSize(138, 54)
-border:SetPoint("CENTER", castBar, "CENTER", 0, 0)
+-- El borde de barra de casteo de Blizzard media 138x54 sobre una barra de
+-- 110x14: un marco enorme y desalineado alrededor de una barrita. Fuera.
+-- La barra se lee sola por su fondo, igual que las de arena.
+local castBarBG = castBar:CreateTexture(nil, "BACKGROUND")
+castBarBG:SetTexture("Interface\\Buttons\\WHITE8X8")
+castBarBG:SetPoint("TOPLEFT", castBar, "TOPLEFT", -1, 1)
+castBarBG:SetPoint("BOTTOMRIGHT", castBar, "BOTTOMRIGHT", 1, -1)
+castBarBG:SetVertexColor(0, 0, 0, 0.7)
+
+-- Icono del hechizo, a la izquierda y por fuera de la barra.
+castBar.icon = castBar:CreateTexture(nil, "ARTWORK")
+castBar.icon:SetSize(14, 14)
+castBar.icon:SetPoint("RIGHT", castBar, "LEFT", -3, 0)
+castBar.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- sin el borde del icono
 
 -- ---------------------------------------------------------
 -- Tinte de Lorti UI
 --
--- El marco de la mascota y el borde de su barra de casteo son arte de
--- Blizzard sin tocar, asi que con Lorti puesto quedaban dorados y
--- brillantes al lado del resto oscurecido. Piden el tinte por el mismo
+-- El marco de la mascota es arte de Blizzard sin tocar, asi que con Lorti
+-- puesto quedaba dorado y brillante al lado del resto oscurecido. Piden el tinte por el mismo
 -- camino que el grupo, arena y los target de grupo: si Lorti esta
 -- apagado, ApplyLortiTint repone el blanco y todo queda como antes.
 -- ---------------------------------------------------------
 local function ApplyPetLortiTint()
 	if not K.ApplyLortiTint then return; end
 	K.ApplyLortiTint(petFrame.bg, "LortiUI_PartyPet");
-	K.ApplyLortiTint(border,      "LortiUI_PartyPet");
 end
 
 local spark = castBar:CreateTexture(nil, "OVERLAY")
@@ -192,8 +200,38 @@ spark:SetPoint("CENTER", castBar:GetStatusBarTexture(), "RIGHT", 0, 0)
 castBar.spark = spark
 
 castBar.text = castBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-castBar.text:SetPoint("CENTER", castBar, "CENTER", 0, 0)
-castBar.text:SetJustifyH("CENTER")
+castBar.text:SetPoint("LEFT", castBar, "LEFT", 4, 0)
+castBar.text:SetJustifyH("LEFT")
+
+-- Segundos que faltan, contando hacia abajo.
+castBar.timeText = castBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+castBar.timeText:SetPoint("RIGHT", castBar, "RIGHT", -4, 0)
+castBar.timeText:SetJustifyH("RIGHT")
+
+-- ---------------------------------------------------------
+-- La barra se anima sola
+--
+-- Antes el valor lo movia el OnUpdate del marco, cada 0.1 s, asi que
+-- avanzaba a los saltos. Ahora la barra tiene su propio OnUpdate y
+-- recalcula en cada cuadro a partir de startTime y endTime, que es como
+-- lo hace la barra de casteo del juego.
+-- ---------------------------------------------------------
+castBar:SetScript("OnUpdate", function(self)
+	if not self.endTime then return end
+	local now = GetTime()
+	if now >= self.endTime then
+		self.endTime = nil
+		self:Hide()
+		return
+	end
+	if self.isChannel then
+		-- Canalizar VACIA la barra: el valor va de endTime hacia startTime.
+		self:SetValue(self.startTime + self.endTime - now)
+	else
+		self:SetValue(now)
+	end
+	self.timeText:SetText(string.format("%.1f", self.endTime - now))
+end)
 
 -- Auras a ocultar
 local hiddenAuras = {
@@ -378,18 +416,23 @@ local function UpdateCastBar()
     end
 
     if name and type(startTime) == "number" and type(endTime) == "number" then
-        local now = GetTime()*1000
-        if isChannel then
-            castBar:SetMinMaxValues(endTime/1000, startTime/1000)
-            castBar:SetValue(endTime/1000 - now/1000 + startTime/1000)
-        else
-            castBar:SetMinMaxValues(startTime/1000, endTime/1000)
-            castBar:SetValue(now/1000)
-        end
+        -- Los tiempos vienen en milisegundos; adentro se trabaja en segundos.
+        castBar.startTime = startTime / 1000
+        castBar.endTime   = endTime / 1000
+        castBar.isChannel = isChannel
+        -- El minimo y el maximo son SIEMPRE start y end, en ese orden, para
+        -- las dos formas. Lo que cambia es el valor, y de eso se ocupa el
+        -- OnUpdate. Antes se invertian para canalizar y la barra no corria.
+        castBar:SetMinMaxValues(castBar.startTime, castBar.endTime)
         castBar.text:SetText(name)
+        if castBar.icon then
+            castBar.icon:SetTexture(texture)
+            if texture then castBar.icon:Show() else castBar.icon:Hide() end
+        end
         castBar:SetStatusBarColor(notInterruptible and 1 or 0.7, notInterruptible and 0.3 or 0.7, notInterruptible and 0.3 or 0.2)
         castBar:Show()
     else
+        castBar.endTime = nil
         castBar:Hide()
     end
 end
