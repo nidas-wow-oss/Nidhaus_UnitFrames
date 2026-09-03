@@ -405,9 +405,31 @@ local CLASS_MODULES = {
 		Header(pane, L["PVP_SHOOTING"] or "Shooting", x, y);
 		y = y - 24;
 
-		local _, asH = ModuleCB(pane, L["MOD_AUTOSHOT"] or "Auto Shot Timer", "AutoShotTimer",
+		local asCB, asH = ModuleCB(pane, L["MOD_AUTOSHOT"] or "Auto Shot Timer", "AutoShotTimer",
 			x, y, L["MOD_AUTOSHOT_DESC"]);
 		y = y - 26 - (asH or 0);
+
+		-- Cuerpo desplegable con la unica opcion de la barra: el estilo del
+		-- borde, entre el de tooltip y el de las barras de casteo.
+		local asBody = K.UI.Collapsible(pane, x, y, 440, 26, function()
+			return K.IsModuleEnabled and K.IsModuleEnabled("AutoShotTimer");
+		end);
+		if asCB then asCB:HookScript("OnClick", function() asBody:Refresh(); end); end
+
+		local asBorder = CreateFrame("Button", nil, asBody, "UIPanelButtonTemplate");
+		asBorder:SetPoint("TOPLEFT", 22, 0);
+		asBorder:SetSize(180, 22);
+		asBorder:SetText((K.GetAutoShotBorderStyle and K.GetAutoShotBorderStyle() == "CastBar")
+			and (L["BTN_BORDER_TOOLTIP"] or "Tooltip border")
+			or  (L["BTN_BORDER_CAST"] or "Casting bar border"));
+		asBorder:SetScript("OnClick", function(self)
+			if not K.ToggleAutoShotBorderStyle then return; end
+			local on = K.ToggleAutoShotBorderStyle();
+			self:SetText(on and (L["BTN_BORDER_TOOLTIP"] or "Tooltip border")
+				or (L["BTN_BORDER_CAST"] or "Casting bar border"));
+		end);
+
+		y = y - 32;
 
 		local _, acH = ModuleCB(pane, L["MOD_ARROWCOUNT"] or "Arrow / Bullet Count", "ArrowCount",
 			x, y, L["MOD_ARROWCOUNT_DESC"]);
@@ -867,7 +889,22 @@ function K.BuildPvPSection(pane)
 			RefreshSwingScale();
 		end);
 
-		swBlk:SetBodyHeight(84);
+		-- Alterna el borde entre el de tooltip (el de siempre) y el de las
+		-- barras de casteo, que es el mismo que llevan las de arena.
+		local swBorder = CreateFrame("Button", nil, swBody, "UIPanelButtonTemplate");
+		swBorder:SetPoint("TOPLEFT", 24, -84);
+		swBorder:SetSize(180, 22);
+		swBorder:SetText((K.GetMeleeSwingBorderStyle and K.GetMeleeSwingBorderStyle() == "CastBar")
+			and (L["BTN_BORDER_TOOLTIP"] or "Tooltip border")
+			or  (L["BTN_BORDER_CAST"] or "Casting bar border"));
+		swBorder:SetScript("OnClick", function(self)
+			if not K.ToggleMeleeSwingBorderStyle then return; end
+			local on = K.ToggleMeleeSwingBorderStyle();
+			self:SetText(on and (L["BTN_BORDER_TOOLTIP"] or "Tooltip border")
+				or (L["BTN_BORDER_CAST"] or "Casting bar border"));
+		end);
+
+		swBlk:SetBodyHeight(116);
 		swBlk:Refresh();
 	end
 
