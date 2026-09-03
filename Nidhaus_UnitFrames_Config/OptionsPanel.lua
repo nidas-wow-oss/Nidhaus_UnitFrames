@@ -2352,28 +2352,12 @@ local function CreateBottomButtons()
 
 	-- ══ PIE, DOS FILAS ═══════════════════════════════════════════
 	--
-	-- Antes entraban seis botones en una sola fila y no daba el ancho: el
-	-- de Move Everything terminaba montado sobre el de Profiles.
+	--   fila de arriba:  [ Move Everything ]              [ Estilo ]
+	--   fila de abajo:   Reload UI  Reset Defaults  Profiles  About ... Close
 	--
-	--   fila de arriba:  Profiles  About              [ Estilo ]
-	--   fila de abajo:   Reload UI  Reset Defaults  Move Everything ... Close
-	--
-	-- Arriba lo que se abre de vez en cuando, abajo las acciones.
-
-	-- MOVE EVERYTHING: ABRE EL MODO MOVER Y CIERRA EL PANEL.
-	--
-	-- Antes solo saltaba a su seccion, y ahi tenias que apretar otro boton
-	-- mas — con el panel tapando justo los marcos que ibas a acomodar. El
-	-- boton hace lo que dice: desbloquea y se corre del medio.
-	local moveButton = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate");
-	moveButton:SetPoint("LEFT", resetButton, "RIGHT", 8, 0);
-	moveButton:SetSize(130, 22);
-	moveButton:SetText(L["SIDE_MOVEALL"] or "Move Everything");
-	moveButton:SetScript("OnClick", function()
-		mainFrame:Hide();
-		if K.ToggleGlobalUnlock then K.ToggleGlobalUnlock(); end
-	end);
-	MakeSecondary(moveButton);
+	-- Move Everything sube solo a la fila de arriba: es la accion que mas
+	-- se usa desde aca y compartir fila con Reload UI y Reset Defaults la
+	-- dejaba perdida entre botones que se aprietan una vez cada tanto.
 
 	-- Right buttons
 	local closeButton = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate");
@@ -2389,9 +2373,9 @@ local function CreateBottomButtons()
 	-- uso diario, y ocupaba un lugar caro del pie. Sigue disponible con
 	-- /nufconfig db para cuando haga falta.
 
-	-- ── Fila de arriba: a la izquierda del selector de estilo ──
+	-- ── Fila de abajo: siguen a Reload UI y Reset Defaults ──
 	local profilesButton = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate");
-	profilesButton:SetPoint("BOTTOMLEFT", mainFrame, "BOTTOMLEFT", 20, 50);
+	profilesButton:SetPoint("LEFT", resetButton, "RIGHT", 8, 0);
 	profilesButton:SetSize(100, 22);
 	profilesButton:SetText(L["TAB_PROFILES"] or "Profiles");
 	MakeSecondary(profilesButton);
@@ -2412,6 +2396,75 @@ local function CreateBottomButtons()
 	MakeSecondary(aboutButton);
 	aboutButton:SetScript("OnClick", function()
 		if K.SelectPanelTab then K.SelectPanelTab(6); end
+	end);
+
+	-- ── MOVE EVERYTHING ──────────────────────────────────────────
+	--
+	-- Recuadro propio en vez de UIPanelButtonTemplate, con el mismo look
+	-- que el "Lock frame" de EquippedWeapons: fondo azul oscuro y borde
+	-- de 1 px. En 3.3.5a los Button no aceptan SetBackdrop, asi que el
+	-- borde son cuatro texturas WHITE8X8 de un pixel.
+	--
+	-- Abre el modo mover y cierra el panel: antes solo saltaba a su
+	-- seccion y ahi habia que apretar otro boton mas, con el panel
+	-- tapando justo los marcos que ibas a acomodar.
+	local moveBox = CreateFrame("Button", "NUF_MoveEverythingBox", mainFrame);
+	moveBox:SetPoint("BOTTOMLEFT", mainFrame, "BOTTOMLEFT", 20, 50);
+	moveBox:SetSize(158, 24);
+	moveBox:SetFrameLevel(mainFrame:GetFrameLevel() + 3);
+	moveBox:EnableMouse(true);
+
+	local mbBg = moveBox:CreateTexture(nil, "ARTWORK");
+	mbBg:SetTexture("Interface\\Buttons\\WHITE8X8");
+	mbBg:SetAllPoints(moveBox);
+	mbBg:SetVertexColor(0.03, 0.08, 0.20, 0.95);
+
+	local MB_BW = 1;
+	local function MBEdge()
+		local t = moveBox:CreateTexture(nil, "OVERLAY");
+		t:SetTexture("Interface\\Buttons\\WHITE8X8");
+		return t;
+	end
+	local mbTop   = MBEdge();
+	mbTop:SetPoint("TOPLEFT", moveBox, "TOPLEFT", 0, 0);
+	mbTop:SetPoint("TOPRIGHT", moveBox, "TOPRIGHT", 0, 0);
+	mbTop:SetHeight(MB_BW);
+	local mbBot   = MBEdge();
+	mbBot:SetPoint("BOTTOMLEFT", moveBox, "BOTTOMLEFT", 0, 0);
+	mbBot:SetPoint("BOTTOMRIGHT", moveBox, "BOTTOMRIGHT", 0, 0);
+	mbBot:SetHeight(MB_BW);
+	local mbLeft  = MBEdge();
+	mbLeft:SetPoint("TOPLEFT", moveBox, "TOPLEFT", 0, 0);
+	mbLeft:SetPoint("BOTTOMLEFT", moveBox, "BOTTOMLEFT", 0, 0);
+	mbLeft:SetWidth(MB_BW);
+	local mbRight = MBEdge();
+	mbRight:SetPoint("TOPRIGHT", moveBox, "TOPRIGHT", 0, 0);
+	mbRight:SetPoint("BOTTOMRIGHT", moveBox, "BOTTOMRIGHT", 0, 0);
+	mbRight:SetWidth(MB_BW);
+
+	local mbLabel = moveBox:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+	mbLabel:SetPoint("CENTER", moveBox, "CENTER", 0, 0);
+	mbLabel:SetText("|cff4fc3f7" .. (L["SIDE_MOVEALL"] or "Move Everything") .. "|r");
+
+	local function MoveBoxRest()
+		mbBg:SetVertexColor(0.03, 0.08, 0.20, 0.95);
+		mbTop:SetVertexColor(0.30, 0.65, 1.00, 1.00);
+		mbBot:SetVertexColor(0.25, 0.55, 0.90, 0.80);
+		mbLeft:SetVertexColor(0.25, 0.55, 0.90, 0.80);
+		mbRight:SetVertexColor(0.25, 0.55, 0.90, 0.80);
+	end
+	MoveBoxRest();
+
+	moveBox:SetScript("OnEnter", function()
+		mbTop:SetVertexColor(0.60, 0.85, 1.00, 1.00);
+		mbBot:SetVertexColor(0.60, 0.85, 1.00, 1.00);
+		mbLeft:SetVertexColor(0.60, 0.85, 1.00, 1.00);
+		mbRight:SetVertexColor(0.60, 0.85, 1.00, 1.00);
+	end);
+	moveBox:SetScript("OnLeave", MoveBoxRest);
+	moveBox:SetScript("OnClick", function()
+		mainFrame:Hide();
+		if K.ToggleGlobalUnlock then K.ToggleGlobalUnlock(); end
 	end);
 
 	-- ── Popup dialogs ─────────────────────────────────────────
