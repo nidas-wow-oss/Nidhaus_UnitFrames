@@ -316,7 +316,9 @@ local function UpdatePetFrame()
         end
         petFrame.targetText:SetText((L["PETTARGET_PREFIX"] or "Target: ")..targetName)
     else
-        petFrame.targetText:SetText(L["PETTARGET_NONE"] or "Target: None")
+        -- Sin objetivo no se escribe nada: un "Target: None" fijo bajo el
+        -- marco es ruido, y ademas es el estado normal casi todo el tiempo.
+        petFrame.targetText:SetText("")
     end
 
     -- Buffs con bordes
