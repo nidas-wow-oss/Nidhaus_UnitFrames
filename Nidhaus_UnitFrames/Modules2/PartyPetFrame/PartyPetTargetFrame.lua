@@ -354,10 +354,26 @@ end
 -- Castbar
 local function UpdateCastBar()
     local unit = "party1pet"
-    local name, _, _, startTime, endTime, _, _, notInterruptible = UnitCastingInfo(unit)
+    -- OJO CON EL ORDEN DE LOS RETORNOS.
+    --
+    -- Aca habia un bug que dejaba la barra invisible SIEMPRE: se leia
+    -- startTime en la cuarta posicion, que es la TEXTURA. Como es un
+    -- string, el "type(startTime) == number" de mas abajo daba falso y la
+    -- barra se ocultaba siempre, tanto casteando como canalizando.
+    --
+    -- En 3.3.5a el orden es:
+    --   UnitCastingInfo  name, nameSubtext, text, texture, startTime,
+    --                    endTime, isTradeSkill, castID, notInterruptible
+    --   UnitChannelInfo  lo mismo pero SIN castID
+    --
+    -- Se nombran todos, como en PartyCastingBars, para que no vuelva a
+    -- correrse un lugar sin que nadie lo note.
+    local name, nameSubtext, text, texture, startTime, endTime,
+          isTradeSkill, castID, notInterruptible = UnitCastingInfo(unit)
     local isChannel = false
     if not name then
-        name, _, _, startTime, endTime, _, notInterruptible = UnitChannelInfo(unit)
+        name, nameSubtext, text, texture, startTime, endTime,
+            isTradeSkill, notInterruptible = UnitChannelInfo(unit)
         isChannel = true
     end
 
@@ -396,7 +412,7 @@ end)
 
 -- Los eventos NO se registran al cargar: los engancha el modulo al
 -- prenderse (ver el final del archivo). Asi, apagado, no escucha nada.
-local PPF_EVENTS = { "UNIT_HEALTH", "UNIT_MANA", "UNIT_MAXMANA", "UNIT_FOCUS", "UNIT_ENERGY", "UNIT_RAGE", "UNIT_HAPPINESS", "UNIT_TARGET", "UNIT_PET", "PLAYER_ENTERING_WORLD", "PLAYER_ALIVE", "PLAYER_UNGHOST", "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_AURA", "GROUP_ROSTER_UPDATE", "PARTY_MEMBERS_CHANGED", "RAID_ROSTER_UPDATE", "ZONE_CHANGED_NEW_AREA", "PLAYER_ENTERING_BATTLEGROUND", "PLAYER_LEAVING_BATTLEGROUND", "DUEL_FINISHED", "INSTANCE_GROUP_SIZE_CHANGED", "UPDATE_INSTANCE_INFO" };
+local PPF_EVENTS = { "UNIT_HEALTH", "UNIT_MANA", "UNIT_MAXMANA", "UNIT_FOCUS", "UNIT_ENERGY", "UNIT_RAGE", "UNIT_HAPPINESS", "UNIT_TARGET", "UNIT_PET", "PLAYER_ENTERING_WORLD", "PLAYER_ALIVE", "PLAYER_UNGHOST", "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_CHANNEL_UPDATE", "UNIT_SPELLCAST_DELAYED", "UNIT_AURA", "GROUP_ROSTER_UPDATE", "PARTY_MEMBERS_CHANGED", "RAID_ROSTER_UPDATE", "ZONE_CHANGED_NEW_AREA", "PLAYER_ENTERING_BATTLEGROUND", "PLAYER_LEAVING_BATTLEGROUND", "DUEL_FINISHED", "INSTANCE_GROUP_SIZE_CHANGED", "UPDATE_INSTANCE_INFO" };
 
 frame:SetScript("OnEvent", function(self, event, arg1)
     if event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then

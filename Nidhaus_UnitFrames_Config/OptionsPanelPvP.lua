@@ -5,12 +5,65 @@
 local ns = _G.NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
--- Nombre legible del estilo de borde, para los botones que lo ciclan.
-local function BorderStyleText(style)
-	local name = (style == "None" and (L["BORDER_NONE"] or "None (like arena)"))
-		or (style == "Blizzard" and (L["BORDER_BLIZZARD"] or "Blizzard casting bar"))
-		or (L["BORDER_TOOLTIP"] or "Tooltip");
-	return string.format(L["BTN_BORDER_LABEL"] or "Border: %s", name);
+-- Selector de estilo de borde: tres botones excluyentes con el activo
+-- resaltado, el mismo patron que el selector de estilo de marco de grupo.
+-- getFn devuelve el estilo actual, setFn lo cambia.
+local function BorderStyleSelector(parent, px, py, getFn, setFn)
+	local opts = {
+		{ value = "Tooltip",  text = L["BORDER_TOOLTIP"]  or "Tooltip" },
+		{ value = "None",     text = L["BORDER_NONE"]     or "No border" },
+		{ value = "Blizzard", text = L["BORDER_BLIZZARD"] or "Blizzard" },
+	};
+	local bw, bh, gap = 88, 22, 4;
+	local buttons = {};
+
+	local lbl = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+	lbl:SetPoint("TOPLEFT", px, py);
+	lbl:SetText((K.UI and K.UI.Label(L["BTN_BORDER_LABEL"] or "Border:"))
+		or (L["BTN_BORDER_LABEL"] or "Border:"));
+
+	local box = CreateFrame("Frame", nil, parent);
+	box:SetPoint("TOPLEFT", px, py - 16);
+	box:SetSize((#opts * bw) + ((#opts - 1) * gap), bh);
+
+	local function Refresh()
+		local cur = getFn() or "Tooltip";
+		for _, b in ipairs(buttons) do
+			if b.value == cur then
+				b:SetBackdropColor(0.10, 0.35, 0.60, 0.90);
+				b:SetBackdropBorderColor(0.35, 0.70, 1.00, 0.95);
+				b.labelFS:SetTextColor(1, 1, 1);
+			else
+				b:SetBackdropColor(0.07, 0.07, 0.07, 0.65);
+				b:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.60);
+				b.labelFS:SetTextColor(0.55, 0.55, 0.55);
+			end
+		end
+	end
+
+	for i, opt in ipairs(opts) do
+		local b = CreateFrame("Button", nil, box);
+		b:SetSize(bw, bh);
+		b:SetPoint("LEFT", box, "LEFT", (i - 1) * (bw + gap), 0);
+		b:SetBackdrop({
+			bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+			tile     = true, tileSize = 16, edgeSize = 12,
+			insets   = { left = 3, right = 3, top = 3, bottom = 3 },
+		});
+		local fs = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+		fs:SetPoint("CENTER", b, "CENTER", 0, 0);
+		fs:SetText(opt.text);
+		b.labelFS = fs;
+		b.value   = opt.value;
+		b:SetScript("OnClick", function(self)
+			setFn(self.value);
+			Refresh();
+		end);
+		buttons[i] = b;
+	end
+	Refresh();
+	return box, Refresh;
 end
 
 -- =========================================================
@@ -284,7 +337,7 @@ local CLASS_COLORS = {
 			x + 22, y, L["TIP_ComboWatchLocked"]
 			or "While locked it ignores the mouse: you can click through it.",
 			function() if K.ApplyComboWatchLock then K.ApplyComboWatchLock(); end end);
-		y = y - 32;
+		y = y - 52;
 
 		local showBtn = CreateFrame("Button", nil, pane, "UIPanelButtonTemplate");
 		showBtn:SetPoint("TOPLEFT", x + 2, y);
@@ -419,20 +472,14 @@ local CLASS_MODULES = {
 
 		-- Cuerpo desplegable con la unica opcion de la barra: el borde,
 		-- que cicla entre tooltip, sin marco y barra de casteo.
-		local asBody = K.UI.Collapsible(pane, x, y, 440, 26, function()
+		local asBody = K.UI.Collapsible(pane, x, y, 440, 44, function()
 			return K.IsModuleEnabled and K.IsModuleEnabled("AutoShotTimer");
 		end);
 		if asCB then asCB:HookScript("OnClick", function() asBody:Refresh(); end); end
 
-		local asBorder = CreateFrame("Button", nil, asBody, "UIPanelButtonTemplate");
-		asBorder:SetPoint("TOPLEFT", 22, 0);
-		asBorder:SetSize(210, 22);
-		asBorder:SetText(BorderStyleText(
-			(K.GetAutoShotBorderStyle and K.GetAutoShotBorderStyle()) or "Tooltip"));
-		asBorder:SetScript("OnClick", function(self)
-			if not K.CycleAutoShotBorderStyle then return; end
-			self:SetText(BorderStyleText(K.CycleAutoShotBorderStyle()));
-		end);
+		BorderStyleSelector(asBody, 22, 0,
+			function() return (K.GetAutoShotBorderStyle and K.GetAutoShotBorderStyle()) or "Tooltip"; end,
+			function(v) if K.SetAutoShotBorderStyle then K.SetAutoShotBorderStyle(v); end end);
 
 		y = y - 32;
 
@@ -896,17 +943,11 @@ function K.BuildPvPSection(pane)
 
 		-- Cicla entre los tres bordes: tooltip, sin marco (como arena) y
 		-- el de la barra de casteo de Blizzard.
-		local swBorder = CreateFrame("Button", nil, swBody, "UIPanelButtonTemplate");
-		swBorder:SetPoint("TOPLEFT", 24, -84);
-		swBorder:SetSize(210, 22);
-		swBorder:SetText(BorderStyleText(
-			(K.GetMeleeSwingBorderStyle and K.GetMeleeSwingBorderStyle()) or "Tooltip"));
-		swBorder:SetScript("OnClick", function(self)
-			if not K.CycleMeleeSwingBorderStyle then return; end
-			self:SetText(BorderStyleText(K.CycleMeleeSwingBorderStyle()));
-		end);
+		BorderStyleSelector(swBody, 24, -84,
+			function() return (K.GetMeleeSwingBorderStyle and K.GetMeleeSwingBorderStyle()) or "Tooltip"; end,
+			function(v) if K.SetMeleeSwingBorderStyle then K.SetMeleeSwingBorderStyle(v); end end);
 
-		swBlk:SetBodyHeight(116);
+		swBlk:SetBodyHeight(136);
 		swBlk:Refresh();
 	end
 

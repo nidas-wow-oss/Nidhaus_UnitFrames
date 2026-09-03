@@ -204,6 +204,15 @@ function K.GetMeleeSwingBorderStyle()
 	return CurrentBorderStyle();
 end
 
+function K.SetMeleeSwingBorderStyle(style)
+	local v = (style == "None" and "None")
+		or (style == "Blizzard" and "Blizzard")
+		or "Tooltip";
+	K.SaveConfig("SwingTimerBorderStyle", v);
+	ApplyBorderStyle();
+	return v;
+end
+
 function K.CycleMeleeSwingBorderStyle()
 	local cur = CurrentBorderStyle();
 	local nxt = (cur == "Tooltip" and "None")

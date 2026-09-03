@@ -203,6 +203,15 @@ function K.GetAutoShotBorderStyle()
 	return CurrentBorderStyle();
 end
 
+function K.SetAutoShotBorderStyle(style)
+	local v = (style == "None" and "None")
+		or (style == "Blizzard" and "Blizzard")
+		or "Tooltip";
+	K.SaveConfig("AutoShotBorderStyle", v);
+	ApplyBorderStyle();
+	return v;
+end
+
 function K.CycleAutoShotBorderStyle()
 	local cur = CurrentBorderStyle();
 	local nxt = (cur == "Tooltip" and "None")
