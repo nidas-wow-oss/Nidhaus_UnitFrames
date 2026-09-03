@@ -55,6 +55,7 @@ local defaults = {
 
 	-- ARENA STYLE: "Default", "Custom", "Flat"
 	ArenaFrameStyle = "Custom",
+	ArenaBlizzardClassColor = false, -- color de clase en el estilo Blizzard de arena
 
 	-- FLAT STYLE OPTIONS
 	ArenaFlatMode = false,

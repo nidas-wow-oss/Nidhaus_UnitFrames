@@ -620,6 +620,12 @@ function K.PopulateArenaTab(panel)
 	local function OnStyleChange(value)
 		local isFlat = (value == "Flat");
 
+		-- La casilla de color de clase solo vive en el estilo Blizzard, y al
+		-- cambiar de estilo hay que repintar las barras: la regla de quien
+		-- lleva color depende justamente del estilo.
+		if K._UpdateArenaBlizzClassColorBox then K._UpdateArenaBlizzClassColorBox(); end
+		if K.ToggleClassColors then K.ToggleClassColors(); end
+
 		if isFlat and C.ArenaMirrorMode then
 			if K.ResetMirrorCastBars then K.ResetMirrorCastBars(); end
 		end
@@ -673,6 +679,39 @@ function K.PopulateArenaTab(panel)
 
 	local styleDDContainer = CreateDropdown(content, L["LABEL_ARENA_STYLE"] or "Arena Style", "ArenaFrameStyle",
 		styleOptions, 20, styleStartY, OnStyleChange);
+
+	-- Casilla de color de clase, pegada al desplegable.
+	--
+	-- En los estilos retocados el color de clase va SIEMPRE y no se
+	-- pregunta: ahi no es decoracion, es como distingues de un vistazo a
+	-- quien le estas pegando, y apagarlo deja los tres marcos iguales. En
+	-- el estilo Blizzard los marcos son los de fabrica y forzarlo los deja
+	-- distintos del resto de la interfaz, asi que ese caso se elige. Por lo
+	-- mismo la casilla solo se muestra con Blizzard puesto: en los demas
+	-- estilos no decidiria nada y seria una casilla mentirosa.
+	local blizzCCBox = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate");
+	blizzCCBox:SetPoint("TOPLEFT", 168, styleStartY - 12);
+	blizzCCBox:SetWidth(24); blizzCCBox:SetHeight(24);
+	blizzCCBox.text = blizzCCBox:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
+	blizzCCBox.text:SetPoint("LEFT", blizzCCBox, "RIGHT", 2, 0);
+	blizzCCBox.text:SetText(L["CB_ARENA_BLIZZ_CLASSCOLOR"] or "Class color");
+	blizzCCBox:SetScript("OnClick", function(self)
+		local checked = self:GetChecked() == 1 or self:GetChecked() == true;
+		K.SaveConfig("ArenaBlizzardClassColor", checked);
+		if K.ToggleClassColors then K.ToggleClassColors(checked); end
+	end);
+
+	local function UpdateBlizzClassColorBox()
+		if (C.ArenaFrameStyle or "Custom") == "Blizzard" then
+			blizzCCBox:SetChecked(C.ArenaBlizzardClassColor or false);
+			blizzCCBox:Show();
+		else
+			blizzCCBox:Hide();
+		end
+	end
+	UpdateBlizzClassColorBox();
+	-- La llama OnStyleChange, que se define mas arriba y no la tiene en scope.
+	K._UpdateArenaBlizzClassColorBox = UpdateBlizzClassColorBox;
 
 	-- Pet Style dropdown (a la derecha de Arena Style)
 	local petContainerRef;

@@ -27,10 +27,11 @@ local function unitClassColors(healthbar, unit)
 	--
 	-- CON UNA SALVEDAD: el estilo Blizzard. Ahi los marcos de arena son los
 	-- de fabrica, sin retocar, y forzarles el color de clase los deja
-	-- distintos de todo el resto de la interfaz de Blizzard. En ese estilo
-	-- se respeta la opcion como en cualquier otro marco.
+	-- distintos de todo el resto de la interfaz de Blizzard. Ese estilo, y
+	-- solo ese, tiene su propia casilla al lado del desplegable: si esta
+	-- tildada vuelve el color de clase, y si no manda la opcion general.
 	local isArena = unit and string.find(unit, "^arena%d") ~= nil
-		and C.ArenaFrameStyle ~= "Blizzard";
+		and (C.ArenaFrameStyle ~= "Blizzard" or C.ArenaBlizzardClassColor == true);
 
 	if C.classColor or isArena then
 		if not UnitIsConnected(unit) then
