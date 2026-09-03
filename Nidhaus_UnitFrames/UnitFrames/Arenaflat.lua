@@ -5,6 +5,30 @@ local _G, unpack = _G, unpack;
 local flatOriginals = {};
 local flatBackgrounds = {};
 
+-- ---------------------------------------------------------
+-- TEXTO FORZADO EN LAS BARRAS DE ARENA
+--
+-- Antes esto se hacia pisando el Hide del FontString
+-- (hbTS.Hide = function() end). Funcionaba, pero escribirle un campo a un
+-- objeto que cuelga de un marco protegido lo deja TAINTED para toda la
+-- sesion; despues el propio codigo de Blizzard, al pasar por
+-- TextStatusBar_UpdateTextString, se comia el corte del cliente. Eran 320
+-- "ArenaEnemyFrameNManaBar:Hide()" bloqueados en una sola arena, y el
+-- cartel amarillo con ellos.
+--
+-- Ahora no se bloquea nada: se deja que Blizzard oculte el texto y se lo
+-- vuelve a mostrar DESPUES, desde un hooksecurefunc. Un FontString no es
+-- un marco protegido, asi que mostrarlo no se bloquea nunca. Y la marca
+-- vive en una tabla nuestra, con el FontString de clave, sin escribirle
+-- nada encima.
+-- ---------------------------------------------------------
+local forcedTexts = {};
+
+hooksecurefunc("TextStatusBar_UpdateTextString", function(bar)
+	local ts = bar and bar.TextString;
+	if ts and forcedTexts[ts] then ts:Show(); end
+end);
+
 -- Compatibilidad con Cataclysm: definir MAX_ARENA_ENEMIES si no existe
 local MAX_ARENA_ENEMIES = MAX_ARENA_ENEMIES or 5;
 
@@ -168,41 +192,38 @@ function K.ApplyFlatStyle(arenaFrame, index)
 	-- Si está inactivo, respetamos el checkbox de Interface.
 	local forceText = C.ArenaFlatStatusText;
 
-	-- Guardar Hide original (una sola vez)
 	local hbTS = arenaFrame.healthbar.TextString;
 	local mbTS = arenaFrame.manabar.TextString;
-	if not hbTS._origHideFlat then hbTS._origHideFlat = hbTS.Hide; end
-	if not mbTS._origHideFlat then mbTS._origHideFlat = mbTS.Hide; end
 
 	if healthFont > 0 then
-		arenaFrame.healthbar.TextString:SetFont(font, healthFont, flags);
+		hbTS:SetFont(font, healthFont, flags);
 		if forceText then
-			hbTS.Hide = function() end;  -- Bloquear Hide de Blizzard
-			arenaFrame.healthbar.TextString:Show();
+			forcedTexts[hbTS] = true;
+			hbTS:Show();
 		else
-			hbTS.Hide = hbTS._origHideFlat;  -- Respetar Interface settings
+			forcedTexts[hbTS] = nil;
 			-- FIX: NO llamar :Show() aquí. Si lo hacemos, Blizzard lo oculta
 			-- en el siguiente tick via TextStatusBar_UpdateTextString() y se
 			-- produce un parpadeo visible (Show→Hide→Show→Hide cada frame).
 			-- Dejar que Blizzard decida según Interface > Status Text > Party.
 		end
 	else
-		hbTS.Hide = hbTS._origHideFlat;
-		arenaFrame.healthbar.TextString:Hide();
+		forcedTexts[hbTS] = nil;
+		hbTS:Hide();
 	end
 
 	if powerFont > 0 then
-		arenaFrame.manabar.TextString:SetFont(font, powerFont, flags);
+		mbTS:SetFont(font, powerFont, flags);
 		if forceText then
-			mbTS.Hide = function() end;  -- Bloquear Hide de Blizzard
-			arenaFrame.manabar.TextString:Show();
+			forcedTexts[mbTS] = true;
+			mbTS:Show();
 		else
-			mbTS.Hide = mbTS._origHideFlat;  -- Respetar Interface settings
+			forcedTexts[mbTS] = nil;
 			-- FIX: Mismo fix que healthbar — no forzar Show().
 		end
 	else
-		mbTS.Hide = mbTS._origHideFlat;
-		arenaFrame.manabar.TextString:Hide();
+		forcedTexts[mbTS] = nil;
+		mbTS:Hide();
 	end
 
 	-- ═══════════════════════════════════════════════════════════
@@ -312,11 +333,9 @@ function K.RemoveFlatStyle(index)
 	if orig.hbFont[1] then arenaFrame.healthbar.TextString:SetFont(unpack(orig.hbFont)); end
 	if orig.mbFont[1] then arenaFrame.manabar.TextString:SetFont(unpack(orig.mbFont)); end
 
-	-- FIX: Restaurar Hide original del TextString
-	local hbTS = arenaFrame.healthbar.TextString;
-	local mbTS = arenaFrame.manabar.TextString;
-	if hbTS._origHideFlat then hbTS.Hide = hbTS._origHideFlat; end
-	if mbTS._origHideFlat then mbTS.Hide = mbTS._origHideFlat; end
+	-- Se suelta el texto forzado: vuelve a mandar el ajuste de Blizzard.
+	forcedTexts[arenaFrame.healthbar.TextString] = nil;
+	forcedTexts[arenaFrame.manabar.TextString]   = nil;
 
 	arenaFrame.healthbar.TextString:Show();
 	arenaFrame.manabar.TextString:Show();

@@ -388,8 +388,31 @@ end);
 
 -- APPLY INDIVIDUAL PARTY POSITIONS (from saved)
 
+-- Los party frames son PROTEGIDOS: SetPoint, SetParent, ClearAllPoints y
+-- SetScale sobre ellos estan vedados en combate. Estas dos funciones se
+-- llaman al entrar al mundo, y si zonas a una arena que ya arranco (o te
+-- pegan en la puerta) el cliente corta cada llamada y los marcos quedan
+-- donde Blizzard los dejo, no donde vos los pusiste. Eso no es ruido: es
+-- la UI descolocada toda la pelea. Se postergan al fin del combate.
+local posPending, groupPending = false, false;
+
+local posWatcher = CreateFrame("Frame");
+posWatcher:RegisterEvent("PLAYER_REGEN_ENABLED");
+posWatcher:SetScript("OnEvent", function()
+	if posPending then
+		posPending = false;
+		K.ApplyIndividualPartyPositions();
+	end
+	if groupPending then
+		groupPending = false;
+		K.RestorePartyToGroup();
+	end
+end);
+
 function K.ApplyIndividualPartyPositions()
 	if not C.PartyIndividualMove then return; end
+	if InCombatLockdown() then posPending = true; return; end
+	posPending = false;
 
 	for i = 1, MAX_PARTY_MEMBERS do
 		local pf = _G["PartyMemberFrame"..i];
@@ -439,6 +462,9 @@ end
 
 -- Restaurar party frames al contenedor grupal
 function K.RestorePartyToGroup()
+	if InCombatLockdown() then groupPending = true; return; end
+	groupPending = false;
+
 	-- FIX: Si 3v3 está activo, restaurar a posiciones 3v3 en vez del container
 	if C.SetPositions and C.PartyMode3v3 and K.Apply3v3PartyMode then
 		K.Apply3v3PartyMode();

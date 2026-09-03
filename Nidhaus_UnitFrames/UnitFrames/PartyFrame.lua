@@ -225,16 +225,34 @@ end;
 -- Muestra / oculta los marcos de mascota de los COMPAÑEROS (no el tuyo).
 -- Ojo: no se tocan los anclajes; los marcos ocultos conservan su posicion,
 -- asi que el espaciado entre miembros no se mueve.
+-- OJO: los PartyMemberFrameNPetFrame son marcos PROTEGIDOS (cuelgan de los
+-- party frames, que heredan SecureUnitButtonTemplate), asi que Show y Hide
+-- sobre ellos estan vedados en combate.
+--
+-- Y esto se dispara con UNIT_PET, que en 3.3.5a no se puede filtrar por
+-- unidad: salta por CADA unidad en rango. En un BG eso son decenas de
+-- llamadas por pelea, todas cortadas por el cliente. Dos cambios:
+--   1) en combate se anota y se aplica al salir;
+--   2) solo se llama a Show/Hide cuando el estado CAMBIA de verdad. Antes
+--      se llamaba siempre, aunque el marco ya estuviera como corresponde,
+--      y una llamada que no hace nada igual se cuenta como accion
+--      bloqueada.
+local petPending = false;
+
 function K.ApplyPartyPetFrames()
+	if InCombatLockdown() then petPending = true; return; end
+	petPending = false;
+
 	local show = (C.PartyShowPetFrames ~= false);
 	for i = 1, 4 do
 		local pf = _G["PartyMemberFrame" .. i .. "PetFrame"];
 		if pf then
-			if show then
-				-- Solo se muestra si ese compañero TIENE mascota; si no,
-				-- apareceria un marco vacio.
-				if UnitExists("partypet" .. i) then pf:Show(); else pf:Hide(); end
-			else
+			-- Solo se muestra si ese compañero TIENE mascota; si no,
+			-- apareceria un marco vacio.
+			local want = show and UnitExists("partypet" .. i) and true or false;
+			if want and not pf:IsShown() then
+				pf:Show();
+			elseif (not want) and pf:IsShown() then
 				pf:Hide();
 			end
 		end
@@ -358,6 +376,8 @@ local petEvents = CreateFrame("Frame");
 petEvents:RegisterEvent("PLAYER_ENTERING_WORLD");
 petEvents:RegisterEvent("PARTY_MEMBERS_CHANGED");
 petEvents:RegisterEvent("UNIT_PET");
-petEvents:SetScript("OnEvent", function()
+petEvents:RegisterEvent("PLAYER_REGEN_ENABLED");
+petEvents:SetScript("OnEvent", function(_, event)
+	if event == "PLAYER_REGEN_ENABLED" and not petPending then return; end
 	if K.ApplyPartyPetFrames then K.ApplyPartyPetFrames(); end
 end);
