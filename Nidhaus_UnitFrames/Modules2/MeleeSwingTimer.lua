@@ -51,7 +51,8 @@ local bar = CreateFrame("StatusBar", "NUF_SwingBar", mover);
 bar:SetSize(BAR_WIDTH, BAR_HEIGHT);
 bar:SetPoint("CENTER", mover, "CENTER", 0, 0);
 bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar");
-bar:SetStatusBarColor(0.85, 0.25, 0.25);
+local BAR_R, BAR_G, BAR_B = 0.85, 0.25, 0.25;   -- el color propio de esta barra
+bar:SetStatusBarColor(BAR_R, BAR_G, BAR_B);
 bar:SetMinMaxValues(0, 1);
 bar:SetValue(1);
 
@@ -163,6 +164,50 @@ local function BorderTint(r, g, b, a)
 	end
 end
 
+
+-- El estilo Blizzard no es solo el marco.
+--
+-- La barra de casteo del jugador escribe en BLANCO (GameFontHighlight) y
+-- rellena con UI-CastingBar-Fill; esta barra escribia en DORADO
+-- (GameFontNormalSmall) sobre UI-StatusBar. Puestas una al lado de la
+-- otra, las letras eran de otro color y el relleno se veia mas apagado.
+-- Se leen en vivo, igual que el borde: si otro addon retextura la barra
+-- de casteo, el timer la acompaña. En los otros dos estilos vuelve a su
+-- aspecto propio, que es el que tenia siempre.
+local DEFAULT_FILL = "Interface\\TargetingFrame\\UI-StatusBar";
+
+local function ApplyLookForStyle(style)
+	local blizz = (style == "Blizzard");
+
+	local ref = _G.CastingBarFrameText;
+	if blizz and ref then
+		local f, size, flags = ref:GetFont();
+		if f then
+			textLeft:SetFont(f, size, flags);
+			textRight:SetFont(f, size, flags);
+		end
+		local r, g, b = ref:GetTextColor();
+		if r then
+			textLeft:SetTextColor(r, g, b);
+			textRight:SetTextColor(r, g, b);
+		end
+	else
+		textLeft:SetFontObject(GameFontNormalSmall);
+		textRight:SetFontObject(GameFontNormalSmall);
+	end
+
+	local cb  = _G.CastingBarFrame;
+	local cbt = cb and cb.GetStatusBarTexture and cb:GetStatusBarTexture();
+	local path = cbt and cbt.GetTexture and cbt:GetTexture();
+	if blizz and path then
+		bar:SetStatusBarTexture(path);
+	else
+		bar:SetStatusBarTexture(DEFAULT_FILL);
+	end
+	-- SetStatusBarTexture resetea el tinte: hay que reponerlo siempre.
+	bar:SetStatusBarColor(BAR_R, BAR_G, BAR_B);
+end
+
 local function ApplyBorderStyle()
 	local style = CurrentBorderStyle();
 	if castBorder then castBorder:Hide(); end
@@ -192,6 +237,8 @@ local function ApplyBorderStyle()
 			border:Show();   -- si la barra de casteo no existe todavia
 		end
 	end
+
+	ApplyLookForStyle(style);
 
 	if unlocked then
 		BorderTint(0, 0.8, 1, 1);

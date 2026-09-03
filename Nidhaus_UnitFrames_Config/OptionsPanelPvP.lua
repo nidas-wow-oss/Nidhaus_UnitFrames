@@ -8,26 +8,25 @@ local K, C, L = unpack(ns);
 -- Selector de estilo de borde: tres botones excluyentes con el activo
 -- resaltado, el mismo patron que el selector de estilo de marco de grupo.
 -- getFn devuelve el estilo actual, setFn lo cambia.
-local function BorderStyleSelector(parent, px, py, getFn, setFn)
-	local opts = {
-		{ value = "Tooltip",  text = L["BORDER_TOOLTIP"]  or "Tooltip" },
-		{ value = "None",     text = L["BORDER_NONE"]     or "No border" },
-		{ value = "Blizzard", text = L["BORDER_BLIZZARD"] or "Blizzard" },
-	};
-	local bw, bh, gap = 88, 22, 4;
+-- Selector de opciones excluyentes: una fila de botones donde el elegido
+-- queda azul y los otros apagados. Nacio para los tres estilos de borde de
+-- los timers; ahora tambien lo usa la posicion de las auras de la Power
+-- Bar, asi que las opciones y el titulo vienen por parametro.
+local function ChoiceSelector(parent, px, py, labelText, opts, getFn, setFn, bw)
+	bw = bw or 88;
+	local bh, gap = 22, 4;
 	local buttons = {};
 
 	local lbl = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 	lbl:SetPoint("TOPLEFT", px, py);
-	lbl:SetText((K.UI and K.UI.Label(L["BTN_BORDER_LABEL"] or "Border:"))
-		or (L["BTN_BORDER_LABEL"] or "Border:"));
+	lbl:SetText((K.UI and K.UI.Label(labelText)) or labelText);
 
 	local box = CreateFrame("Frame", nil, parent);
 	box:SetPoint("TOPLEFT", px, py - 16);
 	box:SetSize((#opts * bw) + ((#opts - 1) * gap), bh);
 
 	local function Refresh()
-		local cur = getFn() or "Tooltip";
+		local cur = getFn();
 		for _, b in ipairs(buttons) do
 			if b.value == cur then
 				b:SetBackdropColor(0.10, 0.35, 0.60, 0.90);
@@ -64,6 +63,14 @@ local function BorderStyleSelector(parent, px, py, getFn, setFn)
 	end
 	Refresh();
 	return box, Refresh;
+end
+
+local function BorderStyleSelector(parent, px, py, getFn, setFn)
+	return ChoiceSelector(parent, px, py, L["BTN_BORDER_LABEL"] or "Border:", {
+		{ value = "Tooltip",  text = L["BORDER_TOOLTIP"]  or "Tooltip" },
+		{ value = "None",     text = L["BORDER_NONE"]     or "No border" },
+		{ value = "Blizzard", text = L["BORDER_BLIZZARD"] or "Blizzard" },
+	}, function() return getFn() or "Tooltip"; end, setFn);
 end
 
 -- =========================================================
@@ -835,10 +842,20 @@ function K.BuildPvPSection(pane)
 			or "The health bar goes green > yellow > red as you lose health.",
 			function() if K.UpdatePowerBar then K.UpdatePowerBar(); end end);
 		by = by - 26;
+		SettingCB(pbBody, L["CB_POWERBAR_CLASSCOLOR"] or "Health bar in your class color",
+			"PowerBarHealthClassColor", 22, by, L["TIP_PowerBarClassColor"]
+			or "Paints the health bar with your class color instead of green. It wins over the gradient above.",
+			function() if K.UpdatePowerBar then K.UpdatePowerBar(); end end);
+		by = by - 26;
 		SettingCB(pbBody, L["CB_POWERBAR_HIDEFULL"] or "Hide it when full out of combat",
 			"PowerBarHideWhenFull", 22, by, L["TIP_PowerBarHideFull"]
 			or "Hides the bar while you are at full health and resource outside combat.",
 			function() if K.ApplyPowerBarHealth then K.ApplyPowerBarHealth(); end end);
+		by = by - 26;
+		SettingCB(pbBody, L["CB_POWERBAR_AURAS"] or "Show your buffs and debuffs",
+			"PowerBarShowAuras", 22, by, L["TIP_PowerBarAuras"]
+			or "Two rows of small icons: buffs on top, debuffs below. Unlike the Blizzard frame it shows all of them, not a chosen few.",
+			function() if K.ApplyPowerBarAuraToggle then K.ApplyPowerBarAuraToggle(); end end);
 
 		local function PBSlider(label, sx, sy, minV, maxV, step, getFn, setFn)
 			local s = CreateFrame("Slider", nil, pbBody, "OptionsSliderTemplate");
@@ -878,8 +895,27 @@ function K.BuildPvPSection(pane)
 		PBSlider(L["SLIDER_POWERBAR_HEIGHT"] or "Bar height", 26, by, 8, 40, 1,
 			function() return (K.GetPowerBarBarHeight and K.GetPowerBarBarHeight()) or 14; end,
 			function(v) if K.SavePowerBarBarHeight then K.SavePowerBarBarHeight(v); end end);
+		PBSlider(L["SLIDER_POWERBAR_AURASIZE"] or "Aura icon size", 260, by, 10, 32, 1,
+			function() return (K.GetPowerBarAuraSize and K.GetPowerBarAuraSize()) or 16; end,
+			function(v) if K.SavePowerBarAuraSize then K.SavePowerBarAuraSize(v); end end);
+		by = by - 52;
+		PBSlider(L["SLIDER_POWERBAR_AURAROW"] or "Auras per row", 26, by, 2, 16, 1,
+			function() return (K.GetPowerBarAuraPerRow and K.GetPowerBarAuraPerRow()) or 8; end,
+			function(v) if K.SavePowerBarAuraPerRow then K.SavePowerBarAuraPerRow(v); end end);
 
-		pbBlk:SetBodyHeight(math.abs(by) + 24);
+		-- Donde se cuelgan las dos filas. Botones angostos para que la fila
+		-- entera entre al lado de los sliders sin desbordar el cuerpo.
+		by = by - 42;
+		ChoiceSelector(pbBody, 26, by, L["BTN_AURAPOS_LABEL"] or "Auras:", {
+			{ value = "RIGHT",  text = L["AURAPOS_RIGHT"]  or "Right" },
+			{ value = "BOTTOM", text = L["AURAPOS_BOTTOM"] or "Below" },
+			{ value = "TOP",    text = L["AURAPOS_TOP"]    or "Above" },
+		},
+			function() return (K.GetPowerBarAuraPos and K.GetPowerBarAuraPos()) or "RIGHT"; end,
+			function(v) if K.SetPowerBarAuraPos then K.SetPowerBarAuraPos(v); end end,
+			74);
+
+		pbBlk:SetBodyHeight(math.abs(by) + 62);
 		pbBlk:Refresh();
 	end
 

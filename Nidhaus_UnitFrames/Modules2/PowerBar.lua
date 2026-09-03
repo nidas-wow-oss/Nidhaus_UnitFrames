@@ -31,6 +31,18 @@ local DB;
 
 -- Color por TIPO de recurso, no por clase (0=mana 1=rabia 2=foco
 -- 3=energia 6=poder runico). Fallback: azul mana.
+-- Color de la clase del personaje, para la barra de vida. Se resuelve una
+-- sola vez: nadie cambia de clase a mitad de sesion. CUSTOM_CLASS_COLORS es
+-- el estandar que exponen los addons que retocan la paleta (ClassColors,
+-- phanx...); si no esta, manda la tabla de Blizzard.
+local CLASS_R, CLASS_G, CLASS_B;
+do
+	local _, class = UnitClass("player");
+	local t = (CUSTOM_CLASS_COLORS and CUSTOM_CLASS_COLORS[class])
+		or (RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]);
+	if t then CLASS_R, CLASS_G, CLASS_B = t.r, t.g, t.b; end
+end
+
 local POWER_COLORS = {
 	[0] = { 0.20, 0.35, 0.90 },   -- Mana
 	[1] = { 0.85, 0.15, 0.15 },   -- Rabia
@@ -93,6 +105,184 @@ local text = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 text:SetPoint("CENTER", bar, "CENTER", 0, 0);
 text:SetText("0 / 0");
 
+
+-- =========================================================
+-- AURAS
+--
+-- Dos filas de iconos chicos colgadas del marco: arriba los buffs,
+-- abajo los debuffs. El marco de Blizzard solo muestra los que el
+-- elige; aca van TODOS los que tengas, hasta el tope por fila que
+-- marque el slider.
+--
+-- La posicion es elegible entre tres (derecha, abajo, arriba) con el
+-- mismo selector de botones que usan los estilos de los timers.
+--
+-- Los iconos son hijos del marco, asi que se ocultan y se escalan con
+-- el: no hay que acordarse de esconderlos por separado.
+-- =========================================================
+local DEF_AURA_SIZE, DEF_AURA_PERROW = 16, 8;
+local AURA_GAP, AURA_MARGIN = 2, 4;
+
+-- Los mismos colores que usa Blizzard para el borde de los debuffs.
+local DEBUFF_COLORS = {
+	Magic   = { 0.20, 0.60, 1.00 },
+	Curse   = { 0.60, 0.00, 1.00 },
+	Disease = { 0.60, 0.40, 0.00 },
+	Poison  = { 0.00, 0.60, 0.00 },
+};
+local DEBUFF_DEFAULT = { 0.80, 0.10, 0.10 };
+local BUFF_EDGE      = { 0.25, 0.25, 0.25 };
+
+local buffRow   = CreateFrame("Frame", nil, frame);
+local debuffRow = CreateFrame("Frame", nil, frame);
+local buffIcons, debuffIcons = {}, {};
+
+local function MakeIcon(parent)
+	local f = CreateFrame("Frame", nil, parent);
+
+	-- Un cuadrado un pixel mas grande por detras: al quedar tapado por el
+	-- icono, lo unico que se ve es el filo. Sale mas barato que un backdrop
+	-- y en 3.3.5a los Button no aceptan SetBackdrop.
+	f.edge = f:CreateTexture(nil, "BACKGROUND");
+	f.edge:SetTexture("Interface\\Buttons\\WHITE8X8");
+	f.edge:SetPoint("TOPLEFT",     f, "TOPLEFT",     -1,  1);
+	f.edge:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT",  1, -1);
+
+	f.icon = f:CreateTexture(nil, "ARTWORK");
+	f.icon:SetAllPoints(f);
+	f.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93);   -- sin el borde del arte
+
+	f.cd = CreateFrame("Cooldown", nil, f, "CooldownFrameTemplate");
+	f.cd:SetAllPoints(f);
+
+	f.count = f:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall");
+	f.count:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 1, 0);
+
+	f:Hide();
+	return f;
+end
+
+local function EnsureIcons(list, parent, n)
+	for i = #list + 1, n do
+		list[i] = MakeIcon(parent);
+	end
+end
+
+-- Acomoda las dos filas segun la posicion elegida. Siempre en el mismo
+-- orden de lectura: los buffs por encima de los debuffs, vayan donde vayan.
+local function LayoutAuras()
+	local db   = DB();
+	local size = db.auraSize   or DEF_AURA_SIZE;
+	local per  = db.auraPerRow or DEF_AURA_PERROW;
+	local pos  = C.PowerBarAuraPos or "RIGHT";
+	local rowW = (per * size) + ((per - 1) * AURA_GAP);
+
+	EnsureIcons(buffIcons,   buffRow,   per);
+	EnsureIcons(debuffIcons, debuffRow, per);
+
+	for _, row in ipairs({ buffRow, debuffRow }) do
+		row:SetWidth(rowW);
+		row:SetHeight(size);
+	end
+
+	for _, list in ipairs({ buffIcons, debuffIcons }) do
+		for i, ic in ipairs(list) do
+			ic:SetWidth(size);
+			ic:SetHeight(size);
+			ic:ClearAllPoints();
+			ic:SetPoint("LEFT", ic:GetParent(), "LEFT", (i - 1) * (size + AURA_GAP), 0);
+			if i > per then ic:Hide(); end
+		end
+	end
+
+	buffRow:ClearAllPoints();
+	debuffRow:ClearAllPoints();
+
+	if pos == "BOTTOM" then
+		buffRow:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -AURA_MARGIN);
+		debuffRow:SetPoint("TOPLEFT", buffRow, "BOTTOMLEFT", 0, -AURA_GAP);
+	elseif pos == "TOP" then
+		-- Subiendo: la fila pegada al marco es la de debuffs, y los buffs
+		-- quedan por encima. Asi el orden buffs-arriba se mantiene.
+		debuffRow:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", 0, AURA_MARGIN);
+		buffRow:SetPoint("BOTTOMLEFT", debuffRow, "TOPLEFT", 0, AURA_GAP);
+	else
+		buffRow:SetPoint("TOPLEFT", frame, "TOPRIGHT", AURA_MARGIN, 0);
+		debuffRow:SetPoint("TOPLEFT", buffRow, "BOTTOMLEFT", 0, -AURA_GAP);
+	end
+end
+
+local function FillRow(list, getter, per, isDebuff)
+	local shown = 0;
+	for i = 1, per do
+		local ic = list[i];
+		if not ic then break; end
+		local name, _, icon, count, dtype, duration, expires = getter("player", i);
+		if name and icon then
+			ic.icon:SetTexture(icon);
+
+			local col = isDebuff
+				and (DEBUFF_COLORS[dtype or ""] or DEBUFF_DEFAULT)
+				or BUFF_EDGE;
+			ic.edge:SetVertexColor(col[1], col[2], col[3]);
+
+			if count and count > 1 then
+				ic.count:SetText(count);
+				ic.count:Show();
+			else
+				ic.count:Hide();
+			end
+
+			-- Las auras sin duracion (las de siempre) no llevan barrido.
+			if duration and duration > 0 and expires then
+				ic.cd:Show();
+				CooldownFrame_SetTimer(ic.cd, expires - duration, duration, 1);
+			else
+				ic.cd:Hide();
+			end
+
+			ic:Show();
+			shown = shown + 1;
+		else
+			ic:Hide();
+		end
+	end
+	return shown;
+end
+
+local function UpdateAuras()
+	if not C.PowerBarShowAuras then
+		buffRow:Hide();
+		debuffRow:Hide();
+		return;
+	end
+	local per = DB().auraPerRow or DEF_AURA_PERROW;
+	FillRow(buffIcons,   UnitBuff,   per, false);
+	FillRow(debuffIcons, UnitDebuff, per, true);
+	buffRow:Show();
+	debuffRow:Show();
+end
+
+-- Lo que necesita el panel.
+function K.GetPowerBarAuraSize()   return DB().auraSize   or DEF_AURA_SIZE;   end
+function K.GetPowerBarAuraPerRow() return DB().auraPerRow or DEF_AURA_PERROW; end
+function K.GetPowerBarAuraPos()    return C.PowerBarAuraPos or "RIGHT";       end
+
+function K.SavePowerBarAuraSize(v)   DB().auraSize   = v; LayoutAuras(); UpdateAuras(); end
+function K.SavePowerBarAuraPerRow(v) DB().auraPerRow = v; LayoutAuras(); UpdateAuras(); end
+
+function K.SetPowerBarAuraPos(v)
+	local val = (v == "TOP" and "TOP") or (v == "BOTTOM" and "BOTTOM") or "RIGHT";
+	K.SaveConfig("PowerBarAuraPos", val);
+	LayoutAuras();
+	UpdateAuras();
+end
+
+function K.ApplyPowerBarAuras()
+	LayoutAuras();
+	UpdateAuras();
+end
+
 -- Acomoda las barras segun si se muestra la vida o no, y ajusta la altura
 -- del marco (una barra = fino; con vida = dos barras apiladas).
 local function ApplyBarLayout()
@@ -116,6 +306,9 @@ local function ApplyBarLayout()
 		bar:SetHeight(barH);
 		frame:SetHeight(PAD + barH + PAD);
 	end
+	-- Las filas de auras cuelgan de los bordes del marco: si cambia de alto
+	-- hay que reanclarlas.
+	LayoutAuras();
 end
 K.ApplyPowerBarLayout = ApplyBarLayout;
 
@@ -256,7 +449,12 @@ local function UpdateBar()
 			healthBar:SetValue(hp);
 			-- Color segun el porcentaje: se pone amarilla y despues roja a
 			-- medida que baja, para que se note de reojo.
-			if C.PowerBarHealthGradient then
+			-- Orden de prioridad: color de clase > degradado > verde fijo.
+			-- El de clase es fijo (sos siempre la misma clase), asi que se
+			-- calcula una sola vez al cargar y no en cada tick.
+			if C.PowerBarHealthClassColor and CLASS_R then
+				healthBar:SetStatusBarColor(CLASS_R, CLASS_G, CLASS_B);
+			elseif C.PowerBarHealthGradient then
 				healthBar:SetStatusBarColor(HealthColor(hp / hpmax));
 			else
 				healthBar:SetStatusBarColor(0.15, 0.75, 0.15);   -- verde fijo
@@ -298,6 +496,9 @@ local function RegisterPowerEvents()
 	end
 	events:RegisterEvent("PLAYER_REGEN_DISABLED");
 	events:RegisterEvent("PLAYER_REGEN_ENABLED");
+	-- Las auras solo se escuchan si se estan mostrando: UNIT_AURA tampoco
+	-- es barato, y en 3.3.5a dispara para cualquier unidad.
+	if C.PowerBarShowAuras then events:RegisterEvent("UNIT_AURA"); end
 	-- Los eventos de vida (tambien ruidosos) solo se enganchan si hacen
 	-- falta: con la barra de vida activada, o con el auto-ocultar (que
 	-- necesita enterarse cuando perdes vida para volver a mostrarse).
@@ -311,11 +512,13 @@ events:SetScript("OnEvent", function(self, event, unit)
 	if event == "PLAYER_ENTERING_WORLD" then
 		RestorePosition();
 		UpdateBar();
+		UpdateAuras();
 		return;
 	end
 	-- Los eventos UNIT_* traen la unidad como primer arg: filtramos a player.
 	-- Los de combate (PLAYER_REGEN_*) no traen unidad y pasan directo.
 	if unit and unit ~= "player" then return; end
+	if event == "UNIT_AURA" then UpdateAuras(); return; end
 	UpdateBar();
 end);
 
@@ -327,7 +530,19 @@ function K.ApplyPowerBarHealth()
 		events:UnregisterAllEvents();
 		RegisterPowerEvents();
 		UpdateBar();
+		UpdateAuras();
 	end
+end
+
+-- La llama el checkbox de auras del panel: re-registra UNIT_AURA (o lo
+-- suelta) y redibuja.
+function K.ApplyPowerBarAuraToggle()
+	if enabled then
+		events:UnregisterAllEvents();
+		RegisterPowerEvents();
+	end
+	LayoutAuras();
+	UpdateAuras();
 end
 
 -- ---------------------------------------------------------
@@ -362,6 +577,7 @@ K.RegisterModule("PowerBar", {
 		RegisterPowerEvents();
 		RestorePosition();
 		UpdateBar();
+		UpdateAuras();
 	end,
 	onDisable = function()
 		enabled = false;

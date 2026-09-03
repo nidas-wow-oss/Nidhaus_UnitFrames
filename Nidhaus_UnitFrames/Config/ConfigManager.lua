@@ -186,6 +186,9 @@ local defaults = {
 	PowerBarShowHealth = false,  -- mostrar tambien una barra de vida arriba
 	PowerBarHealthGradient = true, -- la barra de vida cambia verde/amarillo/rojo
 	PowerBarHideWhenFull = false,  -- ocultarla a full vida y recurso fuera de combate
+	PowerBarHealthClassColor = false, -- la barra de vida con el color de tu clase
+	PowerBarShowAuras = false,     -- dos filas de iconos: buffs arriba, debuffs abajo
+	PowerBarAuraPos = "RIGHT",     -- donde van esas filas: RIGHT / BOTTOM / TOP
 
 	-- UNIT NAME COLOR: "Default" | "White" | "Class"
 	UnitNameColorMode = "Default",
