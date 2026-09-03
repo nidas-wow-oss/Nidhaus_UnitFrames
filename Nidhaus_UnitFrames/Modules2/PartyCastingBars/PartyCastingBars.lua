@@ -78,9 +78,11 @@ local PCB_IconsEnabled = true;
 local PCB_Parented     = true;
 local PCB_Scale        = 0.7;
 
--- Aspecto de la barra: "Arcane" es el de siempre (borde de tooltip y flash
--- propio) y "Blizzard" deja el que trae CastingBarFrameTemplate, que es el
--- mismo que usan las barras de casteo de arena.
+-- Aspecto de la barra, tres valores:
+--   "Arcane"    el de siempre: borde de tooltip y flash propio.
+--   "Blizzard"  el que trae CastingBarFrameTemplate, con su marco.
+--   "Arena"     sin marco, como las barras de casteo de los marcos de
+--               arena, cuyo template no dibuja borde ninguno.
 local PCB_BarStyle     = "Arcane";
 
 --------------------------------------------------
@@ -122,7 +124,8 @@ local function PCB_LoadSaved()
 	if type(db.scale)    == "number"  then PCB_Scale        = db.scale;    end
 	if type(db.icons)    == "boolean" then PCB_IconsEnabled = db.icons;    end
 	if type(db.parented) == "boolean" then PCB_Parented     = db.parented; end
-	if db.barStyle == "Blizzard" or db.barStyle == "Arcane" then
+	if db.barStyle == "Blizzard" or db.barStyle == "Arcane"
+		or db.barStyle == "Arena" then
 		PCB_BarStyle = db.barStyle;
 	end
 
@@ -399,7 +402,18 @@ function PartyCastingBars.ApplyBarStyle(bar)
 	PCB_CaptureDefaultLook(bar, border, flash);
 	local d = bar._pcbDefaultLook or {};
 
-	if PCB_BarStyle == "Blizzard" then
+	if PCB_BarStyle == "Arena" then
+		-- Sin marco: el template de las barras de arena no dibuja borde.
+		-- El flash sí se conserva, que es lo que avisa que termino el casteo.
+		if border then border:Hide(); end
+		if flash and d.flashTex then
+			flash:SetTexture(d.flashTex);
+			flash:SetWidth(d.flashW);
+			flash:SetHeight(d.flashH);
+			PCB_RestorePoints(flash, d.flashPts);
+		end
+	elseif PCB_BarStyle == "Blizzard" then
+		if border then border:Show(); end
 		if border and d.borderTex then
 			border:SetTexture(d.borderTex);
 			border:SetWidth(d.borderW);
@@ -414,6 +428,7 @@ function PartyCastingBars.ApplyBarStyle(bar)
 		end
 	else
 		if border then
+			border:Show();
 			border:SetTexture("Interface\\Tooltips\\UI-StatusBar-Border");
 			border:SetWidth(202);
 			border:SetHeight(28);
@@ -435,8 +450,18 @@ end
 
 function PartyCastingBars.GetBarStyle() return PCB_BarStyle; end
 
+function PartyCastingBars.CycleBarStyle()
+	local nxt = (PCB_BarStyle == "Arcane" and "Blizzard")
+		or (PCB_BarStyle == "Blizzard" and "Arena")
+		or "Arcane";
+	PartyCastingBars.SetBarStyle(nxt);
+	return nxt;
+end
+
 function PartyCastingBars.SetBarStyle(value)
-	PCB_BarStyle = (value == "Blizzard") and "Blizzard" or "Arcane";
+	PCB_BarStyle = (value == "Blizzard" and "Blizzard")
+		or (value == "Arena" and "Arena")
+		or "Arcane";
 	PCB_DB().barStyle = PCB_BarStyle;
 	for i, barFrame in ipairs(PartyCastingBars.Bars) do
 		PartyCastingBars.ApplyBarStyle(barFrame);

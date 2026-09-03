@@ -165,12 +165,23 @@ local function Build()
 		function() return PartyCastingBars.GetParented(); end,
 		function(v) PartyCastingBars.SetParents(v); end);
 
-	-- Marcada = el borde y el flash que trae el template de Blizzard, o sea
-	-- el mismo aspecto que las barras de casteo de arena.
-	menu.styleCB = MakeCheck("PCB_MenuStyleCB", -136,
-		L["PCB_CB_BLIZZ_STYLE"] or "Blizzard style (same as arena)",
-		function() return PartyCastingBars.GetBarStyle() == "Blizzard"; end,
-		function(v) PartyCastingBars.SetBarStyle(v and "Blizzard" or "Arcane"); end);
+	-- Estilo de la barra: cicla entre los tres.
+	local function StyleText()
+		local st = PartyCastingBars.GetBarStyle();
+		local name = (st == "Blizzard" and (L["PCB_STYLE_BLIZZ"] or "Blizzard"))
+			or (st == "Arena" and (L["PCB_STYLE_ARENA"] or "Arena (no border)"))
+			or (L["PCB_STYLE_ARCANE"] or "Arcane");
+		return string.format(L["PCB_STYLE_LABEL"] or "Bar style: %s", name);
+	end
+	menu.styleBtn = CreateFrame("Button", "PCB_MenuStyleBtn", menu, "UIPanelButtonTemplate");
+	menu.styleBtn:SetPoint("TOPLEFT", 12, -136);
+	menu.styleBtn:SetSize(230, 22);
+	menu.styleBtn:SetText(StyleText());
+	menu.styleBtn:SetScript("OnClick", function(self)
+		PartyCastingBars.CycleBarStyle();
+		self:SetText(StyleText());
+	end);
+	menu.StyleText = StyleText;
 
 	local sep1 = menu:CreateTexture(nil, "ARTWORK");
 	sep1:SetTexture(1, 1, 1, 0.08);
@@ -301,7 +312,7 @@ function PartyCastingBars.RefreshMenu()
 
 	menu.iconCB:SetChecked(PartyCastingBars.GetIcons() and true or false);
 	menu.parentCB:SetChecked(PartyCastingBars.GetParented() and true or false);
-	menu.styleCB:SetChecked(PartyCastingBars.GetBarStyle() == "Blizzard");
+	if menu.styleBtn and menu.StyleText then menu.styleBtn:SetText(menu.StyleText()); end
 
 	for reaction, types in pairs(swatches) do
 		for typeString, fill in pairs(types) do

@@ -5,6 +5,14 @@
 local ns = _G.NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
+-- Nombre legible del estilo de borde, para los botones que lo ciclan.
+local function BorderStyleText(style)
+	local name = (style == "None" and (L["BORDER_NONE"] or "None (like arena)"))
+		or (style == "Blizzard" and (L["BORDER_BLIZZARD"] or "Blizzard casting bar"))
+		or (L["BORDER_TOOLTIP"] or "Tooltip");
+	return string.format(L["BTN_BORDER_LABEL"] or "Border: %s", name);
+end
+
 -- =========================================================
 -- OptionsPanelPvP.lua
 -- Pestaña PvP.
@@ -410,7 +418,7 @@ local CLASS_MODULES = {
 		y = y - 26 - (asH or 0);
 
 		-- Cuerpo desplegable con la unica opcion de la barra: el borde,
-		-- entre el de tooltip y sin marco.
+		-- que cicla entre tooltip, sin marco y barra de casteo.
 		local asBody = K.UI.Collapsible(pane, x, y, 440, 26, function()
 			return K.IsModuleEnabled and K.IsModuleEnabled("AutoShotTimer");
 		end);
@@ -418,15 +426,12 @@ local CLASS_MODULES = {
 
 		local asBorder = CreateFrame("Button", nil, asBody, "UIPanelButtonTemplate");
 		asBorder:SetPoint("TOPLEFT", 22, 0);
-		asBorder:SetSize(180, 22);
-		asBorder:SetText((K.GetAutoShotBorderStyle and K.GetAutoShotBorderStyle() == "None")
-			and (L["BTN_BORDER_TOOLTIP"] or "Tooltip border")
-			or  (L["BTN_BORDER_NONE"] or "No border (like arena)"));
+		asBorder:SetSize(210, 22);
+		asBorder:SetText(BorderStyleText(
+			(K.GetAutoShotBorderStyle and K.GetAutoShotBorderStyle()) or "Tooltip"));
 		asBorder:SetScript("OnClick", function(self)
-			if not K.ToggleAutoShotBorderStyle then return; end
-			local on = K.ToggleAutoShotBorderStyle();
-			self:SetText(on and (L["BTN_BORDER_TOOLTIP"] or "Tooltip border")
-				or (L["BTN_BORDER_NONE"] or "No border (like arena)"));
+			if not K.CycleAutoShotBorderStyle then return; end
+			self:SetText(BorderStyleText(K.CycleAutoShotBorderStyle()));
 		end);
 
 		y = y - 32;
@@ -889,19 +894,16 @@ function K.BuildPvPSection(pane)
 			RefreshSwingScale();
 		end);
 
-		-- Alterna entre el borde de tooltip de siempre y sin marco, que es
-		-- como se ven las barras de casteo de los marcos de arena.
+		-- Cicla entre los tres bordes: tooltip, sin marco (como arena) y
+		-- el de la barra de casteo de Blizzard.
 		local swBorder = CreateFrame("Button", nil, swBody, "UIPanelButtonTemplate");
 		swBorder:SetPoint("TOPLEFT", 24, -84);
-		swBorder:SetSize(180, 22);
-		swBorder:SetText((K.GetMeleeSwingBorderStyle and K.GetMeleeSwingBorderStyle() == "None")
-			and (L["BTN_BORDER_TOOLTIP"] or "Tooltip border")
-			or  (L["BTN_BORDER_NONE"] or "No border (like arena)"));
+		swBorder:SetSize(210, 22);
+		swBorder:SetText(BorderStyleText(
+			(K.GetMeleeSwingBorderStyle and K.GetMeleeSwingBorderStyle()) or "Tooltip"));
 		swBorder:SetScript("OnClick", function(self)
-			if not K.ToggleMeleeSwingBorderStyle then return; end
-			local on = K.ToggleMeleeSwingBorderStyle();
-			self:SetText(on and (L["BTN_BORDER_TOOLTIP"] or "Tooltip border")
-				or (L["BTN_BORDER_NONE"] or "No border (like arena)"));
+			if not K.CycleMeleeSwingBorderStyle then return; end
+			self:SetText(BorderStyleText(K.CycleMeleeSwingBorderStyle()));
 		end);
 
 		swBlk:SetBodyHeight(116);

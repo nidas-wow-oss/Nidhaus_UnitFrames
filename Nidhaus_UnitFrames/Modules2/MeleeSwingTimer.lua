@@ -132,43 +132,86 @@ local function HideBar()
 end
 
 -- ---------------------------------------------------------
--- Estilo del borde
+-- Estilo del borde: tres modos
 --
--- Dos opciones: el borde de tooltip de siempre, o sin marco, que es como
--- se ven las barras de casteo de los marcos de arena — el template de
--- Blizzard para esas no dibuja borde ninguno.
+--   Tooltip   el de siempre, borde gris de tooltip.
+--   None      sin marco, como las barras de casteo de los marcos de
+--             arena, cuyo template no dibuja borde ninguno.
+--   Blizzard  el borde de la barra de casteo del jugador. La textura y
+--             las medidas se leen en vivo de CastingBarFrame y se aplican
+--             a escala: esta barra mide 195x14 y aquella 195x13, asi que
+--             calza, y si otro modulo la retextura el timer la acompaña.
 --
--- Sin marco no se pierde el modo mover: el recuadro celeste que lo indica
--- es unlockOverlay, que va por fuera de la barra y no depende del borde.
+-- Sin marco no se pierde el modo mover: lo indica unlockOverlay, que va
+-- por fuera de la barra y no depende del borde.
 -- ---------------------------------------------------------
+local castBorder;   -- textura del modo Blizzard, se crea recien si se pide
+
+local function CurrentBorderStyle()
+	local v = C.SwingTimerBorderStyle;
+	if v == "None" or v == "Blizzard" or v == "Tooltip" then return v; end
+	-- Compatibilidad con la opcion booleana que hubo antes.
+	if C.SwingTimerBorderless == true then return "None"; end
+	return "Tooltip";
+end
+
 local function BorderTint(r, g, b, a)
-	if border:IsShown() then
+	if castBorder and castBorder:IsShown() then
+		castBorder:SetVertexColor(r, g, b, a);
+	elseif border:IsShown() then
 		border:SetBackdropBorderColor(r, g, b, a);
 	end
 end
 
 local function ApplyBorderStyle()
-	if C.SwingTimerBorderless == true then
-		border:Hide();
-	else
+	local style = CurrentBorderStyle();
+	if castBorder then castBorder:Hide(); end
+	border:Hide();
+
+	if style == "Tooltip" then
 		border:Show();
-		if unlocked then
-			border:SetBackdropBorderColor(0, 0.8, 1, 1);
+	elseif style == "Blizzard" then
+		local src = _G.CastingBarFrameBorder;
+		local ref = _G.CastingBarFrame;
+		if src and ref and (ref:GetWidth() or 0) > 0 and (ref:GetHeight() or 0) > 0 then
+			if not castBorder then
+				castBorder = bar:CreateTexture(nil, "OVERLAY");
+			end
+			castBorder:SetTexture(src:GetTexture());
+			castBorder:SetWidth(BAR_WIDTH   * (src:GetWidth()  / ref:GetWidth()));
+			castBorder:SetHeight(BAR_HEIGHT * (src:GetHeight() / ref:GetHeight()));
+			castBorder:ClearAllPoints();
+			-- El borde de casteo no va centrado: deja aire arriba para el
+			-- texto. Se copia ese corrimiento, a escala de esta barra.
+			local _, sy = src:GetCenter();
+			local _, ry = ref:GetCenter();
+			local dy = (sy and ry) and ((sy - ry) * (BAR_HEIGHT / ref:GetHeight())) or 0;
+			castBorder:SetPoint("CENTER", bar, "CENTER", 0, dy);
+			castBorder:Show();
 		else
-			border:SetBackdropBorderColor(0.6, 0.6, 0.6, 0.9);
+			border:Show();   -- si la barra de casteo no existe todavia
 		end
+	end
+
+	if unlocked then
+		BorderTint(0, 0.8, 1, 1);
+	else
+		BorderTint(0.6, 0.6, 0.6, 0.9);
 	end
 end
 
 function K.GetMeleeSwingBorderStyle()
-	return (C.SwingTimerBorderless == true) and "None" or "Tooltip";
+	return CurrentBorderStyle();
 end
 
-function K.ToggleMeleeSwingBorderStyle()
-	local v = not (C.SwingTimerBorderless == true);
-	K.SaveConfig("SwingTimerBorderless", v);
+function K.CycleMeleeSwingBorderStyle()
+	local cur = CurrentBorderStyle();
+	local nxt = (cur == "Tooltip" and "None")
+		or (cur == "None" and "Blizzard")
+		or "Tooltip";
+	K.SaveConfig("SwingTimerBorderStyle", nxt);
 	ApplyBorderStyle();
-	return v;
+	return nxt;
 end
 
 local function Lock()

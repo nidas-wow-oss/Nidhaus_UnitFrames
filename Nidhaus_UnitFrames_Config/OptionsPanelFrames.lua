@@ -558,6 +558,19 @@ function K.PopulateFramesTab(panel)
 	-- ══════════════════════════════════════════════════════
 	local py = -14;
 
+	-- Modo prueba, primero de todo: es lo que se aprieta ANTES de tocar
+	-- cualquier otra cosa de esta pestaña, porque sin grupo real no hay
+	-- marcos que mirar mientras elegis estilo, escala o posicion.
+	-- No depende del 3v3 ni de ningun estilo: sirve para todos.
+	local testBtn = CreateFrame("Button", nil, paneParty, "UIPanelButtonTemplate");
+	testBtn:SetPoint("TOPLEFT", x, py);
+	testBtn:SetSize(180, 22);
+	testBtn:SetText(L["BTN_PARTY_TEST"] or "Test mode (4 fake members)");
+	testBtn:SetScript("OnClick", function()
+		if K.TogglePartyTestMode then K.TogglePartyTestMode(); end
+	end);
+	py = py - 32;
+
 	-- ── ESTILO DE LOS MARCOS (excluyente) ──
 	FHeader(paneParty, L["HEADER_PARTY_STYLE"] or "Frame Style", x, py);
 	py = py - 20;
@@ -864,21 +877,9 @@ function K.PopulateFramesTab(panel)
 	end);
 	cb3v3:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 
-	-- Boton de modo prueba: sin grupo real no se pueden acomodar
-	-- El modo prueba NO depende del 3v3: sirve para cualquier estilo. Al
-	-- lado del checkbox parecia una opcion suya, asi que va en su renglon.
-	local testBtn = CreateFrame("Button", nil, paneParty, "UIPanelButtonTemplate");
-	testBtn:SetPoint("TOPLEFT", cb3v3, "BOTTOMLEFT", 2, -6);
-	testBtn:SetSize(180, 22);
-	testBtn:SetText(L["BTN_PARTY_TEST"] or "Test mode (4 fake members)");
-	testBtn:SetScript("OnClick", function()
-		if K.TogglePartyTestMode then K.TogglePartyTestMode(); end
-	end);
-
 	-- ── Sliders chicos por miembro (solo con 3v3 activo) ──
 	local mini = CreateFrame("Frame", nil, paneParty);
-	-- Cuelga del boton de prueba, que ahora esta debajo del checkbox.
-	mini:SetPoint("TOPLEFT", testBtn, "BOTTOMLEFT", -2, -12);
+	mini:SetPoint("TOPLEFT", cb3v3, "BOTTOMLEFT", 0, -12);
 	mini:SetSize(460, 58);
 
 	for i = 1, 4 do
