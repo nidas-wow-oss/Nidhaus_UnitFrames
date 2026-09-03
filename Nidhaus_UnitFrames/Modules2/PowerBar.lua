@@ -159,6 +159,13 @@ local DEBUFF_COLORS = {
 };
 local DEBUFF_DEFAULT = { 0.80, 0.10, 0.10 };
 
+-- Los buffs tambien llevan borde, pero NEGRO. El primero que puse era gris
+-- 0.25 y sobre fondo oscuro se leia como un filo blanco; el icono ya viene
+-- recortado (SetTexCoord le saca su propio marco), asi que sin borde queda
+-- flotando. Negro le devuelve el filo sin que se note como una linea de
+-- color.
+local BUFF_EDGE = { 0, 0, 0 };
+
 local buffRow   = CreateFrame("Frame", nil, frame);
 local debuffRow = CreateFrame("Frame", nil, frame);
 local buffIcons, debuffIcons = {}, {};
@@ -183,9 +190,8 @@ local function MakeIcon(parent)
 	end);
 
 	-- Un cuadrado un pixel mas grande por detras: al quedar tapado por el
-	-- icono, lo unico que se ve es el filo. Solo lo usan los debuffs, para
-	-- el color del tipo; los buffs van pelados, como en los marcos de
-	-- banda, que no les dibujan ningun borde.
+	-- icono, lo unico que se ve es el filo. Negro en los buffs, del color
+	-- del tipo en los debuffs.
 	f.edge = f:CreateTexture(nil, "BACKGROUND");
 	f.edge:SetTexture("Interface\\Buttons\\WHITE8X8");
 	f.edge:SetPoint("TOPLEFT",     f, "TOPLEFT",     -1,  1);
@@ -276,15 +282,13 @@ local function FillRow(list, filter, per)
 			ic.spell = name;
 			ic.icon:SetTexture(icon);
 
-			-- Borde solo en los debuffs, con el color de su tipo. Los buffs
-			-- van pelados: los marcos de banda no les dibujan ninguno.
-			if isDebuff then
-				local col = DEBUFF_COLORS[dtype or ""] or DEBUFF_DEFAULT;
-				ic.edge:SetVertexColor(col[1], col[2], col[3]);
-				ic.edge:Show();
-			else
-				ic.edge:Hide();
-			end
+			-- Borde en los dos: negro en los buffs, del color del tipo en los
+			-- debuffs, con la misma paleta que usa Blizzard.
+			local col = isDebuff
+				and (DEBUFF_COLORS[dtype or ""] or DEBUFF_DEFAULT)
+				or BUFF_EDGE;
+			ic.edge:SetVertexColor(col[1], col[2], col[3]);
+			ic.edge:Show();
 
 			if count and count > 1 then
 				ic.count:SetText(count);
