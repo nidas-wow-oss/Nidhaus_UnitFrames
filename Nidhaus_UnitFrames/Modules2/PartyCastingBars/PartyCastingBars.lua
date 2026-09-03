@@ -366,6 +366,13 @@ end
 local function PCB_CaptureDefaultLook(bar, border, flash)
 	if bar._pcbDefaultLook then return; end
 	local d = {};
+	-- Tamaño propio de la barra y del icono, para poder volver desde el
+	-- modo Arena, que los reemplaza por los de las barras de arena.
+	d.barW, d.barH = bar:GetWidth(), bar:GetHeight();
+	local ic = bar.barIcon or _G[(bar:GetName() or "").."Icon"];
+	if ic then
+		d.iconW, d.iconH = ic:GetWidth(), ic:GetHeight();
+	end
 	if border then
 		d.borderTex = border:GetTexture();
 		d.borderW, d.borderH = border:GetWidth(), border:GetHeight();
@@ -392,6 +399,24 @@ local function PCB_RestorePoints(region, pts)
 	return true;
 end
 
+-- Medidas de una barra de casteo de arena.
+--
+-- Si los marcos de arena existen — en arena, o con el mover de prueba
+-- abierto — se leen de ahi, que es la fuente de verdad. Si no existen
+-- todavia, se cae en la configuracion de NUF, que es lo que el addon les
+-- aplica a esas barras: ArenaCastBarWidth y el alto del template.
+local function PCB_ArenaMetrics()
+	local ref = _G.ArenaEnemyFrame1CastingBar;
+	if ref and (ref:GetWidth() or 0) > 0 then
+		local icon = ref.Icon or _G.ArenaEnemyFrame1CastingBarIcon;
+		return ref:GetWidth(), ref:GetHeight(),
+			icon and icon:GetWidth() or nil,
+			icon and icon:GetHeight() or nil;
+	end
+	local w = (C and C.ArenaCastBarWidth) or 80;
+	return w, 13, 13, 13;
+end
+
 function PartyCastingBars.ApplyBarStyle(bar)
 	if not bar then return; end
 	local barName = bar:GetName();
@@ -402,10 +427,16 @@ function PartyCastingBars.ApplyBarStyle(bar)
 	PCB_CaptureDefaultLook(bar, border, flash);
 	local d = bar._pcbDefaultLook or {};
 
+	local icon = bar.barIcon or _G[barName.."Icon"];
+
 	if PCB_BarStyle == "Arena" then
 		-- Sin marco: el template de las barras de arena no dibuja borde.
 		-- El flash sí se conserva, que es lo que avisa que termino el casteo.
 		if border then border:Hide(); end
+		-- Y del mismo tamaño que aquellas, barra e icono.
+		local aw, ah, aiw, aih = PCB_ArenaMetrics();
+		if aw and ah then bar:SetWidth(aw); bar:SetHeight(ah); end
+		if icon and aiw and aih then icon:SetWidth(aiw); icon:SetHeight(aih); end
 		if flash and d.flashTex then
 			flash:SetTexture(d.flashTex);
 			flash:SetWidth(d.flashW);
@@ -413,6 +444,8 @@ function PartyCastingBars.ApplyBarStyle(bar)
 			PCB_RestorePoints(flash, d.flashPts);
 		end
 	elseif PCB_BarStyle == "Blizzard" then
+		if d.barW then bar:SetWidth(d.barW); bar:SetHeight(d.barH); end
+		if icon and d.iconW then icon:SetWidth(d.iconW); icon:SetHeight(d.iconH); end
 		if border then border:Show(); end
 		if border and d.borderTex then
 			border:SetTexture(d.borderTex);
@@ -427,6 +460,8 @@ function PartyCastingBars.ApplyBarStyle(bar)
 			PCB_RestorePoints(flash, d.flashPts);
 		end
 	else
+		if d.barW then bar:SetWidth(d.barW); bar:SetHeight(d.barH); end
+		if icon and d.iconW then icon:SetWidth(d.iconW); icon:SetHeight(d.iconH); end
 		if border then
 			border:Show();
 			border:SetTexture("Interface\\Tooltips\\UI-StatusBar-Border");

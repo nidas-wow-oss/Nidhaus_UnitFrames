@@ -17,7 +17,7 @@ local K, C, L = unpack(ns);
 -- publicas de PartyCastingBars.
 -- =========================================================
 
-local PANEL_W, PANEL_H = 320, 398;
+local PANEL_W, PANEL_H = 320, 422;
 
 local menu;          -- la ventana, creada la primera vez que se pide
 local swatches = {}; -- [reaction][type] = textura del cuadradito
@@ -165,28 +165,70 @@ local function Build()
 		function() return PartyCastingBars.GetParented(); end,
 		function(v) PartyCastingBars.SetParents(v); end);
 
-	-- Estilo de la barra: cicla entre los tres.
-	local function StyleText()
-		local st = PartyCastingBars.GetBarStyle();
-		local name = (st == "Blizzard" and (L["PCB_STYLE_BLIZZ"] or "Blizzard"))
-			or (st == "Arena" and (L["PCB_STYLE_ARENA"] or "Arena (no border)"))
-			or (L["PCB_STYLE_ARCANE"] or "Arcane");
-		return string.format(L["PCB_STYLE_LABEL"] or "Bar style: %s", name);
+	-- ── Estilo de la barra: tres botones excluyentes ──
+	--
+	-- Mismo patron que el selector de estilo de marco de grupo del panel:
+	-- se ven las tres opciones a la vez y la activa queda resaltada, en vez
+	-- de un boton que hay que apretar hasta dar con la que uno quiere.
+	local styleLbl = menu:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
+	styleLbl:SetPoint("TOPLEFT", 12, -138);
+	styleLbl:SetText("|cffaaaaaa" .. (L["PCB_STYLE_TITLE"] or "Bar style:") .. "|r");
+
+	local styles = {
+		{ value = "Arcane",   text = L["PCB_STYLE_ARCANE"] or "Arcane" },
+		{ value = "Blizzard", text = L["PCB_STYLE_BLIZZ"]  or "Blizzard" },
+		{ value = "Arena",    text = L["PCB_STYLE_ARENA"]  or "Arena" },
+	};
+	local sBtnW, sBtnH, sGap = 92, 22, 4;
+	local styleButtons = {};
+
+	local styleBox = CreateFrame("Frame", nil, menu);
+	styleBox:SetPoint("TOPLEFT", 12, -156);
+	styleBox:SetSize((#styles * sBtnW) + ((#styles - 1) * sGap), sBtnH);
+
+	local function RefreshStyleButtons()
+		local current = PartyCastingBars.GetBarStyle();
+		for _, b in ipairs(styleButtons) do
+			if b.value == current then
+				b:SetBackdropColor(0.10, 0.35, 0.60, 0.90);
+				b:SetBackdropBorderColor(0.35, 0.70, 1.00, 0.95);
+				b.labelFS:SetTextColor(1, 1, 1);
+			else
+				b:SetBackdropColor(0.07, 0.07, 0.07, 0.65);
+				b:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.60);
+				b.labelFS:SetTextColor(0.55, 0.55, 0.55);
+			end
+		end
 	end
-	menu.styleBtn = CreateFrame("Button", "PCB_MenuStyleBtn", menu, "UIPanelButtonTemplate");
-	menu.styleBtn:SetPoint("TOPLEFT", 12, -136);
-	menu.styleBtn:SetSize(230, 22);
-	menu.styleBtn:SetText(StyleText());
-	menu.styleBtn:SetScript("OnClick", function(self)
-		PartyCastingBars.CycleBarStyle();
-		self:SetText(StyleText());
-	end);
-	menu.StyleText = StyleText;
+
+	for i, opt in ipairs(styles) do
+		local b = CreateFrame("Button", nil, styleBox);
+		b:SetSize(sBtnW, sBtnH);
+		b:SetPoint("LEFT", styleBox, "LEFT", (i - 1) * (sBtnW + sGap), 0);
+		b:SetBackdrop({
+			bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+			tile     = true, tileSize = 16, edgeSize = 12,
+			insets   = { left = 3, right = 3, top = 3, bottom = 3 },
+		});
+		local fs = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+		fs:SetPoint("CENTER", b, "CENTER", 0, 0);
+		fs:SetText(opt.text);
+		b.labelFS = fs;
+		b.value   = opt.value;
+		b:SetScript("OnClick", function(self)
+			PartyCastingBars.SetBarStyle(self.value);
+			RefreshStyleButtons();
+		end);
+		styleButtons[i] = b;
+	end
+	RefreshStyleButtons();
+	menu.RefreshStyleButtons = RefreshStyleButtons;
 
 	local sep1 = menu:CreateTexture(nil, "ARTWORK");
 	sep1:SetTexture(1, 1, 1, 0.08);
-	sep1:SetPoint("TOPLEFT", 4, -166);
-	sep1:SetPoint("TOPRIGHT", -4, -166);
+	sep1:SetPoint("TOPLEFT", 4, -190);
+	sep1:SetPoint("TOPRIGHT", -4, -190);
 	sep1:SetHeight(1);
 
 	-- ── Colores ──
@@ -195,15 +237,15 @@ local function Build()
 	-- cuadradito abre el selector de color de Blizzard y se repinta
 	-- solo, porque el modulo llama a RefreshMenu al aceptar o cancelar.
 	local lblColor = menu:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-	lblColor:SetPoint("TOPLEFT", 10, -174);
+	lblColor:SetPoint("TOPLEFT", 10, -198);
 	lblColor:SetText("|cffaaaaaa" .. (L["PCB_COLORS_LABEL"] or "Bar colours:") .. "|r");
 
 	local COL_X, COL_W = 96, 54;
-	local ROW_Y = { -210, -242 };
+	local ROW_Y = { -234, -266 };
 
 	for c, typeString in ipairs(TYPES) do
 		local head = menu:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
-		head:SetPoint("TOPLEFT", COL_X + (c - 1) * COL_W, -192);
+		head:SetPoint("TOPLEFT", COL_X + (c - 1) * COL_W, -216);
 		head:SetWidth(COL_W);
 		head:SetJustifyH("LEFT");
 		head:SetText("|cff8EAEC9" .. (TYPE_LABEL[typeString] or typeString) .. "|r");
@@ -252,7 +294,7 @@ local function Build()
 
 	local colorReset = CreateFrame("Button", nil, menu, "UIPanelButtonTemplate");
 	colorReset:SetSize(140, 20);
-	colorReset:SetPoint("TOPLEFT", 10, -276);
+	colorReset:SetPoint("TOPLEFT", 10, -300);
 	colorReset:SetText(L["PCB_BTN_RESET_COLORS"] or "Reset colours");
 	colorReset:SetScript("OnClick", function()
 		PartyCastingBars.ResetAllColors();
@@ -261,8 +303,8 @@ local function Build()
 
 	local sep2 = menu:CreateTexture(nil, "ARTWORK");
 	sep2:SetTexture(1, 1, 1, 0.08);
-	sep2:SetPoint("TOPLEFT", 4, -306);
-	sep2:SetPoint("TOPRIGHT", -4, -306);
+	sep2:SetPoint("TOPLEFT", 4, -330);
+	sep2:SetPoint("TOPRIGHT", -4, -330);
 	sep2:SetHeight(1);
 
 	-- ── Posicion de las barras ──
@@ -272,7 +314,7 @@ local function Build()
 	-- quedara puesto, las barras taparian el grupo en combate.
 	local dragBtn = CreateFrame("Button", nil, menu, "UIPanelButtonTemplate");
 	dragBtn:SetSize(140, 22);
-	dragBtn:SetPoint("TOPLEFT", 10, -316);
+	dragBtn:SetPoint("TOPLEFT", 10, -340);
 	dragBtn:SetScript("OnClick", function()
 		PartyCastingBars.EnableDragging(not PartyCastingBars.IsDragging());
 		PartyCastingBars.RefreshMenu();
@@ -281,7 +323,7 @@ local function Build()
 
 	local resetPos = CreateFrame("Button", nil, menu, "UIPanelButtonTemplate");
 	resetPos:SetSize(140, 22);
-	resetPos:SetPoint("TOPLEFT", 162, -316);
+	resetPos:SetPoint("TOPLEFT", 162, -340);
 	resetPos:SetText(L["PCB_BTN_RESET_POS"] or "Reset positions");
 	resetPos:SetScript("OnClick", function()
 		PartyCastingBars.ResetBarLocations();
@@ -312,7 +354,7 @@ function PartyCastingBars.RefreshMenu()
 
 	menu.iconCB:SetChecked(PartyCastingBars.GetIcons() and true or false);
 	menu.parentCB:SetChecked(PartyCastingBars.GetParented() and true or false);
-	if menu.styleBtn and menu.StyleText then menu.styleBtn:SetText(menu.StyleText()); end
+	if menu.RefreshStyleButtons then menu.RefreshStyleButtons(); end
 
 	for reaction, types in pairs(swatches) do
 		for typeString, fill in pairs(types) do
