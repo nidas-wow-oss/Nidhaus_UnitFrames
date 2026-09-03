@@ -184,6 +184,7 @@ local defaults = {
 	PetBuffsIconSize   = 32,
 	PowerBarCombatOnly = false,  -- barra de recurso solo en combate
 	PowerBarShowPercent = false, -- mostrar % en vez de actual / maximo
+	PowerBarHideText = false,    -- apagar del todo los numeros de las dos barras
 	PowerBarShowHealth = false,  -- mostrar tambien una barra de vida arriba
 	PowerBarHealthGradient = true, -- la barra de vida cambia verde/amarillo/rojo
 	PowerBarHideWhenFull = false,  -- ocultarla a full vida y recurso fuera de combate

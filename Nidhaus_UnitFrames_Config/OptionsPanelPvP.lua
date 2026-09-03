@@ -832,6 +832,11 @@ function K.BuildPvPSection(pane)
 			"PowerBarShowPercent", 22, by, nil,
 			function() if K.UpdatePowerBar then K.UpdatePowerBar(); end end);
 		by = by - 26;
+		SettingCB(pbBody, L["CB_POWERBAR_HIDETEXT"] or "Hide the numbers on both bars",
+			"PowerBarHideText", 22, by, L["TIP_PowerBarHideText"]
+			or "Turns the numbers off entirely. The bar alone already tells you how much is left.",
+			function() if K.UpdatePowerBar then K.UpdatePowerBar(); end end);
+		by = by - 26;
 		SettingCB(pbBody, L["CB_POWERBAR_HEALTH"] or "Also show a health bar", "PowerBarShowHealth",
 			22, by, L["TIP_PowerBarHealth"]
 			or "Adds a health bar above the resource bar, so the Power Bar works like a mini player frame.",

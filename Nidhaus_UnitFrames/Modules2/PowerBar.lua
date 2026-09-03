@@ -297,13 +297,14 @@ local function FillRow(list, filter, per)
 				ic.count:Hide();
 			end
 
-			-- Las auras sin duracion (las de siempre) no llevan barrido.
-			if duration and duration > 0 and expires then
-				ic.cd:Show();
-				CooldownFrame_SetTimer(ic.cd, expires - duration, duration, 1);
-			else
-				ic.cd:Hide();
-			end
+			-- SIN el barrido oscuro del cooldown.
+			--
+			-- Sobre iconos de 16 pixeles esa sombra girando tapa mas de lo
+			-- que informa: el icono se ve a medias hasta que la aura casi se
+			-- termina. El tiempo que queda ya se lee en el marco de buffs de
+			-- Blizzard, que sigue ahi. El Cooldown se crea igual pero nunca
+			-- se le pone temporizador, asi que no dibuja nada.
+			ic.cd:Hide();
 
 			ic:Show();
 		end
@@ -511,10 +512,17 @@ local function UpdateBar()
 	bar:SetMinMaxValues(0, max);
 	bar:SetValue(cur);
 
-	if C.PowerBarShowPercent then
-		text:SetText(string.format("%d%%", math.floor(cur / max * 100 + 0.5)));
+	-- El texto se puede apagar del todo: la barra sola ya dice cuanto te
+	-- queda, y sin numeros ocupa menos y molesta menos encima del personaje.
+	if C.PowerBarHideText then
+		text:Hide();
 	else
-		text:SetText(cur .. " / " .. max);
+		if C.PowerBarShowPercent then
+			text:SetText(string.format("%d%%", math.floor(cur / max * 100 + 0.5)));
+		else
+			text:SetText(cur .. " / " .. max);
+		end
+		text:Show();
 	end
 
 	-- Barra de vida (si esta activada)
@@ -536,10 +544,15 @@ local function UpdateBar()
 			else
 				healthBar:SetStatusBarColor(0.15, 0.75, 0.15);   -- verde fijo
 			end
-			if C.PowerBarShowPercent then
-				healthText:SetText(string.format("%d%%", math.floor(hp / hpmax * 100 + 0.5)));
+			if C.PowerBarHideText then
+				healthText:Hide();
 			else
-				healthText:SetText(hp .. " / " .. hpmax);
+				if C.PowerBarShowPercent then
+					healthText:SetText(string.format("%d%%", math.floor(hp / hpmax * 100 + 0.5)));
+				else
+					healthText:SetText(hp .. " / " .. hpmax);
+				end
+				healthText:Show();
 			end
 		end
 	end
