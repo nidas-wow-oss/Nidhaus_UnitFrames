@@ -78,6 +78,11 @@ local PCB_IconsEnabled = true;
 local PCB_Parented     = true;
 local PCB_Scale        = 0.7;
 
+-- Aspecto de la barra: "Arcane" es el de siempre (borde de tooltip y flash
+-- propio) y "Blizzard" deja el que trae CastingBarFrameTemplate, que es el
+-- mismo que usan las barras de casteo de arena.
+local PCB_BarStyle     = "Arcane";
+
 --------------------------------------------------
 -- Guardado
 --
@@ -117,6 +122,9 @@ local function PCB_LoadSaved()
 	if type(db.scale)    == "number"  then PCB_Scale        = db.scale;    end
 	if type(db.icons)    == "boolean" then PCB_IconsEnabled = db.icons;    end
 	if type(db.parented) == "boolean" then PCB_Parented     = db.parented; end
+	if db.barStyle == "Blizzard" or db.barStyle == "Arcane" then
+		PCB_BarStyle = db.barStyle;
+	end
 
 	if type(db.colors) ~= "table" then return; end
 	for reaction, types in pairs(PartyCastingBars_Colors) do
@@ -339,6 +347,103 @@ end
 -- Bar Scripts
 --------------------------------------------------
 
+--------------------------------------------------
+-- Aspecto de la barra
+--------------------------------------------------
+--
+-- El template del que cuelgan estas barras es CastingBarFrameTemplate, el
+-- mismo de las barras de casteo de arena. Lo que las hacia verse distinto
+-- era que aca se les pisaba el borde y el flash apenas se creaban.
+--
+-- El aspecto original no se escribe a mano: se captura del propio frame la
+-- primera vez, antes de tocarlo. Asi no hay que adivinar rutas ni medidas
+-- de Blizzard, y el estilo "Blizzard" devuelve exactamente lo que el
+-- template traia.
+
+local function PCB_CaptureDefaultLook(bar, border, flash)
+	if bar._pcbDefaultLook then return; end
+	local d = {};
+	if border then
+		d.borderTex = border:GetTexture();
+		d.borderW, d.borderH = border:GetWidth(), border:GetHeight();
+		d.borderPts = {};
+		for i = 1, (border:GetNumPoints() or 0) do
+			d.borderPts[i] = { border:GetPoint(i) };
+		end
+	end
+	if flash then
+		d.flashTex = flash:GetTexture();
+		d.flashW, d.flashH = flash:GetWidth(), flash:GetHeight();
+		d.flashPts = {};
+		for i = 1, (flash:GetNumPoints() or 0) do
+			d.flashPts[i] = { flash:GetPoint(i) };
+		end
+	end
+	bar._pcbDefaultLook = d;
+end
+
+local function PCB_RestorePoints(region, pts)
+	if not region or not pts or #pts == 0 then return false; end
+	region:ClearAllPoints();
+	for i = 1, #pts do region:SetPoint(unpack(pts[i])); end
+	return true;
+end
+
+function PartyCastingBars.ApplyBarStyle(bar)
+	if not bar then return; end
+	local barName = bar:GetName();
+	if not barName then return; end
+	local border = _G[barName.."Border"];
+	local flash  = _G[barName.."Flash"];
+
+	PCB_CaptureDefaultLook(bar, border, flash);
+	local d = bar._pcbDefaultLook or {};
+
+	if PCB_BarStyle == "Blizzard" then
+		if border and d.borderTex then
+			border:SetTexture(d.borderTex);
+			border:SetWidth(d.borderW);
+			border:SetHeight(d.borderH);
+			PCB_RestorePoints(border, d.borderPts);
+		end
+		if flash and d.flashTex then
+			flash:SetTexture(d.flashTex);
+			flash:SetWidth(d.flashW);
+			flash:SetHeight(d.flashH);
+			PCB_RestorePoints(flash, d.flashPts);
+		end
+	else
+		if border then
+			border:SetTexture("Interface\\Tooltips\\UI-StatusBar-Border");
+			border:SetWidth(202);
+			border:SetHeight(28);
+			border:ClearAllPoints();
+			border:SetPoint("CENTER", bar, "CENTER", 0, 0);
+		end
+		if flash then
+			flash:SetTexture("Interface\\AddOns\\Nidhaus_UnitFrames\\Modules2\\PartyCastingBars\\Skin\\ArcaneBarFlash");
+			flash:SetWidth(292);
+			flash:SetHeight(34);
+			flash:ClearAllPoints();
+			flash:SetPoint("CENTER", bar, "CENTER", 0, 0);
+		end
+	end
+
+	bar.border   = border;
+	bar.barFlash = flash;
+end
+
+function PartyCastingBars.GetBarStyle() return PCB_BarStyle; end
+
+function PartyCastingBars.SetBarStyle(value)
+	PCB_BarStyle = (value == "Blizzard") and "Blizzard" or "Arcane";
+	PCB_DB().barStyle = PCB_BarStyle;
+	for i, barFrame in ipairs(PartyCastingBars.Bars) do
+		PartyCastingBars.ApplyBarStyle(barFrame);
+	end
+	if PartyCastingBars.RefreshMenu then PartyCastingBars.RefreshMenu(); end
+end
+
 function PartyCastingBars.OnLoad(bar)
 	bar:RegisterEvent("UNIT_SPELLCAST_START");
 	bar:RegisterEvent("UNIT_SPELLCAST_STOP");
@@ -370,27 +475,8 @@ function PartyCastingBars.OnLoad(bar)
 		bar.barText = text;
 	end
 
-	-- Border
-	local border = _G[barName.."Border"];
-	if border then
-		border:SetTexture("Interface\\Tooltips\\UI-StatusBar-Border");
-		border:SetWidth(202);
-		border:SetHeight(28);
-		border:ClearAllPoints();
-		border:SetPoint("CENTER", bar, "CENTER", 0, 0);
-		bar.border = border;
-	end
-
-	-- Flash  (BUG FIX: texture path now points inside Nidhaus_UnitFrames)
-	local flash = _G[barName.."Flash"];
-	if flash then
-		flash:SetTexture("Interface\\AddOns\\Nidhaus_UnitFrames\\Modules2\\PartyCastingBars\\Skin\\ArcaneBarFlash");
-		flash:SetWidth(292);
-		flash:SetHeight(34);
-		flash:ClearAllPoints();
-		flash:SetPoint("CENTER", bar, "CENTER", 0, 0);
-		bar.barFlash = flash;
-	end
+	-- Borde y flash: los pone ApplyBarStyle segun el estilo elegido.
+	PartyCastingBars.ApplyBarStyle(bar);
 
 	-- Icon
 	local icon = _G[barName.."Icon"];

@@ -17,7 +17,7 @@ local K, C, L = unpack(ns);
 -- publicas de PartyCastingBars.
 -- =========================================================
 
-local PANEL_W, PANEL_H = 320, 372;
+local PANEL_W, PANEL_H = 320, 398;
 
 local menu;          -- la ventana, creada la primera vez que se pide
 local swatches = {}; -- [reaction][type] = textura del cuadradito
@@ -165,10 +165,17 @@ local function Build()
 		function() return PartyCastingBars.GetParented(); end,
 		function(v) PartyCastingBars.SetParents(v); end);
 
+	-- Marcada = el borde y el flash que trae el template de Blizzard, o sea
+	-- el mismo aspecto que las barras de casteo de arena.
+	menu.styleCB = MakeCheck("PCB_MenuStyleCB", -136,
+		L["PCB_CB_BLIZZ_STYLE"] or "Blizzard style (same as arena)",
+		function() return PartyCastingBars.GetBarStyle() == "Blizzard"; end,
+		function(v) PartyCastingBars.SetBarStyle(v and "Blizzard" or "Arcane"); end);
+
 	local sep1 = menu:CreateTexture(nil, "ARTWORK");
 	sep1:SetTexture(1, 1, 1, 0.08);
-	sep1:SetPoint("TOPLEFT", 4, -140);
-	sep1:SetPoint("TOPRIGHT", -4, -140);
+	sep1:SetPoint("TOPLEFT", 4, -166);
+	sep1:SetPoint("TOPRIGHT", -4, -166);
 	sep1:SetHeight(1);
 
 	-- ── Colores ──
@@ -177,15 +184,15 @@ local function Build()
 	-- cuadradito abre el selector de color de Blizzard y se repinta
 	-- solo, porque el modulo llama a RefreshMenu al aceptar o cancelar.
 	local lblColor = menu:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-	lblColor:SetPoint("TOPLEFT", 10, -148);
+	lblColor:SetPoint("TOPLEFT", 10, -174);
 	lblColor:SetText("|cffaaaaaa" .. (L["PCB_COLORS_LABEL"] or "Bar colours:") .. "|r");
 
 	local COL_X, COL_W = 96, 54;
-	local ROW_Y = { -184, -216 };
+	local ROW_Y = { -210, -242 };
 
 	for c, typeString in ipairs(TYPES) do
 		local head = menu:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
-		head:SetPoint("TOPLEFT", COL_X + (c - 1) * COL_W, -166);
+		head:SetPoint("TOPLEFT", COL_X + (c - 1) * COL_W, -192);
 		head:SetWidth(COL_W);
 		head:SetJustifyH("LEFT");
 		head:SetText("|cff8EAEC9" .. (TYPE_LABEL[typeString] or typeString) .. "|r");
@@ -234,7 +241,7 @@ local function Build()
 
 	local colorReset = CreateFrame("Button", nil, menu, "UIPanelButtonTemplate");
 	colorReset:SetSize(140, 20);
-	colorReset:SetPoint("TOPLEFT", 10, -250);
+	colorReset:SetPoint("TOPLEFT", 10, -276);
 	colorReset:SetText(L["PCB_BTN_RESET_COLORS"] or "Reset colours");
 	colorReset:SetScript("OnClick", function()
 		PartyCastingBars.ResetAllColors();
@@ -243,8 +250,8 @@ local function Build()
 
 	local sep2 = menu:CreateTexture(nil, "ARTWORK");
 	sep2:SetTexture(1, 1, 1, 0.08);
-	sep2:SetPoint("TOPLEFT", 4, -280);
-	sep2:SetPoint("TOPRIGHT", -4, -280);
+	sep2:SetPoint("TOPLEFT", 4, -306);
+	sep2:SetPoint("TOPRIGHT", -4, -306);
 	sep2:SetHeight(1);
 
 	-- ── Posicion de las barras ──
@@ -254,7 +261,7 @@ local function Build()
 	-- quedara puesto, las barras taparian el grupo en combate.
 	local dragBtn = CreateFrame("Button", nil, menu, "UIPanelButtonTemplate");
 	dragBtn:SetSize(140, 22);
-	dragBtn:SetPoint("TOPLEFT", 10, -290);
+	dragBtn:SetPoint("TOPLEFT", 10, -316);
 	dragBtn:SetScript("OnClick", function()
 		PartyCastingBars.EnableDragging(not PartyCastingBars.IsDragging());
 		PartyCastingBars.RefreshMenu();
@@ -263,7 +270,7 @@ local function Build()
 
 	local resetPos = CreateFrame("Button", nil, menu, "UIPanelButtonTemplate");
 	resetPos:SetSize(140, 22);
-	resetPos:SetPoint("TOPLEFT", 162, -290);
+	resetPos:SetPoint("TOPLEFT", 162, -316);
 	resetPos:SetText(L["PCB_BTN_RESET_POS"] or "Reset positions");
 	resetPos:SetScript("OnClick", function()
 		PartyCastingBars.ResetBarLocations();
@@ -294,6 +301,7 @@ function PartyCastingBars.RefreshMenu()
 
 	menu.iconCB:SetChecked(PartyCastingBars.GetIcons() and true or false);
 	menu.parentCB:SetChecked(PartyCastingBars.GetParented() and true or false);
+	menu.styleCB:SetChecked(PartyCastingBars.GetBarStyle() == "Blizzard");
 
 	for reaction, types in pairs(swatches) do
 		for typeString, fill in pairs(types) do
