@@ -134,61 +134,39 @@ end
 -- ---------------------------------------------------------
 -- Estilo del borde
 --
--- "Tooltip" es el de siempre. El otro copia el de las barras de casteo, que
--- es el mismo que usan las de arena. La textura y las proporciones NO se
--- escriben a mano: se leen en vivo de CastingBarFrame, la barra de casteo
--- del jugador, que mide 195x13 — practicamente lo mismo que esta barra. Asi
--- el borde acompaña a lo que esa barra tenga puesto y no hay medidas de
--- Blizzard adivinadas.
+-- Dos opciones: el borde de tooltip de siempre, o sin marco, que es como
+-- se ven las barras de casteo de los marcos de arena — el template de
+-- Blizzard para esas no dibuja borde ninguno.
+--
+-- Sin marco no se pierde el modo mover: el recuadro celeste que lo indica
+-- es unlockOverlay, que va por fuera de la barra y no depende del borde.
 -- ---------------------------------------------------------
-local castBorder;   -- se crea recien si el estilo lo pide
-
 local function BorderTint(r, g, b, a)
-	if castBorder and castBorder:IsShown() then
-		castBorder:SetVertexColor(r, g, b, a);
-	else
+	if border:IsShown() then
 		border:SetBackdropBorderColor(r, g, b, a);
 	end
 end
 
 local function ApplyBorderStyle()
-	if C.SwingTimerCastBarSkin == true then
-		local src = _G.CastingBarFrameBorder;
-		local ref = _G.CastingBarFrame;
-		if src and ref and (ref:GetWidth() or 0) > 0 and (ref:GetHeight() or 0) > 0 then
-			if not castBorder then
-				castBorder = bar:CreateTexture(nil, "OVERLAY");
-			end
-			castBorder:SetTexture(src:GetTexture());
-			castBorder:SetWidth(BAR_WIDTH   * (src:GetWidth()  / ref:GetWidth()));
-			castBorder:SetHeight(BAR_HEIGHT * (src:GetHeight() / ref:GetHeight()));
-			castBorder:ClearAllPoints();
-			-- El borde de casteo no va centrado: deja aire arriba para el
-			-- texto. Se copia ese mismo corrimiento, a escala de esta barra.
-			local _, sy = src:GetCenter();
-			local _, ry = ref:GetCenter();
-			local dy = (sy and ry) and ((sy - ry) * (BAR_HEIGHT / ref:GetHeight())) or 0;
-			castBorder:SetPoint("CENTER", bar, "CENTER", 0, dy);
-			castBorder:Show();
-			border:Hide();
-			BorderTint(1, 1, 1, 1);
-			if unlocked then BorderTint(0, 0.8, 1, 1); end
-			return;
+	if C.SwingTimerBorderless == true then
+		border:Hide();
+	else
+		border:Show();
+		if unlocked then
+			border:SetBackdropBorderColor(0, 0.8, 1, 1);
+		else
+			border:SetBackdropBorderColor(0.6, 0.6, 0.6, 0.9);
 		end
 	end
-	if castBorder then castBorder:Hide(); end
-	border:Show();
-	border:SetBackdropBorderColor(unlocked and 0 or 0.6, unlocked and 0.8 or 0.6,
-		unlocked and 1 or 0.6, unlocked and 1 or 0.9);
 end
 
 function K.GetMeleeSwingBorderStyle()
-	return (C.SwingTimerCastBarSkin == true) and "CastBar" or "Tooltip";
+	return (C.SwingTimerBorderless == true) and "None" or "Tooltip";
 end
 
 function K.ToggleMeleeSwingBorderStyle()
-	local v = not (C.SwingTimerCastBarSkin == true);
-	K.SaveConfig("SwingTimerCastBarSkin", v);
+	local v = not (C.SwingTimerBorderless == true);
+	K.SaveConfig("SwingTimerBorderless", v);
 	ApplyBorderStyle();
 	return v;
 end

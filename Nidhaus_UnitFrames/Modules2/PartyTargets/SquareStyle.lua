@@ -255,7 +255,11 @@ local function ApplySquare(f)
 	tex:ClearAllPoints();
 	tex:SetSize(SQ.border.w, SQ.border.h);
 	tex:SetPoint("CENTER", f, "CENTER", 0, SQ.border.y);
-	tex:SetVertexColor(unpack(FRAME_COLOR));
+	-- El tinte de Lorti manda sobre el color propio; si esta apagado,
+	-- ApplyLortiTint repone el blanco y vale el de siempre.
+	if not (K.ApplyLortiTint and K.ApplyLortiTint(tex, "LortiUI_PartyTargets")) then
+		tex:SetVertexColor(unpack(FRAME_COLOR));
+	end
 	tex:Show();
 
 	-- Retrato y barras van DENTRO del marco, posicionados respecto de el.
@@ -327,7 +331,9 @@ local function ApplyClassic(f)
 	-- pero no la textura ni el tinte.
 	if tex then
 		tex:SetTexture("Interface\\TargetingFrame\\UI-TargetofTargetFrame");
-		tex:SetVertexColor(1, 1, 1);
+		if not (K.ApplyLortiTint and K.ApplyLortiTint(tex, "LortiUI_PartyTargets")) then
+			tex:SetVertexColor(1, 1, 1);
+		end
 	end
 	-- Y la textura de las barras, que Restore no toca.
 	if hp then hp:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar"); end

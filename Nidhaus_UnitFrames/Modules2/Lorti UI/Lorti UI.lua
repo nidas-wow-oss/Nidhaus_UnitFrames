@@ -325,6 +325,7 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 	local subOptions = {
 		{ key="LortiUI_PlayerTargetFocus", label="Player / Target / Focus", tip="Darkens Player, Target and Focus frame textures\n(including castbars and ToT)." },
 		{ key="LortiUI_Party",             label="Party",                   tip="Darkens the 4 party frames and their pet textures." },
+		{ key="LortiUI_PartyTargets",      label="Party targets",           tip="Darkens the target-of-party frames." },
 		{ key="LortiUI_Arena",             label="Arena",                   tip="Darkens enemy arena frame textures." },
 		{ key="LortiUI_ActionBars",        label="Action Bars",             tip="Darkens action bar, bonus, XP and Reputation textures." },
 		{ key="LortiUI_Minimap",           label="Minimap",                 tip="Scroll zoom with mouse wheel + right-click for calendar." },

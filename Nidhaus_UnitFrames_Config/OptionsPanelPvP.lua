@@ -409,8 +409,8 @@ local CLASS_MODULES = {
 			x, y, L["MOD_AUTOSHOT_DESC"]);
 		y = y - 26 - (asH or 0);
 
-		-- Cuerpo desplegable con la unica opcion de la barra: el estilo del
-		-- borde, entre el de tooltip y el de las barras de casteo.
+		-- Cuerpo desplegable con la unica opcion de la barra: el borde,
+		-- entre el de tooltip y sin marco.
 		local asBody = K.UI.Collapsible(pane, x, y, 440, 26, function()
 			return K.IsModuleEnabled and K.IsModuleEnabled("AutoShotTimer");
 		end);
@@ -419,14 +419,14 @@ local CLASS_MODULES = {
 		local asBorder = CreateFrame("Button", nil, asBody, "UIPanelButtonTemplate");
 		asBorder:SetPoint("TOPLEFT", 22, 0);
 		asBorder:SetSize(180, 22);
-		asBorder:SetText((K.GetAutoShotBorderStyle and K.GetAutoShotBorderStyle() == "CastBar")
+		asBorder:SetText((K.GetAutoShotBorderStyle and K.GetAutoShotBorderStyle() == "None")
 			and (L["BTN_BORDER_TOOLTIP"] or "Tooltip border")
-			or  (L["BTN_BORDER_CAST"] or "Casting bar border"));
+			or  (L["BTN_BORDER_NONE"] or "No border (like arena)"));
 		asBorder:SetScript("OnClick", function(self)
 			if not K.ToggleAutoShotBorderStyle then return; end
 			local on = K.ToggleAutoShotBorderStyle();
 			self:SetText(on and (L["BTN_BORDER_TOOLTIP"] or "Tooltip border")
-				or (L["BTN_BORDER_CAST"] or "Casting bar border"));
+				or (L["BTN_BORDER_NONE"] or "No border (like arena)"));
 		end);
 
 		y = y - 32;
@@ -889,19 +889,19 @@ function K.BuildPvPSection(pane)
 			RefreshSwingScale();
 		end);
 
-		-- Alterna el borde entre el de tooltip (el de siempre) y el de las
-		-- barras de casteo, que es el mismo que llevan las de arena.
+		-- Alterna entre el borde de tooltip de siempre y sin marco, que es
+		-- como se ven las barras de casteo de los marcos de arena.
 		local swBorder = CreateFrame("Button", nil, swBody, "UIPanelButtonTemplate");
 		swBorder:SetPoint("TOPLEFT", 24, -84);
 		swBorder:SetSize(180, 22);
-		swBorder:SetText((K.GetMeleeSwingBorderStyle and K.GetMeleeSwingBorderStyle() == "CastBar")
+		swBorder:SetText((K.GetMeleeSwingBorderStyle and K.GetMeleeSwingBorderStyle() == "None")
 			and (L["BTN_BORDER_TOOLTIP"] or "Tooltip border")
-			or  (L["BTN_BORDER_CAST"] or "Casting bar border"));
+			or  (L["BTN_BORDER_NONE"] or "No border (like arena)"));
 		swBorder:SetScript("OnClick", function(self)
 			if not K.ToggleMeleeSwingBorderStyle then return; end
 			local on = K.ToggleMeleeSwingBorderStyle();
 			self:SetText(on and (L["BTN_BORDER_TOOLTIP"] or "Tooltip border")
-				or (L["BTN_BORDER_CAST"] or "Casting bar border"));
+				or (L["BTN_BORDER_NONE"] or "No border (like arena)"));
 		end);
 
 		swBlk:SetBodyHeight(116);
