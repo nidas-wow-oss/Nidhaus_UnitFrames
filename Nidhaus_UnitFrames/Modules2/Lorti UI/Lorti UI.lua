@@ -72,8 +72,14 @@ local function SafeHide(obj) if obj and obj.Hide then obj:Hide() end end
 -- =============================================
 
 local function ApplyDarkPlayerTargetFocusTextures()
+	-- El marco de hielo del mago queda afuera. Es un skin propio, con su
+	-- paleta; oscurecerlo lo apaga y deja de ser de hielo. PlayerFrame.lua
+	-- ya se encarga de devolverle el blanco en cada reaplicacion, asi que
+	-- destildar Icy repone el tinte sin necesidad de /reload.
+	local skipPlayer = K.IcyPlayerFrameOn and K.IcyPlayerFrameOn();
+
 	for _, v in pairs({
-		PlayerFrameTexture,
+		(not skipPlayer) and PlayerFrameTexture or nil,
 		TargetFrameTextureFrameTexture,
 		PetFrameTexture,
 		FocusFrameTextureFrameTexture,

@@ -27,8 +27,34 @@ local function ThemeDir()
 	return base .. "Light\\";
 end
 
+-- Icy manda por encima de todo lo demas.
+--
+-- No es una variante del skin custom: es un marco entero y propio, del
+-- mago. Mientras esta puesto, los temas visuales (Light / Dark / Asuri /
+-- Compact) no pintan nada — con Asuri encima el marco quedaba negro y
+-- derretido, porque Asuri afina y baja las barras y mueve el aro del
+-- retrato, medidas que el arte de hielo no comparte. Lorti tampoco lo
+-- toca: oscurecerle la textura al hielo lo apaga y ya.
+--
+-- La clase se resuelve una vez y se recuerda: nadie cambia de clase a
+-- mitad de sesion, y en ADDON_LOADED UnitClass todavia puede no responder.
+local playerClass;
+
+local function IcyOn()
+	if not playerClass then playerClass = select(2, UnitClass("player")); end
+	return (C.MageIcyFrame and playerClass == "MAGE") and true or false;
+end
+K.IcyPlayerFrameOn = IcyOn;   -- la consulta Lorti UI
+
 local function AsuriOn()
-	return C.UnitFrameCustomTexture and C.AsuriFrames;
+	return C.UnitFrameCustomTexture and C.AsuriFrames and not IcyOn();
+end
+
+-- El arte de hielo tiene la forma del marco con skin, asi que quiere la
+-- MISMA geometria que Light: barras gruesas y arriba. Por eso vale aunque
+-- el Custom Skin este destildado.
+local function SkinLayoutOn()
+	return IcyOn() or C.UnitFrameCustomTexture;
 end
 
 local origNameFont;
@@ -110,7 +136,7 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 		PlayerStatusTexture:SetTexture("Interface\\AddOns\\"..AddOnName.."\\Media\\UI-Player-Status3");
 		PlayerStatusTexture:ClearAllPoints();
 		PlayerStatusTexture:SetPoint("CENTER", NidhausPlayerFrame, "CENTER", 16, 8);
-	elseif C.UnitFrameCustomTexture then
+	elseif SkinLayoutOn() then
 		PlayerStatusTexture:SetTexture("Interface\\AddOns\\"..AddOnName.."\\Media\\UI-Player-Status2");
 		PlayerStatusTexture:ClearAllPoints();
 		PlayerStatusTexture:SetPoint("CENTER", NidhausPlayerFrame, "CENTER", 16, 8);
@@ -135,7 +161,7 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 	-- llegaba a esta rama y el marco de hielo no se aplicaba nunca. Pero
 	-- Icy no es una variante del skin custom: es un skin en si mismo, del
 	-- mago. Que dependa del otro no tiene sentido.
-	if C.MageIcyFrame and select(2, UnitClass("player")) == "MAGE" then
+	if IcyOn() then
 		-- Icy Portrait (portado de SquidFrame).
 		PlayerFrameTexture:SetTexture("Interface\\AddOns\\"..AddOnName.."\\Media\\icy.tga");
 		PlayerPVPIcon:SetTexture("Interface\\TargetingFrame\\UI-PVP-FFA");
@@ -164,7 +190,10 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 	-- este blanco corre en CADA reaplicacion del skin (PlayerFrame_ToPlayerArt
 	-- se dispara todo el tiempo) y le borraba el tinte oscuro que Lorti
 	-- pone una sola vez al cargar. Ahora se le pregunta a Lorti primero.
-	if not C.AsuriFrames then
+	if IcyOn() then
+		-- El hielo va a su color, sin tinte de Lorti ni el gris de Asuri.
+		PlayerFrameTexture:SetVertexColor(1, 1, 1);
+	elseif not C.AsuriFrames then
 		if not (K.ApplyLortiTint and K.ApplyLortiTint(PlayerFrameTexture,
 			"LortiUI_PlayerTargetFocus")) then
 			PlayerFrameTexture:SetVertexColor(1, 1, 1);
@@ -203,8 +232,10 @@ local function Nidhaus_UnitFrames_PlayerFrame_ToPlayerArt(self)
 	-- mostrar ese FontString en cada actualizacion, y pelearle con Hide
 	-- termina en parpadeo.
 	if PlayerLevelText then
-		local hideLevel = AsuriOn()
-			or (C.UnitFrameCustomTexture and C.pwFrames);
+		-- Con Icy el nivel se ve: el marco de hielo tiene donde ponerlo,
+		-- a diferencia de Asuri y Compact.
+		local hideLevel = (not IcyOn())
+			and (AsuriOn() or (C.UnitFrameCustomTexture and C.pwFrames));
 		PlayerLevelText:SetAlpha(hideLevel and 0 or 1);
 	end
 	
@@ -220,7 +251,7 @@ local function Nidhaus_UnitFrames_PlayerFrame_ToPlayerArt(self)
 			self.manabar:SetPoint("CENTER", host, "CENTER", 50, -7);
 			self.manabar:SetHeight(13);
 		end
-	elseif C.UnitFrameCustomTexture then
+	elseif SkinLayoutOn() then
 		-- FIX: mismo doble anclaje que Target: restaurar el/los anclaje(s)
 		-- default (post-MoveFrame) antes de sumar el TOPLEFT, para que la
 		-- barra se estire correctamente en vez de quedar con un solo anclaje
@@ -271,7 +302,7 @@ end;
 local function playerPvpIcon()
 	local factionGroup = UnitFactionGroup("player");
 	if factionGroup and factionGroup ~= "Neutral" and UnitIsPVP("player") then
-		if C.UnitFrameCustomTexture and (C.darkFrames or C.pwFrames) then
+		if C.UnitFrameCustomTexture and (C.darkFrames or C.pwFrames) and not IcyOn() then
 			PlayerPVPIcon:SetTexture(ThemeDir() .. "UI-PVP-" .. factionGroup);
 		else
 			-- Default de Blizzard (también usado por el skin custom en modo Light)

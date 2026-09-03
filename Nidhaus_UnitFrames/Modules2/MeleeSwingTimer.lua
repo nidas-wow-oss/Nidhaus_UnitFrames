@@ -174,6 +174,9 @@ end
 -- Se leen en vivo, igual que el borde: si otro addon retextura la barra
 -- de casteo, el timer la acompaña. En los otros dos estilos vuelve a su
 -- aspecto propio, que es el que tenia siempre.
+-- El swing timer es rojo a proposito: ese es su color y no se cambia ni en
+-- modo Blizzard. Solo copia la textura, el fondo y el spark.
+local MATCH_BLIZZ_COLOR = false;
 local DEFAULT_FILL = "Interface\\TargetingFrame\\UI-StatusBar";
 
 local function ApplyLookForStyle(style)
@@ -204,8 +207,61 @@ local function ApplyLookForStyle(style)
 	else
 		bar:SetStatusBarTexture(DEFAULT_FILL);
 	end
+
 	-- SetStatusBarTexture resetea el tinte: hay que reponerlo siempre.
-	bar:SetStatusBarColor(BAR_R, BAR_G, BAR_B);
+	--
+	-- Y en modo Blizzard el tinte tambien se lee en vivo, no se asume. Este
+	-- relleno ya viene dorado de fabrica; multiplicarlo por un dorado propio
+	-- lo apagaba, que era lo que se veia mas oscuro al lado de la barra de
+	-- casteo de verdad.
+	--
+	-- Se lee CASTING_BAR_COLOR, la constante, y NO el color que la barra
+	-- tiene puesto en este instante: Blizzard la pinta de rojo cuando un
+	-- casteo se interrumpe y de verde en los canalizados, asi que preguntar
+	-- en vivo podia dejar el timer rojo para siempre.
+	local cc = blizz and MATCH_BLIZZ_COLOR and _G.CASTING_BAR_COLOR;
+	if cc and cc.r then
+		bar:SetStatusBarColor(cc.r, cc.g, cc.b);
+	else
+		bar:SetStatusBarColor(BAR_R, BAR_G, BAR_B);
+	end
+
+	-- El fondo oscuro propio tapaba el brillo del relleno de Blizzard, que
+	-- no es opaco del todo. La barra de casteo trae el suyo: se copia si
+	-- existe, y si no se apaga el nuestro y manda el interior del marco.
+	if blizz then
+		local src;
+		if cb.GetRegions then
+			for _, r in ipairs({ cb:GetRegions() }) do
+				if r.GetObjectType and r:GetObjectType() == "Texture"
+					and r:GetDrawLayer() == "BACKGROUND" and r:GetTexture() then
+					src = r;
+					break;
+				end
+			end
+		end
+		if src then
+			bg:SetTexture(src:GetTexture());
+			bg:SetVertexColor(src:GetVertexColor());
+			bg:Show();
+		else
+			bg:Hide();
+		end
+	else
+		bg:SetTexture(DEFAULT_FILL);
+		bg:SetVertexColor(0.1, 0.1, 0.1, 0.75);
+		bg:Show();
+	end
+
+	-- El spark: el mismo tamano que el de la barra de casteo. El de antes
+	-- era la mitad y casi no se veia.
+	local sw, sh = 32, 32;
+	local sp = _G.CastingBarFrameSpark;
+	if sp and (sp:GetWidth() or 0) > 0 then
+		sw, sh = sp:GetWidth(), sp:GetHeight();
+	end
+	spark:SetWidth(sw);
+	spark:SetHeight(sh);
 end
 
 local function ApplyBorderStyle()
