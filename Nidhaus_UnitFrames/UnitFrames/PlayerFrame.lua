@@ -50,6 +50,25 @@ local function AsuriOn()
 	return C.UnitFrameCustomTexture and C.AsuriFrames and not IcyOn();
 end
 
+-- "Group 2" encima del marco, en arena, no informa nada: sos dos o tres y
+-- ya sabes cual sos. Lo unico que hace es taparte el marco. Se apaga con
+-- alfa y NO con Hide(): Blizzard vuelve a mostrar ese FontString cada vez
+-- que corre PlayerFrame_UpdateGroupIndicator, y pelearle con Hide termina
+-- en parpadeo. Mismo truco que se usa con el nivel en Asuri y Compact.
+local function UpdateGroupIndicator()
+	if not PlayerFrameGroupIndicatorText then return; end
+	local _, instanceType = IsInInstance();
+	PlayerFrameGroupIndicatorText:SetAlpha(instanceType == "arena" and 0 or 1);
+end
+
+-- El hook a PlayerFrame_UpdateGroupIndicator cubre el rearmado del grupo,
+-- pero al entrar a la arena esa funcion no siempre vuelve a correr. Estos
+-- dos eventos cierran el hueco, y son baratos.
+local groupIndicatorWatcher = CreateFrame("Frame");
+groupIndicatorWatcher:RegisterEvent("PLAYER_ENTERING_WORLD");
+groupIndicatorWatcher:RegisterEvent("ZONE_CHANGED_NEW_AREA");
+groupIndicatorWatcher:SetScript("OnEvent", UpdateGroupIndicator);
+
 -- El arte de hielo tiene la forma del marco con skin, asi que quiere la
 -- MISMA geometria que Light: barras gruesas y arriba. Por eso vale aunque
 -- el Custom Skin este destildado.
@@ -150,6 +169,7 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 	PlayerFrameGroupIndicatorLeft:Hide();
 	PlayerFrameGroupIndicatorMiddle:Hide();
 	PlayerFrameGroupIndicatorRight:Hide();
+	UpdateGroupIndicator();
 	
 	-- FIX: Checkbox "Custom Skin (Player/Target/Focus)". Con el skin apagado
 	-- se restauran el marco y el ícono de PVP default (capturados en init),
@@ -403,6 +423,12 @@ K.RegisterConfigEvent("CONFIG_LOADED", function()
 	hooksecurefunc("PlayerFrame_UpdatePvPStatus", playerPvpIcon);
 	hooksecurefunc("PlayerFrame_ToVehicleArt", Nidhaus_UnitFrames_PlayerFrame_ToVehicleArt);
 	hooksecurefunc("PetFrame_Update", Nidhaus_UnitFrames_PetFrame_Update);
+	-- La que de verdad decide si "Group N" se ve. Engancharse aca alcanza
+	-- para cubrir el cambio de zona y el rearmado del grupo, que es cuando
+	-- Blizzard lo vuelve a encender.
+	if type(PlayerFrame_UpdateGroupIndicator) == "function" then
+		hooksecurefunc("PlayerFrame_UpdateGroupIndicator", UpdateGroupIndicator);
+	end
 	
 	-- Aplicar backdrop
 	ApplyBackdrop();
