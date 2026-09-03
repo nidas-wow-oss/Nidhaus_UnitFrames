@@ -73,11 +73,11 @@ spark:SetBlendMode("ADD");
 spark:SetPoint("CENTER", bar, "LEFT", 0, 0);
 
 local textLeft = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-textLeft:SetPoint("LEFT", bar, "LEFT", 4, 0);
+textLeft:SetPoint("LEFT", bar, "LEFT", 4, 1);   -- +1: a la altura del texto de la barra de casteo
 textLeft:SetText(AUTO_SHOT or "Auto Shot");
 
 local textRight = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-textRight:SetPoint("RIGHT", bar, "RIGHT", -4, 0);
+textRight:SetPoint("RIGHT", bar, "RIGHT", -4, 1);
 
 local unlockOverlay = mover:CreateTexture(nil, "OVERLAY");
 unlockOverlay:SetAllPoints(mover);
@@ -157,7 +157,15 @@ end
 
 local function BorderTint(r, g, b, a)
 	if castBorder and castBorder:IsShown() then
-		castBorder:SetVertexColor(r, g, b, a);
+		-- El borde prestado de la barra de casteo va a su color de fabrica
+		-- mientras la barra esta bloqueada: bajarlo al gris del modo mover
+		-- lo dejaba mas apagado que la barra de casteo de al lado. Solo se
+		-- pinta de celeste para avisar que se la puede arrastrar.
+		if unlocked then
+			castBorder:SetVertexColor(r, g, b, a);
+		else
+			castBorder:SetVertexColor(1, 1, 1, 1);
+		end
 	elseif border:IsShown() then
 		border:SetBackdropBorderColor(r, g, b, a);
 	end
@@ -225,41 +233,19 @@ local function ApplyLookForStyle(style)
 		bar:SetStatusBarColor(BAR_R, BAR_G, BAR_B);
 	end
 
-	-- El fondo oscuro propio tapaba el brillo del relleno de Blizzard, que
-	-- no es opaco del todo. La barra de casteo trae el suyo: se copia si
-	-- existe, y si no se apaga el nuestro y manda el interior del marco.
-	if blizz then
-		local src;
-		if cb.GetRegions then
-			for _, r in ipairs({ cb:GetRegions() }) do
-				if r.GetObjectType and r:GetObjectType() == "Texture"
-					and r:GetDrawLayer() == "BACKGROUND" and r:GetTexture() then
-					src = r;
-					break;
-				end
-			end
-		end
-		if src then
-			bg:SetTexture(src:GetTexture());
-			bg:SetVertexColor(src:GetVertexColor());
-			bg:Show();
-		else
-			bg:Hide();
-		end
-	else
-		bg:SetTexture(DEFAULT_FILL);
-		bg:SetVertexColor(0.1, 0.1, 0.1, 0.75);
-		bg:Show();
-	end
+	-- El fondo va SIEMPRE oscuro. Copiar el de la barra de casteo dejaba la
+	-- parte vacia blanca, que es peor que el problema que venia a resolver:
+	-- lo apagado era el tinte del relleno y el del borde, no el fondo.
+	bg:SetTexture(DEFAULT_FILL);
+	bg:SetVertexColor(0.1, 0.1, 0.1, 0.75);
+	bg:Show();
 
-	-- El spark: el mismo tamano que el de la barra de casteo. El de antes
-	-- era la mitad y casi no se veia.
-	local sw, sh = 32, 32;
+	-- El spark: el alto sale del de la barra de casteo, el ancho se queda en
+	-- los 16 de siempre. Copiarle tambien el ancho lo dejaba como una mancha.
+	local sh = 32;
 	local sp = _G.CastingBarFrameSpark;
-	if sp and (sp:GetWidth() or 0) > 0 then
-		sw, sh = sp:GetWidth(), sp:GetHeight();
-	end
-	spark:SetWidth(sw);
+	if sp and (sp:GetHeight() or 0) > 0 then sh = sp:GetHeight(); end
+	spark:SetWidth(16);
 	spark:SetHeight(sh);
 end
 
