@@ -123,6 +123,33 @@ text:SetText("0 / 0");
 local DEF_AURA_SIZE, DEF_AURA_PERROW = 16, 8;
 local AURA_GAP, AURA_MARGIN = 2, 4;
 
+-- COMO LOS BUFFS DE BANDA.
+--
+-- Los marcos de banda no listan todo lo que tenes encima: pasan el filtro
+-- RAID, que deja solo las auras que un jugador puede poner (y, en los
+-- debuffs, las que puede limpiar). Eso descarta de una los procs de
+-- trinket y los buffs del equipo, que era la mitad del ruido.
+--
+-- Lo que ningun filtro puede separar es Reyes de Furia Recta: las dos son
+-- bendiciones del propio paladin, de media hora, indistinguibles para el
+-- juego. Para esas esta el clic derecho, en modo Move: esconde ese
+-- hechizo y no vuelve. /nufpower auras los muestra de nuevo a todos.
+local BUFF_FILTER   = "HELPFUL|RAID";
+local DEBUFF_FILTER = "HARMFUL|RAID";
+
+-- Si el cliente no entendiera el filtro, se cae al listado crudo antes que
+-- quedarse sin mostrar nada.
+local AURA_FILTER_OK;
+
+local function AuraAt(i, filter)
+	if AURA_FILTER_OK == nil then
+		AURA_FILTER_OK = pcall(UnitAura, "player", 1, BUFF_FILTER) and true or false;
+	end
+	if AURA_FILTER_OK then return UnitAura("player", i, filter); end
+	if filter == DEBUFF_FILTER then return UnitDebuff("player", i); end
+	return UnitBuff("player", i);
+end
+
 -- Los mismos colores que usa Blizzard para el borde de los debuffs.
 local DEBUFF_COLORS = {
 	Magic   = { 0.20, 0.60, 1.00 },
@@ -131,22 +158,39 @@ local DEBUFF_COLORS = {
 	Poison  = { 0.00, 0.60, 0.00 },
 };
 local DEBUFF_DEFAULT = { 0.80, 0.10, 0.10 };
-local BUFF_EDGE      = { 0.25, 0.25, 0.25 };
 
 local buffRow   = CreateFrame("Frame", nil, frame);
 local debuffRow = CreateFrame("Frame", nil, frame);
 local buffIcons, debuffIcons = {}, {};
 
 local function MakeIcon(parent)
-	local f = CreateFrame("Frame", nil, parent);
+	-- Button y no Frame para poder recibir el clic derecho. El raton
+	-- arranca APAGADO: la barra vive encima del personaje y si los iconos
+	-- capturan clicks no podes seleccionar lo que tengan detras. Se
+	-- enciende solo mientras se la esta acomodando (boton "Move"), que es
+	-- cuando tiene sentido esconder auras.
+	local f = CreateFrame("Button", nil, parent);
+	f:EnableMouse(false);
+	f:RegisterForClicks("RightButtonUp");
+	f:SetScript("OnClick", function(self)
+		if not self.spell then return; end
+		local db = DB();
+		if type(db.auraHidden) ~= "table" then db.auraHidden = {}; end
+		db.auraHidden[self.spell] = true;
+		print("|cff4FC3F7NUF:|r Power Bar - |cffffff00" .. self.spell
+			.. "|r no se muestra mas. |cffaaaaaa/nufpower auras|r para volver a mostrarlas todas.");
+		if K.ApplyPowerBarAuras then K.ApplyPowerBarAuras(); end
+	end);
 
 	-- Un cuadrado un pixel mas grande por detras: al quedar tapado por el
-	-- icono, lo unico que se ve es el filo. Sale mas barato que un backdrop
-	-- y en 3.3.5a los Button no aceptan SetBackdrop.
+	-- icono, lo unico que se ve es el filo. Solo lo usan los debuffs, para
+	-- el color del tipo; los buffs van pelados, como en los marcos de
+	-- banda, que no les dibujan ningun borde.
 	f.edge = f:CreateTexture(nil, "BACKGROUND");
 	f.edge:SetTexture("Interface\\Buttons\\WHITE8X8");
 	f.edge:SetPoint("TOPLEFT",     f, "TOPLEFT",     -1,  1);
 	f.edge:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT",  1, -1);
+	f.edge:Hide();
 
 	f.icon = f:CreateTexture(nil, "ARTWORK");
 	f.icon:SetAllPoints(f);
@@ -212,19 +256,35 @@ local function LayoutAuras()
 	end
 end
 
-local function FillRow(list, getter, per, isDebuff)
-	local shown = 0;
-	for i = 1, per do
-		local ic = list[i];
-		if not ic then break; end
-		local name, _, icon, count, dtype, duration, expires = getter("player", i);
-		if name and icon then
+local function FillRow(list, filter, per)
+	local isDebuff = (filter == DEBUFF_FILTER);
+	local hidden   = DB().auraHidden;
+	local slot, i  = 0, 1;
+
+	-- Se recorre el listado saltando lo escondido, asi los huecos se
+	-- cierran solos y la fila no queda con agujeros en el medio.
+	while slot < per and i <= 40 do
+		local name, _, icon, count, dtype, duration, expires = AuraAt(i, filter);
+		if not name then break; end
+		i = i + 1;
+
+		if icon and not (hidden and hidden[name]) then
+			slot = slot + 1;
+			local ic = list[slot];
+			if not ic then break; end
+
+			ic.spell = name;
 			ic.icon:SetTexture(icon);
 
-			local col = isDebuff
-				and (DEBUFF_COLORS[dtype or ""] or DEBUFF_DEFAULT)
-				or BUFF_EDGE;
-			ic.edge:SetVertexColor(col[1], col[2], col[3]);
+			-- Borde solo en los debuffs, con el color de su tipo. Los buffs
+			-- van pelados: los marcos de banda no les dibujan ninguno.
+			if isDebuff then
+				local col = DEBUFF_COLORS[dtype or ""] or DEBUFF_DEFAULT;
+				ic.edge:SetVertexColor(col[1], col[2], col[3]);
+				ic.edge:Show();
+			else
+				ic.edge:Hide();
+			end
 
 			if count and count > 1 then
 				ic.count:SetText(count);
@@ -242,12 +302,13 @@ local function FillRow(list, getter, per, isDebuff)
 			end
 
 			ic:Show();
-			shown = shown + 1;
-		else
-			ic:Hide();
 		end
 	end
-	return shown;
+
+	for k = slot + 1, #list do
+		if list[k] then list[k]:Hide(); end
+	end
+	return slot;
 end
 
 local function UpdateAuras()
@@ -257,8 +318,8 @@ local function UpdateAuras()
 		return;
 	end
 	local per = DB().auraPerRow or DEF_AURA_PERROW;
-	FillRow(buffIcons,   UnitBuff,   per, false);
-	FillRow(debuffIcons, UnitDebuff, per, true);
+	FillRow(buffIcons,   BUFF_FILTER,   per);
+	FillRow(debuffIcons, DEBUFF_FILTER, per);
 	buffRow:Show();
 	debuffRow:Show();
 end
@@ -280,6 +341,18 @@ end
 
 function K.ApplyPowerBarAuras()
 	LayoutAuras();
+	UpdateAuras();
+end
+
+-- El raton de los iconos sigue al modo Move, igual que el del marco.
+local function SetAuraMouse(on)
+	for _, list in ipairs({ buffIcons, debuffIcons }) do
+		for _, ic in ipairs(list) do ic:EnableMouse(on and true or false); end
+	end
+end
+
+function K.ResetPowerBarHiddenAuras()
+	DB().auraHidden = nil;
 	UpdateAuras();
 end
 
@@ -558,6 +631,7 @@ K.RegisterModule("PowerBar", {
 		RestorePosition();
 		testMode = not testMode;
 		frame:EnableMouse(testMode);
+		SetAuraMouse(testMode);
 		if testMode then
 			UpdateBar();
 			if not frame:IsShown() then
@@ -567,7 +641,7 @@ K.RegisterModule("PowerBar", {
 				text:SetText("70 / 100");
 				frame:Show();
 			end
-			print("|cff4FC3F7NUF:|r Power Bar - Alt + arrastrar para moverla. Click de nuevo en Move para salir.");
+			print("|cff4FC3F7NUF:|r Power Bar - Alt + arrastrar para moverla. Click derecho en un aura para esconderla. Click de nuevo en Move para salir.");
 		else
 			UpdateBar();
 		end
@@ -582,6 +656,7 @@ K.RegisterModule("PowerBar", {
 	onDisable = function()
 		enabled = false;
 		testMode = false;
+		SetAuraMouse(false);
 		events:UnregisterAllEvents();
 		frame:Hide();
 	end,
@@ -593,7 +668,10 @@ SlashCmdList["NUFPOWERBAR"] = function(msg)
 	if msg == "reset" then
 		K.ResetPowerBarPosition();
 		print("|cff4FC3F7NUF:|r Power Bar - posicion reiniciada.");
+	elseif msg == "auras" then
+		K.ResetPowerBarHiddenAuras();
+		print("|cff4FC3F7NUF:|r Power Bar - se vuelven a mostrar todas las auras.");
 	else
-		print("|cff4FC3F7NUF:|r Power Bar - Alt + arrastrar para moverla. /nufpower reset");
+		print("|cff4FC3F7NUF:|r Power Bar - Alt + arrastrar para moverla. /nufpower reset  |  /nufpower auras");
 	end
 end
