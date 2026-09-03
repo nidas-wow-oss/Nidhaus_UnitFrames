@@ -57,6 +57,69 @@ petFrame:SetAttribute("type1", "target")
 petFrame:SetAttribute("unit", "party1pet")
 petFrame:RegisterForClicks("AnyUp")
 
+-- =========================================================
+-- VISIBILIDAD SEGURA
+--
+-- petFrame es un Button con SecureUnitButtonTemplate, o sea un marco
+-- PROTEGIDO: Show() y Hide() sobre el estan vedados en combate. El
+-- OnUpdate llamaba a Show() diez veces por segundo, estuviera ya visible
+-- o no, y el cliente cortaba cada llamada: 254 lineas seguidas en
+-- taint.log de un solo combate, y el cartel amarillo "Interface action
+-- failed because of an AddOn" en pantalla.
+--
+-- RegisterUnitWatch es la herramienta de Blizzard para esto: el codigo
+-- seguro muestra y oculta el marco segun exista party1pet, y eso si
+-- funciona en combate. Si el cliente no la tuviera, se cae a un Show/Hide
+-- a mano que solo se llama cuando el estado cambia de verdad, y nunca
+-- dentro de combate: lo pendiente se aplica al salir.
+-- =========================================================
+local PPF_HasUnitWatch = (type(RegisterUnitWatch) == "function")
+	and (type(UnregisterUnitWatch) == "function")
+local PPF_Watching     = false   -- el unit watch esta puesto
+local PPF_WantVisible  = false   -- lo que quiere el modulo: prendido o no
+local PPF_Pending      = nil     -- lo que quedo para cuando termine el combate
+
+local PPF_ApplyVisibility        -- se define abajo, la usa el frame de combate
+
+local ppfCombat = CreateFrame("Frame")
+ppfCombat:SetScript("OnEvent", function(self)
+	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+	if PPF_Pending ~= nil then
+		local want = PPF_Pending
+		PPF_Pending = nil
+		PPF_ApplyVisibility(want)
+	end
+end)
+
+function PPF_ApplyVisibility(on)
+	if InCombatLockdown() then
+		PPF_Pending = on
+		ppfCombat:RegisterEvent("PLAYER_REGEN_ENABLED")
+		return
+	end
+	PPF_WantVisible = on
+
+	if PPF_HasUnitWatch then
+		if on and not PPF_Watching then
+			RegisterUnitWatch(petFrame)
+			PPF_Watching = true
+		elseif (not on) and PPF_Watching then
+			UnregisterUnitWatch(petFrame)
+			PPF_Watching = false
+		end
+		if not on then petFrame:Hide() end
+		return
+	end
+
+	local shouldShow = on and UnitExists("party1pet") and true or false
+	if shouldShow and not petFrame:IsShown() then
+		petFrame:Show()
+	elseif (not shouldShow) and petFrame:IsShown() then
+		petFrame:Hide()
+	end
+end
+
+
 -- Fondo
 petFrame.bg = petFrame:CreateTexture(nil, "BACKGROUND")
 petFrame.bg:SetAllPoints(true)
@@ -291,12 +354,13 @@ end
 -- Actualización del frame de mascota
 local function UpdatePetFrame()
     local unit = "party1pet"
+    -- Ni Show() ni Hide() aca: de mostrar y ocultar se encarga el unit
+    -- watch, o PPF_ApplyVisibility fuera de combate si no lo hubiera.
     if not UnitExists(unit) then
-        petFrame:Hide()
+        if not PPF_HasUnitWatch then PPF_ApplyVisibility(PPF_WantVisible) end
         return
     end
-
-    petFrame:Show()
+    if not PPF_HasUnitWatch then PPF_ApplyVisibility(PPF_WantVisible) end
     SetPortraitTexture(petFrame.portraitIcon, unit)
     petFrame.name:SetText(UnitName(unit) or "Mascota")
 
@@ -570,10 +634,11 @@ end
 local function PPF_SetEnabled(on)
     if on then
         for _, e in ipairs(PPF_EVENTS) do pcall(frame.RegisterEvent, frame, e) end
+        PPF_ApplyVisibility(true)
         UpdatePetFrame()
     else
         frame:UnregisterAllEvents()
-        petFrame:Hide()
+        PPF_ApplyVisibility(false)
     end
 end
 

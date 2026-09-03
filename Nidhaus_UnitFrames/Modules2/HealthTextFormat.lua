@@ -81,8 +81,16 @@ local TRACKED_BARS = {
 
 local MAX_ARENA_HT = MAX_ARENA_ENEMIES or 5;
 
+-- Mismo cuidado que en AbbreviatedStatus: TextStatusBar_UpdateTextString
+-- termina en un Show/Hide sobre barras que cuelgan de marcos protegidos
+-- (los ArenaEnemyFrame, en particular), y llamarla desde aca en combate
+-- deja la cadena tainted y el cliente corta la accion. Se posterga.
+local htfPending = false;
+
 function K.ApplyHealthTextFormat()
 	if not TextStatusBar_UpdateTextString then return; end
+	if InCombatLockdown() then htfPending = true; return; end
+	htfPending = false;
 
 	for i = 1, #TRACKED_BARS do
 		local bar = _G[TRACKED_BARS[i]];
@@ -101,7 +109,12 @@ end
 
 local initFrame = CreateFrame("Frame");
 initFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
-initFrame:SetScript("OnEvent", function(self)
+initFrame:RegisterEvent("PLAYER_REGEN_ENABLED");
+initFrame:SetScript("OnEvent", function(self, event)
+	if event == "PLAYER_REGEN_ENABLED" then
+		if htfPending then K.ApplyHealthTextFormat(); end
+		return;
+	end
 	self:UnregisterEvent("PLAYER_ENTERING_WORLD");
 	K.ApplyHealthTextFormat();
 end);

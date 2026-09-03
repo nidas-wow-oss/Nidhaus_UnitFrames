@@ -63,14 +63,31 @@ local function SaveScale(value, style)
 	PartyTargetsDB.scale = value;
 end
 
+-- Los PartyTargetFrame heredan SecureUnitButtonTemplate, o sea que son
+-- marcos protegidos y SetScale sobre ellos esta vedado en combate. Si toca
+-- en plena pelea se anota y se aplica al salir, en vez de comerse un
+-- "Interface action failed because of an AddOn" por cada marco.
+local scalePending = false;
+
 local function ApplyScale()
 	local v = GetScale();
+	if InCombatLockdown() then
+		scalePending = true;
+		return v;
+	end
+	scalePending = false;
 	for i = 1, MAX_PARTY_MEMBERS do
 		local f = _G["PartyTargetFrame" .. i];
 		if f then f:SetScale(v); end
 	end
 	return v;
 end
+
+local scaleWatcher = CreateFrame("Frame");
+scaleWatcher:RegisterEvent("PLAYER_REGEN_ENABLED");
+scaleWatcher:SetScript("OnEvent", function()
+	if scalePending then ApplyScale(); end
+end);
 
 if _nufK then
 	_nufK.GetPartyTargetScale   = GetScale;

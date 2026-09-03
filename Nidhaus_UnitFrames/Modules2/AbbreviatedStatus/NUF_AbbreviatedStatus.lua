@@ -485,14 +485,34 @@ for i = 1, 5 do
 	table.insert(UNIT_BARS, "ArenaEnemyFrame" .. i .. "ManaBar");
 end
 
+-- Estas barras cuelgan de marcos protegidos (PlayerFrame, TargetFrame y
+-- sobre todo los ArenaEnemyFrame), y TextStatusBar_UpdateTextString hace
+-- Show/Hide sobre la barra cuando la unidad no tiene mana. Llamada desde
+-- codigo de addon, esa cadena queda "tainted" y el cliente la corta en
+-- combate: es lo que llenaba el taint.log de
+-- "ArenaEnemyFrame4ManaBar:Hide()" y sacaba el cartel amarillo.
+-- El refresco no corre ninguna prisa (solo hace falta al tocar los
+-- ajustes), asi que en combate se anota y se hace al salir. Mientras
+-- tanto Blizzard igual repinta el texto por su cuenta, desde su propio
+-- codigo, que si tiene permiso.
+local refreshPending = false;
+
 local function RefreshAllBars()
 	if not TextStatusBar_UpdateTextString then return; end
+	if InCombatLockdown() then refreshPending = true; return; end
+	refreshPending = false;
 	for _, name in ipairs(UNIT_BARS) do
 		local bar = _G[name];
 		if bar then pcall(TextStatusBar_UpdateTextString, bar); end
 	end
 end
 K.RefreshAbbreviatedStatusBars = RefreshAllBars;
+
+local refreshWatcher = CreateFrame("Frame");
+refreshWatcher:RegisterEvent("PLAYER_REGEN_ENABLED");
+refreshWatcher:SetScript("OnEvent", function()
+	if refreshPending then RefreshAllBars(); end
+end);
 
 -- La llama PlayerFrame al prender/apagar el "Custom Skin": ese skin reancla
 -- los textos, asi que hay que olvidar la posicion guardada y volver a

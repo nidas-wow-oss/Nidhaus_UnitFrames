@@ -357,7 +357,19 @@ function K.GetPartyTargetStyle()
 	return (v == "Square") and "Square" or "Classic";
 end
 
+-- PartyTargetFrame1..4 heredan SecureUnitButtonTemplate: son marcos
+-- PROTEGIDOS, y SetSize sobre uno de ellos esta vedado en combate. Como el
+-- estilo se reaplica con UNIT_TARGET, que en pelea salta cada vez que un
+-- companero cambia de objetivo, esto disparaba el cartel amarillo
+-- "Interface action failed because of an AddOn" una y otra vez. En combate
+-- se anota y listo; al salir se aplica de una sola pasada, que es cuando
+-- se puede y cuando ademas se nota menos.
+local stylePending = false;
+
 function K.ApplyPartyTargetStyle()
+	if InCombatLockdown() then stylePending = true; return; end
+	stylePending = false;
+
 	local square = (K.GetPartyTargetStyle() == "Square");
 
 	for i = 1, FRAMES do
@@ -392,7 +404,14 @@ local events = CreateFrame("Frame");
 events:RegisterEvent("PLAYER_ENTERING_WORLD");
 events:RegisterEvent("PARTY_MEMBERS_CHANGED");
 events:RegisterEvent("UNIT_TARGET");
+events:RegisterEvent("PLAYER_REGEN_ENABLED");
 events:SetScript("OnEvent", function(_, event)
+	if event == "PLAYER_REGEN_ENABLED" then
+		-- Salio de combate: si quedo algo pendiente, ahora si.
+		if stylePending then K.ApplyPartyTargetStyle(); end
+		return;
+	end
+
 	if K.GetPartyTargetStyle() ~= "Square" then return; end
 
 	K.ApplyPartyTargetStyle();
