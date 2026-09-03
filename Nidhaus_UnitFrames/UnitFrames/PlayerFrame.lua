@@ -335,6 +335,15 @@ local function Nidhaus_UnitFrames_PetFrame_Update(self, override)
 			else
 				PetFrameTexture:SetTexture(ThemeDir() .. "UI-SmallTargetingFrame");
 			end;
+			-- SetTexture no resetea el tinte. Si Lorti oscurecio el marco de
+			-- la mascota y despues se apago, ese gris se quedaba pegado y la
+			-- mascota seguia negra para siempre. Se le pregunta igual que en
+			-- el marco del jugador: con Lorti apagado ApplyLortiTint repone
+			-- el blanco.
+			if not (K.ApplyLortiTint and K.ApplyLortiTint(PetFrameTexture,
+				"LortiUI_PlayerTargetFocus")) then
+				PetFrameTexture:SetVertexColor(1, 1, 1);
+			end
 		end;
 	end;
 end;
