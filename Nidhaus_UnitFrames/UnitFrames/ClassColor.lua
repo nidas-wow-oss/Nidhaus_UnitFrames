@@ -24,7 +24,13 @@ local function unitClassColors(healthbar, unit)
 	--
 	-- Los marcos de arena no tienen coloreo propio en otro lado: dependen de
 	-- este mismo hook, asi que la excepcion tiene que estar aca.
-	local isArena = unit and string.find(unit, "^arena%d") ~= nil;
+	--
+	-- CON UNA SALVEDAD: el estilo Blizzard. Ahi los marcos de arena son los
+	-- de fabrica, sin retocar, y forzarles el color de clase los deja
+	-- distintos de todo el resto de la interfaz de Blizzard. En ese estilo
+	-- se respeta la opcion como en cualquier otro marco.
+	local isArena = unit and string.find(unit, "^arena%d") ~= nil
+		and C.ArenaFrameStyle ~= "Blizzard";
 
 	if C.classColor or isArena then
 		if not UnitIsConnected(unit) then
