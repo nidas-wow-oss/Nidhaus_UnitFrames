@@ -690,7 +690,9 @@ function K.PopulateArenaTab(panel)
 	-- mismo la casilla solo se muestra con Blizzard puesto: en los demas
 	-- estilos no decidiria nada y seria una casilla mentirosa.
 	local blizzCCBox = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate");
-	blizzCCBox:SetPoint("TOPLEFT", 168, styleStartY - 12);
+	-- x=182 y no mas: el desplegable de Pet Style arranca en 280 y el texto
+	-- de esta casilla llega hasta ~271. Correrla mas los pisa.
+	blizzCCBox:SetPoint("TOPLEFT", 182, styleStartY - 12);
 	blizzCCBox:SetWidth(24); blizzCCBox:SetHeight(24);
 	blizzCCBox.text = blizzCCBox:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
 	blizzCCBox.text:SetPoint("LEFT", blizzCCBox, "RIGHT", 2, 0);
