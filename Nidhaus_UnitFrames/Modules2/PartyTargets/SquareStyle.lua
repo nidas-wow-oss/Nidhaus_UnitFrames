@@ -375,6 +375,10 @@ function K.SetPartyTargetStyle(style)
 	if not PartyTargetsDB then PartyTargetsDB = {}; end
 	PartyTargetsDB.style = (style == "Square") and "Square" or "Classic";
 	K.ApplyPartyTargetStyle();
+	-- Cada estilo recuerda su propia escala: al cambiar hay que aplicar la
+	-- del nuevo, y avisarle al panel para que el slider muestre esa.
+	if K.ApplyPartyTargetScale then K.ApplyPartyTargetScale(); end
+	if K.RefreshPartyTargetScaleSlider then K.RefreshPartyTargetScaleSlider(); end
 end
 
 -- ---------------------------------------------------------

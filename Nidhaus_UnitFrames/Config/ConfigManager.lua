@@ -211,6 +211,7 @@ local defaults = {
 	LortiUI_PlayerTargetFocus = true,  -- Player, Target, Focus frame textures
 	LortiUI_Party             = true,  -- Party frame textures
 	LortiUI_PartyTargets      = true,  -- Target-of-party frame textures
+	LortiUI_PartyPet          = true,  -- Party pet frame textures
 	LortiUI_Arena             = true,  -- Arena frame textures
 	LortiUI_ActionBars        = true,  -- Action bar textures
 	LortiUI_Minimap           = true,  -- Minimap textures & scroll

@@ -211,13 +211,20 @@ local function CreateOptionsPanel()
 
 	slider:SetScript("OnValueChanged", function(self, value)
 		value = math.floor(value * 20 + 0.5) / 20
-		-- Live preview
-		PartyTargetsDB.scale = value
+		-- Se guarda en el estilo activo, no en un unico numero compartido.
+		if K and K.SavePartyTargetScale then K.SavePartyTargetScale(value) end
 		for i = 1, MAX_PARTY_MEMBERS do
 			local frame = _G["PartyTargetFrame"..i]
 			if frame then frame:SetScale(value) end
 		end
 	end)
+
+	-- Lo llama SetPartyTargetStyle al cambiar de estilo, para que el slider
+	-- salte a la escala guardada del estilo nuevo.
+	function K.RefreshPartyTargetScaleSlider()
+		if not f:IsShown() then return end
+		slider:SetValue((K.GetPartyTargetScale and K.GetPartyTargetScale()) or 1.0)
+	end
 
 	-- La cajita con el valor. DESPUES del SetScript de arriba, no antes.
 	--
@@ -284,7 +291,7 @@ local function CreateOptionsPanel()
 		mirrorCB:SetChecked(PartyTargetsDB.mirror and true or false)
 		anchorCB:SetChecked(PartyTargetsDB.anchor and true or false)
 		lockCB:SetChecked(PartyTargetsDB.locked and true or false)
-		slider:SetValue(PartyTargetsDB.scale or 1.0)
+		slider:SetValue((K and K.GetPartyTargetScale and K.GetPartyTargetScale()) or 1.0)
 		-- La cajita del valor la sincroniza UIKit desde el OnValueChanged
 		-- del propio slider, no hay que repintarla a mano.
 

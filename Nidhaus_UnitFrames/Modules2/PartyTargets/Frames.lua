@@ -30,6 +30,54 @@ local DEFAULTS = {
 	hideName = false,    -- ocultar el nombre del objetivo
 }
 
+-- ---------------------------------------------------------
+-- Escala, guardada POR ESTILO
+--
+-- Classic y Square son marcos de tamaño muy distinto, asi que una sola
+-- escala obligaba a reajustar el slider cada vez que se cambiaba de uno al
+-- otro. Ahora cada estilo recuerda la suya.
+--
+-- PartyTargetsDB.scale sigue existiendo: es lo que habia antes y sirve de
+-- punto de partida para los dos estilos la primera vez.
+--
+-- OJO: en este archivo el namespace de NUF es _nufK, no K.
+-- ---------------------------------------------------------
+local function StyleKey()
+	return (PartyTargetsDB.style == "Square") and "Square" or "Classic";
+end
+
+local function GetScale(style)
+	local key = style or StyleKey();
+	local t = PartyTargetsDB.scaleByStyle;
+	if t and type(t[key]) == "number" then return t[key]; end
+	return PartyTargetsDB.scale or 1.0;
+end
+
+local function SaveScale(value, style)
+	local key = style or StyleKey();
+	if type(PartyTargetsDB.scaleByStyle) ~= "table" then
+		PartyTargetsDB.scaleByStyle = {};
+	end
+	PartyTargetsDB.scaleByStyle[key] = value;
+	-- Se mantiene al dia por si algo viejo todavia lee .scale
+	PartyTargetsDB.scale = value;
+end
+
+local function ApplyScale()
+	local v = GetScale();
+	for i = 1, MAX_PARTY_MEMBERS do
+		local f = _G["PartyTargetFrame" .. i];
+		if f then f:SetScale(v); end
+	end
+	return v;
+end
+
+if _nufK then
+	_nufK.GetPartyTargetScale   = GetScale;
+	_nufK.SavePartyTargetScale  = SaveScale;
+	_nufK.ApplyPartyTargetScale = ApplyScale;
+end
+
 local function EnsureDefaults()
 	for k, v in pairs(DEFAULTS) do
 		if PartyTargetsDB[k] == nil then PartyTargetsDB[k] = v end
@@ -666,7 +714,7 @@ end
 -- el offset para dejarlo donde estaba. La escala cambia el tamaño; la
 -- posicion la decide el usuario arrastrando, no el slider.
 function PartyTargets_ApplyScale()
-	local s = PartyTargetsDB.scale or 1.0
+	local s = GetScale()
 
 	local ref = _G["PartyTargetFrame1"]
 	local keepL, keepT
@@ -783,7 +831,7 @@ addon.OnLoad = function(self)
 	MakeDraggable(self)
 	
 	-- Apply scale
-	self:SetScale(PartyTargetsDB.scale or 1.0)
+	self:SetScale(GetScale())
 	
 	-- If anchored, apply saved anchor offset; otherwise load free position
 	if PartyTargetsDB.anchor then
@@ -851,7 +899,7 @@ addon.OnEvent = function(self, e, ...)
 	
 	if (e == "VARIABLES_LOADED") then
 		EnsureDefaults()
-		self:SetScale(PartyTargetsDB.scale or 1.0)
+		self:SetScale(GetScale())
 		if PartyTargetsDB.anchor then
 			-- Apply saved anchor offset
 			local parent = _G["PartyMemberFrame"..self:GetID()]

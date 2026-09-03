@@ -169,6 +169,21 @@ border:SetTexture("Interface\\CastingBar\\UI-CastingBar-Border")
 border:SetSize(138, 54)
 border:SetPoint("CENTER", castBar, "CENTER", 0, 0)
 
+-- ---------------------------------------------------------
+-- Tinte de Lorti UI
+--
+-- El marco de la mascota y el borde de su barra de casteo son arte de
+-- Blizzard sin tocar, asi que con Lorti puesto quedaban dorados y
+-- brillantes al lado del resto oscurecido. Piden el tinte por el mismo
+-- camino que el grupo, arena y los target de grupo: si Lorti esta
+-- apagado, ApplyLortiTint repone el blanco y todo queda como antes.
+-- ---------------------------------------------------------
+local function ApplyPetLortiTint()
+	if not K.ApplyLortiTint then return; end
+	K.ApplyLortiTint(petFrame.bg, "LortiUI_PartyPet");
+	K.ApplyLortiTint(border,      "LortiUI_PartyPet");
+end
+
 local spark = castBar:CreateTexture(nil, "OVERLAY")
 spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
 spark:SetBlendMode("ADD")
@@ -332,6 +347,8 @@ local function UpdatePetFrame()
     else
         petFrame.ccGlow:Hide()
     end
+
+	ApplyPetLortiTint();
 end
 
 -- Castbar
