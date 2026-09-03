@@ -156,7 +156,11 @@ local PW2 = {
 	--   x / y  = corrimiento respecto de donde la deja el juego
 	--   w / h  = tamaño (0 = dejarlo como viene)
 	--   alpha  = opacidad de 0 a 100
-	bg = { x = 12, y = -2, w = 45, h = 21, alpha = 94 },
+	-- Medido a mano sobre los marcos, con la ventana de /nufpw2. Con x=12 y
+	-- w=45 el fondo arrancaba a la derecha del retrato y le dejaba el
+	-- hueco a la vista. Corrido 17 a la izquierda y ensanchado 16, el
+	-- borde derecho queda donde estaba y el retrato deja de sobresalir.
+	bg = { x = -5, y = -2, w = 61, h = 21, alpha = 94 },
 };
 
 -- Cuanto bajan los buffs y debuffs de Blizzard, en pixeles.
