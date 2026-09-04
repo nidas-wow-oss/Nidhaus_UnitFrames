@@ -260,7 +260,15 @@ local function StyleOne(barName)
 	end
 
 	local flash = Sub(barName, "Flash");
-	if flash then flash:SetTexture(TEX_FLASH); end
+	if flash then
+		flash:SetTexture(TEX_FLASH);
+		-- Mismo trato que el borde: si Frame Borders lo tapa, es suyo. Y
+		-- se lo deja SIN TEXTURA, no escondido: el OnUpdate de la barra lo
+		-- vuelve a mostrar en cada cuadro del fogonazo.
+		if K.FrameBordersHidesRegion and K.FrameBordersHidesRegion(flash) then
+			flash:SetTexture(nil);
+		end
+	end
 
 	local shield = Sub(barName, "BorderShield");
 	if shield then shield:SetTexture(TEX_SHIELD); end

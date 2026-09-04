@@ -157,13 +157,29 @@ local GROUPS = {
 		key = "FrameBorder_CastBar",
 		label = "Cast Bar",
 		names = { "CastingBarFrame", "TargetFrameSpellBar", "FocusFrameSpellBar" },
-		-- EL MARCO DE BLIZZARD SE VA.
+		-- EL MARCO Y EL DESTELLO DE BLIZZARD SE VAN.
 		--
-		-- La barra de casteo trae su propio borde grueso con relieve. Con
-		-- el filo fino por fuera quedaban los dos, uno adentro del otro, y
-		-- se veia sucio. Mientras este grupo este prendido ese borde se
-		-- esconde; al apagarlo vuelve.
-		hideRegions = { "Border" },
+		-- Border es el marco grueso con relieve que trae la barra: con el
+		-- filo fino por fuera quedaban los dos, uno adentro del otro.
+		--
+		-- Flash es el fogonazo del final del casteo, y es la misma escuela:
+		-- un marco dorado con adornos que aparece medio segundo y no se
+		-- parece en nada al filo fino. Sin el, al terminar el casteo la
+		-- barra igual se pone verde y se desvanece, que es la señal que
+		-- importa; lo que se va es el adorno, no el aviso.
+		--
+		-- Los dos vuelven al apagar el grupo.
+		-- Border se ESCONDE; Flash pierde la TEXTURA, que no es lo mismo.
+		--
+		-- El OnUpdate de la barra vuelve a mostrar el destello en cada
+		-- cuadro mientras dura el fogonazo, asi que esconderlo no sirve:
+		-- lo prende de nuevo enseguida. Dejandolo sin textura sigue
+		-- "mostrado" pero no dibuja nada, y el motor no tiene nada que
+		-- reponer. Es el mismo truco que en las barras de casteo de grupo.
+		hideRegions = {
+			{ suffix = "Border" },
+			{ suffix = "Flash", blank = true },
+		},
 	},
 	{
 		key = "FrameBorder_Auras",
@@ -194,15 +210,28 @@ local hidden = {};      -- [textura] = true cuando la escondimos nosotros
 
 local function BlizzRegions(name, list, hide)
 	if not list then return; end
-	for _, suffix in ipairs(list) do
-		local tex = _G[name .. suffix];
+	for _, item in ipairs(list) do
+		local tex = _G[name .. item.suffix];
 		if tex and tex.Hide then
 			if hide then
-				hidden[tex] = true;
-				tex:Hide();
-			elseif hidden[tex] then
+				-- Se anota lo que habia ANTES de tocarlo, una sola vez.
+				if hidden[tex] == nil then
+					if item.blank then
+						hidden[tex] = tex:GetTexture() or false;
+					else
+						hidden[tex] = true;
+					end
+				end
+				if item.blank then tex:SetTexture(nil); else tex:Hide(); end
+
+			elseif hidden[tex] ~= nil then
+				local prev = hidden[tex];
 				hidden[tex] = nil;
-				tex:Show();
+				if item.blank then
+					if prev then tex:SetTexture(prev); end
+				else
+					tex:Show();
+				end
 			end
 		end
 	end
@@ -211,7 +240,7 @@ end
 -- Para que CastBarPW, que retextura ese mismo borde, sepa que no tiene
 -- que volver a mostrarlo. Un solo dueño por textura.
 function K.FrameBordersHidesRegion(tex)
-	return tex ~= nil and hidden[tex] == true;
+	return tex ~= nil and hidden[tex] ~= nil;
 end
 
 -- Donde se planta el borde dentro del marco.
@@ -440,7 +469,10 @@ local function CreateBorderSubUI(container, yOffset, parentCheckbox)
 	-- mano ataba este archivo al orden de aquella lista, y agregar una
 	-- fuente en el medio hubiera cambiado en silencio la que se aplica.
 	-- ---------------------------------------------------------
-	local FONT_CHOICES = { "Default WoW", "Prototype", "Prototype Outline" };
+	-- Solo estas dos. Prototype sin contorno sigue existiendo en el
+	-- catalogo de NiceDamage, que es donde vive la lista completa; aca van
+	-- las del estilo y nada mas.
+	local FONT_CHOICES = { "Default WoW", "Prototype Outline" };
 
 	local function FontIndex(fontName)
 		local fonts = K.NUF_Fonts;
