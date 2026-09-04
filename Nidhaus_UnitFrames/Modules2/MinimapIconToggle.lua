@@ -121,8 +121,36 @@ local function CollectTargets()
 	return list;
 end
 
+-- ---------------------------------------------------------
+-- SOLO AL PASAR EL MOUSE
+--
+-- Los iconos son HIJOS del minimapa, asi que colgarse de su OnLeave no
+-- sirve: apenas el cursor entra en un icono el minimapa recibe OnLeave,
+-- todo se esconde, y el icono que ibas a apretar desaparece justo debajo
+-- del cursor. Por eso se consulta la posicion del mouse en un OnUpdate y
+-- cuenta como "encima" tanto el minimapa (con margen, que muchos iconos
+-- viven en el borde o un poco afuera) como cualquier icono suelto.
+--
+-- Cinco veces por segundo alcanza de sobra para esto y no se nota.
+-- ---------------------------------------------------------
+local hoverOver     = false;   -- lo que dice el mouse ahora
+local hoverTargets  = nil;     -- cache de iconos, para no recolectar en cada tick
+local HOVER_MARGIN  = 24;
+
+local function HoverMode()
+	return C.MinimapIconsOnHover == true;
+end
+
+-- Que se tiene que ver: el boton manual manda por encima del mouse. Si lo
+-- escondiste a mano, pasar el cursor no lo revive.
+local function DesiredVisible()
+	if hidden then return false; end
+	if HoverMode() then return hoverOver; end
+	return true;
+end
+
 local function ApplyState()
-	if hidden then
+	if not DesiredVisible() then
 		-- Ocultar: guardamos SOLO los que estaban visibles.
 		-- Los que ya estaban ocultos (correo sin correo, voice chat apagado,
 		-- battlefield sin cola) ni los tocamos, asi no reaparecen despues.
@@ -142,6 +170,8 @@ local function ApplyState()
 		wipe(savedShown);
 	end
 
+	-- El icono del boton refleja el interruptor MANUAL, no lo que el mouse
+	-- este haciendo en este instante: si no, parpadearia al pasar por encima.
 	if toggleBtn then
 		if hidden then
 			toggleBtn.icon:SetTexture("Interface\\Buttons\\UI-PlusButton-Up");
@@ -149,6 +179,51 @@ local function ApplyState()
 			toggleBtn.icon:SetTexture("Interface\\Buttons\\UI-MinusButton-Up");
 		end
 	end
+end
+
+local function MouseIsNearMinimap()
+	if not Minimap then return false; end
+	if MouseIsOver(Minimap, HOVER_MARGIN, -HOVER_MARGIN, -HOVER_MARGIN, HOVER_MARGIN) then
+		return true;
+	end
+	-- Los que quedan mas lejos del borde se preguntan uno por uno. Solo los
+	-- visibles: sobre un icono escondido no se puede tener el cursor.
+	if hoverTargets then
+		for _, f in ipairs(hoverTargets) do
+			if f.IsShown and f:IsShown() and MouseIsOver(f) then return true; end
+		end
+	end
+	return false;
+end
+
+local hoverDriver = CreateFrame("Frame");
+local hoverAcc = 0;
+hoverDriver:Hide();
+hoverDriver:SetScript("OnUpdate", function(self, elapsed)
+	hoverAcc = hoverAcc + elapsed;
+	if hoverAcc < 0.2 then return; end
+	hoverAcc = 0;
+
+	local over = MouseIsNearMinimap();
+	if over ~= hoverOver then
+		hoverOver = over;
+		if over then hoverTargets = CollectTargets(); end
+		ApplyState();
+	end
+end);
+
+-- La llama el checkbox del panel.
+function K.ApplyMinimapIconsOnHover()
+	if not enabled then return; end
+	if HoverMode() then
+		hoverTargets = CollectTargets();
+		hoverOver = MouseIsNearMinimap();
+		hoverDriver:Show();
+	else
+		hoverDriver:Hide();
+		hoverOver = false;
+	end
+	ApplyState();
 end
 
 local function SetHidden(state)
@@ -256,7 +331,7 @@ K.RegisterModule("MinimapIconToggle", {
 		CreateToggleButton();
 		if toggleBtn then toggleBtn:Show(); end
 		hidden = DB().hidden and true or false;
-		ApplyState();
+		if K.ApplyMinimapIconsOnHover then K.ApplyMinimapIconsOnHover(); else ApplyState(); end
 		events:RegisterEvent("PLAYER_ENTERING_WORLD");
 		retryAcc, retryCount = 0, 0;
 		retry:Show();
@@ -265,8 +340,12 @@ K.RegisterModule("MinimapIconToggle", {
 		enabled = false;
 		events:UnregisterAllEvents();
 		retry:Hide();
-		if hidden then
+		hoverDriver:Hide();
+		-- Al apagar el modulo todo vuelve a verse, lo hubiera escondido el
+		-- boton o el mouse.
+		if hidden or hoverOver == false then
 			hidden = false;
+			hoverOver = true;
 			ApplyState();
 		end
 		if toggleBtn then toggleBtn:Hide(); end

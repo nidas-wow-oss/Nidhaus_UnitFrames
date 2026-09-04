@@ -343,6 +343,8 @@ L["CB_MINIMAP_HIDE_ZOOM"]        = "Hide Zoom Buttons";
 L["CB_MINIMAP_HIDE_CALENDAR"]    = "Hide Calendar";
 L["CB_MINIMAP_HIDE_WORLDMAP"]    = "Hide World Map";
 L["CB_MINIMAP_WHEEL"]            = "Mouse Wheel Zoom";
+L["CB_MINIMAP_ICONS_HOVER"]      = "Icons only on mouseover";
+L["TIP_MinimapIconsOnHover"]     = "Addon icons stay hidden and appear only while the cursor is on the minimap. Needs the module above.";
 L["SLIDER_MINIMAP_SCALE"]        = "Minimap Scale";
 L["NOTE_MINIMAP_ICONS"]          = "Adds a small button on the minimap corner that hides or shows every addon icon at once.";
 
@@ -1299,6 +1301,8 @@ L["CB_MINIMAP_HIDE_ZOOM"]        = "Ocultar los botones de zoom";
 L["CB_MINIMAP_HIDE_CALENDAR"]    = "Ocultar el calendario";
 L["CB_MINIMAP_HIDE_WORLDMAP"]    = "Ocultar el mapa del mundo";
 L["CB_MINIMAP_WHEEL"]            = "Zoom con la rueda del mouse";
+L["CB_MINIMAP_ICONS_HOVER"]      = "Iconos solo al pasar el mouse";
+L["TIP_MinimapIconsOnHover"]     = "Los iconos de addon quedan ocultos y aparecen solo mientras el cursor esta sobre el minimapa. Necesita el modulo de arriba.";
 L["SLIDER_MINIMAP_SCALE"]        = "Escala del minimapa";
 L["NOTE_MINIMAP_ICONS"]          = "Agrega un bot\195\179n chiquito en la esquina del minimapa que oculta o muestra todos los iconos de addons de una.";
 

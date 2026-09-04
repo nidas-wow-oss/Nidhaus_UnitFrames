@@ -456,17 +456,37 @@ function PartyCastingBars.ApplyBarStyle(bar)
 
 	if PCB_BarStyle == "Arena" then
 		-- Sin marco: el template de las barras de arena no dibuja borde.
-		-- El flash sí se conserva, que es lo que avisa que termino el casteo.
 		if border then border:Hide(); end
 		-- Y del mismo tamaño que aquellas, barra e icono.
 		local aw, ah, aiw, aih = PCB_ArenaMetrics();
 		if aw and ah then bar:SetWidth(aw); bar:SetHeight(ah); end
 		if icon and aiw and aih then icon:SetWidth(aiw); icon:SetHeight(aih); end
-		if flash and d.flashTex then
-			flash:SetTexture(d.flashTex);
-			flash:SetWidth(d.flashW);
-			flash:SetHeight(d.flashH);
-			PCB_RestorePoints(flash, d.flashPts);
+
+		-- EL FLASH TAMBIEN SE VA.
+		--
+		-- Aca me equivoque antes: lo dejaba puesto "porque avisa que
+		-- termino el casteo". Pero el flash de Blizzard tiene la FORMA del
+		-- marco, asi que al terminar cada casteo dibujaba por un instante
+		-- justo el borde que este estilo no tiene. Se veia aparecer un
+		-- recuadro fantasma de la nada, sin barra adentro.
+		--
+		-- No alcanza con Hide(): el OnUpdate del template lo vuelve a
+		-- mostrar y le maneja el alfa durante la animacion de cierre. Hay
+		-- que dejarlo sin textura, y entonces se muestra sin dibujar nada.
+		-- Los otros dos estilos le reponen la suya desde d.flashTex.
+		if flash then
+			local src = _G.ArenaEnemyFrame1CastingBarFlash;
+			local tex = src and src.GetTexture and src:GetTexture();
+			if tex then
+				-- Si las barras de arena traen su propio flash, ese va.
+				flash:SetTexture(tex);
+				flash:SetWidth(src:GetWidth());
+				flash:SetHeight(src:GetHeight());
+				flash:ClearAllPoints();
+				flash:SetPoint("CENTER", bar, "CENTER", 0, 0);
+			else
+				flash:SetTexture(nil);
+			end
 		end
 	elseif PCB_BarStyle == "Blizzard" then
 		if d.barW then bar:SetWidth(d.barW); bar:SetHeight(d.barH); end

@@ -1688,6 +1688,20 @@ local function PopulateTabs()
 	CreateModuleCB(paneMap, L["MOD_MINIMAP_TOGGLE"] or "Minimap Icon Toggle",
 		"MinimapIconToggle", xR, mmR, L["MOD_MINIMAP_TOGGLE_DESC"]);
 
+	-- Cuelga del modulo de arriba: sin el prendido no hay quien esconda ni
+	-- muestre nada, asi que va debajo y no en la lista de adornos.
+	mmR = mmR - 26;
+	do
+		CreateCheckBox(paneMap, L["CB_MINIMAP_ICONS_HOVER"] or "Icons only on mouseover",
+			"MinimapIconsOnHover", xR + 14, mmR,
+			L["TIP_MinimapIconsOnHover"]
+			or "Addon icons stay hidden and appear only while the cursor is on the minimap. Needs the module above.");
+		local cb = checkboxes[#checkboxes];
+		cb:HookScript("OnClick", function()
+			if K.ApplyMinimapIconsOnHover then K.ApplyMinimapIconsOnHover(); end
+		end);
+	end
+
 	mmR = mmR - 52;
 	SectionHeader(paneMap, L["HEADER_MINIMAP_SIZE"] or "Size", xR, mmR);
 	mmR = mmR - 30;
