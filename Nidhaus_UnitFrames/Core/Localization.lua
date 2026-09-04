@@ -836,6 +836,9 @@ L["MOVE_COMBAT_BLOCK"]           = "Action bars cannot be moved during combat.";
 
 -- Minimapa
 L["MOD_MINIMAP_TOGGLE"]          = "Minimap Icon Toggle";
+L["MOD_THINBORDER"]                = "el UI de origen Border";
+L["MOD_THINBORDER_DESC"]           = "Thin border and outer shadow around bars, micro menu, bags, frames and auras. Art from el UI de origen (MIT). Stacks with Lorti UI: Lorti tints, this outlines.";
+L["THINBORDER_STYLE"]              = "Border art:";
 L["MOD_MINIMAP_TOGGLE_DESC"]     = "Button on the minimap corner that hides or shows the addon icons.";
 L["MINIMAP_TOGGLE_TITLE"]        = "Minimap Icons";
 L["MINIMAP_TOGGLE_TIP"]          = "Click to hide or show the addon icons. Zoom, clock and calendar are set in Decorations.";
@@ -1793,6 +1796,9 @@ L["MOVE_COMBAT_BLOCK"]           = "Las barras de acci\195\179n no se pueden mov
 
 -- Minimapa
 L["MOD_MINIMAP_TOGGLE"]          = "Ocultar Iconos del Minimapa";
+L["MOD_THINBORDER"]                = "Borde el UI de origen";
+L["MOD_THINBORDER_DESC"]           = "Borde fino y sombra exterior en barras, micromenu, bolsas, marcos y auras. Arte de el UI de origen (MIT). Se lleva bien con Lorti UI: Lorti tinta, esto dibuja el filo.";
+L["THINBORDER_STYLE"]              = "Arte del borde:";
 L["MOD_MINIMAP_TOGGLE_DESC"]     = "Boton en la esquina del minimapa que oculta o muestra los iconos de addon.";
 L["MINIMAP_TOGGLE_TITLE"]        = "Iconos del Minimapa";
 L["MINIMAP_TOGGLE_TIP"]          = "Click para ocultar o mostrar los iconos de addon. El zoom, el reloj y el calendario se eligen en Decorations.";

@@ -169,6 +169,12 @@ local defaults = {
 	MinimapWheelZoom  = true,    -- zoom con la rueda del mouse
 	MinimapIconsOnHover = false, -- viejo: migrado a MinimapAddonIcons
 	MinimapAddonIcons = "Always", -- cuando se ven los iconos de addon: Always / Hover / Never
+
+	-- Borde estilo el UI de origen. Las sub-opciones arrancan en nil a proposito:
+	-- el panel las trata como prendidas mientras no se toquen, igual que
+	-- hace Lorti con las suyas.
+	FrameBordersStyle = "el UI de origen",   -- el UI de origen / Pixel
+	FrameBordersShadow = true,      -- el halo exterior
 	MinimapScale      = 1.0,
 
 	-- CLASS / PVP MODULES
