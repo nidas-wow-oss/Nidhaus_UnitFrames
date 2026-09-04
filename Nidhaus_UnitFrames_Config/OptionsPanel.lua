@@ -752,6 +752,19 @@ local function CreateDropdown(parent, labelText, setting, options, xOffset, yOff
 	dd:SetPoint("TOPLEFT", -16, -16);
 	UIDropDownMenu_SetWidth(dd, 140);
 
+	-- EL CUADRO MUESTRA LA ETIQUETA, NO EL VALOR.
+	--
+	-- Antes ponia btn.value, que es la clave interna. Mientras clave y
+	-- etiqueta coincidian no se notaba, pero en español ya no coinciden
+	-- (y con la lista de fuentes el valor es un numero, asi que se
+	-- hubiera leido "10" en vez del nombre).
+	local function TextFor(value)
+		for _, opt in ipairs(options) do
+			if opt.value == value then return opt.text; end
+		end
+		return tostring(value);
+	end
+
 	local function Initialize(self, level)
 		for _, opt in ipairs(options) do
 			local info = UIDropDownMenu_CreateInfo();
@@ -759,7 +772,7 @@ local function CreateDropdown(parent, labelText, setting, options, xOffset, yOff
 			info.value = opt.value;
 			info.func  = function(btn)
 				UIDropDownMenu_SetSelectedValue(dd, btn.value);
-				UIDropDownMenu_SetText(dd, btn.value);
+				UIDropDownMenu_SetText(dd, TextFor(btn.value));
 				K.SaveConfig(setting, btn.value);
 				if onChangeCallback then onChangeCallback(btn.value); end
 			end;
@@ -768,9 +781,11 @@ local function CreateDropdown(parent, labelText, setting, options, xOffset, yOff
 		end
 	end
 
+	local current = C[setting];
+	if current == nil then current = options[1].value; end
 	UIDropDownMenu_Initialize(dd, Initialize);
-	UIDropDownMenu_SetSelectedValue(dd, C[setting] or options[1].value);
-	UIDropDownMenu_SetText(dd, C[setting] or options[1].value);
+	UIDropDownMenu_SetSelectedValue(dd, current);
+	UIDropDownMenu_SetText(dd, TextFor(current));
 
 	container.dropdown = dd;
 	return container;
@@ -1456,6 +1471,27 @@ local function PopulateTabs()
 	CreateCheckBox(paneBars, L["CB_HIDE_KEYBIND"] or "Hide Keybind Text", "HideKeybindText", xBarR, bT);
 	bT = bT - 26;
 	CreateCheckBox(paneBars, L["CB_HIDE_MACRO"] or "Hide Macro Names", "HideMacroText", xBarR, bT);
+
+	-- LETRA DE LOS BOTONES (tecla, nombre de macro, cargas).
+	--
+	-- La lista sale de NiceDamage, que es donde viven los .ttf. Es la
+	-- misma que la del selector de daño: una fuente nueva se agrega una
+	-- vez y aparece en los dos lados.
+	bT = bT - 32;
+	do
+		local fonts = K.NUF_Fonts;
+		if type(fonts) == "table" and #fonts > 0 then
+			local opts = {};
+			for i, f in ipairs(fonts) do
+				opts[#opts + 1] = { text = f.name, value = i };
+			end
+			CreateDropdown(paneBars, L["DD_ACTIONBAR_FONT"] or "Button font",
+				"ActionBarFont", opts, xBarR, bT, function()
+					if K.ApplyActionBarFont then K.ApplyActionBarFont(); end
+				end);
+			bT = bT - 20;
+		end
+	end
 
 	-- Barras laterales solo al pasar el mouse
 	bT = bT - 26;

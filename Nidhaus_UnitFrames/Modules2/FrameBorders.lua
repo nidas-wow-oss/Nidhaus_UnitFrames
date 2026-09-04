@@ -4,8 +4,11 @@ local K, C, L = unpack(ns);
 -- =========================================================
 -- FrameBorders.lua
 --
--- Borde fino y sombra exterior alrededor de las barras de accion, el
--- micromenu, las bolsas, los marcos, la barra de casteo y las auras.
+-- Borde fino de esquina redonda y sombra exterior alrededor de las barras
+-- de accion, el micromenu, las bolsas, la barra de casteo y las auras.
+--
+-- Los marcos de unidad NO estan: un rectangulo alrededor de las barras de
+-- vida quedaba mal contra el arte dorado de Blizzard.
 --
 -- ARTE PROPIO. Las cuatro texturas de Media/Border (Soft, Pixel, Glow y
 -- la Light que usa el minimapa) las dibuja Tools/mkborders.py: geometria
@@ -42,14 +45,34 @@ local ART = "Interface\\AddOns\\" .. AddOnName .. "\\Media\\Border\\";
 -- da algo menos de un pixel de filo lleno mas la pluma. Con 12 la banda
 -- se iba a casi dos pixeles y los botones quedaban encajonados.
 local STYLES = {
-	Soft  = { file = ART .. "Border_Soft",  edge = 10 },
-	Pixel = { file = ART .. "Border_Pixel", edge = 10 },
+	Soft = { file = ART .. "Border_Soft", edge = 10 },
 };
 
 local GLOW_FILE, GLOW_EDGE = ART .. "Border_Glow", 3;
 
 local function Style()
-	return STYLES[C.FrameBorderStyle] or STYLES.Soft;
+	return STYLES.Soft;
+end
+
+-- EL EDGESIZE NO PUEDE SER MAS GRANDE QUE MEDIO MARCO.
+--
+-- Cada casilla de esquina se dibuja a edgeSize x edgeSize. En una barra
+-- de casteo de 13 px de alto, las dos esquinas de un lado son 20 px y no
+-- entran: el backdrop las encima y salen esas puntas raras en los
+-- extremos. Aca se recorta al vuelo segun el lado mas corto.
+--
+-- El marco del borde va 1 px por fuera del objetivo de cada lado, de ahi
+-- el +2.
+local function EdgeFor(frame, edge)
+	local w = (frame.GetWidth  and frame:GetWidth())  or 0;
+	local h = (frame.GetHeight and frame:GetHeight()) or 0;
+	local small = math.min(w, h) + 2;
+	if small <= 0 then return edge; end
+
+	local maxEdge = math.floor(small / 2);
+	if maxEdge < 2 then maxEdge = 2; end
+	if edge > maxEdge then return maxEdge; end
+	return edge;
 end
 
 -- COLOR DEL FILO.
@@ -57,18 +80,10 @@ end
 -- Las texturas se dibujan en blanco a proposito, para que el color lo
 -- ponga SetBackdropBorderColor y no haya que tener dos juegos de .tga.
 --
--- El default es BLANCO, que es el filo claro de la referencia. El negro
--- queda como alternativa: sobre fondos claros el blanco se pierde y el
--- negro separa mejor.
-local COLORS = {
-	White = { 1, 1, 1 },
-	Black = { 0, 0, 0 },
-};
-
-local function BorderColor()
-	local c = COLORS[C.FrameBorderColor] or COLORS.White;
-	return c[1], c[2], c[3], 1;
-end
+-- El filo va en blanco. La textura tambien esta dibujada en blanco, asi
+-- que esto es solo la opacidad; se deja escrito para no tener que
+-- adivinar de donde sale el color si alguna vez hay que cambiarlo.
+local BORDER_R, BORDER_G, BORDER_B = 1, 1, 1;
 
 -- ---------------------------------------------------------
 -- Listas de objetivos
@@ -124,20 +139,6 @@ local GROUPS = {
 		),
 	},
 	{
-		key = "FrameBorder_UnitFrames",
-		label = "Unit Frames",
-		-- Las BARRAS y no los marcos: el marco del jugador es un grifo
-		-- dorado con forma propia, y un rectangulo alrededor queda ridiculo.
-		names = Join(
-			{ "PlayerFrameHealthBar", "PlayerFrameManaBar",
-			  "TargetFrameHealthBar", "TargetFrameManaBar",
-			  "FocusFrameHealthBar",  "FocusFrameManaBar",
-			  "PetFrameHealthBar",    "PetFrameManaBar" },
-			Series("PartyMemberFrame", 4, "HealthBar"),
-			Series("PartyMemberFrame", 4, "ManaBar")
-		),
-	},
-	{
 		key = "FrameBorder_CastBar",
 		label = "Cast Bar",
 		names = { "CastingBarFrame", "TargetFrameSpellBar", "FocusFrameSpellBar" },
@@ -190,7 +191,7 @@ local function Ensure(frame)
 	d.shadow:SetFrameLevel(lvl > 0 and lvl - 1 or 0);
 	d.shadow:SetPoint("TOPLEFT", frame, "TOPLEFT", -3, 3);
 	d.shadow:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 3, -3);
-	d.shadow:SetBackdrop({ edgeFile = GLOW_FILE, edgeSize = GLOW_EDGE });
+	d.shadow:SetBackdrop({ edgeFile = GLOW_FILE, edgeSize = EdgeFor(frame, GLOW_EDGE) });
 	d.shadow:SetBackdropBorderColor(0, 0, 0, 0.8);
 	d.shadow:Hide();
 
@@ -220,25 +221,44 @@ end
 
 local enabled = false;
 
--- RANURA DE ACCION VACIA.
+-- HAY ALGO DIBUJADO AHI?
 --
--- Un boton sin hechizo sigue "mostrado": Blizzard solo le apaga el icono.
--- Con el borde puesto quedaba un recuadro alrededor de la nada, que es lo
--- que mas se notaba teniendo ocultas las texturas de ranura.
+-- Un boton vacio sigue "mostrado": Blizzard solo le apaga la imagen. Con
+-- el borde puesto quedaba un recuadro alrededor de la nada, que es
+-- justo lo que se veia en la fila del micromenu y en las ranuras de
+-- bolsa sin bolsa.
 --
--- Se mira el icono en vez de HasAction porque tambien cubre los botones
--- de postura y de mascota, que no tienen numero de accion.
-local function IsEmptySlot(name)
-	local icon = _G[name .. "Icon"];
-	if not icon or not icon.GetTexture then return false; end
-	return not (icon:IsShown() and icon:GetTexture());
+-- Cada familia de botones nombra su imagen distinto, de ahi los tres
+-- casos:
+--
+--   <nombre>Icon          botones de accion, postura y mascota
+--   <nombre>IconTexture   ranuras de bolsa y la mochila
+--   GetNormalTexture()    micromenu y cualquier boton comun
+--
+-- Se mira la imagen y no HasAction porque asi entran los tres de una.
+-- Lo que no es un boton (las barras, la de casteo) no tiene ninguna de
+-- las tres y pasa derecho.
+local function HasArt(frame, name)
+	local icon = _G[name .. "Icon"] or _G[name .. "IconTexture"];
+	if icon and icon.GetTexture then
+		return (icon:IsShown() and icon:GetTexture()) and true or false;
+	end
+
+	if frame.GetNormalTexture then
+		local nt = frame:GetNormalTexture();
+		if nt and nt.GetTexture then
+			return (nt:IsShown() and nt:GetTexture()) and true or false;
+		end
+	end
+
+	return true;
 end
 
 local function ApplyToName(name, want)
 	local frame = _G[name];
 	if not frame or not frame.GetFrameLevel then return; end
 
-	if want and IsEmptySlot(name) then want = false; end
+	if want and not HasArt(frame, name) then want = false; end
 
 	if not want then
 		local d = decorated[frame];
@@ -248,8 +268,8 @@ local function ApplyToName(name, want)
 
 	local d = Ensure(frame);
 	local st = Style();
-	d.border:SetBackdrop({ edgeFile = st.file, edgeSize = st.edge });
-	d.border:SetBackdropBorderColor(BorderColor());
+	d.border:SetBackdrop({ edgeFile = st.file, edgeSize = EdgeFor(frame, st.edge) });
+	d.border:SetBackdropBorderColor(BORDER_R, BORDER_G, BORDER_B, 1);
 	d.border:Show();
 
 	-- La sombra solo si el marco esta a la vista. wantShadow se guarda para
@@ -313,71 +333,6 @@ local function CreateBorderSubUI(container, yOffset, parentCheckbox)
 	sep:SetPoint("TOPRIGHT", -10, localY + 4);
 	sep:SetTexture(1, 1, 1, 0.07);
 	localY = localY - 6;
-
-	local header = wrapper:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
-	header:SetPoint("TOPLEFT", 46, localY);
-	header:SetText("|cff888888" .. (L["FRAMEBORDER_STYLE"] or "Border art:") .. "|r");
-	localY = localY - 20;
-
-	-- Selector de estilo: dos casillas excluyentes, no un desplegable.
-	local styleBoxes = {};
-	local function RefreshStyles()
-		local cur = C.FrameBorderStyle or "Soft";
-		for _, b in ipairs(styleBoxes) do b:SetChecked(b.value == cur); end
-	end
-	local function StyleCB(label, value, x)
-		local nm = "NidhausBorderStyleCB_" .. value;
-		local cb = CreateFrame("CheckButton", nm, wrapper, "InterfaceOptionsCheckButtonTemplate");
-		cb:SetPoint("TOPLEFT", x, localY);
-		cb:SetHitRectInsets(0, -80, 0, 0);
-		cb:SetScale(0.9);
-		local lbl = _G[nm .. "Text"];
-		if lbl then lbl:SetText(label); lbl:SetFontObject("GameFontHighlight"); end
-		cb.value = value;
-		cb:SetScript("OnClick", function(self)
-			K.SaveConfig("FrameBorderStyle", self.value);
-			C.FrameBorderStyle = self.value;
-			RefreshStyles();
-			K.ApplyFrameBorders();
-		end);
-		styleBoxes[#styleBoxes + 1] = cb;
-	end
-	StyleCB(L["FRAMEBORDER_SOFT"]  or "Soft",  "Soft",  46);
-	StyleCB(L["FRAMEBORDER_PIXEL"] or "Pixel", "Pixel", 176);
-	RefreshStyles();
-	localY = localY - 26;
-
-	local chdr = wrapper:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
-	chdr:SetPoint("TOPLEFT", 46, localY);
-	chdr:SetText("|cff888888" .. (L["FRAMEBORDER_COLOR"] or "Border color:") .. "|r");
-	localY = localY - 20;
-
-	local colorBoxes = {};
-	local function RefreshColors()
-		local cur = C.FrameBorderColor or "White";
-		for _, b in ipairs(colorBoxes) do b:SetChecked(b.value == cur); end
-	end
-	local function ColorCB(label, value, x)
-		local nm = "NidhausBorderColorCB_" .. value;
-		local cb = CreateFrame("CheckButton", nm, wrapper, "InterfaceOptionsCheckButtonTemplate");
-		cb:SetPoint("TOPLEFT", x, localY);
-		cb:SetHitRectInsets(0, -80, 0, 0);
-		cb:SetScale(0.9);
-		local lbl = _G[nm .. "Text"];
-		if lbl then lbl:SetText(label); lbl:SetFontObject("GameFontHighlight"); end
-		cb.value = value;
-		cb:SetScript("OnClick", function(self)
-			K.SaveConfig("FrameBorderColor", self.value);
-			C.FrameBorderColor = self.value;
-			RefreshColors();
-			K.ApplyFrameBorders();
-		end);
-		colorBoxes[#colorBoxes + 1] = cb;
-	end
-	ColorCB(L["FRAMEBORDER_WHITE"] or "White", "White", 46);
-	ColorCB(L["FRAMEBORDER_BLACK"] or "Black", "Black", 176);
-	RefreshColors();
-	localY = localY - 24;
 
 	local subOptions = {
 		{ key = "FrameBorderShadow", label = "Outer shadow",
@@ -454,7 +409,7 @@ end
 K.RegisterModule("FrameBorders", {
 	name    = L["MOD_FRAMEBORDERS"] or "Frame Borders",
 	desc    = L["MOD_FRAMEBORDERS_DESC"]
-		or "Thin border and outer shadow around bars, micro menu, bags, frames and auras. Stacks with Lorti UI: Lorti tints, this outlines.",
+		or "Thin rounded border and outer shadow around action bars, micro menu, bags, cast bar and auras. Stacks with Lorti UI: Lorti tints, this outlines.",
 	default = false,
 	createUI = CreateBorderSubUI,
 	onEnable = function()
