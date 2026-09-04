@@ -124,6 +124,21 @@ local GROUPS = {
 	{
 		key = "FrameBorder_MicroMenu",
 		label = "Micro Menu",
+		-- POR QUE ESTE GRUPO LLEVA RECORTE.
+		--
+		-- Un boton del micromenu mide 28x58, pero su dibujo NO ocupa todo
+		-- eso: la cara visible es un parche de unos 20x24 pegado abajo y
+		-- el resto del alto es la lengueta que en la interfaz original
+		-- tapa la barra de accion. Con las texturas de barra ocultas no la
+		-- tapa nada, asi que un borde alrededor del marco entero salia
+		-- como un rectangulo alto y vacio con el icono en el fondo.
+		--
+		-- Las fracciones salen de como recorta el UI de origen esa misma textura
+		-- en su propio micromenu, SetTexCoord(0.17, 0.87, 0.5, 0.908): 17%
+		-- libre a la izquierda, 13% a la derecha, la mitad de arriba y un
+		-- 9% abajo. Van en fracciones y no en pixeles para que sigan
+		-- valiendo si el boton cambia de escala.
+		inset = { l = 0.17, r = 0.13, t = 0.50, b = 0.092 },
 		names = {
 			"CharacterMicroButton", "SpellbookMicroButton", "TalentMicroButton",
 			"QuestLogMicroButton", "SocialsMicroButton", "AchievementMicroButton",
@@ -142,6 +157,13 @@ local GROUPS = {
 		key = "FrameBorder_CastBar",
 		label = "Cast Bar",
 		names = { "CastingBarFrame", "TargetFrameSpellBar", "FocusFrameSpellBar" },
+		-- EL MARCO DE BLIZZARD SE VA.
+		--
+		-- La barra de casteo trae su propio borde grueso con relieve. Con
+		-- el filo fino por fuera quedaban los dos, uno adentro del otro, y
+		-- se veia sucio. Mientras este grupo este prendido ese borde se
+		-- esconde; al apagarlo vuelve.
+		hideRegions = { "Border" },
 	},
 	{
 		key = "FrameBorder_Auras",
@@ -167,6 +189,53 @@ end
 -- ---------------------------------------------------------
 local decorated = {};   -- [frame] = { border = , shadow = }
 
+-- Texturas de Blizzard que un grupo tapa con su propio filo.
+local hidden = {};      -- [textura] = true cuando la escondimos nosotros
+
+local function BlizzRegions(name, list, hide)
+	if not list then return; end
+	for _, suffix in ipairs(list) do
+		local tex = _G[name .. suffix];
+		if tex and tex.Hide then
+			if hide then
+				hidden[tex] = true;
+				tex:Hide();
+			elseif hidden[tex] then
+				hidden[tex] = nil;
+				tex:Show();
+			end
+		end
+	end
+end
+
+-- Para que CastBarPW, que retextura ese mismo borde, sepa que no tiene
+-- que volver a mostrarlo. Un solo dueño por textura.
+function K.FrameBordersHidesRegion(tex)
+	return tex ~= nil and hidden[tex] == true;
+end
+
+-- Donde se planta el borde dentro del marco.
+--
+-- Sin recorte va 1 px por fuera, que es lo normal. Con recorte se corre
+-- hacia adentro segun las fracciones del grupo, para abrazar el dibujo y
+-- no el marco.
+local function Anchor(region, frame, inset, pad)
+	local lx, ty, rx, by = -pad, pad, pad, -pad;
+
+	if inset then
+		local w = (frame.GetWidth  and frame:GetWidth())  or 0;
+		local h = (frame.GetHeight and frame:GetHeight()) or 0;
+		lx =  w * (inset.l or 0) - pad;
+		ty = -h * (inset.t or 0) + pad;
+		rx = -w * (inset.r or 0) + pad;
+		by =  h * (inset.b or 0) - pad;
+	end
+
+	region:ClearAllPoints();
+	region:SetPoint("TOPLEFT",     frame, "TOPLEFT",     lx, ty);
+	region:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", rx, by);
+end
+
 local function Ensure(frame)
 	local d = decorated[frame];
 	if d then return d; end
@@ -180,8 +249,6 @@ local function Ensure(frame)
 	-- arte y no debajo del icono.
 	d.border = CreateFrame("Frame", nil, frame);
 	d.border:SetFrameLevel(lvl + 1);
-	d.border:SetPoint("TOPLEFT", frame, "TOPLEFT", -1, 1);
-	d.border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 1, -1);
 	d.border:Hide();
 
 	-- La sombra cuelga del PADRE y no del marco, un nivel por DEBAJO. Si
@@ -189,8 +256,6 @@ local function Ensure(frame)
 	-- veria un recuadro sucio tapando el icono.
 	d.shadow = CreateFrame("Frame", nil, parent);
 	d.shadow:SetFrameLevel(lvl > 0 and lvl - 1 or 0);
-	d.shadow:SetPoint("TOPLEFT", frame, "TOPLEFT", -3, 3);
-	d.shadow:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 3, -3);
 	d.shadow:SetBackdrop({ edgeFile = GLOW_FILE, edgeSize = EdgeFor(frame, GLOW_EDGE) });
 	d.shadow:SetBackdropBorderColor(0, 0, 0, 0.8);
 	d.shadow:Hide();
@@ -258,11 +323,13 @@ local function HasArt(frame, name)
 	return true;
 end
 
-local function ApplyToName(name, want)
+local function ApplyToName(name, want, inset, hideRegions)
 	local frame = _G[name];
 	if not frame or not frame.GetFrameLevel then return; end
 
 	if want and not HasArt(frame, name) then want = false; end
+
+	BlizzRegions(name, hideRegions, want);
 
 	if not want then
 		local d = decorated[frame];
@@ -272,6 +339,12 @@ local function ApplyToName(name, want)
 
 	local d = Ensure(frame);
 	local st = Style();
+
+	-- Se reancla en cada pasada y no solo al crearlo: los botones cambian
+	-- de tamaño con la escala de las barras y el recorte es proporcional.
+	Anchor(d.border, frame, inset, 1);
+	Anchor(d.shadow, frame, inset, 3);
+
 	d.border:SetBackdrop({ edgeFile = st.file, edgeSize = EdgeFor(frame, st.edge) });
 	d.border:SetBackdropBorderColor(BORDER_R, BORDER_G, BORDER_B, 1);
 	d.border:Show();
@@ -291,7 +364,7 @@ function K.ApplyFrameBorders()
 		-- Una sub-opcion sin tocar cuenta como prendida, igual que en Lorti.
 		local want = enabled and (C[g.key] ~= false);
 		for _, name in ipairs(g.names) do
-			ApplyToName(name, want);
+			ApplyToName(name, want, g.inset, g.hideRegions);
 		end
 	end
 end
@@ -313,10 +386,23 @@ end);
 -- ACTIONBAR_SLOT_CHANGED y compania: al arrastrar un hechizo a una ranura
 -- vacia (o al vaciarla) hay que rehacer el barrido, si no el borde queda
 -- como estaba en el ultimo repaso.
+-- Los eventos de casteo van aparte. Blizzard rearma la barra en cada
+-- lanzamiento y vuelve a mostrar su borde, asi que hay que taparlo otra
+-- vez; pero es un repaso liviano, sin arrancar el barrido de seis
+-- pasadas, que en cada hechizo seria trabajo al dope.
+local CAST_EVENTS = {
+	UNIT_SPELLCAST_START = true, UNIT_SPELLCAST_STOP = true,
+	UNIT_SPELLCAST_CHANNEL_START = true, UNIT_SPELLCAST_CHANNEL_STOP = true,
+	UNIT_SPELLCAST_INTERRUPTED = true, UNIT_SPELLCAST_FAILED = true,
+	UNIT_SPELLCAST_DELAYED = true,
+	PLAYER_TARGET_CHANGED = true, PLAYER_FOCUS_CHANGED = true,
+};
+
 local events = CreateFrame("Frame");
-events:SetScript("OnEvent", function()
+events:SetScript("OnEvent", function(self, event)
 	if not enabled then return; end
 	K.ApplyFrameBorders();
+	if CAST_EVENTS[event] then return; end
 	retryAcc, retryCount = 0, 0;
 	retry:Show();
 end);
@@ -490,6 +576,7 @@ K.RegisterModule("FrameBorders", {
 		events:RegisterEvent("ACTIONBAR_PAGE_CHANGED");
 		events:RegisterEvent("UPDATE_BONUS_ACTIONBAR");
 		events:RegisterEvent("PET_BAR_UPDATE");
+		for ev in pairs(CAST_EVENTS) do events:RegisterEvent(ev); end
 		K.ApplyFrameBorders();
 		retryAcc, retryCount = 0, 0;
 		retry:Show();

@@ -246,6 +246,17 @@ local function StyleOne(barName)
 		else
 			border:SetVertexColor(unpack(BORDER_TINT));
 		end
+
+		-- UN SOLO DUEÑO POR TEXTURA.
+		--
+		-- Si Frame Borders esta dibujando su filo fino alrededor de esta
+		-- barra, es el quien esconde el marco de Blizzard. Sin esta
+		-- consulta la peleabamos: aca se retextura y se le sube el alfa,
+		-- alla se esconde, y quedaba prendiendose y apagandose segun cual
+		-- corriera ultimo.
+		if K.FrameBordersHidesRegion and K.FrameBordersHidesRegion(border) then
+			border:Hide();
+		end
 	end
 
 	local flash = Sub(barName, "Flash");
