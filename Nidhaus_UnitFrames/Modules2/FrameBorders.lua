@@ -38,9 +38,11 @@ local K, C, L = unpack(ns);
 local ART = "Interface\\AddOns\\" .. AddOnName .. "\\Media\\Border\\";
 
 -- Grosor: cuantos pixeles de pantalla ocupa cada casilla del edgeFile.
--- 12 para el estilo suave (banda con pluma), 10 para el pixel (filo duro).
+-- El nucleo macizo de la textura ocupa 2.8 de 32 texeles, asi que con 10
+-- da algo menos de un pixel de filo lleno mas la pluma. Con 12 la banda
+-- se iba a casi dos pixeles y los botones quedaban encajonados.
 local STYLES = {
-	Soft  = { file = ART .. "Border_Soft",  edge = 12 },
+	Soft  = { file = ART .. "Border_Soft",  edge = 10 },
 	Pixel = { file = ART .. "Border_Pixel", edge = 10 },
 };
 
@@ -48,6 +50,25 @@ local GLOW_FILE, GLOW_EDGE = ART .. "Border_Glow", 3;
 
 local function Style()
 	return STYLES[C.FrameBorderStyle] or STYLES.Soft;
+end
+
+-- COLOR DEL FILO.
+--
+-- Las texturas se dibujan en blanco a proposito, para que el color lo
+-- ponga SetBackdropBorderColor y no haya que tener dos juegos de .tga.
+--
+-- El default es NEGRO. En blanco, sobre una interfaz oscura, cada boton
+-- termina metido en un recuadro palido y el conjunto se ve sucio; el
+-- negro hace lo contrario, separa el icono del fondo sin agregar brillo,
+-- y ahi si se nota el halo exterior.
+local COLORS = {
+	Black = { 0, 0, 0 },
+	White = { 1, 1, 1 },
+};
+
+local function BorderColor()
+	local c = COLORS[C.FrameBorderColor] or COLORS.Black;
+	return c[1], c[2], c[3], 1;
 end
 
 -- ---------------------------------------------------------
@@ -174,28 +195,72 @@ local function Ensure(frame)
 	d.shadow:SetBackdropBorderColor(0, 0, 0, 0.8);
 	d.shadow:Hide();
 
+	-- LOS RECUADROS FANTASMA.
+	--
+	-- El borde es HIJO del marco, asi que cuando el marco se esconde el
+	-- borde se va solo. La sombra no: cuelga del padre, que sigue
+	-- visible, y quedaba flotando en el aire.
+	--
+	-- Por eso aparecian recuadros sueltos por toda la pantalla: los
+	-- botones de aura sin aura, las ranuras vacias, la barra de mascota
+	-- sin mascota. Todos marcos escondidos que dejaban su sombra puesta.
+	--
+	-- HookScript sobre OnShow/OnHide es un agregado, no un reemplazo: no
+	-- pisa el guion de Blizzard ni ensucia el marco, asi que se puede
+	-- usar sobre botones protegidos y en combate.
+	if frame.HookScript then
+		frame:HookScript("OnShow", function()
+			if d.wantShadow then d.shadow:Show(); end
+		end);
+		frame:HookScript("OnHide", function() d.shadow:Hide(); end);
+	end
+
 	decorated[frame] = d;
 	return d;
 end
 
 local enabled = false;
 
+-- RANURA DE ACCION VACIA.
+--
+-- Un boton sin hechizo sigue "mostrado": Blizzard solo le apaga el icono.
+-- Con el borde puesto quedaba un recuadro alrededor de la nada, que es lo
+-- que mas se notaba teniendo ocultas las texturas de ranura.
+--
+-- Se mira el icono en vez de HasAction porque tambien cubre los botones
+-- de postura y de mascota, que no tienen numero de accion.
+local function IsEmptySlot(name)
+	local icon = _G[name .. "Icon"];
+	if not icon or not icon.GetTexture then return false; end
+	return not (icon:IsShown() and icon:GetTexture());
+end
+
 local function ApplyToName(name, want)
 	local frame = _G[name];
 	if not frame or not frame.GetFrameLevel then return; end
 
+	if want and IsEmptySlot(name) then want = false; end
+
 	if not want then
 		local d = decorated[frame];
-		if d then d.border:Hide(); d.shadow:Hide(); end
+		if d then d.wantShadow = false; d.border:Hide(); d.shadow:Hide(); end
 		return;
 	end
 
 	local d = Ensure(frame);
 	local st = Style();
 	d.border:SetBackdrop({ edgeFile = st.file, edgeSize = st.edge });
-	d.border:SetBackdropBorderColor(1, 1, 1, 1);
+	d.border:SetBackdropBorderColor(BorderColor());
 	d.border:Show();
-	if C.FrameBorderShadow then d.shadow:Show(); else d.shadow:Hide(); end
+
+	-- La sombra solo si el marco esta a la vista. wantShadow se guarda para
+	-- que el OnShow de mas arriba sepa si tiene que volver a mostrarla.
+	d.wantShadow = (C.FrameBorderShadow ~= false);
+	if d.wantShadow and frame:IsVisible() then
+		d.shadow:Show();
+	else
+		d.shadow:Hide();
+	end
 end
 
 function K.ApplyFrameBorders()
@@ -222,6 +287,9 @@ retry:SetScript("OnUpdate", function(self, elapsed)
 	if retryCount >= 6 then self:Hide(); end
 end);
 
+-- ACTIONBAR_SLOT_CHANGED y compania: al arrastrar un hechizo a una ranura
+-- vacia (o al vaciarla) hay que rehacer el barrido, si no el borde queda
+-- como estaba en el ultimo repaso.
 local events = CreateFrame("Frame");
 events:SetScript("OnEvent", function()
 	if not enabled then return; end
@@ -278,6 +346,38 @@ local function CreateBorderSubUI(container, yOffset, parentCheckbox)
 	StyleCB(L["FRAMEBORDER_SOFT"]  or "Soft",  "Soft",  46);
 	StyleCB(L["FRAMEBORDER_PIXEL"] or "Pixel", "Pixel", 176);
 	RefreshStyles();
+	localY = localY - 26;
+
+	local chdr = wrapper:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
+	chdr:SetPoint("TOPLEFT", 46, localY);
+	chdr:SetText("|cff888888" .. (L["FRAMEBORDER_COLOR"] or "Border color:") .. "|r");
+	localY = localY - 20;
+
+	local colorBoxes = {};
+	local function RefreshColors()
+		local cur = C.FrameBorderColor or "Black";
+		for _, b in ipairs(colorBoxes) do b:SetChecked(b.value == cur); end
+	end
+	local function ColorCB(label, value, x)
+		local nm = "NidhausBorderColorCB_" .. value;
+		local cb = CreateFrame("CheckButton", nm, wrapper, "InterfaceOptionsCheckButtonTemplate");
+		cb:SetPoint("TOPLEFT", x, localY);
+		cb:SetHitRectInsets(0, -80, 0, 0);
+		cb:SetScale(0.9);
+		local lbl = _G[nm .. "Text"];
+		if lbl then lbl:SetText(label); lbl:SetFontObject("GameFontHighlight"); end
+		cb.value = value;
+		cb:SetScript("OnClick", function(self)
+			K.SaveConfig("FrameBorderColor", self.value);
+			C.FrameBorderColor = self.value;
+			RefreshColors();
+			K.ApplyFrameBorders();
+		end);
+		colorBoxes[#colorBoxes + 1] = cb;
+	end
+	ColorCB(L["FRAMEBORDER_BLACK"] or "Black", "Black", 46);
+	ColorCB(L["FRAMEBORDER_WHITE"] or "White", "White", 176);
+	RefreshColors();
 	localY = localY - 24;
 
 	local subOptions = {
@@ -363,6 +463,10 @@ K.RegisterModule("FrameBorders", {
 		events:RegisterEvent("PLAYER_ENTERING_WORLD");
 		events:RegisterEvent("UPDATE_SHAPESHIFT_FORMS");
 		events:RegisterEvent("UNIT_PET");
+		events:RegisterEvent("ACTIONBAR_SLOT_CHANGED");
+		events:RegisterEvent("ACTIONBAR_PAGE_CHANGED");
+		events:RegisterEvent("UPDATE_BONUS_ACTIONBAR");
+		events:RegisterEvent("PET_BAR_UPDATE");
 		K.ApplyFrameBorders();
 		retryAcc, retryCount = 0, 0;
 		retry:Show();
