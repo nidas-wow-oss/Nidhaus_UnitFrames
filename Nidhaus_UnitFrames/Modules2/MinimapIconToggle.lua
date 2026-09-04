@@ -56,6 +56,15 @@ local PROTECTED = {
 	-- unico acceso rapido al panel desaparece — y para recuperarlo habria
 	-- que acordarse del comando.
 	["NidhausUF_MinimapButton"] = true,
+	-- Los de la lista "Decorations" del panel: los maneja MinimapStyle segun
+	-- sus casillas, y este modulo no los toca ni para esconder ni para
+	-- mostrar. Si los tocara, al pasar el mouse reaparecerian aunque su
+	-- casilla diga que no.
+	["MinimapZoomIn"]        = true,
+	["MinimapZoomOut"]       = true,
+	["GameTimeFrame"]        = true,   -- calendario
+	["MiniMapWorldMapButton"]= true,   -- mapa del mundo
+	["FeedbackUIButton"]     = true,
 	-- Blizzard maneja la visibilidad de estos segun el estado del juego.
 	-- Si los mostramos nosotros aparecen sin motivo (correo sin correo, etc.)
 	["MiniMapMailFrame"]           = true,
@@ -82,14 +91,17 @@ local PROTECTED = {
 -- El RELOJ no esta aca: se mira todo el tiempo y ocultarlo con los iconos
 -- de addons no tiene sentido. Ademas, quien quiera sacarlo tiene el
 -- checkbox propio en Interfaz > Minimapa, que es donde corresponde.
-local BLIZZ_ICONS = {
-	"MinimapZoomIn", "MinimapZoomOut",
-	"GameTimeFrame",
-	"FeedbackUIButton",
-	-- El mapa del mundo si se oculta: tiene tecla propia (M), asi que
-	-- perder el boton no te deja sin forma de abrirlo.
-	"MiniMapWorldMapButton",
-};
+-- LOS ICONOS DE BLIZZARD NO SON ASUNTO DE ESTA SECCION.
+--
+-- Antes se barrian junto con los de addon, y ahi estaba el error: la lista
+-- "Decorations" del panel ya decide si se ve el zoom, el calendario, el
+-- mapa del mundo y el reloj. Con las dos cosas tocando los mismos marcos,
+-- el modo "con el mouse" los escondia y los volvia a mostrar al pasar el
+-- cursor, pisando lo que decian esas casillas: tenias "Hide Calendar"
+-- tildado y el calendario aparecia igual.
+--
+-- Esta seccion se llama Addon Icons y ahora hace exactamente eso. Cada
+-- marco tiene un solo dueño.
 
 local savedShown = {};
 
@@ -109,13 +121,6 @@ end
 -- ---------------------------------------------------------
 local function CollectTargets()
 	local list = {};
-
-	for _, name in ipairs(BLIZZ_ICONS) do
-		local f = _G[name];
-		if f and f.Hide and not PROTECTED[name] then
-			table.insert(list, f);
-		end
-	end
 
 	-- Iconos de addons: normalmente son hijos del Minimap
 	if Minimap then

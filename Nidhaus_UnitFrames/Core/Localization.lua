@@ -836,9 +836,9 @@ L["MOVE_COMBAT_BLOCK"]           = "Action bars cannot be moved during combat.";
 
 -- Minimapa
 L["MOD_MINIMAP_TOGGLE"]          = "Minimap Icon Toggle";
-L["MOD_MINIMAP_TOGGLE_DESC"]     = "Button on the minimap corner that hides or shows every minimap icon.";
+L["MOD_MINIMAP_TOGGLE_DESC"]     = "Button on the minimap corner that hides or shows the addon icons.";
 L["MINIMAP_TOGGLE_TITLE"]        = "Minimap Icons";
-L["MINIMAP_TOGGLE_TIP"]          = "Click to hide or show every minimap icon (zoom, clock, addons).";
+L["MINIMAP_TOGGLE_TIP"]          = "Click to hide or show the addon icons. Zoom, clock and calendar are set in Decorations.";
 L["MINIMAP_TOGGLE_DISABLED"]     = "Enable the Minimap Icon Toggle module first.";
 
 L["BTN_MODULE_CONFIG"]           = "Configure";
@@ -1793,9 +1793,9 @@ L["MOVE_COMBAT_BLOCK"]           = "Las barras de acci\195\179n no se pueden mov
 
 -- Minimapa
 L["MOD_MINIMAP_TOGGLE"]          = "Ocultar Iconos del Minimapa";
-L["MOD_MINIMAP_TOGGLE_DESC"]     = "Bot\195\179n en la esquina del minimapa que oculta o muestra todos sus iconos.";
+L["MOD_MINIMAP_TOGGLE_DESC"]     = "Boton en la esquina del minimapa que oculta o muestra los iconos de addon.";
 L["MINIMAP_TOGGLE_TITLE"]        = "Iconos del Minimapa";
-L["MINIMAP_TOGGLE_TIP"]          = "Click para ocultar o mostrar todos los iconos del minimapa (zoom, reloj, addons).";
+L["MINIMAP_TOGGLE_TIP"]          = "Click para ocultar o mostrar los iconos de addon. El zoom, el reloj y el calendario se eligen en Decorations.";
 L["MINIMAP_TOGGLE_DISABLED"]     = "Activ\195\161 primero el m\195\179dulo Ocultar Iconos del Minimapa.";
 
 L["BTN_MODULE_CONFIG"]           = "Configurar";
