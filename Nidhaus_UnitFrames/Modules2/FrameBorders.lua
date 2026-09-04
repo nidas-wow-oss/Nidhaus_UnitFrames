@@ -57,17 +57,16 @@ end
 -- Las texturas se dibujan en blanco a proposito, para que el color lo
 -- ponga SetBackdropBorderColor y no haya que tener dos juegos de .tga.
 --
--- El default es NEGRO. En blanco, sobre una interfaz oscura, cada boton
--- termina metido en un recuadro palido y el conjunto se ve sucio; el
--- negro hace lo contrario, separa el icono del fondo sin agregar brillo,
--- y ahi si se nota el halo exterior.
+-- El default es BLANCO, que es el filo claro de la referencia. El negro
+-- queda como alternativa: sobre fondos claros el blanco se pierde y el
+-- negro separa mejor.
 local COLORS = {
-	Black = { 0, 0, 0 },
 	White = { 1, 1, 1 },
+	Black = { 0, 0, 0 },
 };
 
 local function BorderColor()
-	local c = COLORS[C.FrameBorderColor] or COLORS.Black;
+	local c = COLORS[C.FrameBorderColor] or COLORS.White;
 	return c[1], c[2], c[3], 1;
 end
 
@@ -355,7 +354,7 @@ local function CreateBorderSubUI(container, yOffset, parentCheckbox)
 
 	local colorBoxes = {};
 	local function RefreshColors()
-		local cur = C.FrameBorderColor or "Black";
+		local cur = C.FrameBorderColor or "White";
 		for _, b in ipairs(colorBoxes) do b:SetChecked(b.value == cur); end
 	end
 	local function ColorCB(label, value, x)
@@ -375,8 +374,8 @@ local function CreateBorderSubUI(container, yOffset, parentCheckbox)
 		end);
 		colorBoxes[#colorBoxes + 1] = cb;
 	end
-	ColorCB(L["FRAMEBORDER_BLACK"] or "Black", "Black", 46);
-	ColorCB(L["FRAMEBORDER_WHITE"] or "White", "White", 176);
+	ColorCB(L["FRAMEBORDER_WHITE"] or "White", "White", 46);
+	ColorCB(L["FRAMEBORDER_BLACK"] or "Black", "Black", 176);
 	RefreshColors();
 	localY = localY - 24;
 

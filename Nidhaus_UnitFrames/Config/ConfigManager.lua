@@ -171,8 +171,9 @@ local defaults = {
 	-- panel las trata como prendidas mientras no se toquen, igual que hace
 	-- Lorti con las suyas.
 	FrameBorderStyle = "Soft",   -- Soft / Pixel
-	FrameBorderColor = "Black",  -- Black / White. Negro: en blanco cada
-	                             -- boton queda encajonado y se ve palido.
+	FrameBorderColor = "White",  -- Black / White. Blanco es el filo claro
+	                             -- de la referencia; negro para un look mas
+	                             -- discreto sobre fondos claros.
 	FrameBorderShadow = true,    -- el halo exterior
 	MinimapScale      = 1.0,
 

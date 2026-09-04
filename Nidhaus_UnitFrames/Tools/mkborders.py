@@ -58,9 +58,18 @@ def p_glow(d):                     # halo: nulo afuera, lleno contra el marco
     return (d/16.0) ** 1.4
 
 OUT = os.path.expanduser("~/mnt/addons/Nidhaus_UnitFrames/Media/Border/")
+# El cuarto valor es "origin": el centro del arco de la esquina, medido en
+# texeles desde el filo. origin - (centro de la linea) es el RADIO.
+#
+#   Soft  -> 2.2 + 12 : radio de 12 texeles. Con casillas de 32 dibujadas a
+#            10 px eso son ~3.7 px de redondeo, que es lo que se ve en las
+#            barras de accion. Antes era 3 (menos de un pixel) y las
+#            esquinas salian practicamente en escuadra.
+#   Pixel -> sin redondeo: es el estilo recto a proposito, la alternativa.
+#   Light -> 3.5 + 3.5 : el redondeo suave que ya tenia el minimapa.
 jobs = [
     ("Border_Light.tga", 16, p_light, 3.5+3.5),
-    ("Border_Soft.tga",  32, p_soft,  2.2+3.0),
+    ("Border_Soft.tga",  32, p_soft,  2.2+12.0),
     ("Border_Pixel.tga", 32, p_pixel, 1.6),
     ("Border_Glow.tga",  16, p_glow,  16.0),
 ]

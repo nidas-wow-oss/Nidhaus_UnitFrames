@@ -9,16 +9,23 @@ local K, C, L = unpack(ns);
 local ADDON_PATH   = "Interface\\AddOns\\" .. AddOnName .. "\\Modules2\\NiceDamage\\";
 local DEFAULT_FONT = "Fonts\\FRIZQT__.TTF";
 
+-- flags: bandera de SetFont. Vacio es sin contorno, "OUTLINE" con contorno
+-- fino. Solo pesa en la fuente de curaciones y auras (CombatTextFont, que
+-- es un objeto de fuente de verdad). El numero de daño flotante sale de la
+-- global DAMAGE_TEXT_FONT, que es una RUTA pelada: el cliente le pone el
+-- contorno el solo y no hay donde elegirlo.
 local fontList = {
-	{ name = "Default WoW",    file = nil          },
-	{ name = "Pepsi",          file = "font.ttf"   },
-	{ name = "Zombie",         file = "font2.ttf"  },
-	{ name = "Basket Hammers", file = "font3.ttf"  },
-	{ name = "College",        file = "font4.ttf"  },
-	{ name = "Galaxy",         file = "font5.ttf"  },
-	{ name = "Elite",          file = "font6.ttf"  },
-	{ name = "Stentiga",       file = "font7.ttf"  },
-	{ name = "Skratch Punk",   file = "font8.ttf"  },
+	{ name = "Default WoW",       file = nil               },
+	{ name = "Pepsi",             file = "font.ttf"        },
+	{ name = "Zombie",            file = "font2.ttf"       },
+	{ name = "Basket Hammers",    file = "font3.ttf"       },
+	{ name = "College",           file = "font4.ttf"       },
+	{ name = "Galaxy",            file = "font5.ttf"       },
+	{ name = "Elite",             file = "font6.ttf"       },
+	{ name = "Stentiga",          file = "font7.ttf"       },
+	{ name = "Skratch Punk",      file = "font8.ttf"       },
+	{ name = "Prototype",         file = "Prototype.ttf"   },
+	{ name = "Prototype Outline", file = "Prototype.ttf",  flags = "OUTLINE" },
 };
 
 -- Estado
@@ -33,6 +40,14 @@ local function GetFontPath(index)
 		return ADDON_PATH .. data.file;
 	end
 	return DEFAULT_FONT;
+end
+
+-- Sin bandera propia se respeta la que ya traia el objeto de fuente, para
+-- no cambiarle el contorno a nadie que no lo haya pedido.
+local function GetFontFlags(index, fallback)
+	local data = fontList[index];
+	if data and data.flags ~= nil then return data.flags; end
+	return fallback;
 end
 
 local function SafeSetFont(fontObj, path, size, flags)
@@ -100,7 +115,8 @@ end
 local function ApplyHealFont()
 	if CombatTextFont then
 		local _, size, flags = CombatTextFont:GetFont();
-		SafeSetFont(CombatTextFont, GetFontPath(healFontIndex), size, flags);
+		SafeSetFont(CombatTextFont, GetFontPath(healFontIndex), size,
+			GetFontFlags(healFontIndex, flags));
 	end
 end
 
@@ -182,7 +198,10 @@ local function BuildMenu()
 		label:SetWidth(PANEL_W - 80);
 		label:SetJustifyH("LEFT");
 		if fontData.file then
-			local ok = label:SetFont(ADDON_PATH .. fontData.file, 13, "");
+			-- La muestra se dibuja con la bandera de la entrada, asi la
+			-- version con contorno se distingue de la que no lo tiene.
+			local ok = label:SetFont(ADDON_PATH .. fontData.file, 13,
+				fontData.flags or "");
 			if not ok then label:SetFontObject(GameFontNormal); end
 		end
 		label:SetText(fontData.name);
