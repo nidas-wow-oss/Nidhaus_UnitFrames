@@ -1472,27 +1472,6 @@ local function PopulateTabs()
 	bT = bT - 26;
 	CreateCheckBox(paneBars, L["CB_HIDE_MACRO"] or "Hide Macro Names", "HideMacroText", xBarR, bT);
 
-	-- LETRA DE LOS BOTONES (tecla, nombre de macro, cargas).
-	--
-	-- La lista sale de NiceDamage, que es donde viven los .ttf. Es la
-	-- misma que la del selector de daño: una fuente nueva se agrega una
-	-- vez y aparece en los dos lados.
-	bT = bT - 32;
-	do
-		local fonts = K.NUF_Fonts;
-		if type(fonts) == "table" and #fonts > 0 then
-			local opts = {};
-			for i, f in ipairs(fonts) do
-				opts[#opts + 1] = { text = f.name, value = i };
-			end
-			CreateDropdown(paneBars, L["DD_ACTIONBAR_FONT"] or "Button font",
-				"ActionBarFont", opts, xBarR, bT, function()
-					if K.ApplyActionBarFont then K.ApplyActionBarFont(); end
-				end);
-			bT = bT - 20;
-		end
-	end
-
 	-- Barras laterales solo al pasar el mouse
 	bT = bT - 26;
 	do

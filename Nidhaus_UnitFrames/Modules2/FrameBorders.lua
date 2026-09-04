@@ -334,6 +334,71 @@ local function CreateBorderSubUI(container, yOffset, parentCheckbox)
 	sep:SetTexture(1, 1, 1, 0.07);
 	localY = localY - 6;
 
+	-- ---------------------------------------------------------
+	-- LETRA DE LOS BOTONES
+	--
+	-- Vive aca y no en la pestaña de barras porque es parte del mismo
+	-- aspecto: el filo y la letra van juntos. El motor esta en
+	-- Modules2/ActionBarFont.lua, que es quien la aplica y quien guarda
+	-- la original para poder volver; aca solo se elige.
+	--
+	-- Casillas excluyentes en vez de un desplegable, y solo estas tres.
+	-- La lista completa sigue estando en el selector de NiceDamage: esto
+	-- no la reemplaza, es el atajo del estilo.
+	--
+	-- Los indices se buscan POR NOMBRE contra K.NUF_Fonts. Escribirlos a
+	-- mano ataba este archivo al orden de aquella lista, y agregar una
+	-- fuente en el medio hubiera cambiado en silencio la que se aplica.
+	-- ---------------------------------------------------------
+	local FONT_CHOICES = { "Default WoW", "Prototype", "Prototype Outline" };
+
+	local function FontIndex(fontName)
+		local fonts = K.NUF_Fonts;
+		if type(fonts) ~= "table" then return nil; end
+		for i, f in ipairs(fonts) do
+			if f.name == fontName then return i; end
+		end
+		return nil;
+	end
+
+	if K.NUF_Fonts then
+		local fhdr = wrapper:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
+		fhdr:SetPoint("TOPLEFT", 46, localY);
+		fhdr:SetText("|cff888888" .. (L["FRAMEBORDER_FONT"] or "Button font:") .. "|r");
+		localY = localY - 20;
+
+		local fontBoxes = {};
+		local function RefreshFonts()
+			local cur = tonumber(C.ActionBarFont) or 1;
+			for _, b in ipairs(fontBoxes) do b:SetChecked(b.value == cur); end
+		end
+
+		local x = 46;
+		for _, fontName in ipairs(FONT_CHOICES) do
+			local idx = FontIndex(fontName);
+			if idx then
+				local nm = "NidhausBorderFontCB_" .. idx;
+				local cb = CreateFrame("CheckButton", nm, wrapper, "InterfaceOptionsCheckButtonTemplate");
+				cb:SetPoint("TOPLEFT", x, localY);
+				cb:SetHitRectInsets(0, -110, 0, 0);
+				cb:SetScale(0.9);
+				local lbl = _G[nm .. "Text"];
+				if lbl then lbl:SetText(fontName); lbl:SetFontObject("GameFontHighlight"); end
+				cb.value = idx;
+				cb:SetScript("OnClick", function(self)
+					K.SaveConfig("ActionBarFont", self.value);
+					C.ActionBarFont = self.value;
+					RefreshFonts();
+					if K.ApplyActionBarFont then K.ApplyActionBarFont(); end
+				end);
+				fontBoxes[#fontBoxes + 1] = cb;
+				x = x + 150;
+			end
+		end
+		RefreshFonts();
+		localY = localY - 26;
+	end
+
 	local subOptions = {
 		{ key = "FrameBorderShadow", label = "Outer shadow",
 		  tip = "A soft dark halo just outside each frame. It is the glow the original UI draws." },
@@ -432,3 +497,49 @@ K.RegisterModule("FrameBorders", {
 		K.ApplyFrameBorders();   -- con enabled en false, esto los apaga a todos
 	end,
 });
+
+-- ---------------------------------------------------------
+-- /nufborders  --  diagnostico
+--
+-- Lista los marcos que TIENEN algo dibujado ahora mismo, con su nombre y
+-- su tamaÃ±o.
+--
+-- Esta aca porque en una captura de pantalla no hay forma de saber que
+-- frame es cada recuadro, y adivinar dos veces seguidas salio caro. Con
+-- la lista en el chat se identifica el que sobra por nombre y se lo saca
+-- de la lista correcta, en vez de tocar de oido.
+--
+-- Todo lo que se ve tiene que salir de GROUPS: si algo esta dibujado y no
+-- figura aca, el borde no es de este modulo.
+-- ---------------------------------------------------------
+SLASH_NUFBORDERS1 = "/nufborders";
+SlashCmdList["NUFBORDERS"] = function()
+	print("|cff00FF00Nidhaus|r  bordes dibujados ahora:");
+
+	local total = 0;
+	for _, g in ipairs(GROUPS) do
+		for _, name in ipairs(g.names) do
+			local f = _G[name];
+			local d = f and decorated[f];
+			if d then
+				local b = d.border and d.border:IsShown();
+				local h = d.shadow and d.shadow:IsShown();
+				if b or h then
+					total = total + 1;
+					print(string.format(
+						"  [%s] %s  %dx%d  borde=%s halo=%s visible=%s arte=%s",
+						g.label, name,
+						math.floor((f:GetWidth()  or 0) + 0.5),
+						math.floor((f:GetHeight() or 0) + 0.5),
+						b and "si" or "no",
+						h and "si" or "no",
+						f:IsVisible() and "si" or "no",
+						HasArt(f, name) and "si" or "no"));
+				end
+			end
+		end
+	end
+
+	print("  total: " .. total .. "  --  si el recuadro que sobra NO figura");
+	print("  en esta lista, el borde no lo pone este modulo.");
+end

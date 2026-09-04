@@ -787,6 +787,7 @@ L["CB_HIDE_KEYBIND"]             = "Hide Keybind Text";
 L["TIP_HideKeybindText"]         = "Hides the keybind text on action bar buttons.";
 L["CB_HIDE_MACRO"]               = "Hide Macro Names";
 L["DD_ACTIONBAR_FONT"]           = "Button font";
+L["FRAMEBORDER_FONT"]            = "Button font:";
 L["TIP_HideMacroText"]           = "Hides the macro name text on action bar buttons.";
 
 -- Frames subtabs
@@ -1745,6 +1746,7 @@ L["CB_HIDE_KEYBIND"]             = "Ocultar Texto de Bindeos";
 L["TIP_HideKeybindText"]         = "Oculta el texto de las teclas en los botones de las barras de acci\195\179n.";
 L["CB_HIDE_MACRO"]               = "Ocultar Nombres de Macros";
 L["DD_ACTIONBAR_FONT"]           = "Letra de los botones";
+L["FRAMEBORDER_FONT"]            = "Letra de los botones:";
 L["TIP_HideMacroText"]           = "Oculta el nombre de las macros en los botones de las barras de acci\195\179n.";
 
 -- Subpesta\195\177as de Frames
