@@ -20,10 +20,18 @@ local enabled     = false;
 local forceHidden = false;
 local toggleBtn;
 
--- Declarados aca arriba a proposito: el arranque los reinicia y esta ANTES
--- del frame de repesca en el archivo. Declarados alla abajo se compilaban
--- como globales.
+-- Declarados aca arriba a proposito.
+--
+-- El arranque los toca y esta ANTES, en el archivo, que el bloque donde
+-- vivian. Un local declarado mas abajo NO lo ve una funcion escrita mas
+-- arriba: se compila como global, y ahi el frame sale nil. Ya me paso con
+-- los dos contadores; el frame se me escapo en la misma tanda.
+--
+-- El script del OnUpdate se le pone despues, cuando estan a la vista las
+-- funciones que usa.
 local retryAcc, retryCount = 0, 0;
+local retry = CreateFrame("Frame");
+retry:Hide();
 
 -- Cosas del cluster que NO hay que tocar nunca.
 -- Ojo con la flecha del jugador y el borde del minimapa: si se tocan,
@@ -321,8 +329,6 @@ end
 -- ---------------------------------------------------------
 -- Eventos: los addons cuelgan sus iconos tarde
 -- ---------------------------------------------------------
-local retry = CreateFrame("Frame");
-retry:Hide();
 retry:SetScript("OnUpdate", function(self, elapsed)
 	retryAcc = retryAcc + elapsed;
 	if retryAcc < 1 then return; end
