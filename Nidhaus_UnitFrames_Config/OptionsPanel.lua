@@ -1670,14 +1670,18 @@ local function PopulateTabs()
 	local mmR = -14;
 	SectionHeader(paneMap, L["HEADER_MINIMAP_ICONS"] or "Addon Icons", xR, mmR);
 
-	mmR = mmR - 30;
+	mmR = mmR - 26;
 	do
-		-- UN ESTADO, NO TRES CASILLAS.
+		-- TRES CASILLAS EXCLUYENTES.
 		--
-		-- Antes habia tres: "ocultar iconos", el modulo del boton, y "solo
-		-- con el mouse" colgando de el. Pero cuando se ven los iconos es UNA
-		-- pregunta con tres respuestas excluyentes, y partirla en casillas
-		-- sueltas dejaba combinaciones que se contradecian.
+		-- Cuando se ven los iconos es UNA pregunta con tres respuestas, no
+		-- tres ajustes sueltos: por eso al marcar una se destildan las otras
+		-- dos y siempre queda exactamente una puesta. Antes eran casillas
+		-- independientes y se podian dejar en combinaciones que se
+		-- contradecian.
+		--
+		-- Se arman a mano y no con CreateCheckBox porque ese ayudante da por
+		-- sentado que el ajuste es un booleano, y este guarda un texto.
 		--
 		-- MIGRACION: quien tenia "ocultar iconos" tildado arranca en Nunca,
 		-- y quien tenia el hover prendido arranca en Con el mouse.
@@ -1689,21 +1693,42 @@ local function PopulateTabs()
 			if K.SaveConfig then K.SaveConfig("MinimapAddonIcons", v); end
 		end
 
-		local opts = {
-			{ text = L["MINIMAP_ICONS_ALWAYS"] or "Always",       value = "Always" },
-			{ text = L["MINIMAP_ICONS_HOVER"]  or "On mouseover", value = "Hover"  },
-			{ text = L["MINIMAP_ICONS_NEVER"]  or "Never",        value = "Never"  },
-		};
-		CreateDropdown(paneMap, L["DD_MINIMAP_ICONS"] or "Show them", "MinimapAddonIcons",
-			opts, xR, mmR, function()
+		local iconBoxes = {};
+		local function RefreshIconBoxes()
+			local cur = C.MinimapAddonIcons or "Always";
+			for _, b in ipairs(iconBoxes) do b:SetChecked(b.value == cur); end
+		end
+
+		local function IconModeCB(label, value, y)
+			checkboxCount = checkboxCount + 1;
+			local name = "NidhausUFCheckBox" .. checkboxCount;
+			local cb = CreateFrame("CheckButton", name, paneMap, "InterfaceOptionsCheckButtonTemplate");
+			cb:SetPoint("TOPLEFT", xR, y);
+			cb:SetHitRectInsets(0, 0, 0, 0);
+			local fs = _G[name .. "Text"];
+			if fs then fs:SetText(label); end
+			cb.value = value;
+			cb:SetScript("OnClick", function(self)
+				-- Volver a apretar la que ya estaba no la apaga: siempre hay
+				-- una elegida, y RefreshIconBoxes la vuelve a marcar.
+				if K.SaveConfig then K.SaveConfig("MinimapAddonIcons", self.value); end
+				C.MinimapAddonIcons = self.value;
+				RefreshIconBoxes();
 				if K.ApplyMinimapIconState then K.ApplyMinimapIconState(); end
 			end);
+			iconBoxes[#iconBoxes + 1] = cb;
+		end
+
+		IconModeCB(L["MINIMAP_ICONS_ALWAYS"] or "Always",       "Always", mmR); mmR = mmR - 24;
+		IconModeCB(L["MINIMAP_ICONS_HOVER"]  or "On mouseover", "Hover",  mmR); mmR = mmR - 24;
+		IconModeCB(L["MINIMAP_ICONS_NEVER"]  or "Never",        "Never",  mmR);
+		RefreshIconBoxes();
 	end
 
 	-- El boton es un CONTROL, no un estado: sirva cual sirva el modo de
 	-- arriba, es la forma de esconderlos sin abrir este panel. Por eso va
 	-- suelto y no colgando de nada.
-	mmR = mmR - 56;
+	mmR = mmR - 36;
 	CreateModuleCB(paneMap, L["MOD_MINIMAP_TOGGLE"] or "Minimap Icon Toggle",
 		"MinimapIconToggle", xR, mmR, L["MOD_MINIMAP_TOGGLE_DESC"]);
 
