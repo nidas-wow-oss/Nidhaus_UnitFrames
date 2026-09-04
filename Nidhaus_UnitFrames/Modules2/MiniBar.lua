@@ -174,7 +174,7 @@ local UNIFY_GRYPHON_LEFT_X    = -30;
 -- OJO con las unidades: este numero NO son pixeles de pantalla. El offset de
 -- SetPoint va en el espacio del propio grifo, y ese espacio esta escalado a
 -- 0.730 (la escala de MainMenuBar). O sea que 3 aca son ~2 px en pantalla.
-local UNIFY_GRYPHON_RIGHT_X   = 283;   -- estaba en 280: corrido 2 px a la derecha
+local UNIFY_GRYPHON_RIGHT_X   = 286;   -- 280 -> 283 -> 286: dos tandas de ~2 px a la derecha
 local UNIFY_GRYPHON_Y_BASE    =  -5;
 local UNIFY_GRYPHON_Y_PER_BAR =   5;
 
