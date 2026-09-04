@@ -167,7 +167,8 @@ local defaults = {
 	MinimapHideCalendar = false, -- ocultar el calendario (GameTimeFrame)
 	MinimapHideWorldMap = false, -- ocultar el boton del mapa del mundo
 	MinimapWheelZoom  = true,    -- zoom con la rueda del mouse
-	MinimapIconsOnHover = false, -- los iconos de addon solo con el mouse encima del minimapa
+	MinimapIconsOnHover = false, -- viejo: migrado a MinimapAddonIcons
+	MinimapAddonIcons = "Always", -- cuando se ven los iconos de addon: Always / Hover / Never
 	MinimapScale      = 1.0,
 
 	-- CLASS / PVP MODULES

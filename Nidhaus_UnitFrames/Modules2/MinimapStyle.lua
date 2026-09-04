@@ -491,31 +491,13 @@ local function RestoreTrackingButton()
 end
 K.RestoreMinimapTracking = RestoreTrackingButton;
 
-local hiddenIcons = {};
-
-function K.ApplyMinimapAddonIcons()
-	if C.MinimapHideAddonIcons then
-		local function Sweep(parent)
-			if not parent then return; end
-			for _, child in ipairs({ parent:GetChildren() }) do
-				local n = child.GetName and child:GetName();
-				if not (n and PROTECTED[n]) and child ~= Minimap then
-					if child:IsShown() and hiddenIcons[child] == nil then
-						hiddenIcons[child] = true;
-						child:Hide();
-					end
-				end
-			end
-		end
-		Sweep(Minimap);
-		Sweep(MinimapCluster);
-	else
-		for f in pairs(hiddenIcons) do
-			if f.Show then f:Show(); end
-		end
-		hiddenIcons = {};
-	end
-end
+-- ESTO YA NO ESCONDE NADA. Lo hace MinimapIconToggle.lua.
+--
+-- Habia DOS barridos independientes sobre los mismos hijos del minimapa,
+-- este y el del modulo del boton, cada uno con su tabla de "que escondi yo".
+-- Con los dos activos uno mostraba lo que el otro habia escondido y las
+-- tablas quedaban desincronizadas: iconos que no volvian, o que reaparecian
+-- solos. Ahora hay un unico dueño y esta funcion solo lo llama.
 
 -- Los addons cuelgan sus iconos tarde, asi que barremos unas veces mas
 local iconRetry = CreateFrame("Frame");
@@ -526,7 +508,7 @@ iconRetry:SetScript("OnUpdate", function(self, elapsed)
 	if retryAcc < 1 then return; end
 	retryAcc = 0;
 	retryCount = retryCount + 1;
-	if C.MinimapHideAddonIcons then K.ApplyMinimapAddonIcons(); end
+	if K.ApplyMinimapIconState then K.ApplyMinimapIconState(); end
 	if retryCount >= 5 then self:Hide(); end
 end);
 
@@ -590,7 +572,7 @@ end
 function K.ApplyMinimapSettings()
 	K.ApplyMinimapShape();
 	K.ApplyMinimapDecorations();
-	K.ApplyMinimapAddonIcons();
+	if K.ApplyMinimapIconState then K.ApplyMinimapIconState(); end
 	K.ApplyMinimapWheelZoom();
 	K.ApplyMinimapScale();
 	RestoreTrackingButton();   -- por si quedo oculto de antes

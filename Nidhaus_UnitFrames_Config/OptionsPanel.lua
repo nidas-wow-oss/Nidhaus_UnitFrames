@@ -1670,37 +1670,48 @@ local function PopulateTabs()
 	local mmR = -14;
 	SectionHeader(paneMap, L["HEADER_MINIMAP_ICONS"] or "Addon Icons", xR, mmR);
 
-	mmR = mmR - 26;
+	mmR = mmR - 30;
 	do
-		CreateCheckBox(paneMap, L["CB_MINIMAP_HIDE_ICONS"] or "Hide addon icons",
-			"MinimapHideAddonIcons", xR, mmR);
-		local cb = checkboxes[#checkboxes];
-		cb:HookScript("OnClick", function()
-			if K.ApplyMinimapSettings then K.ApplyMinimapSettings(); end
-		end);
+		-- UN ESTADO, NO TRES CASILLAS.
+		--
+		-- Antes habia tres: "ocultar iconos", el modulo del boton, y "solo
+		-- con el mouse" colgando de el. Pero cuando se ven los iconos es UNA
+		-- pregunta con tres respuestas excluyentes, y partirla en casillas
+		-- sueltas dejaba combinaciones que se contradecian.
+		--
+		-- MIGRACION: quien tenia "ocultar iconos" tildado arranca en Nunca,
+		-- y quien tenia el hover prendido arranca en Con el mouse.
+		if C.MinimapAddonIcons == nil or C.MinimapAddonIcons == "" then
+			local v = "Always";
+			if C.MinimapIconsOnHover == true then v = "Hover";
+			elseif C.MinimapHideAddonIcons == true then v = "Never"; end
+			C.MinimapAddonIcons = v;
+			if K.SaveConfig then K.SaveConfig("MinimapAddonIcons", v); end
+		end
+
+		local opts = {
+			{ text = L["MINIMAP_ICONS_ALWAYS"] or "Always",       value = "Always" },
+			{ text = L["MINIMAP_ICONS_HOVER"]  or "On mouseover", value = "Hover"  },
+			{ text = L["MINIMAP_ICONS_NEVER"]  or "Never",        value = "Never"  },
+		};
+		CreateDropdown(paneMap, L["DD_MINIMAP_ICONS"] or "Show them", "MinimapAddonIcons",
+			opts, xR, mmR, function()
+				if K.ApplyMinimapIconState then K.ApplyMinimapIconState(); end
+			end);
 	end
 
-	mmR = mmR - 30;
-	SectionNote(paneMap, L["NOTE_MINIMAP_ICONS"]
-		or "The module below adds a small button on the minimap corner to hide and show the icons on the fly, without opening this panel.",
-		xR + 2, mmR, 230);
-	mmR = mmR - 52;
+	-- El boton es un CONTROL, no un estado: sirva cual sirva el modo de
+	-- arriba, es la forma de esconderlos sin abrir este panel. Por eso va
+	-- suelto y no colgando de nada.
+	mmR = mmR - 56;
 	CreateModuleCB(paneMap, L["MOD_MINIMAP_TOGGLE"] or "Minimap Icon Toggle",
 		"MinimapIconToggle", xR, mmR, L["MOD_MINIMAP_TOGGLE_DESC"]);
 
-	-- Cuelga del modulo de arriba: sin el prendido no hay quien esconda ni
-	-- muestre nada, asi que va debajo y no en la lista de adornos.
-	mmR = mmR - 26;
-	do
-		CreateCheckBox(paneMap, L["CB_MINIMAP_ICONS_HOVER"] or "Icons only on mouseover",
-			"MinimapIconsOnHover", xR + 14, mmR,
-			L["TIP_MinimapIconsOnHover"]
-			or "Addon icons stay hidden and appear only while the cursor is on the minimap. Needs the module above.");
-		local cb = checkboxes[#checkboxes];
-		cb:HookScript("OnClick", function()
-			if K.ApplyMinimapIconsOnHover then K.ApplyMinimapIconsOnHover(); end
-		end);
-	end
+	mmR = mmR - 30;
+	SectionNote(paneMap, L["NOTE_MINIMAP_ICONS"]
+		or "A small button on the minimap corner to hide the icons on the fly. It only hides, so with Never it has nothing to do.",
+		xR + 2, mmR, 230);
+	mmR = mmR - 22;
 
 	mmR = mmR - 52;
 	SectionHeader(paneMap, L["HEADER_MINIMAP_SIZE"] or "Size", xR, mmR);

@@ -10,9 +10,20 @@ local K, C, L = unpack(ns);
 -- El estado se guarda, asi que se mantiene entre sesiones.
 -- =========================================================
 
-local enabled  = false;
-local hidden   = false;
+-- enabled     = el MODULO, que ahora es solo el boton del minimapa.
+-- forceHidden = lo que decidio ese boton. Es un interruptor aparte del modo:
+--               "escondelos ahora", sin importar que diga la configuracion.
+--
+-- El motor de mostrar y ocultar YA NO depende del modulo: lo maneja el modo
+-- (Siempre / Con el mouse / Nunca) y corre este el boton puesto o no.
+local enabled     = false;
+local forceHidden = false;
 local toggleBtn;
+
+-- Declarados aca arriba a proposito: el arranque los reinicia y esta ANTES
+-- del frame de repesca en el archivo. Declarados alla abajo se compilaban
+-- como globales.
+local retryAcc, retryCount = 0, 0;
 
 -- Cosas del cluster que NO hay que tocar nunca.
 -- Ojo con la flecha del jugador y el borde del minimapa: si se tocan,
@@ -137,14 +148,24 @@ local hoverOver     = false;   -- lo que dice el mouse ahora
 local hoverTargets  = nil;     -- cache de iconos, para no recolectar en cada tick
 local HOVER_MARGIN  = 24;
 
-local function HoverMode()
-	return C.MinimapIconsOnHover == true;
+-- Un solo estado de tres valores en vez de dos casillas sueltas que se
+-- contradecian. Todo lo que decide cuando se ven los iconos vive aca.
+local function Mode()
+	local m = C.MinimapAddonIcons;
+	if m == "Never" or m == "Hover" then return m; end
+	return "Always";
 end
 
--- Que se tiene que ver: el boton manual manda por encima del mouse. Si lo
--- escondiste a mano, pasar el cursor no lo revive.
+local function HoverMode()
+	return Mode() == "Hover";
+end
+
+-- El boton solo puede ESCONDER, nunca revelar: asi quiere decir lo mismo en
+-- los tres modos y no hay que adivinar que hace segun cual este puesto. Con
+-- "Nunca" no tiene nada que hacer, y esta bien que asi sea.
 local function DesiredVisible()
-	if hidden then return false; end
+	if Mode() == "Never" then return false; end
+	if forceHidden then return false; end
 	if HoverMode() then return hoverOver; end
 	return true;
 end
@@ -173,7 +194,7 @@ local function ApplyState()
 	-- El icono del boton refleja el interruptor MANUAL, no lo que el mouse
 	-- este haciendo en este instante: si no, parpadearia al pasar por encima.
 	if toggleBtn then
-		if hidden then
+		if forceHidden then
 			toggleBtn.icon:SetTexture("Interface\\Buttons\\UI-PlusButton-Up");
 		else
 			toggleBtn.icon:SetTexture("Interface\\Buttons\\UI-MinusButton-Up");
@@ -212,9 +233,9 @@ hoverDriver:SetScript("OnUpdate", function(self, elapsed)
 	end
 end);
 
--- La llama el checkbox del panel.
-function K.ApplyMinimapIconsOnHover()
-	if not enabled then return; end
+-- La llama el desplegable del panel, y tambien MinimapStyle. Ya no exige
+-- que el modulo del boton este prendido: el modo manda solo.
+function K.ApplyMinimapIconState()
 	if HoverMode() then
 		hoverTargets = CollectTargets();
 		hoverOver = MouseIsNearMinimap();
@@ -226,9 +247,24 @@ function K.ApplyMinimapIconsOnHover()
 	ApplyState();
 end
 
+-- Nombres viejos, por si algo los llama: MinimapStyle tenia el suyo y el
+-- panel llamaba al de hover.
+K.ApplyMinimapAddonIcons  = function() K.ApplyMinimapIconState(); end
+K.ApplyMinimapIconsOnHover = function() K.ApplyMinimapIconState(); end
+
+-- El motor arranca con el addon, no con el modulo.
+local bootstrap = CreateFrame("Frame");
+bootstrap:RegisterEvent("PLAYER_ENTERING_WORLD");
+bootstrap:SetScript("OnEvent", function()
+	forceHidden = DB().hidden and true or false;
+	K.ApplyMinimapIconState();
+	retryAcc, retryCount = 0, 0;
+	retry:Show();
+end);
+
 local function SetHidden(state)
-	hidden = state and true or false;
-	DB().hidden = hidden;
+	forceHidden = state and true or false;
+	DB().hidden = forceHidden;
 	ApplyState();
 end
 
@@ -266,7 +302,7 @@ local function CreateToggleButton()
 	toggleBtn.icon:SetTexture("Interface\\Buttons\\UI-MinusButton-Up");
 
 	toggleBtn:SetScript("OnClick", function()
-		SetHidden(not hidden);
+		SetHidden(not forceHidden);
 	end);
 
 	toggleBtn:SetScript("OnEnter", function(self)
@@ -286,14 +322,15 @@ end
 -- Eventos: los addons cuelgan sus iconos tarde
 -- ---------------------------------------------------------
 local retry = CreateFrame("Frame");
-local retryAcc, retryCount = 0, 0;
 retry:Hide();
 retry:SetScript("OnUpdate", function(self, elapsed)
 	retryAcc = retryAcc + elapsed;
 	if retryAcc < 1 then return; end
 	retryAcc = 0;
 	retryCount = retryCount + 1;
-	if enabled and hidden then ApplyState(); end
+	-- Los addons cuelgan sus iconos tarde, asi que se vuelve a aplicar unas
+	-- veces mas. Ya no se pregunta por el modulo: el modo corre igual.
+	ApplyState();
 	if retryCount >= 5 then self:Hide(); end
 end);
 
@@ -301,10 +338,7 @@ local events = CreateFrame("Frame");
 events:SetScript("OnEvent", function()
 	if not enabled then return; end
 	CreateToggleButton();
-	hidden = DB().hidden and true or false;
-	ApplyState();
-	retryAcc, retryCount = 0, 0;
-	retry:Show();
+	if toggleBtn then toggleBtn:Show(); end
 end);
 
 SLASH_NUFMINIMAP1 = "/nufminimap";
@@ -314,7 +348,7 @@ SlashCmdList["NUFMINIMAP"] = function()
 			or "Enable the Minimap Icon Toggle module first."));
 		return;
 	end
-	SetHidden(not hidden);
+	SetHidden(not forceHidden);
 end
 
 -- ---------------------------------------------------------
@@ -325,29 +359,21 @@ K.RegisterModule("MinimapIconToggle", {
 	desc    = L["MOD_MINIMAP_TOGGLE_DESC"] or "Button on the minimap corner that hides or shows every minimap icon.",
 	default = false,
 	configLabel = L["BTN_MODULE_TOGGLE"] or "Toggle",
-	configFunc = function() SetHidden(not hidden); end,
+	configFunc = function() SetHidden(not forceHidden); end,
+	-- El modulo es SOLO el boton. Prenderlo o apagarlo no toca los iconos:
+	-- de eso se encarga el modo, que vive aparte y corre siempre.
 	onEnable = function()
 		enabled = true;
 		CreateToggleButton();
 		if toggleBtn then toggleBtn:Show(); end
-		hidden = DB().hidden and true or false;
-		if K.ApplyMinimapIconsOnHover then K.ApplyMinimapIconsOnHover(); else ApplyState(); end
 		events:RegisterEvent("PLAYER_ENTERING_WORLD");
-		retryAcc, retryCount = 0, 0;
-		retry:Show();
 	end,
 	onDisable = function()
 		enabled = false;
 		events:UnregisterAllEvents();
-		retry:Hide();
-		hoverDriver:Hide();
-		-- Al apagar el modulo todo vuelve a verse, lo hubiera escondido el
-		-- boton o el mouse.
-		if hidden or hoverOver == false then
-			hidden = false;
-			hoverOver = true;
-			ApplyState();
-		end
 		if toggleBtn then toggleBtn:Hide(); end
+		-- Si se va el boton, se va con el lo que el boton habia escondido:
+		-- si no, quedarian iconos ocultos sin nada con que recuperarlos.
+		if forceHidden then SetHidden(false); end
 	end,
 });

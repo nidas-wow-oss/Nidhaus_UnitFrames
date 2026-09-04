@@ -118,6 +118,11 @@ L["CLASSTIMERS_PREVIEW_ON"]      = "Class bars shown. Drag them, then /nufclass 
 L["CLASSTIMERS_RESET"]           = "Class bar positions reset.";
 L["CB_MINIMAP_HIDE_ZONEBG"]      = "Hide Zone Name Background";
 L["CB_MINIMAP_HIDE_ICONS"]       = "Hide addon icons";
+L["DD_MINIMAP_ICONS"]            = "Show them";
+L["MINIMAP_ICONS_ALWAYS"]        = "Always";
+L["MINIMAP_ICONS_HOVER"]         = "On mouseover";
+L["MINIMAP_ICONS_NEVER"]         = "Never";
+L["NOTE_MINIMAP_ICONS"]          = "A small button on the minimap corner to hide the icons on the fly. It only hides, so with Never it has nothing to do.";
 L["MOD_PFI"]                     = "Party Frames Improved";
 L["MOD_PFI_DESC"]                = "Wider, cleaner texture for the party frames, with smaller name / health / mana text and a bigger health bar.";
 L["MOD_SHIELDWATCH"]             = "ShieldWatch";
@@ -346,7 +351,6 @@ L["CB_MINIMAP_WHEEL"]            = "Mouse Wheel Zoom";
 L["CB_MINIMAP_ICONS_HOVER"]      = "Icons only on mouseover";
 L["TIP_MinimapIconsOnHover"]     = "Addon icons stay hidden and appear only while the cursor is on the minimap. Needs the module above.";
 L["SLIDER_MINIMAP_SCALE"]        = "Minimap Scale";
-L["NOTE_MINIMAP_ICONS"]          = "Adds a small button on the minimap corner that hides or shows every addon icon at once.";
 
 L["CB_HIDE_CHAT_BUTTON"]         = "Hide Chat Buttons";
 
@@ -1077,6 +1081,11 @@ L["CLASSTIMERS_PREVIEW_ON"]      = "Barras de clase a la vista. Arrastralas y de
 L["CLASSTIMERS_RESET"]           = "Posiciones de las barras de clase reiniciadas.";
 L["CB_MINIMAP_HIDE_ZONEBG"]      = "Ocultar el fondo del nombre de zona";
 L["CB_MINIMAP_HIDE_ICONS"]       = "Ocultar los iconos de addons";
+L["DD_MINIMAP_ICONS"]            = "Mostrarlos";
+L["MINIMAP_ICONS_ALWAYS"]        = "Siempre";
+L["MINIMAP_ICONS_HOVER"]         = "Con el mouse encima";
+L["MINIMAP_ICONS_NEVER"]         = "Nunca";
+L["NOTE_MINIMAP_ICONS"]          = "Un boton chico en la esquina del minimapa para esconderlos al vuelo. Solo esconde, asi que con Nunca no tiene nada que hacer.";
 L["MOD_PFI"]                     = "Party Frames Improved";
 L["MOD_PFI_DESC"]                = "Textura m\195\161s ancha y limpia para los marcos de party, con los textos de nombre / vida / man\195\161 m\195\161s chicos y la barra de vida m\195\161s grande.";
 L["MOD_SHIELDWATCH"]             = "ShieldWatch";
@@ -1304,7 +1313,6 @@ L["CB_MINIMAP_WHEEL"]            = "Zoom con la rueda del mouse";
 L["CB_MINIMAP_ICONS_HOVER"]      = "Iconos solo al pasar el mouse";
 L["TIP_MinimapIconsOnHover"]     = "Los iconos de addon quedan ocultos y aparecen solo mientras el cursor esta sobre el minimapa. Necesita el modulo de arriba.";
 L["SLIDER_MINIMAP_SCALE"]        = "Escala del minimapa";
-L["NOTE_MINIMAP_ICONS"]          = "Agrega un bot\195\179n chiquito en la esquina del minimapa que oculta o muestra todos los iconos de addons de una.";
 
 L["CB_HIDE_CHAT_BUTTON"]         = "Ocultar los botones del chat";
 
