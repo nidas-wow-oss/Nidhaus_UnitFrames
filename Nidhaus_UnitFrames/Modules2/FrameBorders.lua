@@ -224,9 +224,14 @@ local enabled = false;
 -- HAY ALGO DIBUJADO AHI?
 --
 -- Un boton vacio sigue "mostrado": Blizzard solo le apaga la imagen. Con
--- el borde puesto quedaba un recuadro alrededor de la nada, que es
--- justo lo que se veia en la fila del micromenu y en las ranuras de
--- bolsa sin bolsa.
+-- el borde puesto quedaba un recuadro alrededor de la nada, que es lo que
+-- se veia en las ranuras de bolsa sin bolsa.
+--
+-- SOLO SE JUZGA A LOS BOTONES. Esto rompio la barra de casteo: existe un
+-- CastingBarFrameIcon, pero en la barra del JUGADOR vive oculto (el icono
+-- del hechizo solo se usa en las del objetivo y el foco). Al mirarlo, la
+-- barra contaba como vacia y se quedaba sin borde. Una barra no tiene
+-- imagen propia que mirar, asi que pasa derecho.
 --
 -- Cada familia de botones nombra su imagen distinto, de ahi los tres
 -- casos:
@@ -234,11 +239,10 @@ local enabled = false;
 --   <nombre>Icon          botones de accion, postura y mascota
 --   <nombre>IconTexture   ranuras de bolsa y la mochila
 --   GetNormalTexture()    micromenu y cualquier boton comun
---
--- Se mira la imagen y no HasAction porque asi entran los tres de una.
--- Lo que no es un boton (las barras, la de casteo) no tiene ninguna de
--- las tres y pasa derecho.
 local function HasArt(frame, name)
+	local kind = frame.GetObjectType and frame:GetObjectType();
+	if kind ~= "Button" and kind ~= "CheckButton" then return true; end
+
 	local icon = _G[name .. "Icon"] or _G[name .. "IconTexture"];
 	if icon and icon.GetTexture then
 		return (icon:IsShown() and icon:GetTexture()) and true or false;

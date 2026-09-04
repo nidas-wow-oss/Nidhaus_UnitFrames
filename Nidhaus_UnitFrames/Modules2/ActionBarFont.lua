@@ -24,19 +24,30 @@ local K, C, L = unpack(ns);
 -- se repone tal cual.
 -- =========================================================
 
+-- Cada familia con los textos que le cuelgan.
+--
+--   HotKey    la tecla asignada
+--   Name      el nombre de la macro
+--   Count     las cargas / apilamiento
+--   Duration  lo que le queda al aura
+--
+-- Las auras van en la misma lista porque su numerito es parte del mismo
+-- conjunto: si la barra de accion cambia de letra y el buff no, se nota.
 local buttonGroups = {
-	{ prefix = "ActionButton",              count = 12 },
-	{ prefix = "MultiBarBottomLeftButton",  count = 12 },
-	{ prefix = "MultiBarBottomRightButton", count = 12 },
-	{ prefix = "MultiBarRightButton",       count = 12 },
-	{ prefix = "MultiBarLeftButton",        count = 12 },
-	{ prefix = "BonusActionButton",         count = 12 },
-	{ prefix = "PetActionButton",           count = 10 },
-	{ prefix = "ShapeshiftButton",          count = 10 },
+	{ prefix = "ActionButton",              count = 12, texts = { "HotKey", "Name", "Count" } },
+	{ prefix = "MultiBarBottomLeftButton",  count = 12, texts = { "HotKey", "Name", "Count" } },
+	{ prefix = "MultiBarBottomRightButton", count = 12, texts = { "HotKey", "Name", "Count" } },
+	{ prefix = "MultiBarRightButton",       count = 12, texts = { "HotKey", "Name", "Count" } },
+	{ prefix = "MultiBarLeftButton",        count = 12, texts = { "HotKey", "Name", "Count" } },
+	{ prefix = "BonusActionButton",         count = 12, texts = { "HotKey", "Name", "Count" } },
+	{ prefix = "PetActionButton",           count = 10, texts = { "HotKey", "Count" } },
+	{ prefix = "ShapeshiftButton",          count = 10, texts = { "HotKey", "Count" } },
+	{ prefix = "BuffButton",                count = 32, texts = { "Duration", "Count" } },
+	{ prefix = "DebuffButton",              count = 16, texts = { "Duration", "Count" } },
+	{ prefix = "TempEnchant",               count = 3,  texts = { "Duration", "Count" } },
 };
 
--- HotKey = la tecla, Name = el nombre de la macro, Count = las cargas.
-local SUFFIXES = { "HotKey", "Name", "Count" };
+local DEFAULT_TEXTS = { "HotKey", "Name", "Count" };
 
 local originals = {};   -- [fontstring] = { ruta, tamaño, banderas }
 
@@ -83,11 +94,11 @@ local function ApplyToFontString(fs)
 	end
 end
 
-local function ApplyToButton(button)
+local function ApplyToButton(button, texts)
 	if not button or not button.GetName then return; end
 	local name = button:GetName();
 	if not name then return; end
-	for _, suffix in ipairs(SUFFIXES) do
+	for _, suffix in ipairs(texts or DEFAULT_TEXTS) do
 		ApplyToFontString(_G[name .. suffix]);
 	end
 end
@@ -95,7 +106,7 @@ end
 function K.ApplyActionBarFont()
 	for _, group in ipairs(buttonGroups) do
 		for i = 1, group.count do
-			ApplyToButton(_G[group.prefix .. i]);
+			ApplyToButton(_G[group.prefix .. i], group.texts);
 		end
 	end
 end
@@ -113,7 +124,7 @@ local function HookIfActive(fn)
 	hooksecurefunc(fn, function(self)
 		if Index() <= 1 then return; end
 		if type(self) == "table" and self.GetName then
-			ApplyToButton(self);
+			ApplyToButton(self, nil);
 		else
 			K.ApplyActionBarFont();
 		end
@@ -147,7 +158,17 @@ local events = CreateFrame("Frame");
 events:RegisterEvent("PLAYER_ENTERING_WORLD");
 events:RegisterEvent("UPDATE_SHAPESHIFT_FORMS");
 events:RegisterEvent("UNIT_PET");
-events:SetScript("OnEvent", function()
+-- Blizzard recicla los botones de aura al vencer uno, y el nuevo viene
+-- con la letra de fabrica. UNIT_AURA lo cubre.
+events:RegisterEvent("UNIT_AURA");
+events:SetScript("OnEvent", function(self, event)
+	-- UNIT_AURA salta a cada rato. Un repaso alcanza; arrancar tambien el
+	-- barrido de 6 pasadas por cada buff que vence seria tirar trabajo.
+	if event == "UNIT_AURA" then
+		if Index() > 1 then K.ApplyActionBarFont(); end
+		return;
+	end
+
 	K.ApplyActionBarFont();
 	sweepAcc, sweepCount = 0, 0;
 	sweep:Show();
