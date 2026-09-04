@@ -4,8 +4,7 @@ local K, C, L = unpack(ns);
 -- =========================================================
 -- TabBinder.lua
 --
--- Portado de el UI de origen (RE/TabBinder), que a su vez
--- viene de RE/TabBinder, de Veev y AcidWeb.
+-- La idea original es de RE/TabBinder, de Veev y AcidWeb.
 --
 -- QUE HACE: en zonas de PvP — arena, campo de batalla, zona en disputa —
 -- y mientras tenes un duelo pedido, la tecla de seleccionar objetivo pasa

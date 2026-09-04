@@ -783,7 +783,7 @@ end
 --  candado sobre SetPoint en el modo unificado. Arrastrarlo era pelear
 --  contra tres sistemas a la vez.
 --
---  La solucion es la de el UI de origen (el patron del Holder):
+--  La solucion es el patron del "Holder":
 --  se crea un Holder, se le cuelgan los BOTONES, y se mueve el Holder.
 --  Los botones son hijos nuestros, asi que nadie mas los reancla.
 --
@@ -976,8 +976,8 @@ end
 -- ──────────────────────────────────────────────────────────────
 --  SEPARACION ENTRE BOTONES  ("Buttons space")
 --
---  Portado de la idea de el UI de origen (C.ActionBar.ButtonSpace): alla cada
---  boton se ancla al anterior con esa distancia. Aca hay que hacerlo
+--  La idea es simple: cada boton se ancla al anterior separado por esa
+--  distancia. Aca hay que hacerlo
 --  sobre las barras de Blizzard, que vienen con los botones pegados a
 --  mano en su XML, asi que se los vuelve a anclar uno por uno.
 --

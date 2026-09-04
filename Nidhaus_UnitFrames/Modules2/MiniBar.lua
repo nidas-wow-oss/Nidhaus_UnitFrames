@@ -492,11 +492,10 @@ end
 -- ============================================================
 -- SEPARACION ENTRE FILAS
 --
--- Logica tomada de el UI de origen (Modules/ActionBars/Bar2.lua): alli la
--- primera tecla de cada fila se ancla a la primera de la fila de abajo
--- con la MISMA distancia que se usa entre botones vecinos:
+-- La primera tecla de cada fila se ancla a la primera de la fila de
+-- abajo con la MISMA distancia que se usa entre botones vecinos:
 --
---     b:SetPoint("BOTTOM", ActionButton1, "TOP", 0, C.ActionBar.ButtonSpace)
+--     b:SetPoint("BOTTOM", ActionButton1, "TOP", 0, ButtonSpace)
 --
 -- Antes esta separacion vertical estaba fija en 4 pixeles, asi que el
 -- slider "Separacion entre botones" abria los botones a lo ancho pero

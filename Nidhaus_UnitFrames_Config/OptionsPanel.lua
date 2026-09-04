@@ -1599,23 +1599,13 @@ local function PopulateTabs()
 	-- ESTILO DE BORDE.
 	--
 	-- Va justo debajo del selector de forma porque es lo mismo: el aspecto
-	-- del marco del mapa. Antes era un solo checkbox ("Light Border"); ahora
-	-- son cinco opciones excluyentes, asi que va en un desplegable.
+	-- del marco del mapa. Son opciones excluyentes, asi que van en un
+	-- desplegable.
 	mmY = mmY - 40;
 	SectionHeader(paneMap, L["HEADER_MINIMAP_BORDER"] or "Border", xL, mmY);
 
 	mmY = mmY - 30;
 	do
-		-- MIGRACION DEL CHECKBOX VIEJO.
-		--
-		-- Quien tenia el Light Border prendido arranca con ese estilo
-		-- elegido, sin tener que volver a tocarlo.
-		if (C.MinimapBorderStyle == nil or C.MinimapBorderStyle == "")
-			and C.MinimapThinBorder == true then
-			C.MinimapBorderStyle = "Light";
-			if K.SaveConfig then K.SaveConfig("MinimapBorderStyle", "Light"); end
-		end
-
 		local opts = {
 			{ text = L["MINIMAP_BORDER_DEFAULT"]  or "Default",  value = "Default"  },
 			{ text = L["MINIMAP_BORDER_LIGHT"]    or "Light",    value = "Light"    },
@@ -1878,7 +1868,7 @@ local function PopulateTabs()
 	sideUI.SetContentHeight(5, kY - 70);
 
 	-- ── 1.6 TOOLTIP ───────────────────────────────────────────────
-	-- Tres agregados portados de el UI de origen. La logica esta en
+	-- Tres agregados al tooltip. La logica esta en
 	-- Modules2/TooltipExtras.lua; aca solo estan los interruptores.
 	local tY = -14;
 	SectionHeader(paneTip, L["HEADER_TOOLTIP"] or "Tooltip", xL, tY);

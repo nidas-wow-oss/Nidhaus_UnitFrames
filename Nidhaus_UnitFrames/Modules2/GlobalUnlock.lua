@@ -106,7 +106,7 @@ local MOVABLES = {
 	-- estas la siguen solas porque su posicion esta expresada respecto de
 	-- ella. Y si arrastras una por separado, se guarda su desplazamiento
 	-- relativo, asi que sigue acompañando a la principal desde el lugar
-	-- nuevo. Es la misma idea de los "Holder" de el UI de origen.
+	-- nuevo. Es el mismo patron de "Holder" que usa Modules/ActionBars.lua.
 	{ key = "PetBar",     group = "extra", frames = {"PetActionBarFrame"},     label = "Pet Bar",
 	  scalable = true, protected = true, anchorTo = "MainMenuBar", managed = "PetActionBarFrame", onlyIfVisible = true, overlaySize = { 300, 34 } },
 	-- Se mueve NUESTRO contenedor, no el frame de Blizzard: los botones

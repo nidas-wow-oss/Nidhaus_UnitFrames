@@ -95,8 +95,8 @@ local defaults = {
 	CastBarPWTarget = true,     -- aplicar tambien a la barra del objetivo
 	CastBarPWFocus = true,      -- aplicar tambien a la barra del foco
 
-	-- Agregados al tooltip (Modules2/TooltipExtras.lua), portados de
-	-- el UI de origen. Los tres apagados por defecto: los dos primeros hacen
+	-- Agregados al tooltip (Modules2/TooltipExtras.lua). Los tres
+	-- apagados por defecto: los dos primeros hacen
 	-- consultas al servidor (comparacion de logros e inspeccion) y eso
 	-- se elige, no se hereda.
 	TooltipArenaExp = false,       -- rating de arena mas alto del jugador
@@ -154,9 +154,6 @@ local defaults = {
 	AuraIconsPerRow   = 8,       -- iconos de buff por fila (BUFFS_PER_ROW)
 	SideBarsHover     = false,   -- barras laterales solo al pasar el mouse
 	MinimapSquare     = false,   -- cuadrado en vez de redondo
-	MinimapThinBorder   = false,   -- LEGADO: el checkbox viejo del borde fino.
-	                             -- Se sigue leyendo una sola vez para migrar
-	                             -- a MinimapBorderStyle = "Light".
 	-- Default | Light | Tooltip | Thin | Flat | Blizzard
 	MinimapBorderStyle = "Default",
 	MinimapHideZone   = false,   -- ocultar el nombre de la zona
@@ -170,11 +167,11 @@ local defaults = {
 	MinimapIconsOnHover = false, -- viejo: migrado a MinimapAddonIcons
 	MinimapAddonIcons = "Always", -- cuando se ven los iconos de addon: Always / Hover / Never
 
-	-- Borde estilo el UI de origen. Las sub-opciones arrancan en nil a proposito:
-	-- el panel las trata como prendidas mientras no se toquen, igual que
-	-- hace Lorti con las suyas.
-	FrameBordersStyle = "el UI de origen",   -- el UI de origen / Pixel
-	FrameBordersShadow = true,      -- el halo exterior
+	-- Bordes de marco. Las sub-opciones arrancan en nil a proposito: el
+	-- panel las trata como prendidas mientras no se toquen, igual que hace
+	-- Lorti con las suyas.
+	FrameBorderStyle = "Soft",   -- Soft / Pixel
+	FrameBorderShadow = true,    -- el halo exterior
 	MinimapScale      = 1.0,
 
 	-- CLASS / PVP MODULES

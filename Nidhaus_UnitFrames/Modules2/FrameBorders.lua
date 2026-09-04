@@ -4,22 +4,26 @@ local K, C, L = unpack(ns);
 -- =========================================================
 -- FrameBorders.lua
 --
--- El borde de el UI de origen (MIT, (c) el UI de origen) alrededor de las barras de
--- accion, el micromenu, las bolsas, los marcos, la barra de casteo y las
--- auras, con sombra exterior opcional.
+-- Borde fino y sombra exterior alrededor de las barras de accion, el
+-- micromenu, las bolsas, los marcos, la barra de casteo y las auras.
 --
--- POR QUE NO SE COPIA SU CODIGO.
+-- ARTE PROPIO. Las cuatro texturas de Media/Border (Soft, Pixel, Glow y
+-- la Light que usa el minimapa) las dibuja Tools/mkborders.py: geometria
+-- pura, un perfil de alfa segun la distancia al filo. No hay nada de
+-- terceros adentro.
 --
--- La version de el UI de origen que sirvio de referencia es de retail: usa
--- Mixin, SetColorTexture, SetShown y BackdropTemplate, y ninguno de los
--- cuatro existe en 3.3.5a. Pero no hace ninguna falta. Su Border.tga mide
--- 256x32, o sea OCHO casillas de 32x32 en el mismo orden que espera el
--- edgeFile de SetBackdrop: izquierda, derecha, arriba, abajo y las cuatro
--- esquinas. Se usa el arte tal cual y el backdrop nativo hace la division
--- solo, con dos lineas en vez de doscientas.
+-- COMO SE ARMA EL EDGEFILE.
 --
--- La unica diferencia con el original es que el backdrop ESTIRA los lados
--- y ellos los repiten. En un filo de uno o dos pixeles no se distingue.
+-- Cada .tga es una tira de OCHO casillas cuadradas, en el orden que
+-- espera SetBackdrop: izquierda, derecha, arriba, abajo y las cuatro
+-- esquinas. Las de arriba y abajo son copia de las de izquierda y
+-- derecha, porque el motor las rota solo al dibujarlas. Con eso el
+-- backdrop nativo reparte el borde y no hace falta una sola linea de
+-- dibujo a mano.
+--
+-- La banda va pegada al filo EXTERIOR de la casilla. El marco del borde
+-- se crea a 1 px del objetivo, asi que una banda dibujada mas adentro
+-- terminaba cruzando por arriba de los botones.
 --
 -- CONVIVE CON LORTI UI, no compite. Lorti no dibuja bordes: tinta las
 -- texturas de Blizzard para oscurecerlas. Esto no toca esas texturas:
@@ -33,17 +37,17 @@ local K, C, L = unpack(ns);
 
 local ART = "Interface\\AddOns\\" .. AddOnName .. "\\Media\\Border\\";
 
--- El grosor sale del propio el UI de origen (Core/Border.lua, onSizeChanged):
--- 12 para el estilo normal, 10 para el pixel.
+-- Grosor: cuantos pixeles de pantalla ocupa cada casilla del edgeFile.
+-- 12 para el estilo suave (banda con pluma), 10 para el pixel (filo duro).
 local STYLES = {
-	el UI de origen = { file = ART .. "Border_el UI de origen", edge = 12 },
-	Pixel  = { file = ART .. "Border_Pixel",  edge = 10 },
+	Soft  = { file = ART .. "Border_Soft",  edge = 12 },
+	Pixel = { file = ART .. "Border_Pixel", edge = 10 },
 };
 
 local GLOW_FILE, GLOW_EDGE = ART .. "Border_Glow", 3;
 
 local function Style()
-	return STYLES[C.FrameBordersStyle] or STYLES.el UI de origen;
+	return STYLES[C.FrameBorderStyle] or STYLES.Soft;
 end
 
 -- ---------------------------------------------------------
@@ -69,7 +73,7 @@ end
 
 local GROUPS = {
 	{
-		key = "FrameBorders_ActionBars",
+		key = "FrameBorder_ActionBars",
 		label = "Action Bars",
 		names = Join(
 			Series("ActionButton", 12),
@@ -83,7 +87,7 @@ local GROUPS = {
 		),
 	},
 	{
-		key = "FrameBorders_MicroMenu",
+		key = "FrameBorder_MicroMenu",
 		label = "Micro Menu",
 		names = {
 			"CharacterMicroButton", "SpellbookMicroButton", "TalentMicroButton",
@@ -92,7 +96,7 @@ local GROUPS = {
 		},
 	},
 	{
-		key = "FrameBorders_Bags",
+		key = "FrameBorder_Bags",
 		label = "Bags",
 		names = Join(
 			{ "MainMenuBarBackpackButton", "KeyRingButton" },
@@ -100,7 +104,7 @@ local GROUPS = {
 		),
 	},
 	{
-		key = "FrameBorders_UnitFrames",
+		key = "FrameBorder_UnitFrames",
 		label = "Unit Frames",
 		-- Las BARRAS y no los marcos: el marco del jugador es un grifo
 		-- dorado con forma propia, y un rectangulo alrededor queda ridiculo.
@@ -114,12 +118,12 @@ local GROUPS = {
 		),
 	},
 	{
-		key = "FrameBorders_CastBar",
+		key = "FrameBorder_CastBar",
 		label = "Cast Bar",
 		names = { "CastingBarFrame", "TargetFrameSpellBar", "FocusFrameSpellBar" },
 	},
 	{
-		key = "FrameBorders_Auras",
+		key = "FrameBorder_Auras",
 		label = "Auras",
 		names = Join(
 			Series("BuffButton", 32),
@@ -131,7 +135,7 @@ local GROUPS = {
 
 -- CharacterBag va de 0 a 3, no de 1 a 4.
 for _, g in ipairs(GROUPS) do
-	if g.key == "FrameBorders_Bags" then
+	if g.key == "FrameBorder_Bags" then
 		g.names = { "MainMenuBarBackpackButton", "KeyRingButton",
 			"CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot" };
 	end
@@ -191,7 +195,7 @@ local function ApplyToName(name, want)
 	d.border:SetBackdrop({ edgeFile = st.file, edgeSize = st.edge });
 	d.border:SetBackdropBorderColor(1, 1, 1, 1);
 	d.border:Show();
-	if C.FrameBordersShadow then d.shadow:Show(); else d.shadow:Hide(); end
+	if C.FrameBorderShadow then d.shadow:Show(); else d.shadow:Hide(); end
 end
 
 function K.ApplyFrameBorders()
@@ -229,7 +233,7 @@ end);
 -- ---------------------------------------------------------
 -- Sub-opciones en la pestaña Modules, con la misma forma que Lorti
 -- ---------------------------------------------------------
-local function CreateKkSubUI(container, yOffset, parentCheckbox)
+local function CreateBorderSubUI(container, yOffset, parentCheckbox)
 	local wrapper = CreateFrame("Frame", nil, container);
 	wrapper:SetPoint("TOPLEFT", 0, yOffset);
 	wrapper:SetWidth(container:GetWidth() or 540);
@@ -245,17 +249,17 @@ local function CreateKkSubUI(container, yOffset, parentCheckbox)
 
 	local header = wrapper:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
 	header:SetPoint("TOPLEFT", 46, localY);
-	header:SetText("|cff888888" .. (L["THINBORDER_STYLE"] or "Border art:") .. "|r");
+	header:SetText("|cff888888" .. (L["FRAMEBORDER_STYLE"] or "Border art:") .. "|r");
 	localY = localY - 20;
 
 	-- Selector de estilo: dos casillas excluyentes, no un desplegable.
 	local styleBoxes = {};
 	local function RefreshStyles()
-		local cur = C.FrameBordersStyle or "el UI de origen";
+		local cur = C.FrameBorderStyle or "Soft";
 		for _, b in ipairs(styleBoxes) do b:SetChecked(b.value == cur); end
 	end
 	local function StyleCB(label, value, x)
-		local nm = "NidhausKkStyleCB_" .. value;
+		local nm = "NidhausBorderStyleCB_" .. value;
 		local cb = CreateFrame("CheckButton", nm, wrapper, "InterfaceOptionsCheckButtonTemplate");
 		cb:SetPoint("TOPLEFT", x, localY);
 		cb:SetHitRectInsets(0, -80, 0, 0);
@@ -264,20 +268,20 @@ local function CreateKkSubUI(container, yOffset, parentCheckbox)
 		if lbl then lbl:SetText(label); lbl:SetFontObject("GameFontHighlight"); end
 		cb.value = value;
 		cb:SetScript("OnClick", function(self)
-			K.SaveConfig("FrameBordersStyle", self.value);
-			C.FrameBordersStyle = self.value;
+			K.SaveConfig("FrameBorderStyle", self.value);
+			C.FrameBorderStyle = self.value;
 			RefreshStyles();
 			K.ApplyFrameBorders();
 		end);
 		styleBoxes[#styleBoxes + 1] = cb;
 	end
-	StyleCB("el UI de origen", "el UI de origen", 46);
-	StyleCB("Pixel",  "Pixel",  176);
+	StyleCB(L["FRAMEBORDER_SOFT"]  or "Soft",  "Soft",  46);
+	StyleCB(L["FRAMEBORDER_PIXEL"] or "Pixel", "Pixel", 176);
 	RefreshStyles();
 	localY = localY - 24;
 
 	local subOptions = {
-		{ key = "FrameBordersShadow", label = "Outer shadow",
+		{ key = "FrameBorderShadow", label = "Outer shadow",
 		  tip = "A soft dark halo just outside each frame. It is the glow the original UI draws." },
 	};
 	for _, g in ipairs(GROUPS) do
@@ -285,7 +289,7 @@ local function CreateKkSubUI(container, yOffset, parentCheckbox)
 	end
 
 	for _, opt in ipairs(subOptions) do
-		local cbName = "NidhausKkSubCB_" .. opt.key;
+		local cbName = "NidhausBorderSubCB_" .. opt.key;
 		local cb = CreateFrame("CheckButton", cbName, wrapper, "InterfaceOptionsCheckButtonTemplate");
 		cb:SetPoint("TOPLEFT", 46, localY);
 		cb:SetHitRectInsets(0, -260, 0, 0);
@@ -349,11 +353,11 @@ end
 -- Registro
 -- ---------------------------------------------------------
 K.RegisterModule("FrameBorders", {
-	name    = L["MOD_THINBORDER"] or "el UI de origen Border",
-	desc    = L["MOD_THINBORDER_DESC"]
-		or "Thin border and outer shadow around bars, micro menu, bags, frames and auras. Art from el UI de origen (MIT). Stacks with Lorti UI: Lorti tints, this outlines.",
+	name    = L["MOD_FRAMEBORDERS"] or "Frame Borders",
+	desc    = L["MOD_FRAMEBORDERS_DESC"]
+		or "Thin border and outer shadow around bars, micro menu, bags, frames and auras. Stacks with Lorti UI: Lorti tints, this outlines.",
 	default = false,
-	createUI = CreateKkSubUI,
+	createUI = CreateBorderSubUI,
 	onEnable = function()
 		enabled = true;
 		events:RegisterEvent("PLAYER_ENTERING_WORLD");

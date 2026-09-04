@@ -228,14 +228,9 @@ local CORNER_STYLES = {
 };
 
 -- Que estilo esta puesto.
---
--- MinimapThinBorder era el checkbox viejo de "Light Border". Se lee una vez
--- para no perderle la configuracion a quien ya lo tenia prendido.
 local function BorderStyle()
 	local s = C.MinimapBorderStyle;
-	if s == nil or s == "" then
-		s = (C.MinimapThinBorder == true) and "Light" or "Default";
-	end
+	if s == nil or s == "" then s = "Default"; end
 	return s;
 end
 K.GetMinimapBorderStyle = BorderStyle;
@@ -263,14 +258,12 @@ end
 
 -- Light Border
 --
--- Marco fino y limpio alrededor del mapa. La receta sale de el UI de origen
--- (Modules/Maps/Minimap.lua), copiada al pie de la letra:
+-- Marco fino y limpio alrededor del mapa: un backdrop de edgeSize 14
+-- anclado 4 px por fuera del mapa, con el filo en blanco.
 --
---     MinimapBackdrop:SetBackdrop(K.Backdrop)   -- edgeSize 14, insets 2.5
---     MinimapBackdrop:SetBackdropBorderColor(1, 1, 1, 1)
---     MinimapBackdrop:SetOutside(Minimap, 4, 4) -- 4px por fuera del mapa
---
--- La textura esta copiada en Media/Border/Border_Light.tga.
+-- La textura es Media/Border/Border_Light.tga, dibujada por
+-- Tools/mkborders.py igual que las de FrameBorders: un hilo de un pixel
+-- con caida suave y esquinas redondeadas, generado por geometria.
 --
 -- REEMPLAZA AL BORDE CUADRADO, no se suma.
 --
@@ -307,7 +300,7 @@ function K.ApplyMinimapBorderStyle()
 	if cs then for _, tx in ipairs(cs) do tx:Hide(); end end
 
 	if CORNER_STYLES[style] and cs and Minimap then
-		local kk = GetThinBorder(); if kk then kk:Hide(); end
+		local tb = GetThinBorder(); if tb then tb:Hide(); end
 		if squareBorder then squareBorder:Hide(); end
 		-- El aro de Blizzard estorba: estos estilos traen el suyo.
 		if MinimapBorder then MinimapBorder:Hide(); end

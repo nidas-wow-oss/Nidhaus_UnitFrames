@@ -4,17 +4,16 @@ local K, C, L = unpack(ns);
 -- =========================================================
 -- TooltipExtras.lua
 --
--- Tres agregados al tooltip, portados de el UI de origen:
+-- Tres agregados al tooltip:
 --
---   1) Experiencia de arena  (Modules/Tooltip/PvPRating.lua, de Fernir)
+--   1) Experiencia de arena  (idea original de Fernir)
 --      El mejor rating personal de 2v2, 3v3 y 5v5 del jugador que estas
 --      mirando. Sale de comparar ESTADISTICAS DE LOGROS, que es la unica
 --      via en 3.3.5: el servidor no manda el rating de nadie mas.
 --
---   2) Talentos               (Modules/Tooltip/Talents.lua, base TipTacTalents
---      de Aezay) — arbol principal y reparto 0/0/0 del objetivo.
+--   2) Talentos               (base: TipTacTalents, de Aezay) — arbol principal y reparto 0/0/0 del objetivo.
 --
---   3) Borde por calidad      (dentro de Modules/Tooltip/Tooltip.lua)
+--   3) Borde por calidad
 --      El borde del tooltip toma el color de la calidad del objeto.
 --
 -- DIFERENCIA IMPORTANTE CON EL ORIGINAL: alla cada archivo hacia
@@ -220,7 +219,7 @@ end
 -- ---------------------------------------------------------
 -- 3) BORDE POR CALIDAD DE OBJETO
 -- ---------------------------------------------------------
--- el UI de origen lo hace dentro de su propio skin de tooltips. NUF no skinea
+-- Lo habitual es hacerlo dentro de un skin propio de tooltips. NUF no skinea
 -- tooltips, asi que se usa el backdrop que el tooltip YA trae de fabrica:
 -- SetBackdropBorderColor alcanza y no hace falta tocar la textura.
 --
@@ -266,7 +265,7 @@ end
 
 -- ---------------------------------------------------------
 -- 4) QUIEN LANZO EL BUFF / DEBUFF
---    (el UI de origen Modules/Buffs/AuraSource.lua, original de Renstrom)
+--    (idea original de Renstrom)
 --
 -- El octavo valor que devuelve UnitAura/UnitBuff/UnitDebuff es la unidad
 -- que lanzo el aura. Con eso se agrega una linea al tooltip del icono.

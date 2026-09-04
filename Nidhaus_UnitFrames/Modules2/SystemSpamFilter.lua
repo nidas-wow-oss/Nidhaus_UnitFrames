@@ -6,8 +6,8 @@ local K, C, L = unpack(ns);
 -- Quita del chat los mensajes de sistema que solo hacen ruido:
 -- resultados de duelo ajenos, borracheras y "has aprendido X".
 --
--- Portado de la idea de el UI de origen (Modules/Chat/Filters.lua), pero NO de su
--- implementacion. Alli se vacian las cadenas globales de Blizzard:
+-- POR QUE NO SE VACIAN LAS CADENAS GLOBALES. El camino corto seria
+-- pisar las de Blizzard:
 --
 --     DUEL_WINNER_KNOCKOUT = ""
 --     DUEL_WINNER_RETREAT  = ""
