@@ -284,6 +284,22 @@ function shieldwatch_optionscancel()
     shieldwatch_optionsedited = false
 end
 
+-- EL BUG QUE TILDABA EL CLIENTE.
+--
+-- Esta funcion es el OnShow del marco de opciones, y ademas terminaba
+-- llamando a InterfaceOptionsFrame_OpenToCategory. Pero abrir el panel
+-- MUESTRA el marco, y mostrarlo dispara el OnShow, que vuelve a abrirlo:
+-- recursion infinita entre las dos cosas.
+--
+-- Y saltaba SOLA al cargar, sin que nadie tocara nada, porque el marco de
+-- opciones venia sin hidden en el XML: nacia mostrado, el OnShow se
+-- disparaba de una y el WoW se colgaba antes de terminar de entrar. De ahi
+-- que el sintoma fuera "tilda al login" y no hubiera ningun error en
+-- pantalla: no era un error, era un bucle.
+--
+-- Ahora son dos funciones separadas. Esta SOLO refresca los controles, que
+-- es lo unico que le corresponde a un OnShow. Abrir el panel es
+-- shieldwatch_openoptions, que la llama el boton y el /shieldwatch options.
 function shieldwatch_showoptions()
     if shieldwatch_Options then
         Debug("showing the options screen")
@@ -297,13 +313,25 @@ function shieldwatch_showoptions()
         shieldwatch_optionsFrameScale:SetValue(log(shieldwatch_Options["scale"]))
         shieldwatch_optionsedited = true
     end
-    -- NUF: ABRIR de verdad el panel. El boton Open llamaba a esta funcion,
-    -- pero antes solo refrescaba los valores y no abria nada. Doble llamada
-    -- por el bug clasico de Blizzard (la primera abre en la categoria mala).
-    if InterfaceOptionsFrame_OpenToCategory and shieldwatch_optionsFrame then
-        InterfaceOptionsFrame_OpenToCategory(shieldwatch_optionsFrame)
-        InterfaceOptionsFrame_OpenToCategory(shieldwatch_optionsFrame)
-    end
+end
+
+-- Abrir el panel. Esto SI llama a OpenToCategory, y por eso no puede ser
+-- el OnShow.
+--
+-- La llamada va dos veces por el bug clasico de Blizzard: la primera abre
+-- en la categoria equivocada. Como ya no estamos dentro del OnShow, las dos
+-- llamadas terminan y no hay bucle. La guarda es por las dudas: si alguien
+-- vuelve a colgar esto de un OnShow, corta en vez de tildar.
+local swOpening = false
+
+function shieldwatch_openoptions()
+    if swOpening then return end
+    if not (InterfaceOptionsFrame_OpenToCategory and shieldwatch_optionsFrame) then return end
+
+    swOpening = true
+    InterfaceOptionsFrame_OpenToCategory(shieldwatch_optionsFrame)
+    InterfaceOptionsFrame_OpenToCategory(shieldwatch_optionsFrame)
+    swOpening = false
 end
 
 function shieldwatch_InitDropDown()
@@ -377,7 +405,7 @@ function shieldwatch_OnLoad(self)
                 Print(L.SETSCALE .. tostring(scale))
             end
         elseif command == "options" then
-            InterfaceOptionsFrame_OpenToCategory(shieldwatch_optionsFrame)
+            shieldwatch_openoptions()
         elseif command == "disable" then
             if shieldwatch_enabled then
                 shieldwatch_Frame:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
@@ -870,7 +898,7 @@ K.RegisterModule("ShieldWatch", {
     default = false,
     configLabel = L_NUF["BTN_MODULE_OPEN"] or "Open",
     configFunc = function()
-        if shieldwatch_showoptions then shieldwatch_showoptions() end
+        if shieldwatch_openoptions then shieldwatch_openoptions() end
     end,
     onEnable  = function() SW_SetEnabled(true) end,
     onDisable = function() SW_SetEnabled(false) end,

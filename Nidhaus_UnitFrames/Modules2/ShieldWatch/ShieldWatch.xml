@@ -189,7 +189,7 @@ C:\Projects\WoW\Bin\Interface\FrameXML\UI.xsd">
 	
 <!-- fixed texts in the next Frame get replaced by the appropriate locale String in the onload function -->	
 
- <Frame name="shieldwatch_optionsFrame">
+ <Frame name="shieldwatch_optionsFrame" hidden="true">
 			<Layers>
 			<Layer level="ARTWORK">
 

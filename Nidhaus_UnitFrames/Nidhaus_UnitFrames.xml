@@ -93,27 +93,19 @@
 	<Script file="Modules2\AuraBorders.lua"/>
 	<!-- Coordinador: carga despues de NewPartyFrame, PartyFramesImproved y PW -->
 	<Script file="Modules2\PartyFrameStyle.lua"/>
-	<!-- ShieldWatch: FUERA DEL LOAD. Tilda el cliente (deja de responder).
-	     NO reactivar sin poder reproducir y probar la causa.
-
-	     Intento 1 - FALLIDO: encontre un nil-index en su OnUpdate
-	     (shieldstore[nil]) que tiraba error una vez por frame. Era un bug
-	     real y quedo arreglado en ShieldWatch.lua, pero NO era la causa:
-	     con eso corregido el WoW se sigue tildando igual.
-	     O sea que el culpable sigue sin identificar.
-
-	     Descartado por lectura: no hay bucles infinitos. Los tres while
-	     avanzan el indice en todas las ramas y los cuatro for estan
-	     acotados (40, #TALENT_CHECKS, GetNumGlyphSockets).
-
-	     Pendiente de revisar: el OnLoad del XML de opciones, que llama a
-	     InterfaceOptions_AddCategory al cargar, y el CreateFrame de
-	     "shieldwatchTooltip" en PLAYER_ENTERING_WORLD.
-
-	     Para reactivar, descomentar estas dos lineas:
+	<!-- ShieldWatch: vuelve a la carga.
+	     Tildaba el cliente al entrar, sin error en pantalla. La causa era
+	     recursion infinita: shieldwatch_showoptions es el OnShow del marco
+	     de opciones y ademas llamaba a InterfaceOptionsFrame_OpenToCategory.
+	     Abrir el panel MUESTRA el marco, mostrarlo dispara el OnShow, y el
+	     OnShow lo vuelve a abrir.
+	     Saltaba sola al cargar porque el marco venia sin hidden en su XML:
+	     nacia mostrado y el bucle arrancaba antes de terminar de entrar al
+	     mundo. Por eso no habia error: no era un error, era un bucle.
+	     Arreglado separando las dos funciones (showoptions solo refresca,
+	     openoptions abre) y poniendole hidden al marco. -->
 	<Script file="Modules2\ShieldWatch\ShieldWatch.lua"/>
 	<Include file="Modules2\ShieldWatch\ShieldWatch.xml"/>
-	-->
 
 	<Script file="Modules2\DuelBlocker.lua"/>
 	<Script file="Modules2\ArenaPointsCalc.lua"/>
