@@ -274,16 +274,24 @@ local function Ensure(frame)
 
 	d = {};
 
+	-- LOS DOS VAN CON NOMBRE.
+	--
+	-- Sin nombre, cualquier herramienta que liste marcos los muestra como
+	-- "(sin nombre)" y hay que deducir de quien son por el tamaño. Con
+	-- nombre, /nufwhat y /framestack dicen solos si el recuadro es mio y
+	-- de que boton cuelga. Cuesta nada y ahorra media hora de adivinanza.
+	local tag = frame:GetName() or tostring(frame);
+
 	-- El borde cuelga del marco, un nivel por encima, para quedar sobre su
 	-- arte y no debajo del icono.
-	d.border = CreateFrame("Frame", nil, frame);
+	d.border = CreateFrame("Frame", "NUF_Borde_" .. tag, frame);
 	d.border:SetFrameLevel(lvl + 1);
 	d.border:Hide();
 
 	-- La sombra cuelga del PADRE y no del marco, un nivel por DEBAJO. Si
 	-- colgara del marco quedaria por encima de el y en vez de un halo se
 	-- veria un recuadro sucio tapando el icono.
-	d.shadow = CreateFrame("Frame", nil, parent);
+	d.shadow = CreateFrame("Frame", "NUF_Halo_" .. tag, parent);
 	d.shadow:SetFrameLevel(lvl > 0 and lvl - 1 or 0);
 	d.shadow:SetBackdrop({ edgeFile = GLOW_FILE, edgeSize = EdgeFor(frame, GLOW_EDGE) });
 	d.shadow:SetBackdropBorderColor(0, 0, 0, 0.8);
