@@ -666,3 +666,75 @@ SlashCmdList["NUFBORDERS"] = function()
 	print("  total: " .. total .. "  --  si el recuadro que sobra NO figura");
 	print("  en esta lista, el borde no lo pone este modulo.");
 end
+
+-- ---------------------------------------------------------
+-- /nufwhat  --  que hay abajo del mouse
+--
+-- /nufborders contesta "de todo lo MIO, que esta dibujado". Cuando la
+-- respuesta es "nada de esto", falta la otra mitad: quien dibuja entonces
+-- ese recuadro. Eso lo contesta este.
+--
+-- Normalmente lo resolveria /framestack, pero Blizzard_DebugTools viene
+-- vaciado en este cliente: en la carpeta quedo solo el .pub, sin el codigo
+-- que registra el comando.
+--
+-- Da tres segundos para llevar el mouse al lugar, porque no se puede
+-- escribir y apuntar a la vez. Despues recorre los hijos de UIParent y
+-- lista los que estan debajo del cursor, del que esta mas arriba al que
+-- esta mas abajo.
+-- ---------------------------------------------------------
+local whatTimer = CreateFrame("Frame");
+local whatAcc = 0;
+whatTimer:Hide();
+
+local function DescribeUnder()
+	local hits = {};
+
+	local function Scan(frame, depth)
+		if depth > 7 then return; end
+		for _, f in ipairs({ frame:GetChildren() }) do
+			if f.IsVisible and f:IsVisible() and MouseIsOver(f) then
+				hits[#hits + 1] = f;
+			end
+			Scan(f, depth + 1);
+		end
+	end
+
+	Scan(UIParent, 0);
+
+	table.sort(hits, function(a, b)
+		return (a:GetFrameLevel() or 0) > (b:GetFrameLevel() or 0);
+	end);
+
+	print("|cff00FF00Nidhaus|r  abajo del mouse (de arriba hacia abajo):");
+	if #hits == 0 then
+		print("  nada. El cursor no esta sobre ningun marco.");
+		return;
+	end
+
+	for i = 1, math.min(#hits, 12) do
+		local f = hits[i];
+		local parent = f:GetParent();
+		print(string.format("  %s  %dx%d  nivel=%d  padre=%s",
+			f:GetName() or "|cffAAAAAA(sin nombre)|r",
+			math.floor((f:GetWidth()  or 0) + 0.5),
+			math.floor((f:GetHeight() or 0) + 0.5),
+			f:GetFrameLevel() or 0,
+			(parent and parent:GetName()) or "?"));
+	end
+	if #hits > 12 then print("  ... y " .. (#hits - 12) .. " mas abajo."); end
+end
+
+whatTimer:SetScript("OnUpdate", function(self, elapsed)
+	whatAcc = whatAcc + elapsed;
+	if whatAcc < 3 then return; end
+	self:Hide();
+	DescribeUnder();
+end);
+
+SLASH_NUFWHAT1 = "/nufwhat";
+SlashCmdList["NUFWHAT"] = function()
+	print("|cff00FF00Nidhaus|r  llevá el mouse al recuadro. Leo en 3 segundos.");
+	whatAcc = 0;
+	whatTimer:Show();
+end
