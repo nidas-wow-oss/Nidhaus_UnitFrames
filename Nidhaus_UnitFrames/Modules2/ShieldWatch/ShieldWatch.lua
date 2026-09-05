@@ -193,6 +193,24 @@ end
 -- FUNCIONES DE OPCIONES
 -- ============================================================================
 
+-- Rango del slider de escala. Es el mismo que ya aceptaba el comando
+-- /shieldwatch scale, para que las dos vias coincidan.
+local SCALE_MIN, SCALE_MAX, SCALE_STEP = 0.3, 3.0, 0.05
+
+-- Redondea al paso del slider. Sin esto GetValue devuelve cosas como
+-- 1.2000000476837 y el numero de abajo queda ilegible.
+local function SW_RoundScale(v)
+    v = tonumber(v) or 1
+    v = floor(v / SCALE_STEP + 0.5) * SCALE_STEP
+    if v < SCALE_MIN then v = SCALE_MIN end
+    if v > SCALE_MAX then v = SCALE_MAX end
+    return v
+end
+
+local function SW_FormatScale(v)
+    return string.format("%.2f", v)
+end
+
 function shieldwatch_optionsOnLoad(panel)
     panel.name = "ShieldWatch v" .. tostring(ADDON_VERSION)
     panel.okay = shieldwatch_optionsokay
@@ -211,16 +229,31 @@ function shieldwatch_optionsOnLoad(panel)
         panel:SetBackdropBorderColor(0.25, 0.55, 1.0, 0.9)
     end
 
-    shieldwatch_optionsFrameScale:SetMinMaxValues(-1, 1)
-    shieldwatch_optionsFrameScale:SetValueStep(0.1)
-    shieldwatch_optionsFrameScaleLow:SetText(L.OPTSMALL)
-    shieldwatch_optionsFrameScaleHigh:SetText(L.OPTBIG)
+    -- EL SLIDER TRABAJA EN ESCALA REAL, NO EN LOGARITMO.
+    --
+    -- Antes iba de -1 a 1 y la escala salia de exp(valor). Andaba, pero el
+    -- numero del slider no era la escala: no se podia mostrar "1.20" sin
+    -- convertirlo, y los extremos daban 0.37 y 2.72, que no son numeros que
+    -- alguien elija. Ahora el valor ES la escala, y el rango coincide con el
+    -- que ya aceptaba /shieldwatch scale (0.3 a 3).
+    shieldwatch_optionsFrameScale:SetMinMaxValues(SCALE_MIN, SCALE_MAX)
+    shieldwatch_optionsFrameScale:SetValueStep(SCALE_STEP)
+    shieldwatch_optionsFrameScaleLow:SetText(tostring(SCALE_MIN))
+    shieldwatch_optionsFrameScaleHigh:SetText(tostring(SCALE_MAX))
+
+    -- El valor actual debajo del slider, igual que los del panel de NUF.
+    local val = shieldwatch_optionsFrameScale:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    val:SetPoint("TOP", shieldwatch_optionsFrameScale, "BOTTOM", 0, -5)
+    shieldwatch_optionsFrameScale.nufValue = val
+
     -- NUF: escala en tiempo real (antes solo se aplicaba al tocar OK).
     shieldwatch_optionsFrameScale:HookScript("OnValueChanged", function(self)
-        local sc = exp(floor(self:GetValue() * 10 + .5) / 10)
+        local sc = SW_RoundScale(self:GetValue())
+        if self.nufValue then self.nufValue:SetText(SW_FormatScale(sc)) end
         if shieldwatch_Frame then shieldwatch_Frame:SetScale(sc) end
         if shieldwatch_Options then shieldwatch_Options["scale"] = sc end
     end)
+    val:SetText(SW_FormatScale(SW_RoundScale(shieldwatch_optionsFrameScale:GetValue())))
     shieldwatch_optionsFrameTitle:SetText(L.OPTTITLE)
     shieldwatch_optionsFrameOpttext1:SetText(L.OPTTEXT1)
     shieldwatch_optionsFrameOpttext2:SetText(L.OPTTEXT2)
@@ -234,7 +267,7 @@ function shieldwatch_optionsokay()
     if shieldwatch_optionsedited then
         Debug("okay pressed, options may have changed")
         
-        local scale = exp(floor(shieldwatch_optionsFrameScale:GetValue() * 10 + .5) / 10)
+        local scale = SW_RoundScale(shieldwatch_optionsFrameScale:GetValue())
         shieldwatch_Frame:SetScale(scale)
         shieldwatch_Options["scale"] = scale
         
@@ -310,7 +343,7 @@ function shieldwatch_showoptions()
         shieldwatch_optionsFrameFlashBorder:SetChecked(shieldwatch_Options["flashborder"])
         shieldwatch_optionsFrameTimetowarn:SetText(tostring(shieldwatch_Options["timetowarn"]))
         shieldwatch_optionsFramePcttowarn:SetText(tostring(shieldwatch_Options["pcttowarn"]))
-        shieldwatch_optionsFrameScale:SetValue(log(shieldwatch_Options["scale"]))
+        shieldwatch_optionsFrameScale:SetValue(SW_RoundScale(shieldwatch_Options["scale"]))
         shieldwatch_optionsedited = true
     end
 end
@@ -397,12 +430,19 @@ function shieldwatch_OnLoad(self)
         
         if command == "scale" then
             local scale = tonumber(com2)
-            if not scale or scale < .3 or scale > 3 then
+            if not scale or scale < SCALE_MIN or scale > SCALE_MAX then
                 Print(L.BADSCALE)
             else
+                -- Mismo redondeo que el slider: si no, escribir 1.234 por
+                -- comando dejaba un valor que el slider no puede representar
+                -- y al abrir las opciones saltaba solo al paso mas cercano.
+                scale = SW_RoundScale(scale)
                 shieldwatch_Frame:SetScale(scale)
                 shieldwatch_Options["scale"] = scale
-                Print(L.SETSCALE .. tostring(scale))
+                if shieldwatch_optionsFrameScale then
+                    shieldwatch_optionsFrameScale:SetValue(scale)
+                end
+                Print(L.SETSCALE .. SW_FormatScale(scale))
             end
         elseif command == "options" then
             shieldwatch_openoptions()
