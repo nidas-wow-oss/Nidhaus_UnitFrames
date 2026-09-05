@@ -232,7 +232,10 @@ NUF está construido sobre el trabajo de mucha gente. El motor y varios módulos
 |---|---|---|
 | Eazy Frames, Sarena | — | Base del trabajo de marcos de unidad |
 | pw_unitframes | — | Bordes de auras, barras de casteo, PartyFramePW, estilo Square de PartyTargets |
-| el UI de origen | el UI de origen | TabBinder (de RE/TabBinder, de Veev y AcidWeb), extras de tooltip (PvPRating, de Fernir) |
+| RE/TabBinder | Veev, AcidWeb | TabBinder |
+| TipTacTalents | Aezay | Talentos en el tooltip |
+| PvPRating | Fernir | Experiencia de arena en el tooltip |
+| AuraSource | Renstrom | Quien lanzo el buff, en el tooltip |
 | FriskesUI | Friskes | MiniBar (FriskesBar) |
 | RougeUI | — | ClassOutline |
 | MageNuggets | — | ClassTimers |

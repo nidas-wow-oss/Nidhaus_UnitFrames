@@ -242,7 +242,10 @@ adaptations, and the credit for those belongs to their original authors:
 |---|---|---|
 | Eazy Frames, Sarena | — | Base of the unit frame work |
 | pw_unitframes | — | Aura borders, cast bars, PartyFramePW, PartyTargets Square style |
-| el UI de origen | el UI de origen | TabBinder (from RE/TabBinder by Veev and AcidWeb), Tooltip extras (PvPRating by Fernir) |
+| RE/TabBinder | Veev, AcidWeb | TabBinder |
+| TipTacTalents | Aezay | Talents in the tooltip |
+| PvPRating | Fernir | Arena experience in the tooltip |
+| AuraSource | Renstrom | Buff caster in the tooltip |
 | FriskesUI | Friskes | MiniBar (FriskesBar) |
 | RougeUI | — | ClassOutline |
 | MageNuggets | — | ClassTimers |

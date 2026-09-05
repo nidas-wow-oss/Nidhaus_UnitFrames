@@ -133,11 +133,12 @@ local GROUPS = {
 		-- tapa nada, asi que un borde alrededor del marco entero salia
 		-- como un rectangulo alto y vacio con el icono en el fondo.
 		--
-		-- Las fracciones salen de como recorta el UI de origen esa misma textura
-		-- en su propio micromenu, SetTexCoord(0.17, 0.87, 0.5, 0.908): 17%
-		-- libre a la izquierda, 13% a la derecha, la mitad de arriba y un
-		-- 9% abajo. Van en fracciones y no en pixeles para que sigan
-		-- valiendo si el boton cambia de escala.
+		-- Las fracciones son las coordenadas de textura con las que hay
+		-- que recortar ese arte para quedarse solo con la cara:
+		-- SetTexCoord(0.17, 0.87, 0.5, 0.908), o sea 17% libre a la
+		-- izquierda, 13% a la derecha, la mitad de arriba y un 9% abajo.
+		-- Van en fracciones y no en pixeles para que sigan valiendo si el
+		-- boton cambia de escala.
 		inset = { l = 0.17, r = 0.13, t = 0.50, b = 0.092 },
 		names = {
 			"CharacterMicroButton", "SpellbookMicroButton", "TalentMicroButton",
