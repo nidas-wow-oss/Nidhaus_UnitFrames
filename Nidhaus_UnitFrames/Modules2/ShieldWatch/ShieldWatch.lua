@@ -28,10 +28,35 @@ local K, C, L_NUF = unpack(ns);
 
 -- La SavedVariable original (Shieldwatch_Options) no se puede declarar
 -- desde NUF, asi que se apunta a un sub-tabla de la DB del addon.
+--
+-- LOS VALORES POR DEFECTO SE COMPLETAN ACA, no en PLAYER_ENTERING_WORLD
+-- como antes. El panel de opciones se dibuja cuando el usuario abre la
+-- pestana, que puede ser antes o despues de ese evento: si los defaults
+-- llegaran tarde, los controles arrancarian leyendo nil.
+-- Declarada aca arriba a proposito: el comando /shieldwatch scale la usa
+-- mucho antes de donde se define. Un local declarado despues no lo ve el
+-- codigo escrito antes, se compila como acceso a global y lee nil.
+local SW_RefreshScale
+
+local SW_DEFAULTS = {
+    Lock           = false,
+    scale          = 1,
+    timetowarn     = 4,
+    enabletimewarn = true,
+    pcttowarn      = 21,
+    enablepctwarn  = true,
+    flashborder    = true,
+    mdchannel      = 'OFF',
+}
+
 local function SW_DB()
     if not NidhausUnitFramesDB then NidhausUnitFramesDB = {} end
     if not NidhausUnitFramesDB.ShieldWatch then NidhausUnitFramesDB.ShieldWatch = {} end
-    return NidhausUnitFramesDB.ShieldWatch
+    local db = NidhausUnitFramesDB.ShieldWatch
+    for k, v in pairs(SW_DEFAULTS) do
+        if db[k] == nil then db[k] = v end
+    end
+    return db
 end
 
 -- VARIABLES GLOBALES
@@ -47,7 +72,6 @@ local shieldstore_slotmax = 7
 local shieldwatch_slotdisplayed = nil
 local shieldwatch_enabled = true
 local shieldwatch_timewarn = false
-local shieldwatch_optionsedited = false
 local shieldwatch_donetalentcheck = false
 
 -- VERSIÓN DEL ADDON
@@ -211,160 +235,18 @@ local function SW_FormatScale(v)
     return string.format("%.2f", v)
 end
 
-function shieldwatch_optionsOnLoad(panel)
-    panel.name = "ShieldWatch v" .. tostring(ADDON_VERSION)
-    panel.okay = shieldwatch_optionsokay
-    panel.cancel = shieldwatch_optionscancel
-    InterfaceOptions_AddCategory(panel)
-
-    -- NUF: tematica "arcane" (azul) para la ventana de opciones.
-    if panel.SetBackdrop then
-        panel:SetBackdrop({
-            bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            tile = true, tileSize = 16, edgeSize = 16,
-            insets = { left = 4, right = 4, top = 4, bottom = 4 },
-        })
-        panel:SetBackdropColor(0.04, 0.08, 0.18, 0.92)
-        panel:SetBackdropBorderColor(0.25, 0.55, 1.0, 0.9)
-    end
-
-    -- EL SLIDER TRABAJA EN ESCALA REAL, NO EN LOGARITMO.
-    --
-    -- Antes iba de -1 a 1 y la escala salia de exp(valor). Andaba, pero el
-    -- numero del slider no era la escala: no se podia mostrar "1.20" sin
-    -- convertirlo, y los extremos daban 0.37 y 2.72, que no son numeros que
-    -- alguien elija. Ahora el valor ES la escala, y el rango coincide con el
-    -- que ya aceptaba /shieldwatch scale (0.3 a 3).
-    shieldwatch_optionsFrameScale:SetMinMaxValues(SCALE_MIN, SCALE_MAX)
-    shieldwatch_optionsFrameScale:SetValueStep(SCALE_STEP)
-    shieldwatch_optionsFrameScaleLow:SetText(tostring(SCALE_MIN))
-    shieldwatch_optionsFrameScaleHigh:SetText(tostring(SCALE_MAX))
-
-    -- El valor actual debajo del slider, igual que los del panel de NUF.
-    local val = shieldwatch_optionsFrameScale:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    val:SetPoint("TOP", shieldwatch_optionsFrameScale, "BOTTOM", 0, -5)
-    shieldwatch_optionsFrameScale.nufValue = val
-
-    -- NUF: escala en tiempo real (antes solo se aplicaba al tocar OK).
-    shieldwatch_optionsFrameScale:HookScript("OnValueChanged", function(self)
-        local sc = SW_RoundScale(self:GetValue())
-        if self.nufValue then self.nufValue:SetText(SW_FormatScale(sc)) end
-        if shieldwatch_Frame then shieldwatch_Frame:SetScale(sc) end
-        if shieldwatch_Options then shieldwatch_Options["scale"] = sc end
-    end)
-    val:SetText(SW_FormatScale(SW_RoundScale(shieldwatch_optionsFrameScale:GetValue())))
-    shieldwatch_optionsFrameTitle:SetText(L.OPTTITLE)
-    shieldwatch_optionsFrameOpttext1:SetText(L.OPTTEXT1)
-    shieldwatch_optionsFrameOpttext2:SetText(L.OPTTEXT2)
-    shieldwatch_optionsFrameOpttext3:SetText(L.OPTTEXT3)
-    shieldwatch_optionsFrameOpttext4:SetText(L.OPTTEXT4)
-    shieldwatch_optionsFrameOpttext5:SetText(L.OPTTEXT5)
-    shieldwatch_optionsFrameOpttext6:SetText(L.OPTTEXT6)
-end
-
-function shieldwatch_optionsokay()
-    if shieldwatch_optionsedited then
-        Debug("okay pressed, options may have changed")
-        
-        local scale = SW_RoundScale(shieldwatch_optionsFrameScale:GetValue())
-        shieldwatch_Frame:SetScale(scale)
-        shieldwatch_Options["scale"] = scale
-        
-        shieldwatch_Options["Lock"] = (shieldwatch_optionsFrameLock:GetChecked() == 1)
-        shieldwatch_Options["enabletimewarn"] = (shieldwatch_optionsFrameEnableTime:GetChecked() == 1)
-        shieldwatch_Options["enablepctwarn"] = (shieldwatch_optionsFrameEnablePct:GetChecked() == 1)
-        shieldwatch_Options["flashborder"] = (shieldwatch_optionsFrameFlashBorder:GetChecked() == 1)
-        
-        local timetowarn = tonumber(shieldwatch_optionsFrameTimetowarn:GetText())
-        if timetowarn and timetowarn > 0 and timetowarn < 11 then
-            shieldwatch_Options["timetowarn"] = timetowarn
-        else
-            Print(L.BADTIME)
-        end
-        
-        local pcttowarn = tonumber(shieldwatch_optionsFramePcttowarn:GetText())
-        if pcttowarn and pcttowarn > 0 and pcttowarn < 52 then
-            shieldwatch_Options["pcttowarn"] = pcttowarn
-        else
-            Print(L.BADPCT)
-        end
-        
-        local enabled = (shieldwatch_optionsFrameEnable:GetChecked() == 1)
-        if enabled ~= shieldwatch_enabled then
-            if enabled then
-                shieldwatch_Frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-                shieldwatch_enabled = true
-                Print(L.ENABLED)
-            else
-                shieldwatch_Frame:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-                shieldwatch_slotdisplayed = nil
-                shieldwatch_Frame:Hide()
-                shieldwatch_enabled = false
-                Print(L.DISABLED)
-            end
-        end
-        
-        shieldwatch_Options["version"] = ADDON_VERSION
-        shieldwatch_optionsedited = false
-    else
-        Debug("okay pressed, options unchanged")
-    end
-end
-
-function shieldwatch_optionscancel()
-    Debug("cancel pressed on the options screen")
-    shieldwatch_optionsedited = false
-end
-
--- EL BUG QUE TILDABA EL CLIENTE.
+-- LAS OPCIONES VIVEN EN EL PANEL DE NUF.
 --
--- Esta funcion es el OnShow del marco de opciones, y ademas terminaba
--- llamando a InterfaceOptionsFrame_OpenToCategory. Pero abrir el panel
--- MUESTRA el marco, y mostrarlo dispara el OnShow, que vuelve a abrirlo:
--- recursion infinita entre las dos cosas.
+-- Antes eran un marco propio de 250 lineas de XML colgado del panel de
+-- Interface de Blizzard: el unico modulo del addon que quedaba afuera de
+-- /nufconfig. Y era justo el codigo que tildaba el cliente, asi que
+-- mudarlo no es solo prolijidad, saca de encima la superficie donde
+-- aparecio el bug.
 --
--- Y saltaba SOLA al cargar, sin que nadie tocara nada, porque el marco de
--- opciones venia sin hidden en el XML: nacia mostrado, el OnShow se
--- disparaba de una y el WoW se colgaba antes de terminar de entrar. De ahi
--- que el sintoma fuera "tilda al login" y no hubiera ningun error en
--- pantalla: no era un error, era un bucle.
---
--- Ahora son dos funciones separadas. Esta SOLO refresca los controles, que
--- es lo unico que le corresponde a un OnShow. Abrir el panel es
--- shieldwatch_openoptions, que la llama el boton y el /shieldwatch options.
-function shieldwatch_showoptions()
-    if shieldwatch_Options then
-        Debug("showing the options screen")
-        shieldwatch_optionsFrameEnable:SetChecked(shieldwatch_enabled)
-        shieldwatch_optionsFrameLock:SetChecked(shieldwatch_Options["Lock"])
-        shieldwatch_optionsFrameEnableTime:SetChecked(shieldwatch_Options["enabletimewarn"])
-        shieldwatch_optionsFrameEnablePct:SetChecked(shieldwatch_Options["enablepctwarn"])
-        shieldwatch_optionsFrameFlashBorder:SetChecked(shieldwatch_Options["flashborder"])
-        shieldwatch_optionsFrameTimetowarn:SetText(tostring(shieldwatch_Options["timetowarn"]))
-        shieldwatch_optionsFramePcttowarn:SetText(tostring(shieldwatch_Options["pcttowarn"]))
-        shieldwatch_optionsFrameScale:SetValue(SW_RoundScale(shieldwatch_Options["scale"]))
-        shieldwatch_optionsedited = true
-    end
-end
-
--- Abrir el panel. Esto SI llama a OpenToCategory, y por eso no puede ser
--- el OnShow.
---
--- La llamada va dos veces por el bug clasico de Blizzard: la primera abre
--- en la categoria equivocada. Como ya no estamos dentro del OnShow, las dos
--- llamadas terminan y no hay bucle. La guarda es por las dudas: si alguien
--- vuelve a colgar esto de un OnShow, corta en vez de tildar.
-local swOpening = false
-
-function shieldwatch_openoptions()
-    if swOpening then return end
-    if not (InterfaceOptionsFrame_OpenToCategory and shieldwatch_optionsFrame) then return end
-
-    swOpening = true
-    InterfaceOptionsFrame_OpenToCategory(shieldwatch_optionsFrame)
-    InterfaceOptionsFrame_OpenToCategory(shieldwatch_optionsFrame)
-    swOpening = false
+-- Ahora son sub-opciones de la fila ShieldWatch en Addons, como Lorti UI.
+-- Ver CreateShieldWatchSubUI mas abajo.
+local function SW_OpenPanel()
+    if K.ToggleOptionsPanel then K.ToggleOptionsPanel() end
 end
 
 function shieldwatch_InitDropDown()
@@ -408,7 +290,7 @@ function shieldwatch_InitDropDown()
     info.value = "options"
     info.notCheckable = 1
     info.func = function() 
-        InterfaceOptionsFrame_OpenToCategory(shieldwatch_optionsFrame) 
+        SW_OpenPanel() 
     end
     UIDropDownMenu_AddButton(info)
 end
@@ -439,13 +321,11 @@ function shieldwatch_OnLoad(self)
                 scale = SW_RoundScale(scale)
                 shieldwatch_Frame:SetScale(scale)
                 shieldwatch_Options["scale"] = scale
-                if shieldwatch_optionsFrameScale then
-                    shieldwatch_optionsFrameScale:SetValue(scale)
-                end
+                if SW_RefreshScale then SW_RefreshScale(scale) end
                 Print(L.SETSCALE .. SW_FormatScale(scale))
             end
         elseif command == "options" then
-            shieldwatch_openoptions()
+            SW_OpenPanel()
         elseif command == "disable" then
             if shieldwatch_enabled then
                 shieldwatch_Frame:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
@@ -797,6 +677,18 @@ end
 
 function shieldwatch_onevent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15)
     if event == 'COMBAT_LOG_EVENT_UNFILTERED' then
+        -- EL DESCARTE VA PRIMERO Y ES EL MAS BARATO.
+        --
+        -- Este evento salta cientos de veces por segundo en banda, y casi
+        -- ninguno es nuestro. Antes la primera condicion evaluada era
+        -- shieldwatch_Options["mdchannel"] ~= "OFF": una indexacion de tabla
+        -- global mas una comparacion de cadenas, en TODOS los eventos.
+        -- Ahora primero se compara el GUID, que es una sola comparacion, y
+        -- lo ajeno se va sin tocar la tabla.
+        if arg6 ~= shieldwatch_MyGUID and arg3 ~= shieldwatch_MyGUID then
+            return
+        end
+
         if shieldwatch_Options["mdchannel"] ~= "OFF" and arg3 == shieldwatch_MyGUID and arg2 == "SPELL_CAST_SUCCESS" and arg9 == 34477 then
             local t = UnitName("target")
             if t and UnitIsEnemy("target", "player") then
@@ -823,36 +715,11 @@ function shieldwatch_onevent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, ar
         end
         return
     elseif event == 'PLAYER_ENTERING_WORLD' then
-        -- Enganchar la tabla de opciones a la DB de NUF (ver comentario
-        -- de arriba: en el addon suelto esto nunca llegaba a guardarse)
+        -- Los valores por defecto ya los completa SW_DB(); aca solo se
+        -- toma la referencia y se anota la version.
         shieldwatch_Options = SW_DB()
+        shieldwatch_Options["version"] = ADDON_VERSION
 
-        -- Inicialización de opciones
-        if not next(shieldwatch_Options) then
-            shieldwatch_Options = {}
-            shieldwatch_Options["Lock"] = false
-            shieldwatch_Options["scale"] = 1
-            shieldwatch_Options["timetowarn"] = 4
-            shieldwatch_Options["enabletimewarn"] = true
-            shieldwatch_Options["pcttowarn"] = 21
-            shieldwatch_Options["enablepctwarn"] = true
-            shieldwatch_Options["flashborder"] = true
-            shieldwatch_Options["mdchannel"] = 'OFF'
-            shieldwatch_Options["version"] = ADDON_VERSION
-        else
-            -- Solo agregar opciones nuevas, no sobrescribir existentes
-            if not shieldwatch_Options["version"] or shieldwatch_Options["version"] < ADDON_VERSION then
-                if shieldwatch_Options["timetowarn"] == nil then shieldwatch_Options["timetowarn"] = 4 end
-                if shieldwatch_Options["enabletimewarn"] == nil then shieldwatch_Options["enabletimewarn"] = true end
-                if shieldwatch_Options["pcttowarn"] == nil then shieldwatch_Options["pcttowarn"] = 21 end
-                if shieldwatch_Options["enablepctwarn"] == nil then shieldwatch_Options["enablepctwarn"] = true end
-                if shieldwatch_Options["flashborder"] == nil then shieldwatch_Options["flashborder"] = true end
-                if not shieldwatch_Options["scale"] then shieldwatch_Options["scale"] = 1 end
-                if not shieldwatch_Options["mdchannel"] then shieldwatch_Options["mdchannel"] = 'OFF' end
-                shieldwatch_Options["version"] = ADDON_VERSION
-            end
-        end
-        
         shieldwatch_Frame:SetScale(tonumber(shieldwatch_Options["scale"]))
         
         -- Sin aviso de arranque en el chat: el modulo se prende desde el
@@ -931,15 +798,168 @@ local function SW_SetEnabled(state)
     end
 end
 
+-- ---------------------------------------------------------
+-- Sub-opciones en la pestana Addons
+--
+-- Mismo formato que Lorti UI: se despliegan debajo de la fila del modulo.
+-- Los valores no viven en C sino en la sub-tabla propia (SW_DB), asi que
+-- se guardan a mano en vez de con K.SaveConfig.
+-- ---------------------------------------------------------
+local function CreateShieldWatchSubUI(container, yOffset, parentCheckbox)
+    local wrapper = CreateFrame("Frame", nil, container)
+    wrapper:SetPoint("TOPLEFT", 0, yOffset)
+    wrapper:SetWidth(container:GetWidth() or 540)
+
+    local y = 0
+
+    local sep = wrapper:CreateTexture(nil, "ARTWORK")
+    sep:SetHeight(1)
+    sep:SetPoint("TOPLEFT", 36, y + 4)
+    sep:SetPoint("TOPRIGHT", -10, y + 4)
+    sep:SetTexture(1, 1, 1, 0.07)
+    y = y - 10
+
+    local n = 0
+    local function CheckBox(label, tip, get, set)
+        n = n + 1
+        local nm = "NidhausSWSubCB_" .. n
+        local cb = CreateFrame("CheckButton", nm, wrapper, "InterfaceOptionsCheckButtonTemplate")
+        cb:SetPoint("TOPLEFT", 46, y)
+        cb:SetHitRectInsets(0, -260, 0, 0)
+        cb:SetScale(0.9)
+        local lbl = _G[nm .. "Text"]
+        if lbl then lbl:SetText(label); lbl:SetFontObject("GameFontHighlight") end
+        cb:SetChecked(get() and true or false)
+        if tip then
+            cb:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(label, 1, 1, 1)
+                GameTooltip:AddLine(tip, nil, nil, nil, true)
+                GameTooltip:Show()
+            end)
+            cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        end
+        cb:SetScript("OnClick", function(self)
+            set(self:GetChecked() == 1 or self:GetChecked() == true)
+        end)
+        y = y - 24
+        return cb
+    end
+
+    local function Slider(label, minV, maxV, step, fmt, get, set)
+        n = n + 1
+        local nm = "NidhausSWSubSlider_" .. n
+        local sl = CreateFrame("Slider", nm, wrapper, "OptionsSliderTemplate")
+        sl:SetPoint("TOPLEFT", 64, y - 12)
+        sl:SetWidth(180)
+        sl:SetMinMaxValues(minV, maxV)
+        sl:SetValueStep(step)
+
+        local txt  = _G[nm .. "Text"]
+        local low  = _G[nm .. "Low"]
+        local high = _G[nm .. "High"]
+        if txt  then txt:SetText(label) end
+        if low  then low:SetText(tostring(minV)) end
+        if high then high:SetText(tostring(maxV)) end
+
+        local val = sl:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        val:SetPoint("TOP", sl, "BOTTOM", 0, -3)
+        sl.nufValue = val
+
+        sl:SetValue(get())
+        val:SetText(fmt(get()))
+
+        sl:SetScript("OnValueChanged", function(self)
+            local v = floor(self:GetValue() / step + 0.5) * step
+            if v < minV then v = minV end
+            if v > maxV then v = maxV end
+            self.nufValue:SetText(fmt(v))
+            set(v)
+        end)
+
+        y = y - 56
+        return sl
+    end
+
+    CheckBox(L_NUF["SW_LOCK"] or "Lock the bar",
+        L_NUF["SW_LOCK_TIP"] or "While unlocked you can drag the bar with the left mouse button.",
+        function() return SW_DB()["Lock"] end,
+        function(v) SW_DB()["Lock"] = v end)
+
+    CheckBox(L_NUF["SW_FLASH"] or "Flash the border on warning",
+        nil,
+        function() return SW_DB()["flashborder"] end,
+        function(v) SW_DB()["flashborder"] = v end)
+
+    CheckBox(L_NUF["SW_WARN_TIME"] or "Warn when little time is left",
+        nil,
+        function() return SW_DB()["enabletimewarn"] end,
+        function(v) SW_DB()["enabletimewarn"] = v end)
+
+    Slider(L_NUF["SW_WARN_TIME_VALUE"] or "Seconds left", 1, 15, 1,
+        function(v) return string.format("%d s", v) end,
+        function() return tonumber(SW_DB()["timetowarn"]) or 4 end,
+        function(v) SW_DB()["timetowarn"] = v end)
+
+    CheckBox(L_NUF["SW_WARN_PCT"] or "Warn when the shield runs low",
+        nil,
+        function() return SW_DB()["enablepctwarn"] end,
+        function(v) SW_DB()["enablepctwarn"] = v end)
+
+    Slider(L_NUF["SW_WARN_PCT_VALUE"] or "Remaining %", 5, 90, 5,
+        function(v) return string.format("%d%%", v) end,
+        function() return tonumber(SW_DB()["pcttowarn"]) or 21 end,
+        function(v) SW_DB()["pcttowarn"] = v end)
+
+    local scaleSlider = Slider(L_NUF["SW_SCALE"] or "Bar scale",
+        SCALE_MIN, SCALE_MAX, SCALE_STEP, SW_FormatScale,
+        function() return SW_RoundScale(SW_DB()["scale"]) end,
+        function(v)
+            SW_DB()["scale"] = v
+            if shieldwatch_Frame then shieldwatch_Frame:SetScale(v) end
+        end)
+
+    -- Para que /shieldwatch scale mueva tambien el slider.
+    SW_RefreshScale = function(v)
+        if scaleSlider then scaleSlider:SetValue(v) end
+    end
+
+    y = y - 8
+    local h = math.abs(y)
+    wrapper:SetHeight(h)
+
+    local function SetVisible(show)
+        if show then wrapper:Show() else wrapper:Hide() end
+        local ct = K._moduleContainers and K._moduleContainers["ShieldWatch"]
+        if ct then
+            ct:SetHeight(show and (ct._baseHeight + h) or ct._baseHeight)
+            if K.UpdateModulesScrollHeight then K.UpdateModulesScrollHeight() end
+        end
+    end
+
+    if parentCheckbox then
+        local orig = parentCheckbox:GetScript("OnClick")
+        parentCheckbox:SetScript("OnClick", function(self)
+            if orig then orig(self) end
+            SetVisible(self:GetChecked() == 1 or self:GetChecked() == true)
+        end)
+    end
+
+    if K.IsModuleEnabled and K.IsModuleEnabled("ShieldWatch") then
+        wrapper:Show()
+    else
+        wrapper:Hide()
+    end
+
+    return h
+end
+
 K.RegisterModule("ShieldWatch", {
     name    = L_NUF["MOD_SHIELDWATCH"] or "ShieldWatch",
     desc    = L_NUF["MOD_SHIELDWATCH_DESC"]
         or "Bar showing how much is left on your magic shields and barriers. /shieldwatch options to configure it.",
     default = false,
-    configLabel = L_NUF["BTN_MODULE_OPEN"] or "Open",
-    configFunc = function()
-        if shieldwatch_openoptions then shieldwatch_openoptions() end
-    end,
+    createUI  = CreateShieldWatchSubUI,
     onEnable  = function() SW_SetEnabled(true) end,
     onDisable = function() SW_SetEnabled(false) end,
 });
