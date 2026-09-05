@@ -196,9 +196,7 @@ end
 -- algun dia se le pone lista lateral por categoria se vuelve a partir en
 -- grupos; mientras tanto no hay maquinaria manteniendose por las dudas.
 local ADDON_ORDER = {
-	-- FrameBorders va pegado a LortiUI a proposito: son las dos capas del
-	-- mismo aspecto (Lorti tinta, este dibuja el filo) y se prueban juntas.
-	"LortiUI", "FrameBorders", "NiceDamage", "ClassIcons", "SpecIcons",
+	"LortiUI", "NiceDamage", "ClassIcons", "SpecIcons",
 	"ShieldWatch", "HideChatButton", "MinimapIconToggle",
 };
 

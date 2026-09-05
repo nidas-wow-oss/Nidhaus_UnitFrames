@@ -118,8 +118,6 @@
 	<Script file="Modules2\DuelBlocker.lua"/>
 	<Script file="Modules2\ArenaPointsCalc.lua"/>
 	<Script file="Modules2\MinimapIconToggle.lua"/>
-	<Script file="Modules2\FrameBorders.lua"/>
-	<Script file="Modules2\ActionBarFont.lua"/>
 	<Script file="Modules2\AuraAnchor.lua"/>
 	<Script file="Modules2\PartyTestMode.lua"/>
 	<Script file="Modules2\GlobalUnlock.lua"/>

@@ -186,12 +186,13 @@ A full in-game configuration interface organized into tabs:
 
 ## What's in this repository
 
-This repository contains **both addons**. You need both for the full experience:
+This repository contains **three addons**. The first two are the core; the third is optional and stands on its own:
 
 | Folder | What it is |
 |---|---|
 | `Nidhaus_UnitFrames/` | The addon itself. Required. |
 | `Nidhaus_UnitFrames_Config/` | The in-game options panel (`/nufconfig`). Strongly recommended — without it there is no configuration UI. |
+| `Nidhaus_FrameBorders/` | Optional and **independent**. A thin rounded border and outer shadow around action bars, micro menu, bags, cast bar and auras, plus a font for the button text (`/nfb`). Does not require the other two. |
 
 ## Installation
 

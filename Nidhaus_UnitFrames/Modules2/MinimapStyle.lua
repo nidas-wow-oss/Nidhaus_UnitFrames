@@ -262,8 +262,8 @@ end
 -- anclado 4 px por fuera del mapa, con el filo en blanco.
 --
 -- La textura es Media/Border/Border_Light.tga, dibujada por
--- Tools/mkborders.py igual que las de FrameBorders: un hilo de un pixel
--- con caida suave y esquinas redondeadas, generado por geometria.
+-- Tools/mkborders.py: un hilo de un pixel con caida suave y esquinas
+-- redondeadas, generado por geometria pura.
 --
 -- REEMPLAZA AL BORDE CUADRADO, no se suma.
 --

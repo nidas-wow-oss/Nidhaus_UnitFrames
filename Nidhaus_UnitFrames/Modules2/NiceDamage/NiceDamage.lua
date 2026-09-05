@@ -50,15 +50,9 @@ local function GetFontFlags(index, fallback)
 	return fallback;
 end
 
--- La lista se publica para que no haya dos.
---
--- Modules2/ActionBarFont.lua usa estas mismas entradas para la letra de
--- los botones, asi que una fuente nueva se agrega UNA vez, aca arriba, y
--- aparece en los dos lados. Se cuelga de K y no de una global suelta.
---
--- Este archivo siempre se carga: que el modulo NiceDamage este apagado
--- apaga su comportamiento, no su archivo. Aun asi el consumidor
--- comprueba antes de llamar, por las dudas.
+-- La lista se publica por si otro archivo del addon la necesita. Este
+-- archivo siempre se carga: que el modulo este apagado apaga su
+-- comportamiento, no su archivo.
 K.NUF_Fonts     = fontList;
 K.NUF_FontPath  = GetFontPath;
 K.NUF_FontFlags = GetFontFlags;

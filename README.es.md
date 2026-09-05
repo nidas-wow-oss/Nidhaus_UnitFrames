@@ -28,6 +28,7 @@ Este repositorio contiene **los dos addons**. Necesitás ambos:
 |---|---|
 | `Nidhaus_UnitFrames/` | El addon en sí. Obligatorio. |
 | `Nidhaus_UnitFrames_Config/` | El panel de opciones dentro del juego (`/nufconfig`). Muy recomendado: sin él no hay interfaz de configuración. |
+| `Nidhaus_FrameBorders/` | Opcional e **independiente**. Borde fino redondeado y sombra exterior en las barras de acción, el micromenú, las bolsas, la barra de casteo y las auras, más una fuente para el texto de los botones (`/nfb`). No necesita a los otros dos. |
 
 ## Instalación
 

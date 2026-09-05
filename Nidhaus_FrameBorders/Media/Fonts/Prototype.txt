@@ -1,0 +1,8 @@
+Prototype
+v2.0 (2001) - Neale Davidson / Pixel Sagas
+
+Copyright 2001, free for personal use, freely distributed with Prototype.txt
+
+Este archivo acompaña a Prototype.ttf porque la propia licencia de la
+fuente lo pide: se puede repartir libremente siempre que viaje con su
+nota. No lo borres ni lo saques del repositorio.

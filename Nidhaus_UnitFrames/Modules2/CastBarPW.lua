@@ -249,12 +249,16 @@ local function StyleOne(barName)
 
 		-- UN SOLO DUEÑO POR TEXTURA.
 		--
-		-- Si Frame Borders esta dibujando su filo fino alrededor de esta
-		-- barra, es el quien esconde el marco de Blizzard. Sin esta
-		-- consulta la peleabamos: aca se retextura y se le sube el alfa,
-		-- alla se esconde, y quedaba prendiendose y apagandose segun cual
-		-- corriera ultimo.
-		if K.FrameBordersHidesRegion and K.FrameBordersHidesRegion(border) then
+		-- Si el addon Nidhaus Frame Borders esta dibujando su filo fino
+		-- alrededor de esta barra, es el quien esconde el marco de
+		-- Blizzard. Sin esta consulta la peleabamos: aca se retextura y se
+		-- le sube el alfa, alla se esconde, y quedaba prendiendose y
+		-- apagandose segun cual corriera ultimo.
+		--
+		-- Es una global y no una funcion nuestra porque el otro es un addon
+		-- aparte; si no esta instalado, esto no hace nada.
+		if NidhausFrameBorders_HidesRegion
+			and NidhausFrameBorders_HidesRegion(border) then
 			border:Hide();
 		end
 	end
@@ -262,10 +266,11 @@ local function StyleOne(barName)
 	local flash = Sub(barName, "Flash");
 	if flash then
 		flash:SetTexture(TEX_FLASH);
-		-- Mismo trato que el borde: si Frame Borders lo tapa, es suyo. Y
-		-- se lo deja SIN TEXTURA, no escondido: el OnUpdate de la barra lo
+		-- Mismo trato que el borde: si lo tapa el otro addon, es suyo. Y se
+		-- lo deja SIN TEXTURA, no escondido: el OnUpdate de la barra lo
 		-- vuelve a mostrar en cada cuadro del fogonazo.
-		if K.FrameBordersHidesRegion and K.FrameBordersHidesRegion(flash) then
+		if NidhausFrameBorders_HidesRegion
+			and NidhausFrameBorders_HidesRegion(flash) then
 			flash:SetTexture(nil);
 		end
 	end

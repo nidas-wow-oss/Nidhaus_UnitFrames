@@ -1,0 +1,11 @@
+## Interface: 30300
+## Title: Nidhaus Frame Borders
+## Notes: Borde fino redondeado y sombra exterior en las barras de accion, el micromenu, las bolsas, la barra de casteo y las auras.
+## Author: Nidhaus
+## Version: 1.0
+## SavedVariables: NidhausFrameBordersDB
+
+Core.lua
+FrameBorders.lua
+ButtonFont.lua
+Options.lua

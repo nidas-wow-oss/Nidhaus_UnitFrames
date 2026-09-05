@@ -115,8 +115,21 @@ local function rActionButtonStyler_AB_style(self)
 		bo:Hide()
 		bo.Show = nomoreplay
 
+		-- LA FAMILIA PUEDE NO SER NUESTRA.
+		--
+		-- El addon Nidhaus Frame Borders tambien cambia la letra de estos
+		-- tres textos. Antes se los peleaban: ganaba el que corriera
+		-- ultimo, y como esto reaplica en cada actualizacion de boton, casi
+		-- siempre ganaba Lorti. Ahora Lorti pone TAMANO y POSICION, que es
+		-- lo suyo, y pregunta la familia.
+		--
+		-- Es una global porque el otro es un addon aparte. Si no esta
+		-- instalado, fam queda nil y todo sigue como siempre.
+		local fam = NidhausFrameBorders_ButtonFont
+			and NidhausFrameBorders_ButtonFont() or nil;
+
 		if cfg.hotkeys.show then
-			ho:SetFont(cfg.font, cfg.hotkeys.fontsize, "OUTLINE")
+			ho:SetFont(fam or cfg.font, cfg.hotkeys.fontsize, "OUTLINE")
 			ho:ClearAllPoints()
 			ho:SetPoint(cfg.hotkeys.pos1.a1, bu, cfg.hotkeys.pos1.x, cfg.hotkeys.pos1.y)
 			ho:SetPoint(cfg.hotkeys.pos2.a1, bu, cfg.hotkeys.pos2.x, cfg.hotkeys.pos2.y)
@@ -126,7 +139,7 @@ local function rActionButtonStyler_AB_style(self)
 		end
 
 		if cfg.macroname.show then
-			na:SetFont(cfg.font, cfg.macroname.fontsize, "OUTLINE")
+			na:SetFont(fam or cfg.font, cfg.macroname.fontsize, "OUTLINE")
 			na:ClearAllPoints()
 			na:SetPoint(cfg.macroname.pos1.a1, bu, cfg.macroname.pos1.x, cfg.macroname.pos1.y)
 			na:SetPoint(cfg.macroname.pos2.a1, bu, cfg.macroname.pos2.x, cfg.macroname.pos2.y)
@@ -135,7 +148,7 @@ local function rActionButtonStyler_AB_style(self)
 		end
 
 		if cfg.itemcount.show then
-			co:SetFont(cfg.font, cfg.itemcount.fontsize, "OUTLINE")
+			co:SetFont(fam or cfg.font, cfg.itemcount.fontsize, "OUTLINE")
 			co:ClearAllPoints()
 			co:SetPoint(cfg.itemcount.pos1.a1, bu, cfg.itemcount.pos1.x, cfg.itemcount.pos1.y)
 		else

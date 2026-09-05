@@ -170,11 +170,6 @@ local defaults = {
 	-- Bordes de marco. Las sub-opciones arrancan en nil a proposito: el
 	-- panel las trata como prendidas mientras no se toquen, igual que hace
 	-- Lorti con las suyas.
-	FrameBorderShadow = true,    -- el halo exterior
-
-	-- Letra de los botones de las barras de accion. Es el INDICE en la
-	-- lista de Modules2/NiceDamage/NiceDamage.lua; 1 es la de Blizzard.
-	ActionBarFont = 1,
 	MinimapScale      = 1.0,
 
 	-- CLASS / PVP MODULES

@@ -786,8 +786,6 @@ L["HEADER_BAR_TEXT"]             = "|cffFFD100Action Bar Text|r";
 L["CB_HIDE_KEYBIND"]             = "Hide Keybind Text";
 L["TIP_HideKeybindText"]         = "Hides the keybind text on action bar buttons.";
 L["CB_HIDE_MACRO"]               = "Hide Macro Names";
-L["DD_ACTIONBAR_FONT"]           = "Button font";
-L["FRAMEBORDER_FONT"]            = "Button font:";
 L["TIP_HideMacroText"]           = "Hides the macro name text on action bar buttons.";
 
 -- Frames subtabs
@@ -836,8 +834,6 @@ L["MOVE_COMBAT_BLOCK"]           = "Action bars cannot be moved during combat.";
 
 -- Minimapa
 L["MOD_MINIMAP_TOGGLE"]          = "Minimap Icon Toggle";
-L["MOD_FRAMEBORDERS"]            = "Frame Borders";
-L["MOD_FRAMEBORDERS_DESC"]       = "Thin rounded border and outer shadow around action bars, micro menu, bags, cast bar and auras. Stacks with Lorti UI: Lorti tints, this outlines.";
 L["MOD_MINIMAP_TOGGLE_DESC"]     = "Button on the minimap corner that hides or shows the addon icons.";
 L["MINIMAP_TOGGLE_TITLE"]        = "Minimap Icons";
 L["MINIMAP_TOGGLE_TIP"]          = "Click to hide or show the addon icons. Zoom, clock and calendar are set in Decorations.";
@@ -1745,8 +1741,6 @@ L["HEADER_BAR_TEXT"]             = "|cffFFD100Texto de Barras|r";
 L["CB_HIDE_KEYBIND"]             = "Ocultar Texto de Bindeos";
 L["TIP_HideKeybindText"]         = "Oculta el texto de las teclas en los botones de las barras de acci\195\179n.";
 L["CB_HIDE_MACRO"]               = "Ocultar Nombres de Macros";
-L["DD_ACTIONBAR_FONT"]           = "Letra de los botones";
-L["FRAMEBORDER_FONT"]            = "Letra de los botones:";
 L["TIP_HideMacroText"]           = "Oculta el nombre de las macros en los botones de las barras de acci\195\179n.";
 
 -- Subpesta\195\177as de Frames
@@ -1795,8 +1789,6 @@ L["MOVE_COMBAT_BLOCK"]           = "Las barras de acci\195\179n no se pueden mov
 
 -- Minimapa
 L["MOD_MINIMAP_TOGGLE"]          = "Ocultar Iconos del Minimapa";
-L["MOD_FRAMEBORDERS"]            = "Bordes de marco";
-L["MOD_FRAMEBORDERS_DESC"]       = "Borde fino redondeado y sombra exterior en las barras de accion, el micromenu, las bolsas, la barra de casteo y las auras. Se lleva bien con Lorti UI: Lorti tinta, esto dibuja el filo.";
 L["MOD_MINIMAP_TOGGLE_DESC"]     = "Boton en la esquina del minimapa que oculta o muestra los iconos de addon.";
 L["MINIMAP_TOGGLE_TITLE"]        = "Iconos del Minimapa";
 L["MINIMAP_TOGGLE_TIP"]          = "Click para ocultar o mostrar los iconos de addon. El zoom, el reloj y el calendario se eligen en Decorations.";
