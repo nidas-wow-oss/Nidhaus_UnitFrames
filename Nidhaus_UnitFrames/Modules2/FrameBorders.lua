@@ -269,7 +269,6 @@ local function Ensure(frame)
 	local d = decorated[frame];
 	if d then return d; end
 
-	local parent = frame:GetParent() or UIParent;
 	local lvl = frame:GetFrameLevel() or 1;
 
 	d = {};
@@ -288,34 +287,27 @@ local function Ensure(frame)
 	d.border:SetFrameLevel(lvl + 1);
 	d.border:Hide();
 
-	-- La sombra cuelga del PADRE y no del marco, un nivel por DEBAJO. Si
-	-- colgara del marco quedaria por encima de el y en vez de un halo se
-	-- veria un recuadro sucio tapando el icono.
-	d.shadow = CreateFrame("Frame", "NUF_Halo_" .. tag, parent);
+	-- LA SOMBRA CUELGA DEL MARCO, NO DEL PADRE.
+	--
+	-- Colgaba del padre, y ahi estaba el bug de los recuadros flotando:
+	-- cuando el boton se escondia, el borde se iba con el (es su hijo)
+	-- pero la sombra se quedaba dibujada, porque su padre seguia visible.
+	-- Eso eran los tres rectangulos de la zona de las bolsas: los halos de
+	-- CharacterBag2Slot y 3Slot sobre unas ranuras que no estaban.
+	--
+	-- Lo intente tapar con hooks de OnShow/OnHide, pero no alcanza: cuando
+	-- un marco deja de verse porque lo escondio alguien de su cadena de
+	-- padres, OnHide NO se dispara. La unica forma de que la sombra siga
+	-- SIEMPRE al boton es que sea su hija, y que el motor la esconda solo.
+	--
+	-- Un nivel por debajo para que quede detras del arte del boton y no
+	-- como un recuadro sucio encima del icono: un hijo con nivel menor que
+	-- el padre se dibuja abajo de sus capas.
+	d.shadow = CreateFrame("Frame", "NUF_Halo_" .. tag, frame);
 	d.shadow:SetFrameLevel(lvl > 0 and lvl - 1 or 0);
 	d.shadow:SetBackdrop({ edgeFile = GLOW_FILE, edgeSize = EdgeFor(frame, GLOW_EDGE) });
 	d.shadow:SetBackdropBorderColor(0, 0, 0, 0.8);
 	d.shadow:Hide();
-
-	-- LOS RECUADROS FANTASMA.
-	--
-	-- El borde es HIJO del marco, asi que cuando el marco se esconde el
-	-- borde se va solo. La sombra no: cuelga del padre, que sigue
-	-- visible, y quedaba flotando en el aire.
-	--
-	-- Por eso aparecian recuadros sueltos por toda la pantalla: los
-	-- botones de aura sin aura, las ranuras vacias, la barra de mascota
-	-- sin mascota. Todos marcos escondidos que dejaban su sombra puesta.
-	--
-	-- HookScript sobre OnShow/OnHide es un agregado, no un reemplazo: no
-	-- pisa el guion de Blizzard ni ensucia el marco, asi que se puede
-	-- usar sobre botones protegidos y en combate.
-	if frame.HookScript then
-		frame:HookScript("OnShow", function()
-			if d.wantShadow then d.shadow:Show(); end
-		end);
-		frame:HookScript("OnHide", function() d.shadow:Hide(); end);
-	end
 
 	decorated[frame] = d;
 	return d;
@@ -370,7 +362,7 @@ local function ApplyToName(name, want, inset, hideRegions)
 
 	if not want then
 		local d = decorated[frame];
-		if d then d.wantShadow = false; d.border:Hide(); d.shadow:Hide(); end
+		if d then d.border:Hide(); d.shadow:Hide(); end
 		return;
 	end
 
@@ -386,14 +378,9 @@ local function ApplyToName(name, want, inset, hideRegions)
 	d.border:SetBackdropBorderColor(BORDER_R, BORDER_G, BORDER_B, 1);
 	d.border:Show();
 
-	-- La sombra solo si el marco esta a la vista. wantShadow se guarda para
-	-- que el OnShow de mas arriba sepa si tiene que volver a mostrarla.
-	d.wantShadow = (C.FrameBorderShadow ~= false);
-	if d.wantShadow and frame:IsVisible() then
-		d.shadow:Show();
-	else
-		d.shadow:Hide();
-	end
+	-- Ya no hace falta mirar si el marco se ve: la sombra es su hija y el
+	-- motor la esconde con el.
+	if C.FrameBorderShadow ~= false then d.shadow:Show(); else d.shadow:Hide(); end
 end
 
 function K.ApplyFrameBorders()
