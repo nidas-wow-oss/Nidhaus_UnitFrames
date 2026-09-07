@@ -823,44 +823,61 @@ function K.BuildPvPSection(pane)
 	prev = pbBlk;
 	do
 		local by = 0;
-		SettingCB(pbBody, L["CB_POWERBAR_COMBAT"] or "Only show it in combat", "PowerBarCombatOnly",
-			22, by, L["TIP_PowerBarCombatOnly"]
-			or "Hides the power bar out of combat so it does not clutter the screen.",
-			function() if K.UpdatePowerBar then K.UpdatePowerBar(); end end);
-		by = by - 26;
-		SettingCB(pbBody, L["CB_POWERBAR_PCT"] or "Show percentage instead of current / max",
-			"PowerBarShowPercent", 22, by, nil,
-			function() if K.UpdatePowerBar then K.UpdatePowerBar(); end end);
-		by = by - 26;
-		SettingCB(pbBody, L["CB_POWERBAR_HIDETEXT"] or "Hide the numbers on both bars",
-			"PowerBarHideText", 22, by, L["TIP_PowerBarHideText"]
-			or "Turns the numbers off entirely. The bar alone already tells you how much is left.",
-			function() if K.UpdatePowerBar then K.UpdatePowerBar(); end end);
-		by = by - 26;
-		SettingCB(pbBody, L["CB_POWERBAR_HEALTH"] or "Also show a health bar", "PowerBarShowHealth",
-			22, by, L["TIP_PowerBarHealth"]
-			or "Adds a health bar above the resource bar, so the Power Bar works like a mini player frame.",
-			function() if K.ApplyPowerBarHealth then K.ApplyPowerBarHealth(); end end);
-		by = by - 26;
-		SettingCB(pbBody, L["CB_POWERBAR_GRADIENT"] or "Health bar changes color as it drops",
-			"PowerBarHealthGradient", 22, by, L["TIP_PowerBarGradient"]
-			or "The health bar goes green > yellow > red as you lose health.",
-			function() if K.UpdatePowerBar then K.UpdatePowerBar(); end end);
-		by = by - 26;
-		SettingCB(pbBody, L["CB_POWERBAR_CLASSCOLOR"] or "Health bar in your class color",
-			"PowerBarHealthClassColor", 22, by, L["TIP_PowerBarClassColor"]
-			or "Paints the health bar with your class color instead of green. It wins over the gradient above.",
-			function() if K.UpdatePowerBar then K.UpdatePowerBar(); end end);
-		by = by - 26;
-		SettingCB(pbBody, L["CB_POWERBAR_HIDEFULL"] or "Hide it when full out of combat",
-			"PowerBarHideWhenFull", 22, by, L["TIP_PowerBarHideFull"]
-			or "Hides the bar while you are at full health and resource outside combat.",
-			function() if K.ApplyPowerBarHealth then K.ApplyPowerBarHealth(); end end);
-		by = by - 26;
-		SettingCB(pbBody, L["CB_POWERBAR_AURAS"] or "Show your buffs and debuffs",
-			"PowerBarShowAuras", 22, by, L["TIP_PowerBarAuras"]
+		-- LAS CASILLAS VAN EN DOS COLUMNAS.
+		--
+		-- Eran ocho apiladas y el bloque quedaba altisimo: para llegar a los
+		-- sliders habia que scrollear medio panel. En dos columnas ocupan la
+		-- mitad y entran de una con los sliders, que ya venian en dos.
+		--
+		-- Las etiquetas se acortaron para que entren en media fila. El
+		-- detalle no se perdio: esta en el tooltip de cada una, que es donde
+		-- corresponde. La del porcentaje no tenia y ahora si.
+		local COL_L, COL_R = 22, 250;
+
+		local pbRow = 0;
+		local function PBCheck(label, setting, tip, onChange)
+			local x = (pbRow % 2 == 0) and COL_L or COL_R;
+			local y = by - math.floor(pbRow / 2) * 26;
+			pbRow = pbRow + 1;
+			SettingCB(pbBody, label, setting, x, y, tip, onChange);
+		end
+
+		local function UpdBar()  if K.UpdatePowerBar then K.UpdatePowerBar(); end end
+		local function UpdHP()   if K.ApplyPowerBarHealth then K.ApplyPowerBarHealth(); end end
+
+		-- Emparejadas por tema: visibilidad, numeros, vida, color y auras.
+		PBCheck(L["CB_POWERBAR_COMBAT"] or "Only in combat", "PowerBarCombatOnly",
+			L["TIP_PowerBarCombatOnly"]
+			or "Hides the power bar out of combat so it does not clutter the screen.", UpdBar);
+		PBCheck(L["CB_POWERBAR_HIDEFULL"] or "Hide it when full", "PowerBarHideWhenFull",
+			L["TIP_PowerBarHideFull"]
+			or "Hides the bar while you are at full health and resource outside combat.", UpdHP);
+
+		PBCheck(L["CB_POWERBAR_PCT"] or "Percentage, not numbers", "PowerBarShowPercent",
+			L["TIP_PowerBarPct"]
+			or "Shows 73% instead of 7300 / 10000 on both bars.", UpdBar);
+		PBCheck(L["CB_POWERBAR_HIDETEXT"] or "Hide the numbers", "PowerBarHideText",
+			L["TIP_PowerBarHideText"]
+			or "Turns the numbers off entirely. The bar alone already tells you how much is left.", UpdBar);
+
+		PBCheck(L["CB_POWERBAR_HEALTH"] or "Also a health bar", "PowerBarShowHealth",
+			L["TIP_PowerBarHealth"]
+			or "Adds a health bar above the resource bar, so the Power Bar works like a mini player frame.", UpdHP);
+		PBCheck(L["CB_POWERBAR_GRADIENT"] or "Color by health left", "PowerBarHealthGradient",
+			L["TIP_PowerBarGradient"]
+			or "The health bar goes green > yellow > red as you lose health.", UpdBar);
+
+		PBCheck(L["CB_POWERBAR_CLASSCOLOR"] or "Health in class color", "PowerBarHealthClassColor",
+			L["TIP_PowerBarClassColor"]
+			or "Paints the health bar with your class color instead of green. It wins over the gradient above.", UpdBar);
+		PBCheck(L["CB_POWERBAR_AURAS"] or "Buffs and debuffs", "PowerBarShowAuras",
+			L["TIP_PowerBarAuras"]
 			or "Two rows of small icons: buffs on top, debuffs below. Unlike the Blizzard frame it shows all of them, not a chosen few.",
 			function() if K.ApplyPowerBarAuraToggle then K.ApplyPowerBarAuraToggle(); end end);
+
+		-- Se baja por FILAS, no por casillas: dos por fila, redondeando para
+		-- arriba si alguna vez queda un numero impar.
+		by = by - math.ceil(pbRow / 2) * 26;
 
 		local function PBSlider(label, sx, sy, minV, maxV, step, getFn, setFn)
 			local s = CreateFrame("Slider", nil, pbBody, "OptionsSliderTemplate");
@@ -889,7 +906,7 @@ function K.BuildPvPSection(pane)
 			return s;
 		end
 
-		by = by - 52;
+		by = by - 46;
 		PBSlider(L["SLIDER_POWERBAR_SCALE"] or "Scale", 26, by, 0.5, 2.0, 0.05,
 			function() return (K.GetPowerBarScale and K.GetPowerBarScale()) or 1; end,
 			function(v) if K.SavePowerBarScale then K.SavePowerBarScale(v); end end);
