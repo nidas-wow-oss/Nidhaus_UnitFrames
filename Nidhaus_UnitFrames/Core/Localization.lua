@@ -341,8 +341,9 @@ L["MINIMAP_BORDER_LIGHT"]        = "Light";
 L["MINIMAP_BORDER_TOOLTIP"]      = "Tooltip";
 L["MINIMAP_BORDER_THIN"]         = "Thin";
 L["MINIMAP_BORDER_FLAT"]         = "Flat";
+L["MINIMAP_BORDER_LORTI"]        = "Lorti UI";
 L["MINIMAP_BORDER_BLIZZARD"]     = "Blizzard";
-L["NOTE_MINIMAP_BORDER"]         = "Tooltip, Thin, Flat and Blizzard work with both shapes.";
+L["NOTE_MINIMAP_BORDER"]         = "Tooltip, Thin and Flat work with both shapes.";
 L["NOTE_MINIMAP_BORDER_SQUARE"]  = "Light only works with the square shape.";
 L["HEADER_MINIMAP_DECOR"]        = "Decorations";
 L["HEADER_MINIMAP_ICONS"]        = "Addon Icons";
@@ -838,7 +839,7 @@ L["BORDER_NONE"]                 = "No border";
 L["BORDER_BLIZZARD"]             = "Blizzard";
 L["MOVE_ON"]                     = "Move mode ON - drag the blue boxes. /nufmove to finish.";
 L["MOVE_OFF"]                    = "Move mode OFF - positions saved.";
-L["MOVE_RESET"]                  = "Saved positions cleared. /reload to restore the defaults.";
+L["MOVE_RESET"]                  = "Positions and scales are back to their defaults.";
 L["MOVE_COMBAT_BLOCK"]           = "Action bars cannot be moved during combat.";
 
 -- Minimapa
@@ -1310,8 +1311,9 @@ L["MINIMAP_BORDER_LIGHT"]        = "Fino";
 L["MINIMAP_BORDER_TOOLTIP"]      = "Tooltip";
 L["MINIMAP_BORDER_THIN"]         = "Delgado";
 L["MINIMAP_BORDER_FLAT"]         = "Plano";
+L["MINIMAP_BORDER_LORTI"]        = "Lorti UI";
 L["MINIMAP_BORDER_BLIZZARD"]     = "Blizzard";
-L["NOTE_MINIMAP_BORDER"]         = "Tooltip, Delgado, Plano y Blizzard sirven con las dos formas.";
+L["NOTE_MINIMAP_BORDER"]         = "Tooltip, Delgado y Plano sirven con las dos formas.";
 L["NOTE_MINIMAP_BORDER_SQUARE"]  = "Fino solo funciona con la forma cuadrada.";
 L["HEADER_MINIMAP_DECOR"]        = "Adornos";
 L["HEADER_MINIMAP_ICONS"]        = "Iconos de addons";
@@ -1802,7 +1804,7 @@ L["BORDER_NONE"]                 = "Sin borde";
 L["BORDER_BLIZZARD"]             = "Blizzard";
 L["MOVE_ON"]                     = "Modo mover ACTIVADO - arrastr\195\161 los recuadros azules. /nufmove para terminar.";
 L["MOVE_OFF"]                    = "Modo mover DESACTIVADO - posiciones guardadas.";
-L["MOVE_RESET"]                  = "Posiciones borradas. /reload para volver a las de f\195\161brica.";
+L["MOVE_RESET"]                  = "Posiciones y escalas de vuelta a las de f\195\161brica.";
 L["MOVE_COMBAT_BLOCK"]           = "Las barras de acci\195\179n no se pueden mover en combate.";
 
 -- Minimapa

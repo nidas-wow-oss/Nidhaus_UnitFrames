@@ -545,7 +545,10 @@ function K.PopulateFramesTab(panel)
 	unlockResetBtn:SetSize(210, 24);
 	unlockResetBtn:SetText(L["BTN_RESET_POSITIONS"] or "Reset Positions");
 	unlockResetBtn:SetScript("OnClick", function()
-		if K.ResetGlobalPositions then K.ResetGlobalPositions(); end
+		-- Por ResetManager, igual que los otros botones de reset: la
+		-- secuencia completa vive en un solo lugar.
+		if K.ResetEverything then K.ResetEverything();
+		elseif K.ResetGlobalPositions then K.ResetGlobalPositions(); end
 	end);
 
 	ry = ry - 36;
@@ -1166,7 +1169,11 @@ function K.PopulateFramesTab(panel)
 	auraReset:SetSize(75, 24);
 	auraReset:SetText(L["BTN_MOVE_RESET"] or "Reset");
 	auraReset:SetScript("OnClick", function()
-		if K.ResetAuraAnchor then K.ResetAuraAnchor(); end
+		-- Por ResetManager: ademas del ancla propia, repone posicion y
+		-- escala de los dos movibles (Buffs y Debuffs). Antes solo limpiaba
+		-- el ancla, y la escala puesta con Ctrl + rueda quedaba pegada.
+		if K.ResetAuras then K.ResetAuras();
+		elseif K.ResetAuraAnchor then K.ResetAuraAnchor(); end
 	end);
 
 	-- ── Iconos por fila (buffs del jugador) ──

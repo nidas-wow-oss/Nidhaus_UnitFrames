@@ -725,7 +725,307 @@ function K.UpdateActionBarsBox()
     barsBox:ClearAllPoints();
     barsBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b);
     barsBox:SetSize(math.max(r - l, 10), math.max(t - b, 10));
+
+    if K.UpdateActionBarBoxes then K.UpdateActionBarBoxes(); end
     return barsBox;
+end
+
+-- ══════════════════════════════════════════════════════════════
+--  UN CONTENEDOR POR FILA  (el patron de Dominos)
+--
+--  POR QUE HACIA FALTA. Hasta aca el modo mover arrastraba y escalaba los
+--  frames de Blizzard: MainMenuBar, MultiBarBottomLeft y
+--  MultiBarBottomRight. Con MainMenuBar eso es un desastre, porque en
+--  3.3.5 MainMenuBar NO es "la barra de accion": es el PADRE de las
+--  bolsas, el micromenu, la barra de experiencia, la de reputacion y los
+--  grifos. SetScale sobre ella escala a todos sus hijos, y por eso
+--  agrandar la barra 1 te agrandaba tambien la mochila y el micromenu.
+--
+--  Y habia un segundo desajuste: el recuadro del modo mover se medía
+--  sobre los BOTONES, mientras que lo que se movia y escalaba era el
+--  FRAME. Son dos cosas distintas, asi que en cuanto cambiabas la escala
+--  el recuadro y los botones dejaban de coincidir.
+--
+--  LA SOLUCION es la que usa Dominos, y es la misma que este addon ya
+--  usaba para la barra de posturas: cada fila tiene su propio contenedor,
+--  los botones cuelgan de EL, y el contenedor es lo unico que se mueve y
+--  se escala.
+--
+--  De ahi salen las tres cosas que fallaban:
+--    - sus 12 botones son sus UNICOS hijos, asi que escalarlo no puede
+--      tocar bolsas, micromenu ni barras laterales;
+--    - mide exactamente lo que ocupan esos botones, asi que el recuadro
+--      calza siempre y crece con la escala;
+--    - moverlo mueve esa fila y nada mas.
+--
+--  Solo en MiniBar. Unify funde las filas a proposito y reparte los
+--  botones entre marcos distintos: ahi los contenedores no tendrian
+--  sentido.
+-- ══════════════════════════════════════════════════════════════
+local ROW_SETS = {
+    { prefix = "ActionButton"              },
+    { prefix = "MultiBarBottomLeftButton"  },
+    { prefix = "MultiBarBottomRightButton" },
+};
+
+local barHolders = {};
+
+function K.GetBarHolder(row)
+    return barHolders[row];
+end
+
+function K.EnsureBarHolder(row)
+    if barHolders[row] then return barHolders[row]; end
+    local h = CreateFrame("Frame", "NUF_ActionBarHolder" .. row, UIParent);
+    h:SetSize(500, 30);
+
+    -- POR ENCIMA DE MainMenuBar.
+    --
+    -- Los botones eran hijos de MainMenuBar y por eso se dibujaban sobre
+    -- su arte. Al pasarlos a un contenedor en strata LOW quedaron POR
+    -- DEBAJO, y la barra oscura les tapaba media fila.
+    --
+    -- Es el mismo problema que ya tenia resuelto EnsureStanceHolder, con
+    -- su comentario y todo: "si no, el arte de las casillas se dibuja
+    -- sobre los iconos y quedan opacados". Misma receta.
+    h:SetFrameStrata("MEDIUM");
+    if MainMenuBar then
+        h:SetFrameLevel((MainMenuBar:GetFrameLevel() or 0) + 5);
+    end
+    barHolders[row] = h;
+    return h;
+end
+
+function K.AttachActionBarButtons()
+    if InCombatLockdown() then return; end
+    if C.MiniBarEnabled ~= true then return; end
+
+    local space = tonumber(C.ActionBarButtonSpace) or 6;
+
+    for row, set in ipairs(ROW_SETS) do
+        local holder = K.EnsureBarHolder(row);
+        local shown, w, h = 0, 0, 0;
+
+        for i = 1, 12 do
+            local btn = _G[set.prefix .. i];
+            if btn then
+                -- Foto ANTES de reparentar: es lo que repone
+                -- RestoreAllButtons al salir del modo.
+                CaptureButton(btn, set.prefix .. i);
+                btn:SetParent(holder);
+                btn:ClearAllPoints();
+                if i == 1 then
+                    btn:SetPoint("BOTTOMLEFT", holder, "BOTTOMLEFT", 0, 0);
+                else
+                    btn:SetPoint("LEFT", _G[set.prefix .. (i - 1)], "RIGHT", space, 0);
+                end
+                if btn:IsShown() then
+                    shown = shown + 1;
+                    w = btn:GetWidth()  or 36;
+                    h = btn:GetHeight() or 36;
+                end
+            end
+        end
+
+        -- El contenedor mide lo que ocupan los botones a la vista. De ahi
+        -- sale que el recuadro del modo mover calce sin cuentas aparte.
+        if shown > 0 then
+            holder:SetSize((w * shown) + (space * (shown - 1)), h);
+            holder:Show();
+        else
+            holder:Hide();
+        end
+
+        -- LAS FLECHAS DE PAGINA VAN CON LA FILA 1.
+        --
+        -- Son parte de esa barra: cambian su pagina. Si se quedan colgadas
+        -- de MainMenuBar, moves la barra y se quedan atras, y escalarla no
+        -- las toca. Colgadas del contenedor acompañan las dos cosas.
+        if row == 1 and shown > 0 then
+            local prev = _G[set.prefix .. 12];
+            local up, down = _G["ActionBarUpButton"], _G["ActionBarDownButton"];
+
+            -- ApplyPagingButtons les pone un candado sobre SetPoint. Sin
+            -- soltarlo, el anclaje de abajo se revierte solo y las flechas
+            -- se quedan donde estaban.
+            if up   then UnlockSetPoint(up);   end
+            if down then UnlockSetPoint(down); end
+
+            -- La disposicion es la que ya usaba ApplyPagingButtons: una
+            -- encima de la otra y pegadas al ultimo boton. Yo las habia
+            -- separado con medias alturas inventadas y quedaban abiertas.
+            -- Estos numeros salen del propio addon, no de mi ojo.
+            if down and prev then
+                CaptureButton(down, "ActionBarDownButton");
+                down:SetParent(holder);
+                down:ClearAllPoints();
+                down:SetPoint("LEFT", prev, "RIGHT", 2, -8);
+            end
+            if up and down then
+                CaptureButton(up, "ActionBarUpButton");
+                up:SetParent(holder);
+                up:ClearAllPoints();
+                up:SetPoint("BOTTOM", down, "TOP", 0, -12);
+            end
+        end
+    end
+end
+
+-- Al salir de MiniBar los botones vuelven solos con RestoreAllButtons;
+-- aca solo se esconden los contenedores para que no queden cajas vacias
+-- que el modo mover pueda encontrar.
+function K.HideBarHolders()
+    for _, h in pairs(barHolders) do h:Hide(); end
+
+    -- Y EL FONDO VUELVE A COLGAR DE MainMenuBar.
+    --
+    -- Con MiniBar puesto, MainMenuBarArtFrame pasa a ser hijo del
+    -- contenedor de la fila 1 (mira K.PinMainMenuBarToRow1). Si se saliera
+    -- del modo sin devolverlo, el arte quedaria colgada de un contenedor
+    -- escondido y desapareceria la barra entera.
+    -- Con su foto propia, que trae TODOS los anclajes. Reponerlo con un
+    -- solo punto -- como hacia antes esta funcion -- lo dejaba con ancho
+    -- fijo y ya no volvia a estirarse con MainMenuBar.
+    if K.RestoreArtFrame then K.RestoreArtFrame(); end
+    -- El ancho y los anclajes exactos los repone el desmontaje de MiniBar,
+    -- que ya guarda este marco (MB_SaveFrame/MB_RestoreFrame). Aca solo se
+    -- lo saca del contenedor escondido: llamar a RestoreBarBaseline en
+    -- mitad del desmontaje pisaba pasos que vienen despues.
+end
+
+-- Donde va la PRIMERA fila cuando no la moviste.
+--
+-- Se usa el desplazamiento que ActionButton1 tenia dentro de MainMenuBar
+-- en la foto de fabrica, asi el contenedor cae exactamente donde caian los
+-- botones y a la vista no cambia nada al pasar al nuevo sistema.
+-- El desplazamiento que el boton 1 tenia dentro de su marco, de fabrica.
+-- Lo necesita MiniBar para colgar el arte del contenedor sin correrlo.
+function K.BarHolderInset(row)
+    local set = ROW_SETS[row];
+    if not set then return 0, 0; end
+    local o = btnOrig[set.prefix .. "1"];
+    if o and o.points and o.points[1] then
+        return (o.points[1][4] or 0), (o.points[1][5] or 0);
+    end
+    return 0, 0;
+end
+
+function K.BarHolderDefaultPoint(row)
+    local holder = barHolders[row];
+    if not holder then return; end
+    local set = ROW_SETS[row];
+    if not set then return; end
+
+    local o  = btnOrig[set.prefix .. "1"];
+    local ix, iy = 0, 0;
+    if o and o.points and o.points[1] then
+        ix = o.points[1][4] or 0;
+        iy = o.points[1][5] or 0;
+    end
+
+    -- CONTRA UIParent, NO CONTRA MainMenuBar.
+    --
+    -- Antes colgaba de MainMenuBar. Pero ahora es al reves: es MainMenuBar
+    -- el que cuelga del contenedor, para que su arte siga a la fila cuando
+    -- la arrastras. Si ademas el contenedor colgara de MainMenuBar, seria
+    -- un anclaje circular y WoW tira error.
+    --
+    -- El lugar por defecto se calcula: MainMenuBar mide 512 y va centrada
+    -- abajo, asi que el borde izquierdo cae en (ancho - 512) / 2, mas el
+    -- desplazamiento que el boton 1 tenia adentro.
+    --
+    -- Los offsets de SetPoint se miden en la escala DEL CONTENEDOR, asi que
+    -- el valor en pixeles de pantalla se divide por ella.
+    local uw = UIParent:GetWidth() or 1024;
+    local us = UIParent:GetEffectiveScale() or 1;
+    local hs = holder:GetEffectiveScale() or us;
+    if hs == 0 then hs = us; end
+
+    local sx = (((uw - 512) / 2) + ix) * us;
+
+    -- EL FONDO NO PUEDE QUEDAR DEBAJO DEL BORDE DE LA PANTALLA.
+    --
+    -- MainMenuBar cuelga del contenedor con un desplazamiento de -iy, y ese
+    -- numero se mide en SU escala. Con la barra agrandada, iy * escala
+    -- crece; si el contenedor esta a iy * escalaDeUIParent del piso, el
+    -- fondo termina por debajo de cero, WoW lo empuja de vuelta adentro y
+    -- deja de coincidir con la barra. Ese era el desfase que aparecia solo
+    -- al agrandar, y hacia arriba.
+    --
+    -- Se levanta el contenedor lo justo para que el fondo entre: se toma la
+    -- mayor de las dos escalas. Con escala 1 no cambia nada.
+    local sy = iy * math.max(us, hs);
+
+    holder:ClearAllPoints();
+    holder:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", sx / hs, sy / hs);
+end
+
+-- ──────────────────────────────────────────────────────────────
+--  UNA CAJA POR FILA
+--
+--  La caja de arriba abarca las tres barras juntas, y por eso el modo
+--  mover te dejaba arrastrar el bloque entero y nada mas.
+--
+--  Estas son tres cajas independientes, una por fila, cada una medida
+--  sobre SUS doce botones. Es lo mismo que hace KkthnxUI, que no tiene un
+--  modo especial: simplemente cada barra es su propia cosa movible.
+--
+--  Se mide sobre los botones y no sobre el frame contenedor por la misma
+--  razon de siempre: MultiBarBottomRight es mas ancho que los botones que
+--  tiene adentro y el recuadro sobraba por la derecha.
+-- ──────────────────────────────────────────────────────────────
+local ROW_PREFIX = {
+    "ActionButton",                 -- fila 1, la principal
+    "MultiBarBottomLeftButton",     -- fila 2
+    "MultiBarBottomRightButton",    -- fila 3
+};
+
+local rowBoxes = {};
+
+function K.UpdateActionBarBoxes()
+    -- Con MiniBar apagado las tres filas se mueven JUNTAS: Unify las funde
+    -- a proposito y solo hay una entrada, "Action Bar 1". Entonces su caja
+    -- tiene que abarcar el bloque entero, porque el recuadro debe mostrar
+    -- lo que realmente vas a arrastrar y no una fila suelta.
+    local perRow = (C.MiniBarEnabled == true);
+
+    for row = 1, 3 do
+        local box = rowBoxes[row];
+        if not box then
+            box = CreateFrame("Frame", "NUF_ActionBar" .. row .. "Box", UIParent);
+            box:SetFrameStrata("BACKGROUND");
+            box:EnableMouse(false);
+            rowBoxes[row] = box;
+        end
+
+        local prefixes;
+        if perRow or row > 1 then
+            prefixes = { ROW_PREFIX[row] };
+        else
+            prefixes = ROW_PREFIX;   -- fila 1 en modo bloque: las tres
+        end
+
+        local l, r, t, b;
+        for _, prefix in ipairs(prefixes) do
+        for i = 1, 12 do
+            local f = _G[prefix .. i];
+            if f and f:IsVisible() and f:GetLeft() then
+                l = math.min(l or f:GetLeft(),   f:GetLeft());
+                r = math.max(r or f:GetRight(),  f:GetRight());
+                b = math.min(b or f:GetBottom(), f:GetBottom());
+                t = math.max(t or f:GetTop(),    f:GetTop());
+            end
+        end
+        end
+
+        -- Fila oculta: se deja la caja donde estaba. Vaciarla la mandaria a
+        -- la esquina y el recuadro apareceria ahi al abrir el modo mover.
+        if l then
+            box:ClearAllPoints();
+            box:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b);
+            box:SetSize(math.max(r - l, 10), math.max(t - b, 10));
+        end
+    end
 end
 
 -- ──────────────────────────────────────────────────────────────
@@ -856,7 +1156,18 @@ function K.AttachStanceButtons()
     -- Si ademas la colgaramos del Holder, los dos estarian anclando el
     -- mismo boton y ganaria el ultimo que corre — justo el tipo de
     -- pelea que rompio el cambio de modo.
-    if C.UnifyActionBars ~= true then
+    -- EN LOS DOS MODOS.
+    --
+    -- Antes esto era solo para Unify, y en MiniBar el Holder no se creaba.
+    -- Como la entrada "Stance Bar" del modo mover apunta justo a ese
+    -- Holder, en MiniBar no encontraba frame y la barra de posturas
+    -- desaparecia de la lista de movibles. Lo mismo pasaba con lo que
+    -- cuelga de ella.
+    --
+    -- MiniBar ahora ancla el HOLDER en vez de ShapeshiftButton1 (ver
+    -- MiniBar_UpdateActionBars), asi que sigue habiendo un solo dueno del
+    -- anclaje y no vuelve la pelea que rompio el cambio de modo.
+    if C.UnifyActionBars ~= true and C.MiniBarEnabled ~= true then
         if K.DetachStanceButtons then K.DetachStanceButtons(); end
         return;
     end
@@ -1389,6 +1700,13 @@ function K.DisableUnifyActionBars()
         MainMenuBarRightEndCap:SetAlpha(1);
         MainMenuBarRightEndCap:Show();
     end
+
+    -- ── Y LA FOTO DE FABRICA, AL FINAL DE TODO ──
+    --
+    -- Mismo hueco que tenia MiniBar: BarBaseline solo se reponia al
+    -- ENCENDER un modo. Apagando Unify sin que entrara otro, nadie la
+    -- llamaba y quedaba lo que esta lista supiera reponer.
+    if K.RestoreBarBaseline then pcall(K.RestoreBarBaseline); end
 
     -- Clear saved data so next Enable() captures fresh originals
     saved = {};

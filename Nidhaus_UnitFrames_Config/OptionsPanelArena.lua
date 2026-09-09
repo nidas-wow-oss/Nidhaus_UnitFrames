@@ -704,6 +704,19 @@ function K.PopulateArenaTab(panel)
 	end);
 
 	local function UpdateBlizzClassColorBox()
+		-- CON EL MOD APAGADO NO SE MUESTRA, PUNTO.
+		--
+		-- Esta casilla cuelga de "content" y no de ninguno de los
+		-- contenedores que esconde UpdateArenaOptionsVisibility, asi que se
+		-- quedaba a la vista aunque el mod de arena estuviera apagado. Y
+		-- ahi no decide nada: si el addon no toca los marcos de arena
+		-- -- justamente para dejarselos a Gladius o al que uses -- el color
+		-- de clase de esos marcos no es asunto suyo.
+		if C.ArenaFrameOn ~= true then
+			blizzCCBox:Hide();
+			return;
+		end
+
 		if (C.ArenaFrameStyle or "Custom") == "Blizzard" then
 			blizzCCBox:SetChecked(C.ArenaBlizzardClassColor or false);
 			blizzCCBox:Show();
@@ -837,6 +850,13 @@ function K.PopulateArenaTab(panel)
 		end
 		if arenaHint then if on then arenaHint:Show(); else arenaHint:Hide(); end end
 		if moveHint then if on then moveHint:Show(); else moveHint:Hide(); end end
+
+		-- Las que cuelgan de "content" y no de un contenedor: hay que
+		-- avisarles una por una. Si mañana aparece otra suelta, se suma
+		-- aca y no en cinco lugares.
+		if K._UpdateArenaBlizzClassColorBox then
+			K._UpdateArenaBlizzClassColorBox();
+		end
 
 		if on then
 			UpdateLayout(isFlat);

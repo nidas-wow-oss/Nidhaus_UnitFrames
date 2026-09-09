@@ -67,7 +67,31 @@ end
 local function npcReactionColors(healthbar, unit)
 	if not healthbar or not unit then return; end
 	if not UnitExists(unit) or UnitIsPlayer(unit) or unit ~= healthbar.unit then return; end
-	
+
+	-- DOS CASOS EN LOS QUE ESTA BARRA NO VA POR REACCION.
+	--
+	-- 1) LAS MASCOTAS. UnitReaction sobre la mascota de un enemigo devuelve
+	--    3, y el color de esa reaccion es naranja: por eso el cangrejo del
+	--    cazador salia naranja en vez de verde. Blizzard NUNCA pinta por
+	--    reaccion lo que controla un jugador -- mascotas, vehiculos,
+	--    totems: van del mismo verde que su dueno.
+	--
+	-- 2) SIN CUSTOM SKIN. Apagar la piel es pedir la interfaz de fabrica, y
+	--    de fabrica todas las barras de vida son verdes. Pintar por
+	--    reaccion ahi era el addon metiendose donde dijiste que no.
+	--
+	-- Se escribe el verde A MANO en vez de salir sin tocar nada: la barra
+	-- conserva el color anterior, asi que viniendo de un bicho rojo se
+	-- quedaba con el rojo pegado.
+	if UnitPlayerControlled(unit) or (not C.UnitFrameCustomTexture) then
+		if UnitIsConnected(unit) == false then
+			healthbar:SetStatusBarColor(0.6, 0.6, 0.6, 0.5);
+		else
+			healthbar:SetStatusBarColor(0, 1.0, 0);
+		end
+		return;
+	end
+
 	if not UnitPlayerControlled(unit) and UnitIsTapped(unit) and not UnitIsTappedByPlayer(unit) and not UnitIsTappedByAllThreatList(unit) then
 		healthbar:SetStatusBarColor(0.5, 0.5, 0.5);
 	else

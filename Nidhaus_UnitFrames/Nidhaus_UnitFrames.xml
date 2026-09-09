@@ -148,4 +148,10 @@
 	     con el modulo apagado. Tiene que cargar despues de todos, porque lo
 	     que hace es tomar los handlers que cada uno dejo en SlashCmdList. -->
 	<Script file="Core\CommandGuard.lua"/>
+	<!-- ULTIMO A PROPOSITO.
+	     Es el dueno de la logica de reset y llama a GlobalUnlock, MiniBar y
+	     ActionBars. Como los llama por campo de tabla se resuelven recien al
+	     apretar el boton, pero cargarlo al final deja claro que depende de
+	     todos ellos y de nadie al reves. -->
+	<Script file="Core\ResetManager.lua"/>
 </Ui>

@@ -52,6 +52,17 @@ petFrame:SetScript("OnDragStart", petFrame.StartMoving)
 petFrame:SetScript("OnDragStop", petFrame.StopMovingOrSizing)
 petFrame.unit = "party1pet"
 
+-- NACE ESCONDIDO.
+--
+-- CreateFrame devuelve el marco VISIBLE. La visibilidad recien se decide
+-- cuando el modulo arranca o cuando RegisterUnitWatch toma el control, y
+-- hasta ese momento el marco estaba en pantalla sin unidad detras: el
+-- "fantasma" que aparecia al entrar por primera vez, con retrato vacio y
+-- barras a cero, aunque no tuvieras mascota ni compa.
+--
+-- Un Hide() aca no puede fallar: todavia no estamos en combate al cargar.
+petFrame:Hide()
+
 -- Configurar atributos para clic
 petFrame:SetAttribute("type1", "target")
 petFrame:SetAttribute("unit", "party1pet")

@@ -367,6 +367,19 @@ pollFrame:SetScript("OnEvent", function(self, event, key, state)
 	end
 
 	local shiftAlt = IsShiftKeyDown() and IsAltKeyDown();
+
+	-- CON "MOVE EVERYTHING" ENCENDIDO, Shift+Alt NO HACE NADA.
+	--
+	-- Son DOS sistemas de arrastre distintos. Si se encienden a la vez,
+	-- apretar Shift+Alt en medio de un arrastre de barras prendia este de
+	-- golpe, y al soltarlo guardaba posiciones por los dos lados y
+	-- disparaba un reacomodo: la barra de auras se iba de un salto hacia
+	-- abajo, de vuelta a la pila.
+	--
+	-- Mientras el otro modo manda, este se queda quieto.
+	if K.IsGlobalUnlocked and K.IsGlobalUnlocked() then
+		shiftAlt = false;
+	end
 	if shiftAlt and not isShowingOverlays then
 		EnableDragMode();
 		isShowingOverlays = true;

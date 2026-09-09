@@ -5,7 +5,7 @@ local K, C, L = unpack(ns);
 
 local defaults = {
 	-- GENERAL
-	classColor = true,
+	classColor = false,
 	statusbarBackdrop = true,
 	HealthPercentage = false,   -- apagado por defecto, se prende en Interface > General
 	CastingTimers = true,
@@ -34,7 +34,7 @@ local defaults = {
 	PartyShowPetFrames = false,  -- marcos de mascota de los companeros: apagados por defecto
 	PartyFrameScale = 1.0,
 	PartyMemberFrameSpacing = 0,
-	PartyMode3v3 = true,
+	PartyMode3v3 = false,
 	-- Escala individual de cada miembro en modo 3v3
 	Party3v3Scale1 = 1.5,
 	Party3v3Scale2 = 1.5,
@@ -114,7 +114,7 @@ local defaults = {
 
 	-- VISUAL THEME
 	darkFrames = false,
-	UnitFrameCustomTexture = true,
+	UnitFrameCustomTexture = false,
 	AsuriFrames = false, -- tema Asuri: marco de cadenas, barras finas
 	-- Texto de vida/mana (portado de ZyrokofArenaFrames)
 	ShowCurrentValueOnly = false,     -- "33401" en vez de "33401 / 33401"
@@ -201,10 +201,10 @@ local defaults = {
 
 	-- CHAT
 	ChatCopyEnabled = false,
-	ChatClickableURLs = false,
+	ChatClickableURLs = true,
 
 	-- ACTION BARS
-	UnifyActionBars = true,
+	UnifyActionBars = false,
 	-- Separacion entre botones de las barras, en pixeles. Solo se aplica
 	-- con Unify o MiniBar puestos (Modules/ActionBars.lua).
 	ActionBarButtonSpace = 6,
@@ -213,6 +213,10 @@ local defaults = {
 	MiniBarHideBackground = false,
 	HideGryphons = false,
 	ActionBarScale = 1.0,
+	-- Bolsas y micromenu de MiniBar. APARTE de ActionBarScale a proposito:
+	-- antes compartian ese valor y agrandar la barra 1 con Ctrl + rueda te
+	-- agrandaba tambien la mochila y el micromenu.
+	MiniBarExtrasScale = 1.0,
 	ShowBagPackTexture = true,
 
 	-- LORTI UI SUB-OPTIONS
@@ -540,6 +544,16 @@ end
 
 -- Exports
 K.SaveConfig = SaveConfig;
+
+-- El valor DE FABRICA de un ajuste.
+--
+-- Lo necesita cualquiera que quiera volver a el sin copiar el numero a
+-- mano. El boton Reset de Action Bars, por ejemplo: sin esto tenia que
+-- leer C.ActionBarScale, que es justamente el valor que Ctrl + rueda ya
+-- habia cambiado, y "resetear" te devolvia a la escala agrandada.
+function K.GetConfigDefault(key)
+	return defaults[key];
+end
 K.ShowConfig = ShowConfig;
 K.ResetConfig = ResetConfig;
 K.IsConfigLoaded = IsConfigLoaded;
