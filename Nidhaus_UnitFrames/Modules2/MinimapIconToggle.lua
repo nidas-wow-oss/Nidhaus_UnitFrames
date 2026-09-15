@@ -49,6 +49,13 @@ local PROTECTED = {
 	-- ocultarlo con los demas el minimapa quedaba sin contorno, flotando
 	-- sobre el mundo, y al volver a mostrarlos ya no coincidia con nada.
 	["NUF_MinimapSquareBorder"] = true,
+	-- Y EL BORDE FINO (estilo Light). Mismo caso que el de arriba y por
+	-- eso el mismo remedio: es parte del MAPA, no un icono de addon.
+	--
+	-- Faltaba en esta lista, asi que el barrido de "ocultar iconos al
+	-- pasar el mouse" se lo llevaba puesto: se escondian los iconos y el
+	-- borde desaparecia con ellos.
+	["NUF_MinimapThinBorder"]   = true,
 	-- El reloj: siempre visible.
 	["TimeManagerClockButton"]  = true,
 	["TimeManagerClockTicker"]  = true,
@@ -369,6 +376,13 @@ K.RegisterModule("MinimapIconToggle", {
 	name    = L["MOD_MINIMAP_TOGGLE"] or "Minimap Icon Toggle",
 	desc    = L["MOD_MINIMAP_TOGGLE_DESC"] or "Button on the minimap corner that hides or shows every minimap icon.",
 	default = false,
+	-- FUERA DE LA PESTANA DE MODULOS.
+	--
+	-- Ya tiene su casilla en Interface > Minimap, que es donde uno la
+	-- busca. Aparecer tambien en la lista de modulos era la misma opcion
+	-- dos veces, y dos lugares para lo mismo es un lugar de mas donde se
+	-- pueden contradecir.
+	hideFromModulesTab = true,
 	configLabel = L["BTN_MODULE_TOGGLE"] or "Toggle",
 	configFunc = function() SetHidden(not forceHidden); end,
 	-- El modulo es SOLO el boton. Prenderlo o apagarlo no toca los iconos:

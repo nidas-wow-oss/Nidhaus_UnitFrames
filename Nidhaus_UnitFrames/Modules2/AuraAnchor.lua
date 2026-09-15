@@ -299,3 +299,18 @@ end);
 
 RestoreAnchorPosition();
 K.UpdateAuraAnchorEvents();
+
+-- ---------------------------------------------------------
+-- ANOTARSE EN EL CORE
+--
+-- Las posiciones de las auras viven en un store PROPIO, no en globalPos.
+-- Por eso al alternar entre MiniBar y el modo normal la barra de auras se
+-- quedaba donde la habia dejado el modo anterior: el rearmado reponia
+-- globalPos y de esto no se enteraba nadie.
+--
+-- Anotandose aca, el paso 3 del rearmado la llama siempre, sin que nadie
+-- tenga que acordarse.
+-- ---------------------------------------------------------
+if K.LayoutRegisterStore then
+	K.LayoutRegisterStore("AuraAnchor", RestoreAnchorPosition);
+end

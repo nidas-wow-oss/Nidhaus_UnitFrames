@@ -467,6 +467,118 @@ charProfileInit:SetScript("OnEvent", function(self, event)
 end);
 
 -- =========================================================
+-- EL DROPDOWN QUE "A VECES NO MOSTRABA TODO"
+--
+-- No faltaban perfiles: faltaba LUGAR PARA DIBUJARLOS. Los menus de
+-- UIDropDownMenu en 3.3.5a no tienen barra de scroll. Se dibujan hacia
+-- abajo desde el control, y lo que se pasa del borde de la pantalla queda
+-- fuera, sin forma de llegar. Con cuatro personajes no se nota; pasando la
+-- docena, los ultimos de la lista (que esta ordenada alfabeticamente)
+-- simplemente no estan.
+--
+-- Por eso, cuando la lista se pone larga se agrupa por REINO: un submenu
+-- por reino, cada nivel corto, y siempre entra.
+--
+-- ---------------------------------------------------------
+-- LO QUE NO SE PUEDE ARREGLAR, Y CONVIENE QUE ESTE ESCRITO
+--
+-- Los perfiles viven en NidhausUnitFramesDB, que es una SavedVariable de
+-- CUENTA:  WTF\Account\<TU CUENTA>\SavedVariables\
+--
+-- Cada cuenta de WoW tiene su propio archivo y el juego no le da a ningun
+-- addon forma de leer el de otra: no hay acceso a disco desde Lua. Asi que
+-- los personajes de OTRA cuenta no aparecen aca, y no hay codigo que los
+-- pueda hacer aparecer.
+--
+-- El camino que si existe es el Export/Import por texto, que esta al lado
+-- justamente para eso: se exporta en la cuenta A, se pega en la B.
+--
+-- Y el otro motivo real por el que un personaje puede faltar: las
+-- SavedVariables se escriben a disco al SALIR DEL JUEGO, no con /reload.
+-- Un personaje que entro por primera vez y todavia no deslogueo no esta
+-- en el archivo.
+-- =========================================================
+local GROUP_FROM = 12;     -- a partir de cuantos personajes se agrupa
+
+-- "Iorlyn - Lordaeron [PvP only]"  ->  "Lordaeron [PvP only]"
+local function RealmOf(key)
+	return string.match(key, "^.- %- (.+)$") or (L["PROFILE_OTHER_REALM"] or "Other");
+end
+
+local function GroupByRealm(names)
+	local realms, order = {}, {};
+	for _, key in ipairs(names) do
+		local r = RealmOf(key);
+		if not realms[r] then
+			realms[r] = {};
+			order[#order + 1] = r;
+		end
+		table.insert(realms[r], key);
+	end
+	table.sort(order);
+	return realms, order;
+end
+
+-- Dibuja la lista de personajes. Lo usan LOS DOS dropdowns del panel
+-- (perfiles del addon y setup del personaje): son el mismo problema, y
+-- tener una sola copia evita que arreglar uno deje el otro como estaba.
+--
+--   names      lista ya ordenada
+--   current    clave del personaje actual  (se pinta en dorado)
+--   picked     clave elegida ahora mismo   (para el tilde)
+--   onPick     function(key)  que hacer al elegir
+local function AddCharButtons(names, current, picked, onPick, level, menuList, emptyText)
+	level = level or 1;
+
+	if #names == 0 then
+		local info = UIDropDownMenu_CreateInfo();
+		info.text         = emptyText or "";
+		info.disabled     = true;
+		info.notCheckable = true;
+		UIDropDownMenu_AddButton(info, level);
+		return;
+	end
+
+	local realms, order = GroupByRealm(names);
+	-- Agrupar uno solo no agrupa nada: seria un submenu con todo adentro y
+	-- un click de mas para llegar a lo mismo.
+	local grouped = (#names > GROUP_FROM) and (#order > 1);
+
+	if grouped and level == 1 then
+		for _, realm in ipairs(order) do
+			local info = UIDropDownMenu_CreateInfo();
+			info.text         = realm .. "   (" .. #realms[realm] .. ")";
+			info.hasArrow     = true;
+			info.notCheckable = true;
+			info.menuList     = realm;
+			UIDropDownMenu_AddButton(info, level);
+		end
+		return;
+	end
+
+	local list = names;
+	if grouped and menuList and realms[menuList] then
+		list = realms[menuList];
+	end
+
+	for _, key in ipairs(list) do
+		local info = UIDropDownMenu_CreateInfo();
+		if key == current then
+			info.text = "|cffFFD700[" .. (L["PROFILE_CURRENT"] or "current") .. "] " .. key .. "|r";
+		else
+			info.text = key;
+		end
+		info.value   = key;
+		info.checked = (picked == key);
+		info.func    = function(btn)
+			onPick(btn.value);
+			CloseDropDownMenus();
+		end;
+		UIDropDownMenu_AddButton(info, level);
+	end
+end
+
+-- =========================================================
 -- PopulateExtraTab
 -- =========================================================
 function K.PopulateExtraTab(panel)
@@ -513,6 +625,18 @@ function K.PopulateExtraTab(panel)
 	local copyLabel = profileBox:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 	copyLabel:SetPoint("TOPLEFT", 16, -44);
 	copyLabel:SetText(L["PROFILE_COPY_FROM"] or "Copy profile from:");
+
+	-- POR QUE NO ESTA MI PERSONAJE DE LA OTRA CUENTA.
+	--
+	-- Es la pregunta que se hace cualquiera al abrir esto, y la respuesta
+	-- no se puede deducir mirando el dropdown. Dicha aca al lado, se
+	-- entiende en el acto y no parece un bug del addon.
+	local profileNote = profileBox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+	profileNote:SetPoint("LEFT", copyLabel, "RIGHT", 10, 0);
+	profileNote:SetPoint("RIGHT", profileBox, "RIGHT", -16, 0);
+	profileNote:SetJustifyH("LEFT");
+	profileNote:SetText("|cff8A8A8A" .. (L["PROFILE_NOTE_ACCOUNT"]
+		or "Only characters from this WoW account. For another account, use Export / Import.") .. "|r");
 
 	-- Status de feedback (mismo nivel que el label, lado derecho)
 	local profileStatus = profileBox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
@@ -574,30 +698,13 @@ function K.PopulateExtraTab(panel)
 
 		local names = GetCharProfileNames();
 		local currentKey = GetCurrentCharKey();
-		UIDropDownMenu_Initialize(copyDD, function(self, level)
-			if #names == 0 then
-				local info = UIDropDownMenu_CreateInfo();
-				info.text = L["PROFILE_NONE_YET"] or "(No profiles yet)";
-				info.disabled = true;
-				info.notCheckable = true;
-				UIDropDownMenu_AddButton(info, level);
-			else
-				for _, name in ipairs(names) do
-					local info = UIDropDownMenu_CreateInfo();
-					if name == currentKey then
-						info.text = "|cffFFD700[" .. (L["PROFILE_CURRENT"] or "current") .. "] " .. name .. "|r";
-					else
-						info.text = name;
-					end
-					info.value = name;
-					info.func = function(btn)
-						selectedProfile = btn.value;
-						UIDropDownMenu_SetText(copyDD, btn.value);
-					end;
-					info.checked = (selectedProfile == name);
-					UIDropDownMenu_AddButton(info, level);
-				end
-			end
+		-- El tercer parametro (menuList) es el que trae el reino cuando se
+		-- abre un submenu. Sin recibirlo, el nivel 2 no sabria que dibujar.
+		UIDropDownMenu_Initialize(copyDD, function(self, level, menuList)
+			AddCharButtons(names, currentKey, selectedProfile, function(key)
+				selectedProfile = key;
+				UIDropDownMenu_SetText(copyDD, key);
+			end, level, menuList, L["PROFILE_NONE_YET"] or "(No profiles yet)");
 		end);
 		UIDropDownMenu_SetText(copyDD, selectedProfile or "");
 	end
@@ -694,30 +801,11 @@ function K.PopulateExtraTab(panel)
 
 		local names = K.SlotGetCharNames();
 		local current = K.SlotGetCharKey();
-		UIDropDownMenu_Initialize(slotDD, function(self, level)
-			if #names == 0 then
-				local info = UIDropDownMenu_CreateInfo();
-				info.text = L["SLOT_NONE_YET"] or "(No characters yet)";
-				info.disabled = true;
-				info.notCheckable = true;
-				UIDropDownMenu_AddButton(info, level);
-				return;
-			end
-			for _, name in ipairs(names) do
-				local info = UIDropDownMenu_CreateInfo();
-				if name == current then
-					info.text = "|cffFFD700[" .. (L["PROFILE_CURRENT"] or "current") .. "] " .. name .. "|r";
-				else
-					info.text = name;
-				end
-				info.value = name;
-				info.func = function(btn)
-					selectedSlotChar = btn.value;
-					UIDropDownMenu_SetText(slotDD, btn.value);
-				end;
-				info.checked = (selectedSlotChar == name);
-				UIDropDownMenu_AddButton(info, level);
-			end
+		UIDropDownMenu_Initialize(slotDD, function(self, level, menuList)
+			AddCharButtons(names, current, selectedSlotChar, function(key)
+				selectedSlotChar = key;
+				UIDropDownMenu_SetText(slotDD, key);
+			end, level, menuList, L["SLOT_NONE_YET"] or "(No characters yet)");
 		end);
 		UIDropDownMenu_SetText(slotDD, selectedSlotChar or "");
 	end

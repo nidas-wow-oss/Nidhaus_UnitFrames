@@ -8,9 +8,9 @@ NUF was built by combining and reworking several existing addons — including E
 
 > ## Download
 >
-> **Latest version: 3.6** — this is the current, recommended build and the one actively in use.
+> **Latest version: 3.7** — this is the current, recommended build and the one actively in use.
 >
-> **[Download v3.6 (latest release)](../../releases/latest)**
+> **[Download v3.7 (latest release)](../../releases/latest)**
 >
 > One download, everything included: the addon and its options panel.
 
@@ -196,14 +196,14 @@ This repository contains **three addons**. The first two are the core; the third
 
 ## Installation
 
-1. Download **v3.6** from the [releases page](../../releases/latest).
+1. Download **v3.7** from the [releases page](../../releases/latest).
 2. Extract the archive. You will get two folders: `Nidhaus_UnitFrames` and `Nidhaus_UnitFrames_Config`.
 3. Copy **both** folders into your WoW `Interface/AddOns/` directory.
 4. Restart the WoW client, or type `/reload` if you are already in-game.
 5. Enable both addons on the character selection screen.
 
 > **Updating from an older version?** Delete the old `Nidhaus_UnitFrames` folder before copying the new
-> one instead of overwriting it — 3.6 reorganised files, and leftovers from a previous build can cause
+> one instead of overwriting it — files get reorganised between releases, and leftovers can cause
 > errors. Your saved settings live in the `WTF` folder and are preserved.
 
 > If you download the repository with the green *Code* button instead of the release, the extracted folder
@@ -273,6 +273,21 @@ Integration, porting to 3.3.5a, bug fixing and everything else: **Nidhaus**.
 ---
 
 ## Changelog
+
+### v3.7
+- Party frames fall back to Blizzard's own health bar and background while in a vehicle.
+- MiniBar no longer fights the vehicle bar while driving (demolishers, cannons).
+- Micro menu stays on top of the vehicle bar instead of being drawn behind its art.
+- Gargoyle Tracker crowd-control timers respect PvP durations (Turn Evil shows 10s, not 20s).
+- Move Everything only offers the Pet frame to classes that actually have a pet.
+- Cast bar keeps its scale and position when toggled, and stays compatible with Move Everything.
+- Profiles dropdown groups characters by realm instead of running off the screen.
+- Party pet frames for party1-4, arena-only by default (`/ppf arena`).
+- Options window tabs shrink and pack together when the window is resized.
+- Minimap: the square shape now loads the Blizzard default border texture.
+- The Arena frames checkbox and the Lorti UI sub-options were calling functions that did not exist; both work now.
+- Removed the leftover diagnostic slash commands.
+- Spanish localisation completed: every string now exists in both languages.
 
 ### v3.6
 - Fixed style menu options

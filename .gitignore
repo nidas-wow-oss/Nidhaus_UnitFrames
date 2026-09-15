@@ -12,4 +12,9 @@ desktop.ini
 
 # Material no usado
 _unused/
+_to_delete/
 *.xml.bak
+
+# Herramienta de diagnostico: queda en el disco, no va al repo.
+# No la carga el XML, asi que sacarla no cambia nada en el juego.
+Nidhaus_UnitFrames/Core/LayoutWatch.lua

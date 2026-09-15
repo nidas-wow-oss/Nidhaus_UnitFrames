@@ -108,6 +108,10 @@ local orig    = {};      -- [nombre de la barra] = foto de fabrica
 local applied = false;
 local castFont;          -- objeto de fuente, creado una sola vez
 
+-- Escala que tenia la barra del JUGADOR antes de que este modulo se la
+-- tomara prestada. Ver DEVOLVER LA ESCALA, mas abajo.
+local playerScaleBefore;
+
 -- ---------------------------------------------------------
 -- Utilidades de foto / restauracion
 -- ---------------------------------------------------------
@@ -390,6 +394,66 @@ end
 --   jugador          -> Move Everything (globalPos.CastBar.scale)
 --   objetivo y foco  -> este modulo
 -- ---------------------------------------------------------
+-- DEVOLVER LA ESCALA AL APAGAR
+--
+-- Aca estaba el bug: el modulo ESCRIBIA la escala de la barra del jugador
+-- en un store que no es suyo (globalPos.CastBar, de Move Everything) y no
+-- la devolvia nunca. Al destildar "Custom Cast Bar" volvia el arte de
+-- Blizzard pero la barra se quedaba a 1.2, que es el numero de pw: barra
+-- de Blizzard con tamaño de pw. Eso es el "se bugea el tamaño".
+--
+-- Quien toma prestado devuelve. Se guarda el valor que habia ANTES de la
+-- primera aplicacion y se repone al apagar, por K.SetGlobalFrameScale para
+-- que el frame, globalPos y el slider queden diciendo lo mismo. Escribir
+-- SetScale a mano dejaria globalPos con 1.2 y el proximo login la volveria
+-- a agrandar sola.
+--
+-- El caso raro: si el modulo ya venia encendido del login, lo que hay
+-- guardado ES nuestro propio valor de la sesion pasada, no el del usuario.
+-- No hay forma de distinguirlos, asi que en ese caso se devuelve 1, que es
+-- el tamaño con el que Blizzard la dibuja.
+local function CapturePlayerScale(target)
+	if playerScaleBefore ~= nil then return; end
+	local v;
+	if K.GetGlobalScale then v = K.GetGlobalScale("CastBar"); end
+	if type(v) ~= "number" then
+		local bar = _G["CastingBarFrame"];
+		v = (bar and bar:GetScale()) or 1;
+	end
+	if type(target) == "number" and math.abs(v - target) < 0.001 then
+		v = 1;
+	end
+	playerScaleBefore = v;
+end
+
+local function ReleasePlayerScale()
+	local v = playerScaleBefore;
+	playerScaleBefore = nil;          -- la proxima vez se vuelve a medir
+	if type(v) ~= "number" then return; end
+	if K.SetGlobalFrameScale and K.SetGlobalFrameScale("CastBar", v) then
+		return;
+	end
+	local bar = _G["CastingBarFrame"];
+	if bar then pcall(bar.SetScale, bar, v); end
+end
+
+-- LA POSICION TAMBIEN ES DE MOVE EVERYTHING
+--
+-- CastingBarFrame es un frame "managed": Blizzard lo reacomoda solo cada
+-- vez que cambia algo alrededor (UIParent_ManageFramePositions). Move
+-- Everything lo saca de esa lista y le clava la posicion del usuario.
+--
+-- Prender o apagar el estilo custom cambia el alto util de la barra (el
+-- icono flotante, el marco subido 26px), y eso alcanza para que Blizzard
+-- la reacomode y la posicion del usuario se pierda hasta el /reload. Por
+-- eso, en los dos sentidos del toggle, se le pide a Move Everything que
+-- reponga LO SUYO. Un solo dueño, y el toggle no le compite.
+local function ReapplyPlayerPosition()
+	if K.RestoreGlobalPosition then
+		pcall(K.RestoreGlobalPosition, "CastBar");
+	end
+end
+
 function K.ApplyCastBarPWScale(value)
 	if type(value) ~= "number" then value = C.CastBarPWScale; end
 	if type(value) ~= "number" then return; end
@@ -430,7 +494,10 @@ function K.EnableCastBarPW()
 		if BarAllowed(name) then StyleOne(name); else RestoreOne(name); end
 	end
 
+	-- ANTES de escribirle la nuestra, no despues.
+	CapturePlayerScale(C.CastBarPWScale);
 	K.ApplyCastBarPWScale(C.CastBarPWScale);
+	ReapplyPlayerPosition();
 
 	-- Que el contador de segundos vuelva a acomodar el nombre del
 	-- hechizo: recien le centramos el texto encima.
@@ -443,6 +510,9 @@ function K.DisableCastBarPW()
 	if not applied then return; end
 	applied = false;
 	for _, name in ipairs(BARS) do RestoreOne(name); end
+
+	ReleasePlayerScale();
+	ReapplyPlayerPosition();
 
 	if C.CastingTimers and K.ToggleCastingTimers then
 		K.ToggleCastingTimers(true);
@@ -490,6 +560,24 @@ end
 -- algun otro addon lo crea tarde reintentamos enganchar en cada
 -- CONFIG_CHANGED: HookBars es idempotente.
 -- ---------------------------------------------------------
+-- ---------------------------------------------------------
+-- ANOTARSE EN EL REARMADO
+--
+-- Rearmar la interfaz (alternar MiniBar/Unify, apretar reset) vuelve a
+-- cero y aplica de nuevo. Su paso 2 repone globalPos, o sea la posicion y
+-- la escala que el usuario le dio a esta barra con Move Everything. Lo que
+-- NO repone es el ESTILO, porque el estilo no vive en ningun store: sin
+-- esta linea, despues de un rearmado la barra se quedaba con el arte de
+-- Blizzard hasta el casteo siguiente.
+--
+-- Anotarse es una linea. Olvidarse ya no se puede.
+-- ---------------------------------------------------------
+if K.LayoutRegisterStore then
+	K.LayoutRegisterStore("CastBarPW", function()
+		K.ApplyCastBarPW();
+	end);
+end
+
 K.RegisterConfigEvent("CONFIG_LOADED", function()
 	HookBars();
 	K.ApplyCastBarPW();

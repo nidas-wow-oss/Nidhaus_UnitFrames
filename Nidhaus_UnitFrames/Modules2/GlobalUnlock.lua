@@ -30,6 +30,16 @@ local overlays = {};
 -- managed    = lo administra UIParent_ManageFramePositions
 -- protected  = frame protegido: no se puede mover en combate
 -- scalable   = se agranda con Ctrl + rueda
+-- noClamp    = NO se lo frena contra el borde de la pantalla.
+--
+--              Por defecto todo movible se frena, para que no se pierda
+--              fuera de la vista. Pero las tres filas de accion tienen
+--              ARTE QUE CUELGA POR DEBAJO del contenedor: el contenedor
+--              mide lo que miden los botones (36 px), y el fondo con los
+--              grifos baja mas todavia. Frenado, el contenedor se planta
+--              en y=0 y el arte NO PUEDE seguir bajando: ahi nace el
+--              desfasaje entre la barra y el fondo. Por eso estas tres,
+--              y solo estas, van sueltas.
 -- overlayPad  = expande el recuadro por FUERA del frame, en pixeles. Para
 --               frames cuyo arte se dibuja mas grande que ellos mismos.
 -- overlaySize = tamaño MINIMO del recuadro. Necesario para frames que no
@@ -41,6 +51,36 @@ local overlays = {};
 --               como MinimapCluster respecto del mapa.
 -- overlayOffset = corrimiento { x, y } del recuadro, en pixeles. Para
 --               anclas cuyo contenido no arranca justo en su borde.
+-- CLASES QUE PUEDEN TENER MASCOTA.
+--
+-- La caja de "Pet" aparecia en el modo mover para TODOS, tambien para un
+-- paladin, que no va a tener mascota nunca en su vida.
+--
+-- Y el motivo por el que aparecia sin mascota es bueno: un cazador entre
+-- mascota y mascota tiene que poder acomodar el marco igual, y por eso la
+-- entrada lleva overlaySize fijo en vez de medir el frame. Pero eso vale
+-- para quien PUEDE tener una, no para quien no.
+--
+-- DK, mago, sacerdote y chaman entran porque sus invocaciones -- ghoul,
+-- elemental de agua, shadowfiend, elementales y lobos -- ocupan la unidad
+-- "pet" y muestran ese marco, aunque sean temporales. Druida no: los
+-- treants son guardianes y no aparecen ahi.
+local PET_CLASSES = {
+	HUNTER      = true,
+	WARLOCK     = true,
+	DEATHKNIGHT = true,
+	MAGE        = true,
+	PRIEST      = true,
+	SHAMAN      = true,
+};
+
+-- OJO: va ACA ARRIBA y no al lado de PlayerClass, que es donde la escribi
+-- primero. MOVABLES se construye en este mismo punto del archivo, asi que
+-- una local declarada mas abajo es INVISIBLE para el: "class = PET_CLASSES"
+-- se habria leido como global nil, la entrada habria quedado sin filtro y
+-- el paladin seguiria viendo la caja -- sin ningun error que lo delate. Es
+-- el mismo tropiezo que ya me comio ApplyBarHolderScales y el stanceHolder.
+
 local MOVABLES = {
 	-- SIN tamaño fijo: el recuadro toma el del frame.
 	--
@@ -59,6 +99,7 @@ local MOVABLES = {
 	-- Si algun dia se lo quiere devolver, primero hay que decidir cual de
 	-- los dos manda; mientras tanto, uno solo.
 	{ key = "Pet",     group = "frames", frames = {"PetFrame"},     label = "Pet",    scalable = true, managed = "PetFrame",
+	  class = PET_CLASSES, orIfPet = true,
 	  overlaySize = {120, 40} },   -- PetFrame mide poco: caja fija para poder agarrarlo sin mascota
 
 	-- Party 1-4 individuales (antes era UNA sola caja "Party").
@@ -97,8 +138,50 @@ local MOVABLES = {
 	-- se dibuja sobre NUF_ActionBarsBox, que abarca todas las barras a la
 	-- vista. Antes cubria solo los 510 de MainMenuBar y dejaba afuera media
 	-- barra unificada.
-	{ key = "MainBar",    group = "extra", frames = {"MainMenuBar"},           label = "Action Bars", scalable = true, protected = true, managed = "MainMenuBar",
-	  overlayOn = "NUF_ActionBarsBox" },
+	--
+	-- framesMiniBar: con MiniBar puesto se mueve y escala NUESTRO
+	-- contenedor, no MainMenuBar. MainMenuBar es el padre de las bolsas,
+	-- el micromenu y la barra de experiencia: escalarla los escalaba a
+	-- todos. El contenedor solo tiene los 12 botones.
+	--
+	-- Sin overlayOn en ese caso: el contenedor YA mide lo que ocupan los
+	-- botones, asi que el recuadro es el contenedor mismo y crece con la
+	-- escala en vez de quedarse del tamaño viejo.
+	{ key = "MainBar",    group = "extra", frames = {"MainMenuBar"},           label = "Action Bar 1", scalable = true, protected = true, managed = "MainMenuBar",
+	  framesMiniBar = {"NUF_ActionBarHolder1"}, noClamp = true,
+	  overlayOn = "NUF_ActionBar1Box" },
+
+	-- LAS TRES FILAS, POR SEPARADO.
+	--
+	-- Antes habia una sola entrada y su recuadro abarcaba las tres barras,
+	-- asi que solo se podia arrastrar el bloque. KkthnxUI no tiene un modo
+	-- especial para esto: cada barra es su propio movible, y punto. Es lo
+	-- mismo que se hace aca.
+	--
+	-- NO se reparentan botones. Estas dos son frames de Blizzard,
+	-- protegidos y con gestor de posiciones encima, exactamente como Pet
+	-- Bar y Totem Bar, que ya se mueven bien con protected + managed. La
+	-- maquinaria ya existe; lo unico que faltaba era darles su entrada.
+	--
+	-- Sin anchorTo a proposito: la gracia es que cada una vaya a donde vos
+	-- la dejes, no que sigan a la principal.
+	--
+	-- SOLO CON MINIBAR (setting = "MiniBarEnabled").
+	--
+	-- En MiniBar cada fila es una barra entera y moverlas por separado
+	-- tiene sentido. Unify hace lo contrario A PROPOSITO: funde las tres en
+	-- dos filas largas y reparte los botones entre marcos distintos --
+	-- MultiBarBottomRightButton7 se ancla a MainMenuBar, no a su propia
+	-- barra. Ahi "mover la barra 3" no significa nada: se llevaria seis
+	-- botones y dejaria los otros seis donde estaban.
+	--
+	-- Por eso en Unify se sigue moviendo el bloque, que es lo que Unify es.
+	{ key = "ActionBar2", group = "extra", frames = {"MultiBarBottomLeft"},   label = "Action Bar 2",
+	  scalable = true, onlyIfVisible = true, setting = "MiniBarEnabled",
+	  framesMiniBar = {"NUF_ActionBarHolder2"}, noClamp = true },
+	{ key = "ActionBar3", group = "extra", frames = {"MultiBarBottomRight"},  label = "Action Bar 3",
+	  scalable = true, onlyIfVisible = true, setting = "MiniBarEnabled",
+	  framesMiniBar = {"NUF_ActionBarHolder3"}, noClamp = true },
 
 	-- BARRAS QUE CUELGAN DE LA PRINCIPAL
 	--
@@ -108,6 +191,7 @@ local MOVABLES = {
 	-- relativo, asi que sigue acompañando a la principal desde el lugar
 	-- nuevo. Es el mismo patron de "Holder" que usa Modules/ActionBars.lua.
 	{ key = "PetBar",     group = "extra", frames = {"PetActionBarFrame"},     label = "Pet Bar",
+	  class = PET_CLASSES, orIfPet = true,
 	  scalable = true, protected = true, anchorTo = "MainMenuBar", managed = "PetActionBarFrame", onlyIfVisible = true, overlaySize = { 300, 34 } },
 	-- Se mueve NUESTRO contenedor, no el frame de Blizzard: los botones
 	-- cuelgan de el (ver K.AttachStanceButtons en Modules/ActionBars.lua).
@@ -324,6 +408,7 @@ local function PlayerClass()
 	return playerClass;
 end
 
+
 -- REGLA para poner "class" en una entrada:
 --
 --   SI el modulo mira TU personaje  ->  lleva class
@@ -351,7 +436,24 @@ local function EntryModuleActive(entry)
 	-- Si por lo que sea la clase todavia no se puede leer, NO se filtra:
 	-- mostrar de mas es preferible a esconder algo que si corresponde.
 	local cls = PlayerClass();
-	if entry.class and cls and entry.class ~= cls then return false; end
+	if entry.class and cls then
+		if type(entry.class) == "table" then
+			-- Varias clases: la entrada vale para cualquiera de la lista.
+			if not entry.class[cls] then
+				-- RED DE SEGURIDAD.
+				--
+				-- Si hoy tenes mascota de verdad, la caja aparece aunque tu
+				-- clase no figure en la lista. Asi, si la lista se me quedo
+				-- corta, el sintoma es una caja de mas -- que se ignora --
+				-- y no una funcion que falta, que es mucho peor de notar.
+				if not (entry.orIfPet and UnitExists and UnitExists("pet")) then
+					return false;
+				end
+			end
+		elseif entry.class ~= cls then
+			return false;
+		end
+	end
 
 	-- Algunas cosas movibles no son modulos registrados sino un checkbox
 	-- suelto del panel (las barras de casteo del grupo, por ejemplo, que
@@ -376,6 +478,18 @@ end
 
 -- Devuelve el frame real a mover para una entrada
 local function ResolveFrame(entry)
+	-- CON MINIBAR, EL CONTENEDOR MANDA.
+	--
+	-- No alcanza con preguntar si el contenedor existe: una vez creado no
+	-- se destruye nunca, asi que al volver a Unify seguiria ganandole al
+	-- frame de Blizzard. Se mira el MODO, que es el dato real.
+	if entry.framesMiniBar and C.MiniBarEnabled == true then
+		for _, name in ipairs(entry.framesMiniBar) do
+			local f = _G[name];
+			if f and f.SetPoint then return f; end
+		end
+	end
+
 	for _, name in ipairs(entry.frames) do
 		local f = _G[name];
 		if f and f.SetPoint then return f; end
@@ -402,9 +516,21 @@ function EntryHasContent(entry)
 	if entry.key == "StanceBar" then
 		local n = (GetNumShapeshiftForms and GetNumShapeshiftForms()) or 0;
 		if n < 1 then return false; end
-		-- El Holder solo se usa en modo unificado. En MiniBar la barra la
-		-- apila ese modo, asi que no hay nada que arrastrar aca.
-		if C.UnifyActionBars ~= true then return false; end
+		-- EL HOLDER YA VIVE EN LOS DOS MODOS.
+		--
+		-- Esta linea decia "solo en unificado" porque cuando se escribio
+		-- era cierto: MiniBar no creaba el Holder, anclaba ShapeshiftButton1
+		-- a mano y no habia nada que arrastrar. Era la razon real por la que
+		-- la barra de auras del paladin no aparecia en el modo mover con
+		-- MiniBar puesto -- aunque el Holder ya existiera, este filtro la
+		-- descartaba antes de dibujar el recuadro.
+		--
+		-- Ahora MiniBar tambien llama a AttachStanceButtons y ancla el
+		-- Holder, asi que hay algo que mover en los dos modos. Sin ningun
+		-- modo de barras puesto no hay Holder y se sigue descartando.
+		if C.UnifyActionBars ~= true and C.MiniBarEnabled ~= true then
+			return false;
+		end
 		return true;
 	elseif entry.key == "PetBar" then
 		if not (UnitExists("pet") or (PetHasActionBar and PetHasActionBar())) then
@@ -482,29 +608,105 @@ local function DB()
 	return NidhausUnitFramesDB.globalPos;
 end
 
+-- ---------------------------------------------------------
+-- EL MODO DE BARRAS ES PARTE DE LA CLAVE
+--
+-- MiniBar y Unify colocan las tres filas de manera distinta. Una posicion
+-- guardada en un modo no significa nada en el otro, asi que al alternar
+-- entre los dos la fila 3 aparecia en el lugar del modo anterior: eso es
+-- lo que se veia como "se bugeo".
+--
+-- Cada modo guarda lo suyo, como en los otros addons. Solo las claves de
+-- PER_MODE_KEYS llevan sufijo; todo lo demas -- buffs, minimapa, cast bar
+-- -- sigue guardando donde guardaba, asi que no se pierde nada de lo que
+-- ya tenias configurado.
+-- ---------------------------------------------------------
+local function BarMode()
+	if C.MiniBarEnabled  == true then return "mini";  end
+	if C.UnifyActionBars == true then return "unify"; end
+	return "plain";
+end
+
+local PER_MODE_KEYS = { MainBar = true, ActionBar2 = true, ActionBar3 = true };
+
+-- Todo lo que MiniBar apila. Mover cualquiera de estos clava a los demas.
+local STACK_KEYS = {
+	MainBar = true, ActionBar2 = true, ActionBar3 = true,
+	StanceBar = true, TotemBar = true, PetBar = true, PossessBar = true,
+};
+
+local function EntryKey(entry)
+	local k = (type(entry) == "table") and entry.key or entry;
+	if PER_MODE_KEYS[k] then return k .. "#" .. BarMode(); end
+	return k;
+end
+
+-- Para que el panel pueda armar la lista de claves a resetear.
+K.BarModeKey = EntryKey;
+
 -- Blizzard reposiciona los frames "managed" en cada UIParent_ManageFramePositions.
 -- Si el usuario movio uno, lo sacamos de esa tabla para que deje de imantarse.
 -- Blizzard reposiciona los frames "managed" en cada UIParent_ManageFramePositions.
 -- La forma correcta de sacarlos de ahi (la que usa MoveAnything) es el flag
 -- oficial ignoreFramePositionManager en el propio frame, NO vaciar la tabla
 -- global UIPARENT_MANAGED_FRAME_POSITIONS.
+--
+-- ESTE ERA EL BUG DEL FONDO QUE SE IBA AL PISO.
+--
+-- Soltaba el frame que devuelve ResolveFrame. Y con MiniBar puesto,
+-- ResolveFrame NO devuelve MainMenuBar: devuelve NUF_ActionBarHolder1,
+-- porque lo que se arrastra es el contenedor (mira framesMiniBar).
+--
+-- O sea que le poniamos el flag al contenedor -- un marco nuestro, que el
+-- gestor de Blizzard no mira nunca -- y MainMenuBar, que es el que SI
+-- administra, se quedaba administrado. Cada vez que Blizzard corria
+-- UIParent_ManageFramePositions (abrir una bolsa, montar, aparecer la
+-- barra de mascota, un vehiculo, /reload) le reescribia el anclaje y el
+-- arte -- los grifos y la barra oscura -- se volvia al borde de abajo,
+-- mientras los botones se quedaban donde vos los habias puesto.
+--
+-- Por eso el reset "no arreglaba el fondo": el reset reanclaba el
+-- contenedor y un instante despues el gestor volvia a bajar MainMenuBar.
+-- Y por eso se veia sobre todo con escala: en 1.0 las dos posiciones casi
+-- coinciden, agrandado se separan y salta a la vista.
+--
+-- El mecanismo estaba bien. Estaba apuntado al frame equivocado.
+--
+-- Se suelta el que NOMBRA entry.managed, que es el dato fijo, y de paso
+-- tambien el resuelto si fuera otro. Ninguno de los dos sobra.
 local function ReleaseManaged(entry, frame)
 	if not entry.managed then return; end
+
+	local target = _G[entry.managed];
+	if target then target.ignoreFramePositionManager = true; end
+
 	frame = frame or ResolveFrame(entry);
-	if not frame then return; end
-	frame.ignoreFramePositionManager = true;
+	if frame and frame ~= target then
+		frame.ignoreFramePositionManager = true;
+	end
 end
 
 -- Devuelve el frame al control de Blizzard (para el reset)
 local function ReclaimManaged(entry)
 	if not entry.managed then return; end
-	local frame = ResolveFrame(entry);
-	if not frame then return; end
-	frame.ignoreFramePositionManager = nil;
-	frame.MAPoint = nil;
-	if frame.SetUserPlaced and not frame:IsProtected() then
-		pcall(frame.SetUserPlaced, frame, false);
+
+	local function Give(frame)
+		if not frame then return; end
+		frame.ignoreFramePositionManager = nil;
+		frame.MAPoint = nil;
+		if frame.SetUserPlaced and not frame:IsProtected() then
+			pcall(frame.SetUserPlaced, frame, false);
+		end
 	end
+
+	-- Mismo criterio que arriba: el reset tiene que devolver EL MISMO frame
+	-- que se solto. Si devolviera solo el resuelto, MainMenuBar quedaria
+	-- suelto para siempre y el reset no lo volveria a su sitio.
+	local target = _G[entry.managed];
+	Give(target);
+
+	local frame = ResolveFrame(entry);
+	if frame and frame ~= target then Give(frame); end
 end
 
 -- Los miembros de party guardan su posicion en el store de FrameDragger
@@ -549,6 +751,58 @@ local function DetachPartyChain()
 	end
 end
 
+-- Clava las OTRAS barras de accion donde se ven ahora mismo.
+--
+-- Se guarda su esquina inferior izquierda contra UIParent en coordenadas
+-- absolutas: es lo que las saca de la cadena. Si ya tenian posicion propia
+-- no se toca nada, que para eso la tenian.
+local function PinSiblingBars(movedKey)
+	-- TODA la pila de MiniBar, no solo las tres barras.
+	--
+	-- Postura, totem, mascota y posesion tambien colgaban de la ultima
+	-- fila. Si se pinchan solo las barras, en el proximo repintado esas
+	-- cuatro vuelven a la pila y se van detras de la barra que moviste.
+	-- ACA HABIA UNA LISTA DE NOMBRES ESCRITA A MANO, Y ESTABA VIEJA:
+	--
+	--     MainBar    = "MainMenuBar",
+	--     ActionBar2 = "MultiBarBottomLeft",
+	--     ActionBar3 = "MultiBarBottomRight",
+	--
+	-- Con MiniBar puesto, esos NO son los marcos que se mueven. Los
+	-- botones se sacaron de ahi y viven en NUF_ActionBarHolder1/2/3; los
+	-- de Blizzard quedan tirados donde el juego los dejo, sin relacion con
+	-- la fila que se ve en pantalla.
+	--
+	-- Resultado: al arrastrar la fila 1 se les guardaba la posicion a los
+	-- marcos equivocados. Las filas 2 y 3 se quedaban SIN posicion propia,
+	-- asi que en el repintado siguiente volvian a la pila y se acomodaban
+	-- detras de la fila 1: se movian solas, sin que nadie se lo pidiera.
+	--
+	-- Es el mismo error que ReleaseManaged, al reves: alli se resolvia el
+	-- frame cuando habia que usar el nombre fijo, y aca se usaba un nombre
+	-- fijo cuando habia que resolverlo.
+	--
+	-- Se le pregunta a ResolveFrame, que ya sabe cual manda en cada modo.
+	-- Una sola fuente de verdad, y esta lista no se puede volver a quedar
+	-- vieja cuando se agregue o se renombre un contenedor.
+	local db = DB();
+
+	for _, entry in ipairs(MOVABLES) do
+		if STACK_KEYS[entry.key] and entry.key ~= movedKey then
+			local dk = EntryKey(entry);
+			local f  = ResolveFrame(entry);
+			if f and f:IsShown() and f:GetLeft() and not (db[dk] and db[dk].point) then
+				db[dk] = db[dk] or {};
+				db[dk].point         = "BOTTOMLEFT";
+				db[dk].relativePoint = "BOTTOMLEFT";
+				db[dk].x             = f:GetLeft();
+				db[dk].y             = f:GetBottom();
+				db[dk].rel           = nil;
+			end
+		end
+	end
+end
+
 local function SavePartyMemberPosition(entry, frame)
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.positions then NidhausUnitFramesDB.positions = {}; end
@@ -574,24 +828,32 @@ local function SavePosition(entry, frame)
 		return;
 	end
 	local db = DB();
-	db[entry.key] = db[entry.key] or {};
+	db[EntryKey(entry)] = db[EntryKey(entry)] or {};
 
 	-- Barras hijas: se guarda el DESPLAZAMIENTO respecto de su padre, no la
 	-- posicion en pantalla. Asi mover la barra principal las arrastra a
 	-- todas, y mover una por separado solo cambia su distancia a la madre.
-	if entry.anchorTo then
+	-- anchorTo guarda la posicion COMO OFFSET de otro frame, para que lo
+	-- que cuelga de la barra principal la siga cuando la moves. En Unify
+	-- eso es lo que se quiere.
+	--
+	-- En MiniBar NO: ahi cada cosa tiene que quedar donde la dejaste, que
+	-- es todo el punto de haber cortado la cadena. Guardar un offset
+	-- contra MainMenuBar volveria a atar la barra de auras a la barra 1 y
+	-- moverla la arrastraria de nuevo.
+	if entry.anchorTo and C.MiniBarEnabled ~= true then
 		local parent = _G[entry.anchorTo];
 		if parent and parent:GetLeft() and frame:GetLeft() then
-			db[entry.key].point         = "BOTTOMLEFT";
-			db[entry.key].relativePoint = "BOTTOMLEFT";
-			db[entry.key].x             = frame:GetLeft()   - parent:GetLeft();
-			db[entry.key].y             = frame:GetBottom() - parent:GetBottom();
-			db[entry.key].rel           = entry.anchorTo;
+			db[EntryKey(entry)].point         = "BOTTOMLEFT";
+			db[EntryKey(entry)].relativePoint = "BOTTOMLEFT";
+			db[EntryKey(entry)].x             = frame:GetLeft()   - parent:GetLeft();
+			db[EntryKey(entry)].y             = frame:GetBottom() - parent:GetBottom();
+			db[EntryKey(entry)].rel           = entry.anchorTo;
 			-- Se re-ancla en el acto: si se deja colgando de UIParent, deja
 			-- de seguir a la principal hasta el proximo login.
 			frame:ClearAllPoints();
 			frame:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT",
-				db[entry.key].x, db[entry.key].y);
+				db[EntryKey(entry)].x, db[EntryKey(entry)].y);
 			ReleaseManaged(entry, frame);
 			return;
 		end
@@ -599,11 +861,11 @@ local function SavePosition(entry, frame)
 
 	local point, _, relativePoint, x, y = frame:GetPoint();
 	if not point then return; end
-	db[entry.key].point         = point;
-	db[entry.key].relativePoint = relativePoint;
-	db[entry.key].x             = x;
-	db[entry.key].y             = y;
-	db[entry.key].rel           = nil;
+	db[EntryKey(entry)].point         = point;
+	db[EntryKey(entry)].relativePoint = relativePoint;
+	db[EntryKey(entry)].x             = x;
+	db[EntryKey(entry)].y             = y;
+	db[EntryKey(entry)].rel           = nil;
 	ReleaseManaged(entry, frame);
 
 	if entry.auraAnchor then
@@ -613,12 +875,37 @@ local function SavePosition(entry, frame)
 		if K.SaveDebuffAnchorPosition then K.SaveDebuffAnchorPosition(); end
 		if K.ReanchorDebuffs then K.ReanchorDebuffs(); end
 	end
+
+	-- ── FUERA EL ANCLA ENTRE BARRAS ──
+	--
+	-- MiniBar apila las tres: la 2 sobre la 1 y la 3 sobre la 2. Mientras
+	-- una no tenga posicion propia sigue colgada de la de abajo, asi que
+	-- mover la barra 1 se llevaba las otras dos puestas.
+	--
+	-- En cuanto tocas UNA, las otras dos se clavan donde estan AHORA. Con
+	-- posicion propia salen de la pila (MiniBar_UpdateActionBars ya no las
+	-- toca) y cada una queda independiente de verdad.
+	--
+	-- Se hace al guardar y no al empezar a arrastrar porque aca ya sabemos
+	-- que el movimiento fue a proposito.
+	-- CLAVAR LAS HERMANAS.
+	--
+	-- Al aplanar, la pila quedo suelta pero SIN posicion guardada. En el
+	-- proximo repintado, las que no tengan la suya vuelven a la cadena y
+	-- se van detras de la que moviste. Guardarles su lugar actual las deja
+	-- donde estan para siempre.
+	--
+	-- Se hace al guardar y no al arrastrar: aca ya sabemos que el
+	-- movimiento fue a proposito.
+	if C.MiniBarEnabled == true and STACK_KEYS[entry.key] then
+		PinSiblingBars(entry.key);
+	end
 end
 
 local function SaveScale(entry, scale)
 	local db = DB();
-	db[entry.key] = db[entry.key] or {};
-	db[entry.key].scale = scale;
+	db[EntryKey(entry)] = db[EntryKey(entry)] or {};
+	db[EntryKey(entry)].scale = scale;
 	if entry.auraAnchor and K.SaveAuraAnchorScale then
 		K.SaveAuraAnchorScale(scale);
 	elseif entry.debuffAnchor and K.SaveDebuffAnchorScale then
@@ -657,7 +944,7 @@ local function ApplyPoint(frame, entry, pos)
 	-- eso, UIParent como toda la vida.
 	local anchorFrame = (pos.rel and _G[pos.rel]) or UIParent;
 	frame._nufApplying = true;
-	frame:SetClampedToScreen(true);
+	frame:SetClampedToScreen(entry.noClamp ~= true);
 	frame:ClearAllPoints();
 	frame:SetPoint(pos.point, anchorFrame, pos.relativePoint, pos.x, pos.y);
 	frame._nufApplying = nil;
@@ -704,11 +991,11 @@ local function RestoreOne(entry)
 	-- si no, cada login volvia a pegarle la posicion equivocada al del
 	-- compa 1 y quedaba desalineado de los otros tres.
 	if entry.partyTarget then
-		DB()[entry.key] = nil;
+		DB()[EntryKey(entry)] = nil;
 		return;
 	end
 
-	local pos = DB()[entry.key];
+	local pos = DB()[EntryKey(entry)];
 	if not pos then return; end
 
 	local frame = ResolveFrame(entry);
@@ -736,10 +1023,35 @@ end
 -- La usan los modulos que reposicionan frames por su cuenta (el de las
 -- barras de accion, sin ir mas lejos) para no pelearse con el usuario:
 -- si el frame ya se movio a mano, ellos no lo tocan.
+-- La escala PROPIA de un movible, si la tiene. Devuelve nil si nunca se
+-- le puso una, para que quien pregunte use la general.
+function K.GetGlobalScale(key)
+	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.globalPos;
+	local p = db and db[EntryKey(key)];
+	return p and p.scale;
+end
+
 function K.HasGlobalPos(key)
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.globalPos;
-	local p = db and db[key];
+	-- Por EntryKey: quien pregunta por "ActionBar3" quiere saber si HOY,
+	-- en el modo en el que estas, esa barra tiene posicion propia.
+	local p = db and db[EntryKey(key)];
 	return (p and p.point) and true or false;
+end
+
+-- Reponer UN SOLO movible, por clave.
+--
+-- La version entera recorre los treinta y arrastra media interfaz con
+-- ella: si un modulo toca un frame y quiere devolverle al usuario SU
+-- posicion (la barra de casteo al prender o apagar el estilo custom, por
+-- ejemplo), llamar a la version entera seria mover todo lo demas de gusto.
+--
+-- Devuelve true si habia algo guardado para esa clave.
+function K.RestoreGlobalPosition(key)
+	local entry = BY_KEY[key];
+	if not entry then return false; end
+	local ok = pcall(RestoreOne, entry);
+	return ok and true or false;
 end
 
 function K.RestoreGlobalPositions()
@@ -751,6 +1063,26 @@ function K.RestoreGlobalPositions()
 	-- no guardan nada, la copian de ella. Sin esto volvian al lugar de
 	-- fabrica en cada login y quedaban desalineadas con la primera.
 	if K.MirrorPartyCastBars then pcall(K.MirrorPartyCastBars); end
+
+	-- Y EL FONDO DE LA BARRA 1, REANCLADO.
+	--
+	-- Aca estaba el desfasaje que aparecia recien despues del /reload.
+	--
+	-- RestoreOne le escribe a cada movible su escala guardada DIRECTAMENTE
+	-- sobre el frame. Para el contenedor de la fila 1 eso esta bien, pero
+	-- el fondo (MainMenuBar) cuelga de el con un desplazamiento que se mide
+	-- en la escala de MainMenuBar: al cambiarle la escala por detras, ese
+	-- desplazamiento se estira y el fondo se corre. Proporcional a la
+	-- escala, por eso solo se notaba con la barra agrandada.
+	--
+	-- En la sesion no pasaba porque el anclaje se habia escrito despues de
+	-- la escala; al reloguear el orden se invierte.
+	--
+	-- ApplyBarHolderScales vuelve a poner las tres escalas Y reescribe el
+	-- anclaje con la que quedo puesta, que es justo lo que falta aca.
+	if C.MiniBarEnabled == true and K.ApplyBarHolderScales then
+		pcall(K.ApplyBarHolderScales, C.ActionBarScale or 1.0);
+	end
 end
 
 -- ¿Hay algo guardado? Si no, no hace falta reponer nada nunca.
@@ -1038,13 +1370,18 @@ local function CreateOverlay(entry)
 		-- que hay que recalcularla ACA y no solo al construir: durante el
 		-- arrastre la barra se mueve y, con la caja vieja, el recuadro
 		-- quedaba clavado donde estaba antes.
-		if e.overlayOn == "NUF_ActionBarsBox" and K.UpdateActionBarsBox then
+		if e.overlayOn and string.find(e.overlayOn, "^NUF_ActionBar")
+		   and K.UpdateActionBarsBox then
 			pcall(K.UpdateActionBarsBox);
 		elseif e.overlayOn == "NUF_StanceBarBox" and K.UpdateStanceBarBox then
 			pcall(K.UpdateStanceBarBox);
 		end
 
-		local box  = (e.overlayOn and _G[e.overlayOn]) or self.target;
+		-- Con MiniBar el recuadro ES el contenedor (self.target): mide lo
+		-- que ocupan los botones y crece con la escala. La caja aparte
+		-- solo se usa en el otro modo.
+		local useOwn = e.framesMiniBar and C.MiniBarEnabled == true;
+		local box  = ((not useOwn) and e.overlayOn and _G[e.overlayOn]) or self.target;
 		local offX = (e.overlayOffset and e.overlayOffset[1]) or 0;
 		local offY = (e.overlayOffset and e.overlayOffset[2]) or 0;
 
@@ -1166,6 +1503,10 @@ local function CreateOverlay(entry)
 -- efecto en el acto, sin recargar ni volver a abrir el modo mover.
 local function GridStep()
 	local v = C and C.MoveGridStep;
+	-- 0 = SIN CUADRICULA. Se devuelve 1, que es moverse pixel a pixel: el
+	-- redondeo sigue existiendo pero ya no cambia nada, asi que no hay que
+	-- tocar el codigo de arrastre.
+	if v == 0 then return 1; end
 	if type(v) ~= "number" or v < 1 then return 10; end
 	return v;
 end
@@ -1260,7 +1601,10 @@ end
 		end
 		self.target:SetMovable(true);
 		if self.entry.auraAnchor or self.entry.debuffAnchor then self.target:EnableMouse(false); end
-		self.target:SetClampedToScreen(true);   -- que no se salga de la pantalla
+		-- Frenado contra el borde, salvo que la entrada diga que no. Las
+		-- barras de accion NO se frenan: su arte cuelga por debajo del
+		-- contenedor y necesita poder salirse de la pantalla.
+		self.target:SetClampedToScreen(self.entry.noClamp ~= true);
 		BeginDrag(self);
 		self.isMoving = true;
 	end);
@@ -1295,7 +1639,7 @@ end
 
 		if not moduleOwned then
 			SavePosition(self.entry, self.target);
-			local pos = DB()[self.entry.key];
+			local pos = DB()[EntryKey(self.entry)];
 			if pos and pos.point then LockFramePoint(self.target, self.entry, pos); end
 		elseif self.entry.partyIndex then
 			if C.PartyMode3v3 and K.Apply3v3PartyMode then
@@ -1333,9 +1677,33 @@ end
 			self.target:SetScale(newScale);
 			SaveScale(self.entry, newScale);
 
-			-- Mantener los sliders del panel en sincronia
-			if K.SyncFrameScaleSetting then
+			-- CADA BARRA CON SU ESCALA.
+			--
+			-- SyncFrameScaleSetting escribe el ajuste general del panel
+			-- (MainBar -> ActionBarScale). Estando en MiniBar eso hacia que
+			-- escalar la barra 1 escribiera el valor comun y el siguiente
+			-- repintado se lo aplicara a las tres.
+			--
+			-- Con MiniBar la rueda guarda SOLO la escala de esa barra. El
+			-- slider del panel sigue siendo el maestro: mueve las tres.
+			local perBar = (C.MiniBarEnabled == true) and STACK_KEYS[self.entry.key];
+			if K.SyncFrameScaleSetting and not perBar then
 				K.SyncFrameScaleSetting(self.entry.key, newScale);
+			end
+
+			-- EL FONDO ACOMPAÑA EN EL ACTO.
+			--
+			-- MainMenuBar -- el marco cuyo arte se ve de fondo -- toma su
+			-- escala de la fila 1, y eso lo reparte ApplyBarHolderScales.
+			-- Antes se llamaba sola porque la rueda escribia el ajuste
+			-- general; al dejar de escribirlo (para que cada barra tenga su
+			-- escala) nadie la llamaba, y el fondo recien se ponia al dia
+			-- en el proximo /reload.
+			--
+			-- Se la llama aca a proposito. Cada fila conserva SU escala
+			-- guardada, asi que repartir no contagia nada.
+			if perBar and K.ApplyBarHolderScales then
+				pcall(K.ApplyBarHolderScales, C.ActionBarScale or 1.0);
 			end
 
 			self.text:SetText(self.entry.label .. "  " .. string.format("%.2f", newScale));
@@ -1406,6 +1774,17 @@ end
 local builtFor = {};
 
 local function BuildOverlays()
+	-- CORTAR LA CADENA DE MINIBAR, ANTES QUE NADA.
+	--
+	-- MiniBar apila con anclajes relativos, que en WoW son vinculos vivos:
+	-- arrastrar una fila se llevaba puestas las de arriba. Aca se las pasa
+	-- a coordenadas absolutas contra UIParent, en el mismo lugar donde ya
+	-- estan, asi que a la vista no cambia nada y cada una queda suelta.
+	--
+	-- Va primero porque las cajas de abajo miden posiciones: si se aplana
+	-- despues, los recuadros quedan calculados sobre la pila vieja.
+	if K.MiniBarDetachStack then pcall(K.MiniBarDetachStack); end
+
 	-- La caja que abarca todas las barras se recalcula antes de anclar: su
 	-- tamaño depende de que barras esten a la vista y del modo puesto.
 	if K.UpdateActionBarsBox then pcall(K.UpdateActionBarsBox); end
@@ -1528,6 +1907,11 @@ local function BuildConsole()
 	end
 	console.RefreshGrid = RefreshGrid;
 
+	-- El camino de vuelta: los botones del PANEL tambien cambian el paso, y
+	-- sin esto la consola se quedaba mostrando el anterior. La consola ya
+	-- avisaba al panel (K._RefreshMoveGridButtons); faltaba el reves.
+	K.RefreshMoveConsoleGrid = RefreshGrid;
+
 	local gx = 56;
 	for _, step in ipairs({ 2, 5, 10 }) do
 		local b = CreateFrame("Button", nil, console, "UIPanelButtonTemplate");
@@ -1535,7 +1919,11 @@ local function BuildConsole()
 		b:SetSize(50, 22);
 		b:SetText("x" .. step);
 		b:SetScript("OnClick", function()
-			if K.SaveConfig then K.SaveConfig("MoveGridStep", step); end
+			-- Apretar el que YA esta puesto lo apaga: vuelve a 0, o sea
+			-- movimiento libre. Apretar otro cambia de paso, como siempre.
+			local cur  = (C and C.MoveGridStep) or 10;
+			local want = (cur == step) and 0 or step;
+			if K.SaveConfig then K.SaveConfig("MoveGridStep", want); end
 			RefreshGrid();
 			-- El panel de opciones, si esta abierto, tiene los mismos tres
 			-- botones: hay que dejarlos en el mismo estado.
@@ -1559,7 +1947,11 @@ local function BuildConsole()
 	resetBtn:SetSize(120, 24);
 	resetBtn:SetText(L["BTN_MOVE_RESET"] or "Reset");
 	resetBtn:SetScript("OnClick", function()
-		if K.ResetGlobalPositions then K.ResetGlobalPositions(); end
+		-- Por ResetManager: la secuencia completa vive ahi, en un solo
+		-- lugar, para que este boton y el de la pestaña Action Bars no se
+		-- vayan separando cada vez que se arregla uno.
+		if K.ResetEverything then K.ResetEverything();
+		elseif K.ResetGlobalPositions then K.ResetGlobalPositions(); end
 	end);
 
 	RefreshGrid();
@@ -1659,6 +2051,17 @@ function K.SetGlobalUnlock(state, scope)
 		end
 	elseif console then
 		console:Hide();
+
+		-- AL SALIR DEL MODO MOVER, UN REACOMODO.
+		--
+		-- Mientras el modo estuvo encendido, MiniBar_UpdateActionBars se
+		-- corto a proposito para no reanclar barras debajo del arrastre.
+		-- Al apagarlo hay que dejarlo correr una vez: lo que moviste tiene
+		-- su posicion guardada y no se toca, y lo que no, vuelve a su
+		-- lugar en la pila.
+		if C.MiniBarEnabled == true and K.RefreshMiniBarLayout then
+			pcall(K.RefreshMiniBarLayout);
+		end
 	end
 
 	-- Sin aviso por chat: los recuadros azules ya se ven, el print solo
@@ -1783,6 +2186,16 @@ end
 function K.ResetGlobalPositions(only)
 	CaptureOriginals();
 
+	-- "only" SE PASA CON CLAVES SIMPLES ("MainBar"), no con las del modo.
+	--
+	-- Aca estaba el bug del boton de la pestaña Action Bars. Yo le pasaba
+	-- las claves ya con sufijo (MainBar#mini), que es como se guardan en la
+	-- DB. El borrado funcionaba, pero Wanted() las compara contra
+	-- entry.key, que es "MainBar" pelado: no coincidia ninguna, no se
+	-- reponia ningun original y las barras se quedaban donde estaban.
+	--
+	-- Ahora entra la clave simple -- que es la que sirve para comparar -- y
+	-- el borrado se encarga de traducirla al modo actual.
 	local function Wanted(key) return (not only) or only[key]; end
 
 	-- Borrar lo guardado ANTES de reponer, para que el hook de SetPoint
@@ -1791,7 +2204,31 @@ function K.ResetGlobalPositions(only)
 		if only then
 			local db = NidhausUnitFramesDB.globalPos;
 			if db then
-				for key in pairs(only) do db[key] = nil; end
+				for key in pairs(only) do
+					-- La del modo actual, y la pelada por si alguien vino
+					-- con la clave ya traducida.
+					db[EntryKey(key)] = nil;
+					db[key]           = nil;
+
+					-- Y LA DE TODOS LOS MODOS, NO SOLO LA DE AHORA.
+					--
+					-- Las barras guardan por modo (MainBar#mini,
+					-- MainBar#unify, MainBar#plain) para que cada uno
+					-- recuerde lo suyo. Pero el Reset borraba solo el modo
+					-- ACTIVO EN ESE MOMENTO.
+					--
+					-- De ahi el bug: moves las barras con Unify puesto
+					-- (queda MainBar#unify), apagas Unify -- ahora el modo
+					-- es "plain" -- y apretas Reset. Se borraba
+					-- MainBar#plain, que estaba vacio, y la posicion vieja
+					-- seguia guardada. Resetear tiene que dejar la barra
+					-- como viene de Blizzard, sin restos de ningun modo.
+					if PER_MODE_KEYS[key] then
+						db[key .. "#mini"]  = nil;
+						db[key .. "#unify"] = nil;
+						db[key .. "#plain"] = nil;
+					end
+				end
 			end
 		else
 			NidhausUnitFramesDB.globalPos = nil;
@@ -1916,6 +2353,23 @@ function K.ResetGlobalPositions(only)
 
 	-- Y refrescar los sliders del panel, que ahora valen otra cosa
 	if K.RefreshScaleSliders then K.RefreshScaleSliders(); end
+
+	-- REACOMODAR LA PILA EN EL ACTO.
+	--
+	-- El Reset se aprieta con el modo mover ABIERTO, y ahi
+	-- MiniBar_UpdateActionBars se corta a proposito para no reanclar
+	-- barras debajo del arrastre. Hay que pedirle el reacomodo a proposito
+	-- (force) o no pasa nada: era por esto que la barra de auras quedaba
+	-- en cualquier lado despues de resetear.
+	-- ResetMiniBarLayout y no RefreshMiniBarLayout: hay que DESHACER el
+	-- aplanado (todo quedo anclado a UIParent al abrir el modo mover),
+	-- no solo pedir un repintado. Si no, se borran los datos y en pantalla
+	-- no se mueve nada.
+	if C.MiniBarEnabled == true and K.ResetMiniBarLayout then
+		pcall(K.ResetMiniBarLayout);
+	end
+	if K.UpdateActionBarsBox then pcall(K.UpdateActionBarsBox); end
+
 	print("|cff4FC3F7NUF:|r " .. (L["MOVE_RESET"]
 		or "Saved positions cleared. /reload to restore the defaults."));
 end
@@ -1989,7 +2443,10 @@ SlashCmdList["NUFMOVE"] = function(msg)
 	msg = string.gsub(msg, "%s+$", "");
 
 	if msg == "reset" then
-		K.ResetGlobalPositions();
+		-- Por ResetManager: el comando /nuf reset tiene que dejar la
+		-- interfaz igual que el boton, no parecido.
+		if K.ResetEverything then K.ResetEverything();
+		else K.ResetGlobalPositions(); end
 		print("|cff4FC3F7NUF:|r " .. (L["MOVE_RESET_DONE"]
 			or "Every frame is back to its default position."));
 		return;

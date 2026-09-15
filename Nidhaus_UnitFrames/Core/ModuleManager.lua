@@ -211,6 +211,7 @@ local ADDON_ELSEWHERE = {
 	MeleeSwingTimer       = true,  -- Interface > PvP
 	ArenaTimes            = true,  -- Arena
 	ArenaToT              = true,  -- Arena
+	ArenaPointsCalc       = true,  -- Arena (con su boton Abrir)
 	ButtonRange           = true,  -- Interface > Action Bars
 	HideActionBarTextures = true,  -- Interface > Action Bars
 	PartyBuffs            = true,  -- Frames > Party

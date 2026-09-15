@@ -513,6 +513,45 @@ cCastLbl:SetTextColor(0.75, 0.7, 0.75, 0.75)
 cCastLbl:SetText(L["GT_CAST"] or "Cast")
 
 -- =====================================================
+-- CC EN LA CARA DE LA GARGOLA  (estilo LoseControl)
+--
+-- Le tiran un miedo o la encadenan y la gargola deja de pegar. Eso es
+-- justo lo que uno quiere ver de un vistazo, y hasta ahora no se veia en
+-- ningun lado: habia que mirarle la placa.
+--
+-- El icono del CC va ENCIMA de la cara, con la ruedita de cooldown
+-- corriendo arriba, que es como lo muestra LoseControl. Se elige la cara y
+-- no un huequito al costado a proposito: es donde ya estas mirando.
+--
+-- Nivel de marco: en modo blizzard el aro del retrato lo dibuja el overlay
+-- (nivel 3) y su alfa circular es lo que hace que la cara se vea redonda.
+-- El CC va en el nivel 2 -- encima del icono, DEBAJO del aro -- asi el aro
+-- lo sigue recortando y no queda un cuadrado tapando el marco. Por eso el
+-- icono del CC tambien pasa por SetPortraitToTexture: si fuera cuadrado se
+-- verian las esquinas asomando fuera del circulo.
+--
+-- La textura del icono va en la capa BORDER porque la ruedita de cooldown
+-- se dibuja en ARTWORK: al reves, el icono taparia la ruedita.
+-- =====================================================
+local bCC = CreateFrame("Cooldown", nil, uiBlizz)
+bCC:SetFrameLevel(2)
+bCC:SetAllPoints(bIconH)
+bCC:SetReverse(true)
+bCC:Hide()
+local bCCTex = bCC:CreateTexture(nil, "BORDER")
+bCCTex:SetAllPoints(bCC)
+
+local cCC = CreateFrame("Cooldown", nil, uiCustom)
+cCC:SetFrameLevel(3)
+cCC:SetAllPoints(cIconH)
+cCC:SetReverse(true)
+cCC:Hide()
+local cCCTex = cCC:CreateTexture(nil, "BORDER")
+cCCTex:SetPoint("TOPLEFT",     cCC, "TOPLEFT",      1, -1)
+cCCTex:SetPoint("BOTTOMRIGHT", cCC, "BOTTOMRIGHT", -1,  1)
+cCCTex:SetTexCoord(0.06, 0.94, 0.06, 0.94)
+
+-- =====================================================
 -- REFERENCIAS ACTIVAS
 -- =====================================================
 -- Alias del glow para el modo activo
@@ -520,15 +559,20 @@ local bIconGlowActive = bIconGlowTex   -- modo blizzard
 local cIconGlowActive = cIconGlowTex   -- modo custom
 
 local ui, iconTex, iconGlow, durBar, hpBar, castBar, nameTxt, timeTxt
+local ccCD, ccTex
 
 local function SetActiveMode(mode)
   currentMode = mode
   uiBlizz:Hide()
   uiCustom:Hide()
+  bCC:Hide()
+  cCC:Hide()
   if mode == MODE_BLIZZARD then
     ui       = uiBlizz
     iconTex  = bIconTex
     iconGlow = bIconGlowTex
+    ccCD     = bCC
+    ccTex    = bCCTex
     durBar   = bDurBar
     hpBar    = bHpBar
     castBar  = bCastBar
@@ -538,6 +582,8 @@ local function SetActiveMode(mode)
     ui       = uiCustom
     iconTex  = cIconTex
     iconGlow = cIconGlowTex
+    ccCD     = cCC
+    ccTex    = cCCTex
     durBar   = cDurBar
     hpBar    = cHpBar
     castBar  = cCastBar
@@ -558,7 +604,193 @@ local state = {
   castActive=false, castStart=0, castEnd=0, castTarget="",
   plate=nil, plateHP=nil,
   flashAlpha=0, testMode=false,
+  gargGUID=nil,
+  ccName=nil, ccIcon=nil, ccStart=0, ccEnd=0,
 }
+
+-- =====================================================
+-- QUE CUENTA COMO CC
+--
+-- La lista va por ID BASE y al cargar se traduce a NOMBRE con
+-- GetSpellInfo. Dos razones, las dos importantes:
+--
+--   * los rangos. "Miedo" tiene tres IDs distintos y "Grito psiquico"
+--     cuatro; el nombre es uno solo, asi que una entrada cubre todos.
+--   * el idioma. El combat log manda el nombre en el idioma del cliente,
+--     y GetSpellInfo tambien: coinciden solos, sin tabla de traduccion.
+--
+-- El numero es la duracion contra un NPC, y es un PLAN B: si podemos ver
+-- la unidad de verdad (ver ResolveGargUnit) se usa la duracion real y
+-- este numero no se toca. Un cero significa "mostra el icono pero no
+-- inventes una cuenta regresiva" -- preferimos no decir nada antes que
+-- decir un tiempo equivocado.
+--
+-- Ojo con una cosa: la gargola es NO-MUERTA. Por eso Encadenar no-muerto
+-- y Alejar al malvado si le entran, y Polimorfia, Embrujo o Desterrar no
+-- -- no tiene sentido tenerlos aca.
+-- =====================================================
+-- DOS NUMEROS POR HECHIZO, NO UNO.  { contra NPC, contra jugador }
+--
+-- ACA ESTABA EL "DICE 20s Y SON 10s", Y LO METI YO.
+--
+-- Habia UN solo numero por hechizo, el de PvE. Pero casi todo dura menos
+-- contra algo manejado por un jugador, y LA GARGOLA SIEMPRE LO ES: es el
+-- guardian de un DK. O sea que la columna que este tracker usa en la vida
+-- real es siempre la segunda, y yo estaba mostrando la primera.
+--
+-- Turn Evil es el ejemplo exacto que me diste: 20 segundos sobre un bicho
+-- del mundo, 10 sobre cualquier cosa que maneje un jugador. Y no hay que
+-- descubrirlo: Modules2/PaladinAuras.lua ya lo tenia resuelto hace rato,
+-- con estos mismos dos numeros y mirando la misma bandera del combat log.
+-- Es de ahi que esta copiada la regla, para que los dos digan lo mismo.
+--
+-- UN CERO EN LA SEGUNDA COLUMNA NO ES "CERO SEGUNDOS": es "no se cuanto
+-- dura esto contra un jugador". En ese caso se muestra el icono y NINGUNA
+-- cuenta regresiva. Preferible antes que volver a inventar un numero --
+-- que es justamente lo que hizo falta arreglar.
+--
+-- Y cuando la gargola esta a la vista (target, foco, arenapetN) nada de
+-- esto se usa: manda la duracion real del debuff. Ver RefreshCCFromUnit.
+local CC_SPELLS = {
+  -- Miedos. Los tres de 8 ya estaban topados, no cambian.
+  [5782]  = { 20, 8 },   -- Fear (brujo)
+  [5484]  = {  8, 8 },   -- Howl of Terror
+  [8122]  = {  8, 8 },   -- Psychic Scream
+  [5246]  = {  8, 8 },   -- Intimidating Shout
+  [10326] = { 20, 10 },  -- Turn Evil  <- el que me marcaste
+  [6789]  = {  3, 3 },   -- Death Coil (brujo)
+  -- Encadenar / incapacitar
+  [9484]  = { 50, 0 },   -- Shackle Undead    (topado, no se cuanto: icono solo)
+  [3355]  = { 20, 0 },   -- Freezing Trap     (idem)
+  -- Aturdimientos: los stuns no se topan distinto, valen igual.
+  [853]   = {  6, 6 },   -- Hammer of Justice
+  [44572] = {  5, 5 },   -- Deep Freeze
+  [12809] = {  5, 5 },   -- Concussion Blow
+  [46968] = {  4, 4 },   -- Shockwave
+  [5211]  = {  4, 4 },   -- Bash
+  [33786] = {  6, 6 },   -- Cyclone
+  [49203] = { 10, 10 },  -- Hungering Cold
+  -- Raices y ralentizaciones
+  [122]   = {  8, 8 },   -- Frost Nova
+  [339]   = { 27, 0 },   -- Entangling Roots  (topado, no se cuanto)
+  [45524] = {  8, 8 },   -- Chains of Ice
+  -- Silencios
+  [47476] = {  5, 5 },   -- Strangulate
+  [15487] = {  5, 5 },   -- Silence (sacerdote)
+}
+
+-- La misma bandera y el mismo criterio que PaladinAuras.
+local CONTROL_PLAYER = COMBATLOG_OBJECT_CONTROL_PLAYER or 0x00000100
+
+local function CCDuration(cc, destFlags)
+  if not cc then return 0 end
+  if bit and bit.band and destFlags
+     and bit.band(destFlags, CONTROL_PLAYER) > 0 then
+    return cc.pvp or 0
+  end
+  return cc.pve or 0
+end
+
+local ccByName = {}
+do
+  for id, pair in pairs(CC_SPELLS) do
+    local name, _, icon = GetSpellInfo(id)
+    -- Si el core no conoce el hechizo, GetSpellInfo devuelve nil. Se saltea
+    -- en vez de meter un [nil] en la tabla, que reventaria al indexar.
+    if name then
+      ccByName[name] = { pve = pair[1], pvp = pair[2], icon = icon }
+    end
+  end
+end
+
+-- =====================================================
+-- LA UNIDAD DE VERDAD, SI LA HAY
+--
+-- Con el GUID que nos dio SPELL_SUMMON podemos preguntar si la gargola es
+-- alguna de las unidades que el juego nos deja mirar. Si lo es, UnitDebuff
+-- da la duracion y el vencimiento EXACTOS y no hace falta adivinar nada.
+--
+-- Si no la tenemos a mano -- que es lo normal, nadie targetea la gargola
+-- para verle el miedo -- se cae a la tabla de arriba. Por eso existe la
+-- tabla: no como fuente principal, sino para el rato en que no se la puede
+-- mirar.
+-- =====================================================
+local GARG_UNITS = { "target", "focus", "mouseover", "targettarget",
+  "arenapet1", "arenapet2", "arenapet3", "arenapet4", "arenapet5" }
+
+local function ResolveGargUnit()
+  if not state.gargGUID then return nil end
+  for _, u in ipairs(GARG_UNITS) do
+    if UnitExists(u) and UnitGUID(u) == state.gargGUID then return u end
+  end
+  return nil
+end
+
+local function ClearCC()
+  state.ccName, state.ccIcon = nil, nil
+  state.ccStart, state.ccEnd = 0, 0
+  bCC:Hide()
+  cCC:Hide()
+end
+
+-- Pinta el CC que este puesto. Devuelve true si mostro algo.
+local function ShowCC(name, icon, start, dur)
+  state.ccName  = name
+  state.ccIcon  = icon
+  state.ccStart = start
+  state.ccEnd   = (dur and dur > 0) and (start + dur) or 0
+
+  if not ccCD or not ccTex then return false end
+
+  -- Redondo en modo blizzard (lo recorta el aro del retrato), cuadrado en
+  -- el custom, que ya es una casilla.
+  if ccCD == bCC then
+    SetPortraitToTexture(ccTex, icon)
+  else
+    ccTex:SetTexture(icon)
+  end
+
+  ccCD:Show()
+  if dur and dur > 0 then
+    ccCD:SetCooldown(start, dur)
+  else
+    -- Sin duracion confiable: se muestra el icono y NADA de ruedita. Una
+    -- cuenta regresiva inventada es peor que ninguna.
+    ccCD:SetCooldown(0, 0)
+  end
+  return true
+end
+
+-- Refresca desde la unidad real si la tenemos a la vista. Sirve para dos
+-- cosas: arrancar con la duracion exacta, y darse cuenta de que el CC se
+-- rompio antes de tiempo (un dano lo saco) sin esperar al combat log.
+local function RefreshCCFromUnit()
+  local u = ResolveGargUnit()
+  if not u then return false end
+
+  local best, bestExp
+  for i = 1, 40 do
+    local name, _, icon, _, _, duration, expirationTime = UnitDebuff(u, i)
+    if not name then break end
+    if ccByName[name] and expirationTime and expirationTime > 0 then
+      if not bestExp or expirationTime > bestExp then
+        best    = { name = name, icon = icon, dur = duration, exp = expirationTime }
+        bestExp = expirationTime
+      end
+    end
+  end
+
+  if not best then
+    -- La vemos y NO tiene ningun CC: es la palabra final, se limpia.
+    if state.ccName then ClearCC() end
+    return true
+  end
+
+  if state.ccName ~= best.name or math.abs((state.ccEnd or 0) - best.exp) > 0.25 then
+    ShowCC(best.name, best.icon, best.exp - (best.dur or 0), best.dur)
+  end
+  return true
+end
 
 local function IsHostile(flags)
   return bit.band(flags or 0, COMBATLOG_OBJECT_REACTION_HOSTILE) > 0
@@ -576,7 +808,9 @@ local function StopAll()
   state.castActive = false
   state.flashAlpha = 0
   state.testMode   = false
+  state.gargGUID   = nil
   GT_CALIBRATING   = false
+  ClearCC()
   bIconGlowTex:SetVertexColor(0.6, 0.2, 1, 0)
   cIconGlowTex:SetVertexColor(0.6, 0.2, 1, 0)
   bCastH:Hide(); bCastIconH:Hide(); bCastTxtF:Hide(); bCastFlashF:Hide()
@@ -592,10 +826,15 @@ local function StartCast(duration, targetName)
   castBar:SetValue(0)
 end
 
-local function StartGargoyle(sourceName, isTest)
+local function StartGargoyle(sourceName, isTest, gargGUID)
   -- Filtro de zona: si en este tipo de pelea el usuario no lo quiere, ni se
   -- muestra. El modo test lo saltea a proposito (para poder acomodarlo).
   if not isTest and not ZoneAllowed() then return end
+  -- El GUID sale del SPELL_SUMMON y es la forma SEGURA de reconocerla
+  -- despues: comparar por nombre depende del idioma del cliente y se
+  -- confunde si hay dos gargolas en pantalla.
+  state.gargGUID   = gargGUID
+  ClearCC()
   state.active     = true
   state.tStart     = GetTime()
   state.tEnd       = state.tStart + GARGOYLE_DURATION
@@ -684,6 +923,25 @@ f:SetScript("OnUpdate", function(self, elapsed)
     timeTxt:SetTextColor(1, 0.3, 0.3, 1)
   end
   timeTxt:SetText(string.format("%.1fs", rem))
+
+  -- CC sobre la gargola.
+  --
+  -- Primero se intenta la unidad real, que da el dato exacto. Si no esta a
+  -- la vista -- lo habitual -- se deja correr lo que se mostro desde el
+  -- combat log y se vence solo por tiempo.
+  --
+  -- El vencimiento por tiempo va AFUERA del "si no es test": en modo test
+  -- no hay unidad que mirar, y si el vencimiento tambien quedaba adentro,
+  -- el CC simulado con /gt cc no se apagaba nunca.
+  local ccHandled = false
+  if not state.testMode then
+    ccHandled = RefreshCCFromUnit()
+  end
+  if not ccHandled then
+    if state.ccName and state.ccEnd > 0 and now >= state.ccEnd then
+      ClearCC()
+    end
+  end
 
   if not state.testMode then
     if not state.plate then
@@ -812,10 +1070,47 @@ f:SetScript("OnEvent", function(self, event, ...)
   if (subEvent == "SPELL_SUMMON" or subEvent == "SPELL_CAST_SUCCESS")
      and tonumber(spellId) == GARGOYLE_SPELLID
      and IsHostile(sourceFlags) then
-    StartGargoyle(sourceName)
+    -- En SPELL_SUMMON el destino ES la gargola, asi que ese GUID es el
+    -- suyo. En SPELL_CAST_SUCCESS el destino es otra cosa (o nada), y por
+    -- eso solo se guarda en el primer caso.
+    StartGargoyle(sourceName, false,
+      (subEvent == "SPELL_SUMMON") and destGUID or nil)
     return
   end
   if not state.active then return end
+
+  -- CC SOBRE LA GARGOLA.
+  --
+  -- Se compara por GUID cuando lo tenemos (exacto, y no se confunde con la
+  -- gargola del otro DK) y por nombre cuando no, que es el mismo criterio
+  -- que ya usa el resto del archivo.
+  local isGarg = (state.gargGUID and destGUID == state.gargGUID)
+                 or ((not state.gargGUID) and destName == GARGOYLE_NAME)
+  if isGarg then
+    if subEvent == "SPELL_AURA_APPLIED" or subEvent == "SPELL_AURA_REFRESH" then
+      local cc = spellName and ccByName[spellName]
+      if cc then
+        -- La duracion de la tabla se recorta a lo que le queda de vida a la
+        -- gargola: un Encadenar de 50 segundos sobre un bicho que vive 30
+        -- mostraria una cuenta que nunca llega a cero.
+        -- destFlags es de la GARGOLA, que siempre es de un jugador: con
+        -- eso sale la columna de la derecha.
+        local dur  = CCDuration(cc, destFlags)
+        local left = state.tEnd - GetTime()
+        if dur > left then dur = left end
+        if dur < 0 then dur = 0 end
+        ShowCC(spellName, cc.icon, GetTime(), dur)
+        -- Y si justo la tenemos a la vista, se pisa con el dato exacto.
+        RefreshCCFromUnit()
+      end
+      return
+    end
+    if subEvent == "SPELL_AURA_REMOVED" or subEvent == "SPELL_AURA_BROKEN"
+       or subEvent == "SPELL_AURA_BROKEN_SPELL" then
+      if spellName and state.ccName == spellName then ClearCC() end
+      return
+    end
+  end
   if subEvent == "SPELL_CAST_START"
      and sourceName == GARGOYLE_NAME and IsHostile(sourceFlags) then
     StartCast(GARGOYLE_CAST_FALLBACK, destName)
@@ -871,6 +1166,7 @@ SlashCmdList.GT = function(msg)
     ui:ClearAllPoints()
     ui:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
     print("GT: centrado")
+
 
   elseif msg:match("^bars") then
     local x, w, y = msg:match("^bars%s+(-?%d+)%s+(%d+)%s*(-?%d*)")

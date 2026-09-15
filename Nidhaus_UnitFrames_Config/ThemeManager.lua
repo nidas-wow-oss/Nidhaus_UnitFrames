@@ -10,7 +10,7 @@ local K, C, L = unpack(ns);
 -- Visual theme system for the NUF options panel.
 --
 -- 3 themes:
---   Classic    — WoW Blizzard gold/brown, traditional look
+--   Classic    — la ventana Interface del juego, tal cual
 --   DarkGold   — Deep black with amber/gold accents (Image 1 style)
 --   ArcaneBlue — Dark with cyan/blue arcane accents (Image 2 style)
 --
@@ -28,12 +28,23 @@ local THEMES = {};
 local THEME_ORDER = {"Classic", "DarkGold", "ArcaneBlue"};
 
 -- ── Theme 1: Classic ──────────────────────────────────────
--- Standard WoW DialogBox look with gold active-tab accents.
--- Darker background + separator line under title (like Blizzard Interface panel).
+-- LA VENTANA INTERFACE DEL JUEGO, no una version oscura de ella.
+--
+-- Ya usaba el marco y la chapa de Blizzard, pero de ahi para adentro se
+-- iba por su lado: multiplicaba la piedra por negro al 0.88 hasta hacerla
+-- desaparecer, dibujaba las pestanas a mano y ponia las categorias en
+-- blanco. Quedaba "oscuro con detalles dorados", no Blizzard.
+--
+-- Ahora se parece de verdad. Las cuatro banderas del final son las que lo
+-- hacen, y cada una esta explicada donde se aplica:
+--   nativeTabs   -> las pestanas de verdad, no rectangulos dibujados
+--   sideGoldText -> categorias doradas con la barra azul de seleccion
+--   sideSelColor -> el azul de esa barra
+--   footerAlpha  -> los botones del pie sin atenuar
 THEMES["Classic"] = {
 	id    = "Classic",
 	label = "Classic",
-	accent = {0.95, 0.78, 0.10},
+	accent = {1, 0.82, 0},
 
 	-- Main frame backdrop
 	frameBG        = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -41,7 +52,9 @@ THEMES["Classic"] = {
 	frameTileSize  = 32,
 	frameEdgeSize  = 32,
 	frameInsets    = {left=11, right=12, top=12, bottom=11},
-	frameBGColor   = {0.0, 0.0, 0.0, 0.88},   -- dark opaque background
+	-- SIN TENIR. Los marcos del juego no llaman a SetBackdropColor: dejan
+	-- ver la piedra. El 0.88 negro de antes la tapaba entera.
+	frameBGColor   = {1, 1, 1, 1},
 	frameBorderColor = {1, 1, 1, 1},
 
 	-- Title box — Classic uses native Blizzard header texture (see ThemeManager)
@@ -51,24 +64,33 @@ THEMES["Classic"] = {
 	titleBorderEdge  = "Interface\\DialogFrame\\UI-DialogBox-Gold-Border",
 	titleBorderColor = {1, 1, 1, 1},
 
-	-- Tab bar container
-	tabBarBGColor     = {0, 0, 0, 0.40},
-	tabBarBorderColor = {0, 0, 0, 0.85},
+	-- La barra de pestanas no se pinta: las de Blizzard traen su propio
+	-- arte y se apoyan sobre el fondo de la ventana.
+	--
+	-- Los colores quedan en cero y NO en nil porque el codigo hace unpack()
+	-- sin preguntar, y ademas siguen valiendo si algun dia se apaga
+	-- nativeTabs y vuelven las dibujadas a mano.
+	tabBarBGColor     = {0, 0, 0, 0},
+	tabBarBorderColor = {0, 0, 0, 0},
+	tabSelBGColor     = {0, 0, 0, 0},
+	tabSelBorderColor = {0, 0, 0, 0},
+	tabBGColor        = {0, 0, 0, 0},
+	tabBorderColor    = {0, 0, 0, 0},
+	tabHoverBGColor   = {0, 0, 0, 0},
 
-	-- Active tab
-	tabSelBGColor     = {0.20, 0.20, 0.20, 0.90},
-	tabSelBorderColor = {0.80, 0.70, 0.00, 0.90},
+	-- El recuadro hundido del contenido, como el de la derecha en la
+	-- ventana Interface.
+	--
+	-- EL BORDE VA SIN TENIR. UI-Tooltip-Border en blanco es el dorado
+	-- tostado de cualquier tooltip del juego, que es el mismo de esas
+	-- cajas. El marron apagado que habia aca antes lo dejaba gris.
+	panelBGColor      = {0.06, 0.06, 0.06, 0.85},
+	panelBorderColor  = {1, 1, 1, 1},
 
-	-- Inactive tab
-	tabBGColor        = {0.08, 0.08, 0.08, 0.80},
-	tabBorderColor    = {0.40, 0.40, 0.40, 0.80},
-
-	-- Hover tab
-	tabHoverBGColor   = {0.30, 0.30, 0.30, 0.80},
-
-	-- Content panels
-	panelBGColor      = {0, 0, 0, 0.35},
-	panelBorderColor  = {0.20, 0.20, 0.20, 0.80},
+	nativeTabs   = true,
+	sideGoldText = true,
+	sideSelColor = {0.10, 0.22, 0.42},
+	footerAlpha  = 1.0,
 };
 
 -- ── Theme 2: Dark Gold ────────────────────────────────────
@@ -210,9 +232,29 @@ local function ApplyThemeToFrames(theme)
 	end
 
 	-- Individual tabs (re-apply current selected/unselected state)
+	--
+	-- LAS DOS VERSIONES DE CADA PESTANA EXISTEN SIEMPRE y se turnan con
+	-- Show/Hide. Crear las de Blizzard recien al elegir el tema obligaria a
+	-- recalcular anclajes en caliente y a que SelectTab averiguase cual de
+	-- las dos existe; asi SelectTab solo pinta la que esta a la vista.
+	--
+	-- Las de fondo (Profiles, About) no se muestran en ningun tema: se
+	-- llega a ellas desde los botones del pie.
 	if reg.tabs then
+		local useNative = theme.nativeTabs and true or false;
 		for _, tab in ipairs(reg.tabs) do
 			tab._nufTheme = theme;
+
+			if not tab._nufHidden then
+				if useNative and tab.native then
+					tab:Hide();
+					tab.native:Show();
+				else
+					if tab.native then tab.native:Hide(); end
+					tab:Show();
+				end
+			end
+
 			if tab.selected then
 				tab:SetBackdropColor(unpack(theme.tabSelBGColor));
 				tab:SetBackdropBorderColor(unpack(theme.tabSelBorderColor));
@@ -235,6 +277,22 @@ local function ApplyThemeToFrames(theme)
 	-- Se repintan aparte porque no viven en el registry: cada CreateSideList
 	-- se auto-registra en K._sideLists.
 	if K.RestyleSideLists then K.RestyleSideLists(); end
+
+	-- Botones del pie.
+	--
+	-- MakeSecondary los deja en alfa 0.75 para que no compitan con Close.
+	-- En Classic van enteros: el boton de Blizzard ya viene atenuado por su
+	-- propio arte, y bajarle el alfa encima lo dejaba lavado y rojizo.
+	if reg.secondaryButtons then
+		local a = theme.footerAlpha or 0.75;
+		for _, btn in ipairs(reg.secondaryButtons) do
+			btn:SetAlpha(a);
+		end
+	end
+
+	-- Y que la pestana activa vuelva a marcarse en la version que ahora se
+	-- ve. Sin esto, al cambiar de tema quedan las cuatro sin seleccionar.
+	if K.RefreshPanelTabs then K.RefreshPanelTabs(); end
 
 	-- Theme selector pill buttons
 	if reg.themeButtons then

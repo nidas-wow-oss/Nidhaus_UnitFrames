@@ -704,6 +704,19 @@ function K.PopulateArenaTab(panel)
 	end);
 
 	local function UpdateBlizzClassColorBox()
+		-- CON EL MOD APAGADO NO SE MUESTRA, PUNTO.
+		--
+		-- Esta casilla cuelga de "content" y no de ninguno de los
+		-- contenedores que esconde UpdateArenaOptionsVisibility, asi que se
+		-- quedaba a la vista aunque el mod de arena estuviera apagado. Y
+		-- ahi no decide nada: si el addon no toca los marcos de arena
+		-- -- justamente para dejarselos a Gladius o al que uses -- el color
+		-- de clase de esos marcos no es asunto suyo.
+		if C.ArenaFrameOn ~= true then
+			blizzCCBox:Hide();
+			return;
+		end
+
 		if (C.ArenaFrameStyle or "Custom") == "Blizzard" then
 			blizzCCBox:SetChecked(C.ArenaBlizzardClassColor or false);
 			blizzCCBox:Show();
@@ -837,6 +850,13 @@ function K.PopulateArenaTab(panel)
 		end
 		if arenaHint then if on then arenaHint:Show(); else arenaHint:Hide(); end end
 		if moveHint then if on then moveHint:Show(); else moveHint:Hide(); end end
+
+		-- Las que cuelgan de "content" y no de un contenedor: hay que
+		-- avisarles una por una. Si mañana aparece otra suelta, se suma
+		-- aca y no en cinco lugares.
+		if K._UpdateArenaBlizzClassColorBox then
+			K._UpdateArenaBlizzClassColorBox();
+		end
 
 		if on then
 			UpdateLayout(isFlat);
@@ -1026,7 +1046,7 @@ function K.PopulateArenaTab(panel)
 	-- acceso rapido a la calculadora, y un acceso a algo apagado no sirve.
 	-- Va ultimo justo por eso: al ocultarse no deja un hueco en el medio.
 	-- ═══════════════════════════════════════════════════════════
-	local apcBlock;
+	local apcBlock, apcHost;
 	if K.Modules and K.Modules["ArenaPointsCalc"] then
 		-- Vive en su propia sub-pestana, asi que empieza arriba del todo y
 		-- ya no necesita el separador que lo despegaba de los cronometros.
@@ -1037,20 +1057,36 @@ function K.PopulateArenaTab(panel)
 
 		local ptsH = apcBlock:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 		ptsH:SetPoint("TOPLEFT", 20, 0);
-		ptsH:SetText(L["HEADER_ARENA_POINTS"] or "|cffFFD100Arena Points|r");
+		ptsH:SetText("|cffFFD100" .. (L["HEADER_ARENA_CALC"] or "Arena Calculator") .. "|r");
 
 		CreateModuleCheckBox(apcBlock, L["MOD_APC"] or "Arena Points Calculator",
 			"ArenaPointsCalc", 20, -40,
 			L["MOD_APC_DESC"] or "Calculates the arena points you will get each week. /apc to open it.");
 
-		local apcBtn = CreateFrame("Button", nil, apcBlock, "UIPanelButtonTemplate");
-		apcBtn:SetPoint("TOPLEFT", 24, -70);
-		apcBtn:SetSize(160, 22);
-		apcBtn:SetText(L["BTN_APC_OPEN"] or "Open the calculator");
-		apcBtn:SetScript("OnClick", function()
-			if SlashCmdList and SlashCmdList["ARENACALC"] then SlashCmdList["ARENACALC"](""); end
-		end);
+		-- LA CALCULADORA, ACA ADENTRO.
+		--
+		-- Antes habia un boton "Open the calculator" que abria la ventana
+		-- suelta. Ahora la calculadora se MUDA a este hueco: es la misma,
+		-- no una copia (mira K.APC_Dock en Modules2/ArenaPointsCalc.lua).
+		--
+		-- El hueco mide lo que mide la calculadora. Se le da tama�o propio
+		-- y no se lo ancla a los cuatro lados porque el pane tiene scroll:
+		-- con anclajes se estiraria y la ventana quedaria deformada.
+		apcHost = CreateFrame("Frame", "NidhausArenaCalcHost", apcBlock);
+		apcHost:SetPoint("TOPLEFT", 24, -70);
+		apcHost:SetSize(300, 248);
 
+		-- Entra al mostrarse esta sub-pestana y sale al dejarla. Si se
+		-- quedara acoplada al irse, la calculadora seguiria colgada de un
+		-- marco escondido y no se veria por ningun lado.
+		panePoints:HookScript("OnShow", function()
+			if K.IsModuleEnabled and K.IsModuleEnabled("ArenaPointsCalc") then
+				if K.APC_Dock then K.APC_Dock(apcHost); end
+			end
+		end);
+		panePoints:HookScript("OnHide", function()
+			if K.APC_Undock then K.APC_Undock(); end
+		end);
 	end
 
 	-- Muestra u oculta el bloque segun el estado del modulo, y ajusta el
@@ -1060,11 +1096,21 @@ function K.PopulateArenaTab(panel)
 		if apcBlock then
 			if on then apcBlock:Show(); else apcBlock:Hide(); end
 		end
+		-- Prender o apagar el modulo desde la casilla tiene que mover la
+		-- calculadora en el acto, no al volver a entrar a la pestana.
+		if apcHost and panePoints and panePoints:IsShown() then
+			if on then
+				if K.APC_Dock then K.APC_Dock(apcHost); end
+			elseif K.APC_Undock then
+				K.APC_Undock();
+			end
+		end
 		-- El pane de Options ya no lleva este bloque, asi que su alto es mY
 		-- a secas. El de puntos ocupa lo que ocupe el bloque, o nada si el
 		-- modulo esta apagado.
 		sub.SetContentHeight(2, math.abs(mY));
-		sub.SetContentHeight(3, on and 130 or 40);
+		-- 70 del encabezado y la casilla + 248 de la calculadora + aire.
+		sub.SetContentHeight(3, on and 340 or 40);
 	end
 	K._RefreshArenaPointsBlock = RefreshAPCBlock;
 	RefreshAPCBlock();

@@ -8,9 +8,9 @@ NUF nació de combinar y reescribir varios addons existentes — entre ellos Eaz
 
 > ## Descarga
 >
-> **Última versión: 3.6** — es la build actual, la recomendada y la que está en uso.
+> **Última versión: 3.7** — es la build actual, la recomendada y la que está en uso.
 >
-> **[Descargar v3.6 (última release)](../../releases/latest)**
+> **[Descargar v3.7 (última release)](../../releases/latest)**
 >
 > Una sola descarga, todo incluido: el addon y su panel de opciones.
 
@@ -32,13 +32,13 @@ Este repositorio contiene **los dos addons**. Necesitás ambos:
 
 ## Instalación
 
-1. Descargá la **v3.6** desde la [página de releases](../../releases/latest).
+1. Descargá la **v3.7** desde la [página de releases](../../releases/latest).
 2. Extraé el archivo. Vas a obtener dos carpetas: `Nidhaus_UnitFrames` y `Nidhaus_UnitFrames_Config`.
 3. Copiá **las dos** carpetas a tu directorio `Interface/AddOns/` de WoW.
 4. Reiniciá el cliente, o escribí `/reload` si ya estás en el juego.
 5. Activá los dos addons en la pantalla de selección de personaje.
 
-> **¿Venís de una versión anterior?** Borrá la carpeta vieja `Nidhaus_UnitFrames` antes de copiar la nueva, en vez de superponerla: la 3.6 reorganizó archivos y los restos de una build anterior pueden dar errores. Tu configuración vive en la carpeta `WTF` y se conserva.
+> **¿Venís de una versión anterior?** Borrá la carpeta vieja `Nidhaus_UnitFrames` antes de copiar la nueva, en vez de superponerla: entre releases se reorganizan archivos y los restos de una build anterior pueden dar errores. Tu configuración vive en la carpeta `WTF` y se conserva.
 
 > Si bajás el repositorio con el botón verde *Code* en vez de la release, la carpeta extraída se va a llamar `Nidhaus_UnitFrames-main` y va a tener las dos carpetas adentro. Copiá esas dos carpetas a `Interface/AddOns/` — no copies `Nidhaus_UnitFrames-main` en sí.
 
@@ -265,6 +265,21 @@ Integración, port a 3.3.5a, corrección de bugs y todo lo demás: **Nidhaus**.
 ---
 
 ## Changelog
+
+### v3.7
+- En vehiculo, los marcos de party vuelven a la barra de vida y al fondo propios de Blizzard.
+- MiniBar ya no pelea con la barra del vehiculo mientras manejas (demoledores, canones).
+- El micromenu queda por encima de la barra del vehiculo en vez de dibujarse detras de su chapa.
+- Los tiempos de control del Gargoyle Tracker respetan la duracion en PvP (Turn Evil marca 10s, no 20s).
+- Move Everything solo ofrece el marco de mascota a las clases que realmente tienen una.
+- La barra de casteo mantiene escala y posicion al encenderla y apagarla, y sigue andando con Move Everything.
+- El desplegable de perfiles agrupa los personajes por reino en vez de irse de pantalla.
+- Marcos de mascota para party1-4, solo en arena por defecto (`/ppf arena`).
+- Las pestanas de la ventana de opciones se achican y se juntan al achicar la ventana.
+- Minimapa: la forma cuadrada ahora carga la textura del borde default de Blizzard.
+- La casilla de marcos de arena y las sub-opciones de Lorti UI llamaban a funciones que no existian; las dos andan.
+- Sacados los comandos de diagnostico que habian quedado.
+- Traduccion al espanol completa: no queda ninguna cadena sin su version en ambos idiomas.
 
 ### v3.6
 - Arregladas las opciones del menú de estilos

@@ -45,7 +45,8 @@ function K.CreateBagPackFrame()
 			if C.ShowBagPackTexture == false then BagPackFrame.texture:Hide(); else BagPackFrame.texture:Show(); end
 		end
 		-- FIX: Always re-apply scale (frame may retain old scale from previous mode)
-		local scale = C.ActionBarScale;
+		-- SU PROPIA ESCALA, no la de las barras (ver MiniBarExtrasScale).
+		local scale = C.MiniBarExtrasScale;
 		if type(scale) == "number" and scale > 0 then
 			BagPackFrame:SetScale(scale);
 		end
@@ -73,8 +74,8 @@ function K.CreateBagPackFrame()
 		BagPackFrame.texture:Show();
 	end
 
-	-- FIX: Apply saved ActionBarScale immediately on creation.
-	local scale = C.ActionBarScale;
+	-- FIX: Apply saved scale immediately on creation.
+	local scale = C.MiniBarExtrasScale;
 	if type(scale) == "number" and scale > 0 then
 		BagPackFrame:SetScale(scale);
 	end
@@ -97,19 +98,29 @@ function K.ApplyBagPackLayout()
 	if K._applyingBagPack then return; end -- guard against recursion
 	K._applyingBagPack = true;
 
-	-- FIX: Micro buttons are reparented to UIParent, so they don't inherit
-	-- MainMenuBar's scale. Apply ActionBarScale explicitly to them only.
-	-- Bags/backpack are children of MainMenuBarArtFrame (child of MainMenuBar)
-	-- so they ALREADY inherit MainMenuBar:SetScale(scale) — do NOT double-scale them.
-	local abScale = C.ActionBarScale;
+	-- LAS BOLSAS Y EL MICROMENU TIENEN SU PROPIA ESCALA.
+	--
+	-- Antes esto leia C.ActionBarScale, que es la de las barras de accion.
+	-- Ctrl + rueda sobre la barra 1 escribe ese ajuste, asi que agrandar
+	-- la barra te agrandaba la mochila (en el acto) y el micromenu (al
+	-- soltar, cuando se repintaba). No es lo que uno pide al escalar una
+	-- barra de accion.
+	--
+	-- Ahora van por MiniBarExtrasScale, un valor aparte que arranca en 1.0
+	-- y que nadie mueve al escalar barras.
+	local abScale = C.MiniBarExtrasScale;
 	if type(abScale) ~= "number" or abScale <= 0 then abScale = 1.0; end
 
 	-- Micro buttons → parented to UIParent (need explicit scale)
+	local microLevel = ((MainMenuBar and MainMenuBar:GetFrameLevel()) or 0) + 5;
 	for _, name in ipairs(MicroButtons) do
 		local btn = _G[name];
 		if btn then
 			btn:SetParent(UIParent);
 			btn:SetFrameStrata("MEDIUM");
+			-- Nivel explicito: en vehiculo se lo subimos para que no quede
+			-- tapado por la chapa, y ese valor sobrevive al reparenteo.
+			btn:SetFrameLevel(microLevel);
 			btn:SetScale(abScale);
 			btn:Show();
 		end
@@ -126,8 +137,27 @@ function K.ApplyBagPackLayout()
 	-- NOTE: Do NOT call UpdateMicroButtons() here — it causes infinite recursion
 	-- via the hook in ActionBars.lua
 
-	-- Bag slots → anchored to BagPackFrame but parented to MainMenuBarArtFrame
-	-- They inherit MainMenuBar:SetScale() via parent chain — only set RELATIVE scale
+	-- LAS BOLSAS SALEN DE MainMenuBar.
+	--
+	-- Estaban colgadas de MainMenuBarArtFrame, hijo de MainMenuBar, asi que
+	-- heredaban su escala por cadena de padres -- el comentario viejo lo
+	-- decia. Mientras sigan ahi, cualquier escala sobre la barra principal
+	-- se les aplica quiera uno o no.
+	--
+	-- Pasan a colgar de BagPackFrame, que es hijo de UIParent y ya es el
+	-- frame contra el que estaban ancladas. Asi su tamaño lo decide
+	-- MiniBarExtrasScale y nada mas.
+	for _, n in ipairs({ "MainMenuBarBackpackButton", "CharacterBag0Slot",
+	                     "CharacterBag1Slot", "CharacterBag2Slot",
+	                     "CharacterBag3Slot", "KeyRingButton" }) do
+		local b = _G[n];
+		if b then
+			b:SetParent(BagPackFrame);
+			b:SetFrameStrata("MEDIUM");
+		end
+	end
+
+	MainMenuBarBackpackButton:SetScale(abScale);
 	MainMenuBarBackpackButton:ClearAllPoints();
 	MainMenuBarBackpackButton:SetPoint("CENTER", BagPackFrame, 124.8, 21.8);
 
@@ -213,10 +243,18 @@ function K.ApplyGryphons()
 			MainMenuBarLeftEndCap:SetPoint("BOTTOM", MainMenuBar, "BOTTOMLEFT", UNIFY_GRYPHON_LEFT_X, yOff);
 			MainMenuBarRightEndCap:SetPoint("BOTTOM", MainMenuBar, "BOTTOMRIGHT", UNIFY_GRYPHON_RIGHT_X, yOff);
 		elseif K._minibarActive then
+			-- LOS GRIFOS VAN CON EL ARTE.
+			--
+			-- El fondo ahora cuelga del contenedor de la fila 1 (mira
+			-- PinMainMenuBarToRow1). Anclados a MainMenuBar, los grifos se
+			-- quedaban donde Blizzard dejara ese marco, sueltos del resto.
+			local gAnchor = _G["MainMenuBarArtFrame"] or MainMenuBar;
+			pcall(MainMenuBarLeftEndCap.SetParent,  MainMenuBarLeftEndCap,  gAnchor);
+			pcall(MainMenuBarRightEndCap.SetParent, MainMenuBarRightEndCap, gAnchor);
 			MainMenuBarLeftEndCap:ClearAllPoints();
 			MainMenuBarRightEndCap:ClearAllPoints();
-			MainMenuBarLeftEndCap:SetPoint("BOTTOM", MainMenuBar, "BOTTOMLEFT", MINIBAR_GRYPHON_LEFT_X, 0);
-			MainMenuBarRightEndCap:SetPoint("BOTTOM", MainMenuBar, "BOTTOMRIGHT", MINIBAR_GRYPHON_RIGHT_X, 0);
+			MainMenuBarLeftEndCap:SetPoint("BOTTOM", gAnchor, "BOTTOMLEFT", MINIBAR_GRYPHON_LEFT_X, 0);
+			MainMenuBarRightEndCap:SetPoint("BOTTOM", gAnchor, "BOTTOMRIGHT", MINIBAR_GRYPHON_RIGHT_X, 0);
 		end
 	end
 end
@@ -227,6 +265,26 @@ end
 function K.ApplyActionBarScale(scale)
 	if InCombatLockdown() then return; end
 	if type(scale) ~= "number" or scale <= 0 then scale = 1.0; end
+
+	-- ── CON MINIBAR, LA ESCALA ES DE LOS CONTENEDORES ──
+	--
+	-- Aca estaba el resto del problema. Esta funcion repartia la escala de
+	-- las barras de accion sobre MainMenuBar (padre del arte, las flechas
+	-- y, hasta hace poco, las bolsas), sobre BagPackFrame, y sobre
+	-- MultiBarRight/Left, que son las barras LATERALES y no tienen nada
+	-- que ver con la barra 1. Por eso agrandarla te agrandaba la mochila,
+	-- el micromenu y las laterales.
+	--
+	-- Con MiniBar la escala va a los tres contenedores, que solo tienen
+	-- sus 12 botones. MainMenuBar acompaña UNICAMENTE para que su arte
+	-- quede del tamaño de la fila 1; ya no cuelgan de el ni las bolsas ni
+	-- el micromenu, asi que no arrastra a nadie mas.
+	if C.MiniBarEnabled == true then
+		K.ApplyBarHolderScales(scale);
+		if K.ApplyBagPackLayout then K.ApplyBagPackLayout(); end
+		return;
+	end
+
 	-- Core bars — bags inherit scale from MainMenuBar via parent chain
 	if MainMenuBar then MainMenuBar:SetScale(scale); end
 	if VehicleMenuBar then VehicleMenuBar:SetScale(scale); end
@@ -276,6 +334,12 @@ local function MB_SaveFrame(name, frame)
 		height   = frame.GetHeight and frame:GetHeight() or nil,
 		-- FIX: También guardar scale (antes no se guardaba, causaba rep bar bug al cambiar modo)
 		scale    = frame.GetScale  and frame:GetScale()  or nil,
+		-- Y EL PADRE.
+		--
+		-- Faltaba, y con el arte colgada del contenedor de la fila 1 pasa a
+		-- ser imprescindible: sin esto, al apagar MiniBar el marco del
+		-- fondo se quedaba colgado de un contenedor escondido.
+		parent   = frame.GetParent and frame:GetParent() or nil,
 	};
 	-- Guardar font si es un FontString
 	if frame.GetFont then
@@ -288,6 +352,10 @@ local function MB_RestoreFrame(name, frame)
 	if not frame then return; end
 	local s = mb_savedFrames[name];
 	if not s then return; end
+	-- El padre ANTES que los anclajes: reparentar borra los puntos.
+	if s.parent and frame.SetParent and frame:GetParent() ~= s.parent then
+		pcall(frame.SetParent, frame, s.parent);
+	end
 	frame:ClearAllPoints();
 	if s.point then
 		frame:SetPoint(s.point, s.rel, s.relPoint, s.x, s.y);
@@ -335,6 +403,11 @@ local function MB_CaptureOriginals()
 
 	-- Frame positions & sizes
 	MB_SaveFrame("MainMenuBar",              MainMenuBar);
+	-- MainMenuBarArtFrame NO va en esta lista. MB_SaveFrame guarda UN SOLO
+	-- punto de anclaje (GetPoint(1)) y ese marco usa DOS esquinas: asi es
+	-- como se estira solo con MainMenuBar. Reponerlo con un unico punto lo
+	-- deja con ancho fijo y ya no vuelve a seguir a la barra nunca mas.
+	-- Tiene su propia foto, completa: mira MB_SaveArt / K.RestoreArtFrame.
 	MB_SaveFrame("MainMenuExpBar",           MainMenuExpBar);
 	MB_SaveFrame("ReputationWatchBar",       ReputationWatchBar);
 	MB_SaveFrame("MainMenuBarMaxLevelBar",   MainMenuBarMaxLevelBar);
@@ -512,13 +585,433 @@ end
 -- numero (ver RowGap).
 local MiniBar_UpdateActionBars;
 
-function K.RefreshMiniBarLayout()
+function K.RefreshMiniBarLayout(force)
 	if C.MiniBarEnabled ~= true then return; end
 	if InCombatLockdown() then return; end
-	if MiniBar_UpdateActionBars then MiniBar_UpdateActionBars(); end
+	if MiniBar_UpdateActionBars then MiniBar_UpdateActionBars(force); end
 end
 
-function MiniBar_UpdateActionBars()
+-- Las cosas que MiniBar apila, de abajo hacia arriba, y la clave con la
+-- que cada una se guarda en "Move Everything". La usan el aplanado y el
+-- pin de hermanas.
+local MB_STACK = {
+	{ frame = "NUF_ActionBarHolder1",         key = "MainBar"     },
+	{ frame = "NUF_ActionBarHolder2",         key = "ActionBar2"  },
+	{ frame = "NUF_ActionBarHolder3",         key = "ActionBar3"  },
+	{ frame = "NUF_StanceBarHolder",          key = "StanceBar"   },
+	{ frame = "MultiCastActionBarFrame",      key = "TotemBar"    },
+	{ frame = "MainMenuBarVehicleLeaveButton" },
+	{ frame = "PetActionButton1",             key = "PetBar"      },
+	{ frame = "PossessButton1",               key = "PossessBar"  },
+};
+
+-- ============================================================
+-- APLANAR LA PILA
+--
+-- EL PROBLEMA DE FONDO. MiniBar apila con anclajes RELATIVOS: la fila 3
+-- se ancla a la 2, la 2 a la 1, y postura/totem/mascota a la ultima. En
+-- WoW un anclaje relativo es un vinculo VIVO y permanente: si el frame de
+-- referencia se mueve, el otro se mueve con el para siempre.
+--
+-- Por eso arrastrar la fila 1 se llevaba las tres, la 2 se llevaba la 3, y
+-- la 3 se llevaba la barra de auras. No era el guardado: era el anclaje.
+--
+-- Las guardas de HasGlobalPos no alcanzaban, y conviene entender por que:
+-- solo evitan RE-anclar en el proximo repintado. No cortan el vinculo que
+-- ya esta puesto, y en el primer arrastre todavia no hay nada guardado que
+-- mirar.
+--
+-- LA SOLUCION es cortar el vinculo: cada elemento pasa a estar anclado a
+-- UIParent en coordenadas absolutas, en el mismo lugar donde ya se ve. A
+-- ojo no cambia nada; por dentro deja de haber cadena.
+--
+-- Se hace al ENCENDER el modo mover, que es el unico momento en que la
+-- cadena estorba. Fuera de ese modo la cadena es justamente lo que arma la
+-- pila por defecto, asi que se la deja en paz.
+-- ============================================================
+local function MB_ToUIParent(frame)
+	local l, b = frame:GetLeft(), frame:GetBottom();
+	if not l or not b then return nil; end
+
+	-- SIN CONVERSION DE ESCALA. Y esto es contraintuitivo, asi que va
+	-- escrito para no volver a equivocarse:
+	--
+	--   GetLeft() devuelve en las coordenadas DEL PROPIO FRAME, o sea
+	--   pixeles de pantalla divididos por SU escala efectiva.
+	--
+	--   Los offsets de SetPoint se miden TAMBIEN en las coordenadas del
+	--   propio frame: la pantalla sale de multiplicarlos por esa misma
+	--   escala.
+	--
+	-- Las dos divisiones son la misma, asi que se cancelan: para dejar el
+	-- frame donde ya esta, el offset contra UIParent es GetLeft() tal cual.
+	--
+	-- Yo habia metido una conversion multiplicando por la escala del frame
+	-- y dividiendo por la de UIParent. Con ActionBarScale en 1 no se
+	-- notaba, pero apenas agrandabas una barra con Ctrl + rueda las dos
+	-- escalas dejaban de coincidir y al abrir "Move Everything" las barras
+	-- saltaban: parecia que se olvidaba la escala, y en realidad era este
+	-- factor de mas.
+	--
+	-- Es ademas la convencion del resto del addon: SavePosition guarda con
+	-- GetLeft() crudo y funciona.
+	return l, b;
+end
+
+-- Posicion y alto de un frame EN PIXELES DE PANTALLA.
+--
+-- Hace falta cuando se apila un frame sobre otro que puede tener OTRA
+-- escala -- que es justo lo que pasa desde que cada fila tiene la suya.
+-- Comparar GetLeft() entre dos frames de escalas distintas es comparar
+-- unidades distintas.
+local function MB_ScreenPos(frame)
+	local l, b = frame:GetLeft(), frame:GetBottom();
+	if not l or not b then return nil; end
+	local s = frame:GetEffectiveScale() or 1;
+	return l * s, b * s, (frame:GetHeight() or 30) * s;
+end
+
+-- Deja el frame en esa posicion de pantalla, anclado a UIParent.
+-- El offset se divide por SU escala, porque SetPoint mide en el espacio
+-- del propio frame.
+local function MB_PlaceAtScreen(frame, sx, sy)
+	local s = frame:GetEffectiveScale() or 1;
+	if s == 0 then return; end
+	frame:ClearAllPoints();
+	frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", sx / s, sy / s);
+end
+
+function K.MiniBarDetachStack()
+	if not minibarEnabled then return; end
+	-- Frames protegidos: mover o desanclar en combate contamina.
+	if InCombatLockdown() then return; end
+
+	for _, item in ipairs(MB_STACK) do
+		local f = _G[item.frame];
+		if f and f:IsShown() then
+			local x, y = MB_ToUIParent(f);
+			if x then
+				f:ClearAllPoints();
+				f:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y);
+			end
+		end
+	end
+end
+
+-- Para que GlobalUnlock sepa que hay pila que aplanar sin conocer MiniBar.
+-- ============================================================
+-- RESET: TODO EL MINIBAR A SU LUGAR ORIGINAL
+--
+-- Borrar las posiciones guardadas no alcanza. Al abrir el modo mover la
+-- pila se APLANA -- cada cosa pasa a estar anclada a UIParent en
+-- coordenadas absolutas -- y el arrastre encima las deja donde las
+-- soltaste. Sin deshacer las dos cosas, el reset borraba datos y en
+-- pantalla no se movia nada.
+--
+-- Aca se rehace desde cero: escalas a la de fabrica, y un reacomodo
+-- forzado que vuelve a encadenar la pila entera porque ya no hay ninguna
+-- posicion propia que respetar.
+-- ============================================================
+-- LA ESCALA DE CADA FILA.
+--
+-- El valor que llega es el GENERAL, el del slider del panel. Pero si una
+-- fila tiene escala propia -- puesta con Ctrl + rueda sobre ella -- manda
+-- la suya: para eso se la puso el usuario.
+--
+-- Sin esto, escalar la barra 1 con la rueda terminaba aplicandole el mismo
+-- numero a las tres en el siguiente repintado.
+local BAR_KEYS = { "MainBar", "ActionBar2", "ActionBar3" };
+
+-- ---------------------------------------------------------
+-- EL ARTE DE LA FILA 1 VA PEGADO A LA FILA 1.
+--
+-- MainMenuBar es el marco del que cuelga el FONDO: la barra oscura y los
+-- dos grifos. Los botones ya no viven ahi -- estan en NUF_ActionBarHolder1
+-- --, asi que lo unico que falta es que el marco siga al contenedor.
+--
+-- Se escribe en UN solo lugar y se puede volver a pedir cuando haga falta.
+-- Lo pide ApplyBarHolderScales despues de cambiar escalas, y lo pide el
+-- enganche de UIParent_ManageFramePositions.
+--
+-- Esa segunda llamada es la receta de MiniMainBar: ese addon no discute
+-- con el gestor de posiciones de Blizzard, se cuelga de el y vuelve a
+-- aplicar lo suyo cada vez que corre. Blizzard reacomoda seguido y por
+-- motivos que no controlamos -- abrir una bolsa, montar, un vehiculo --,
+-- asi que no alcanza con acomodar una vez: hay que ir siempre despues.
+-- ---------------------------------------------------------
+-- ---------------------------------------------------------
+-- LA FOTO DEL MARCO DEL ARTE
+--
+-- POR QUE NECESITA UNA APARTE.
+--
+-- MainMenuBarArtFrame no se posiciona con un punto: se ESTIRA entre dos
+-- esquinas de MainMenuBar. Por eso el addon viejo podia hacer
+-- MainMenuBar:SetWidth(512) y listo -- el arte se achicaba sola -- y por
+-- eso nunca hubo problema al alternar modos.
+--
+-- Cuando lo cuelgo del contenedor de la fila 1 le rompo ese par de
+-- anclajes. Si despues lo repongo con uno solo, el marco queda con ancho
+-- fijo y NO vuelve a seguir a la barra: ese es el pedazo de barra suelto
+-- que aparecia al apagar MiniBar.
+--
+-- Asi que la foto se saca ANTES de tocarlo y se guardan TODOS los puntos.
+-- ---------------------------------------------------------
+local artOrig = nil;
+
+local function MB_SaveArt(art)
+	if artOrig or not art then return; end
+	local pts = {};
+	for i = 1, (art:GetNumPoints() or 0) do
+		local p, rel, rp, x, y = art:GetPoint(i);
+		if p then pts[#pts + 1] = { p, rel, rp, x or 0, y or 0 }; end
+	end
+	artOrig = {
+		parent = art:GetParent(),
+		points = pts,
+		width  = art:GetWidth(),
+	};
+end
+
+function K.RestoreArtFrame()
+	local art = _G["MainMenuBarArtFrame"];
+	if not art or not artOrig then return; end
+	if InCombatLockdown() then return; end
+
+	if artOrig.parent and art:GetParent() ~= artOrig.parent then
+		pcall(art.SetParent, art, artOrig.parent);
+	end
+
+	art:ClearAllPoints();
+	for _, p in ipairs(artOrig.points) do
+		pcall(art.SetPoint, art, p[1], p[2], p[3], p[4], p[5]);
+	end
+
+	-- El ancho SOLO si tenia un unico anclaje. Con dos esquinas el tamaño
+	-- lo manda el anclaje, y escribirlo a mano volveria a romperlo.
+	if #artOrig.points < 2 and artOrig.width and artOrig.width > 0 then
+		art:SetWidth(artOrig.width);
+	end
+
+	artOrig = nil;
+end
+
+function K.PinMainMenuBarToRow1()
+	if C.MiniBarEnabled ~= true then return; end
+
+	-- Con MiniBar puesto esta barra es nuestra. Es una marca, no una
+	-- posicion, asi que se escribe tambien en combate.
+	if MainMenuBar then MainMenuBar.ignoreFramePositionManager = true; end
+
+	-- Reparentar toca marcos: en combate, no.
+	if InCombatLockdown() then return; end
+
+	local h1  = K.GetBarHolder and K.GetBarHolder(1);
+	local art = _G["MainMenuBarArtFrame"];
+	if not h1 or not art then return; end
+
+	-- =====================================================
+	-- EL FONDO ES HIJO DE LA FILA 1. NO SE ANCLA: SE CUELGA.
+	--
+	-- Vengo arreglando esto por anclaje y vuelve una y otra vez, siempre
+	-- por el mismo motivo: un anclaje es un dato que ALGUIEN MAS PUEDE
+	-- PISAR. Lo piso el gestor de posiciones de Blizzard, lo piso un
+	-- SetPoint viejo que habia quedado en EnableMiniBar, lo pisaba yo con
+	-- un inset heredado, y cuando no lo pisaba nadie no se podia reponer
+	-- porque estabamos en combate.
+	--
+	-- Ser HIJO no es un dato: es una relacion. Un marco hijo sigue a su
+	-- padre en posicion, en escala y en visibilidad, siempre, sin que
+	-- nadie tenga que reponer nada y sin que nadie pueda quitarselo con un
+	-- SetPoint. No hay repintado que valga, ni /reload, ni combate.
+	--
+	-- Es lo mismo que hace MiniMainBar: una sola familia de marcos.
+	--
+	-- MainMenuBar deja de importar para el fondo. Sigue existiendo como
+	-- padre de la barra de experiencia y la de reputacion, y que Blizzard
+	-- la mande donde quiera: el arte ya no esta ahi.
+	-- =====================================================
+	if art:GetParent() ~= h1 then
+		-- La foto ANTES de tocarlo, una sola vez.
+		MB_SaveArt(art);
+		art:SetParent(h1);
+		art:SetFrameStrata("MEDIUM");
+		-- Un nivel POR DEBAJO del contenedor, para que el arte quede
+		-- detras de los botones y no encima.
+		art:SetFrameLevel(math.max(0, (h1:GetFrameLevel() or 1) - 1));
+	end
+
+	-- EL ARTE VA CORRIDO, COMO LO TIENE BLIZZARD.
+	--
+	-- El marco del arte mide 512 y la fila de 12 botones 498. Esos 14 px
+	-- de diferencia NO van todos de un lado: Blizzard los reparte 8 a la
+	-- izquierda del boton 1 y 6 a la derecha del ultimo. Ese 8 es el mismo
+	-- desplazamiento que el boton 1 tenia dentro de MainMenuBar de fabrica
+	-- -- (8, 4) --, y es lo que hacia que en la version vieja se viera
+	-- bien: ahi los botones seguian ADENTRO del marco, en su lugar.
+	--
+	-- Al colgar el arte del contenedor en (0,0) su borde izquierdo quedaba
+	-- pegado al boton 1 y los 14 px sobraban todos por la derecha. De ahi
+	-- que se viera corrido.
+	--
+	-- OJO, ESTO YA LO SAQUE UNA VEZ Y ESTUVO BIEN SACARLO.
+	--
+	-- Antes este desplazamiento se aplicaba sobre MainMenuBar, que en ese
+	-- momento tenia el marco del arte en 1024 -- el bug de verdad -- y
+	-- encima con conversion de escala. Sumar el corrimiento a una
+	-- geometria ya rota lo empeoraba, y por eso sacarlo mejoro.
+	--
+	-- Ahora es distinto y por eso vuelve: el arte mide lo que debe (512) y
+	-- es HIJO del contenedor, asi que el desplazamiento se mide en la
+	-- misma escala que los botones. Cero conversion, cero deriva.
+	local ix, iy = 0, 0;
+	if K.BarHolderInset then ix, iy = K.BarHolderInset(1); end
+
+	art:ClearAllPoints();
+	art:SetPoint("BOTTOMLEFT", h1, "BOTTOMLEFT", -ix, -iy);
+
+	-- Y MainMenuBar VA AL MISMO LUGAR.
+	--
+	-- Dije que ya no importaba donde estuviera, porque el arte no cuelga
+	-- mas de ella. Para el FONDO es cierto. Para lo demas no: de
+	-- MainMenuBar siguen colgando la barra de experiencia, la de
+	-- reputacion y MainMenuBarMaxLevelBar.
+	--
+	-- Dejandola suelta, esas tres se quedan donde el juego las mande. El
+	-- fstack las encontro en (900, 242) -- en el medio de la pantalla,
+	-- invisibles pero presentes, y estorbando al pasar el mouse o al
+	-- arrastrar. Ese es el "no se mueve bien" de la barra de experiencia.
+	--
+	-- Asi que se la manda al mismo sitio que el arte. La diferencia con
+	-- antes es que ahora esto NO sostiene el fondo: si alguien le roba
+	-- este anclaje -- el gestor de Blizzard, un reset --, el arte se queda
+	-- igual donde va, porque es hijo del contenedor. Esto es prolijidad
+	-- para lo que cuelga de ella, no la pata de la mesa.
+	MainMenuBar:ClearAllPoints();
+	MainMenuBar:SetPoint("BOTTOMLEFT", h1, "BOTTOMLEFT", -ix, -iy);
+
+	-- Y con el ancho de la barra, no con el de fabrica: MiniBar la achica a
+	-- 512 y las dos mitades del fondo se cuelgan del CENTRO del ArtFrame,
+	-- asi que en 1024 el arte se dibujaba corrida a la derecha.
+	if art.SetWidth and (art:GetWidth() or 0) ~= 512 then art:SetWidth(512); end
+end
+
+
+-- ---------------------------------------------------------
+-- LA ESCALA DE LAS TRES FILAS
+--
+-- El valor que llega es el GENERAL, el del slider del panel. Pero si una
+-- fila tiene escala propia -- puesta con Ctrl + rueda sobre ella -- manda
+-- la suya: para eso se la puso el usuario.
+--
+-- Sin esto, escalar la barra 1 con la rueda terminaba aplicandole el mismo
+-- numero a las tres en el siguiente repintado.
+-- ---------------------------------------------------------
+function K.ApplyBarHolderScales(scale)
+	if type(scale) ~= "number" or scale <= 0 then scale = 1.0; end
+
+	local firstScale = scale;
+	for row = 1, 3 do
+		local h = K.GetBarHolder and K.GetBarHolder(row);
+		if h then
+			local own = K.GetGlobalScale and K.GetGlobalScale(BAR_KEYS[row]);
+			local use = (type(own) == "number" and own > 0) and own or scale;
+			h:SetScale(use);
+			if row == 1 then firstScale = use; end
+		end
+	end
+
+	if not MainMenuBar then return; end
+
+	-- MainMenuBar sigue a la FILA 1. Ya no por el arte -- esa cuelga del
+	-- contenedor y hereda su escala sola -- sino porque de MainMenuBar
+	-- todavia cuelgan la barra de experiencia y la de reputacion.
+	MainMenuBar:SetScale(firstScale);
+
+	-- Y el arte se asegura de estar colgada donde va.
+	K.PinMainMenuBarToRow1();
+end
+
+function K.ResetMiniBarLayout()
+	if C.MiniBarEnabled ~= true then return; end
+	if InCombatLockdown() then return; end
+
+	local scale = (K.GetConfigDefault and K.GetConfigDefault("ActionBarScale")) or 1.0;
+
+	for row = 1, 3 do
+		local h = K.GetBarHolder and K.GetBarHolder(row);
+		if h then
+			h:SetScale(scale);
+			h:ClearAllPoints();
+		end
+	end
+
+	if MainMenuBar then MainMenuBar:SetScale(scale); end
+	-- Las escalas propias ya se borraron con globalPos, asi que las tres
+	-- vuelven a la general.
+
+	-- Lo que se apila encima tambien quedo suelto por el aplanado.
+	for _, item in ipairs(MB_STACK) do
+		local f = _G[item.frame];
+		if f then
+			f:SetScale(scale);
+			f:ClearAllPoints();
+		end
+	end
+
+	-- Y ahora si, la pila se rearma sola. force = true porque el reset se
+	-- aprieta con el modo mover abierto.
+	MiniBar_UpdateActionBars(true);
+
+	-- Y el arte se vuelve a pegar a la fila 1. Recien aca, con los
+	-- contenedores ya colocados: pegarlo antes seria pegarlo a una
+	-- posicion que todavia no existe.
+	K.PinMainMenuBarToRow1();
+end
+
+function K.MiniBarStackKeys()
+	local out = {};
+	for _, item in ipairs(MB_STACK) do
+		if item.key then out[#out + 1] = item.key; end
+	end
+	return out;
+end
+
+function MiniBar_UpdateActionBars(force)
+	-- CON EL MODO MOVER ENCENDIDO, NO SE RE-ARMA NADA.
+	--
+	-- Estas arrastrando; re-anclar por debajo te mueve las barras solas.
+	-- Es lo que pasaba al apretar Shift+Alt en medio de un arrastre: el
+	-- otro sistema de movimiento disparaba UIParent_ManageFramePositions,
+	-- eso llamaba aca, y la barra de auras volvia de un salto a la pila.
+	--
+	-- Salvo que se pida a proposito (force): el boton Reset se aprieta
+	-- justamente con el modo abierto, y sin esto no reacomodaba nada --
+	-- era la razon por la que la barra de auras quedaba en cualquier lado
+	-- despues de resetear.
+	if (not force) and K.IsGlobalUnlocked and K.IsGlobalUnlocked() then return; end
+
+	-- El Holder de posturas tiene que EXISTIR antes de anclarlo.
+	--
+	-- Estaba solo en el camino de Unify: MiniBar llamaba a
+	-- DetachStanceButtons al apagarse pero nunca a Attach al encenderse.
+	-- Por eso NUF_StanceBarHolder no existia en MiniBar, la entrada
+	-- "Stance Bar" del modo mover no encontraba frame y la barra de auras
+	-- del paladin no se podia mover -- justo lo que si funciona en Unify.
+	-- Es idempotente: reancla los mismos botones al mismo Holder.
+	if K.AttachStanceButtons then K.AttachStanceButtons(); end
+
+	-- Y las tres filas a SUS contenedores (ver el comentario largo en
+	-- Modules/ActionBars.lua). Es lo que hace que escalar una barra no
+	-- toque las bolsas ni el micromenu.
+	if K.AttachActionBarButtons then K.AttachActionBarButtons(); end
+
+	-- Las escalas ANTES de posicionar: los offsets de SetPoint se miden en
+	-- la escala del propio frame, asi que cambiarla despues correria las
+	-- filas de lugar.
+	if K.ApplyBarHolderScales then
+		K.ApplyBarHolderScales(C.ActionBarScale or 1.0);
+	end
+
 	local anchor;
 	local anchorOffset = RowGap();
 	local repOffset = 0;
@@ -534,33 +1027,109 @@ function MiniBar_UpdateActionBars()
 		repOffset = repOffset + 5;
 	end
 
-	if MultiBarBottomLeft:IsShown() then
-		anchor = MultiBarBottomLeft;
-		anchorOffset = RowGap();
-	else
-		-- Sin segunda fila, la primera queda pegada a las barras de
-		-- experiencia y reputacion: ahi hace falta despegarla un poco mas.
-		anchor = ActionButton1;
-		anchorOffset = RowGap() + 6 + repOffset;
+	-- UNA FILA QUE MOVISTE A MANO SALE DE LA PILA.
+	--
+	-- MiniBar apila las tres: la 3 encima de la 2, la 2 encima de la 1, y
+	-- lo que va arriba (postura, mascota, totem) se cuelga de la ultima.
+	-- Si arrastraste una a otro lado y siguieramos usandola de referencia,
+	-- todo eso la seguiria hasta alla.
+	--
+	-- Es la misma regla que ya usa la barra de posturas: con posicion
+	-- guardada manda la tuya y el modulo no la toca.
+	-- LAS TRES FILAS, CADA UNA EN SU CONTENEDOR.
+	--
+	-- Antes se apilaban los frames de Blizzard. Ahora se apilan los
+	-- contenedores, que es lo unico que se mueve y se escala; los botones
+	-- cuelgan de ellos. Una fila con posicion propia sale de la pila y no
+	-- sirve de referencia para las de arriba.
+	local h1 = K.GetBarHolder and K.GetBarHolder(1);
+	local h2 = K.GetBarHolder and K.GetBarHolder(2);
+	local h3 = K.GetBarHolder and K.GetBarHolder(3);
+
+	if h1 and not (K.HasGlobalPos and K.HasGlobalPos("MainBar")) then
+		if K.BarHolderDefaultPoint then K.BarHolderDefaultPoint(1); end
 	end
 
-	-- Stack MultiBarBottomRight above
-	if MultiBarBottomRight:IsShown() then
-		MultiBarBottomRight:ClearAllPoints();
-		MultiBarBottomRight:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, anchorOffset);
-		anchor = MultiBarBottomRight;
-		anchorOffset = RowGap();
+	-- EL FONDO SIGUE A LA FILA 1, EN TIEMPO REAL.
+	--
+	-- MainMenuBar es el marco cuyo arte se ve como fondo de la barra, y
+	-- cuelga DEL CONTENEDOR: es un anclaje vivo, asi que el fondo acompaña
+	-- mientras arrastras, sin codigo extra.
+	--
+	-- El anclaje NO se escribe aca: lo hace ApplyBarHolderScales, que ya
+	-- corrio unas lineas mas arriba. Tiene que ir junto al SetScale porque
+	-- el desplazamiento se mide en la escala de MainMenuBar, y separarlos
+	-- era lo que desfasaba el fondo al recargar con la barra agrandada.
+
+	-- Sin segunda fila, la primera queda pegada a las barras de
+	-- experiencia y reputacion: ahi hace falta despegarla un poco mas.
+	anchor = h1 or ActionButton1;
+	anchorOffset = RowGap() + 6 + repOffset;
+
+	-- LA PILA SE CALCULA, NO SE ENCADENA.
+	--
+	-- Aca volvi a meter la pata: al pasar a contenedores los apile otra vez
+	-- con SetPoint contra el de abajo. En WoW eso es un vinculo VIVO, asi
+	-- que mover la fila 1 se llevaba la 2 y la 3 para siempre.
+	--
+	-- Ahora se calcula: se mide donde termina la fila de abajo EN PIXELES
+	-- DE PANTALLA y se coloca la siguiente ahi arriba, anclada a UIParent.
+	-- Queda igual a la vista y no hay ningun vinculo que arrastre.
+	--
+	-- En pixeles de pantalla y no en GetLeft() crudo porque cada fila puede
+	-- tener SU escala: comparar coordenadas de frames con escalas distintas
+	-- es comparar unidades distintas.
+	-- LA X SALE SIEMPRE DE LA MISMA BASE.
+	--
+	-- Encadenar tambien la horizontal -- medir la fila 2 para colocar la 3
+	-- -- acumulaba el redondeo de dividir y multiplicar por escalas, y las
+	-- filas quedaban corridas un par de pixeles cada una. Con una sola
+	-- base no hay nada que acumular: las tres arrancan alineadas.
+	--
+	-- La vertical si se encadena, que es lo que hace que sea una pila.
+	local baseX, sy, sh = MB_ScreenPos(anchor);
+	local gapScale = (UIParent:GetEffectiveScale() or 1);
+
+	if h2 and MultiBarBottomLeft:IsShown()
+	   and not (K.HasGlobalPos and K.HasGlobalPos("ActionBar2")) then
+		if baseX then
+			MB_PlaceAtScreen(h2, baseX, sy + sh + (anchorOffset * gapScale));
+			local _, y2, h2h = MB_ScreenPos(h2);
+			sy, sh = y2 or sy, h2h or sh;
+			anchorOffset = RowGap();
+		end
+		anchor = h2;
 	end
 
-	-- Shapeshift buttons (presencias para DK van más a la izquierda)
-	if ShapeshiftButton1 and ShapeshiftButton1:IsShown() then
-		ShapeshiftButton1:ClearAllPoints();
+	if h3 and MultiBarBottomRight:IsShown()
+	   and not (K.HasGlobalPos and K.HasGlobalPos("ActionBar3")) then
+		if baseX then
+			MB_PlaceAtScreen(h3, baseX, sy + sh + (anchorOffset * gapScale));
+			local _, y3, h3h = MB_ScreenPos(h3);
+			sy, sh = y3 or sy, h3h or sh;
+			anchorOffset = RowGap();
+		end
+		anchor = h3;
+	end
+
+	-- Posturas / auras / presencias / Shadowform.
+	--
+	-- Se ancla el HOLDER, no ShapeshiftButton1. El Holder es nuestro, los
+	-- botones cuelgan de el (K.AttachStanceButtons) y es lo que apunta la
+	-- entrada "Stance Bar" del modo mover: anclando el boton, el Holder
+	-- quedaba vacio de sentido y la barra no se podia mover.
+	local stanceHolder = _G["NUF_StanceBarHolder"];
+	local stanceTarget = stanceHolder or ShapeshiftButton1;
+	if stanceTarget and ShapeshiftButton1 and ShapeshiftButton1:IsShown()
+	   and not (K.HasGlobalPos and K.HasGlobalPos("StanceBar")) then
+		stanceTarget:ClearAllPoints();
 		local shapeshiftOffsetX = (playerClass == "DEATHKNIGHT") and -10 or config.ShapeshiftBar.offsetX;
-		ShapeshiftButton1:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", shapeshiftOffsetX, anchorOffset - 0.5);
+		stanceTarget:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", shapeshiftOffsetX, anchorOffset - 0.5);
 	end
 
 	-- Totem bar
-	if MultiCastActionBarFrame and MultiCastActionBarFrame:IsShown() then
+	if MultiCastActionBarFrame and MultiCastActionBarFrame:IsShown()
+	   and not (K.HasGlobalPos and K.HasGlobalPos("TotemBar")) then
 		MultiCastActionBarFrame:ClearAllPoints();
 		MultiCastActionBarFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", config.TotemBar.offsetX, anchorOffset - 1.5);
 		anchor = MultiCastActionBarFrame;
@@ -575,17 +1144,29 @@ function MiniBar_UpdateActionBars()
 		anchorOffset = 4;
 	end
 
-	-- Pet bar (para DK va más a la derecha para no tapar las presencias)
+	-- Mascota (para DK va más a la derecha para no tapar las presencias).
+	--
+	-- Movida a mano, los botones pasan a colgar de SU PROPIO marco, que es
+	-- el que arrastras. Si siguieran colgando de la pila, mover PetBar no
+	-- haria nada visible.
 	if PetActionButton1 then
 		PetActionButton1:ClearAllPoints();
-		local petOffsetX = (playerClass == "DEATHKNIGHT") and 130 or config.PetBar.offsetX;
-		PetActionButton1:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", petOffsetX, anchorOffset - 0.5);
+		if K.HasGlobalPos and K.HasGlobalPos("PetBar") and PetActionBarFrame then
+			PetActionButton1:SetPoint("BOTTOMLEFT", PetActionBarFrame, "BOTTOMLEFT", 0, 0);
+		else
+			local petOffsetX = (playerClass == "DEATHKNIGHT") and 130 or config.PetBar.offsetX;
+			PetActionButton1:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", petOffsetX, anchorOffset - 0.5);
+		end
 	end
 
 	-- Possess bar
 	if PossessButton1 then
 		PossessButton1:ClearAllPoints();
-		PossessButton1:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", config.PossessBar.offsetX, anchorOffset - 0.5);
+		if K.HasGlobalPos and K.HasGlobalPos("PossessBar") and PossessBarFrame then
+			PossessButton1:SetPoint("BOTTOMLEFT", PossessBarFrame, "BOTTOMLEFT", 0, 0);
+		else
+			PossessButton1:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", config.PossessBar.offsetX, anchorOffset - 0.5);
+		end
 	end
 end
 
@@ -605,8 +1186,23 @@ local function MiniBar_UpdateUI()
 
 	-- FIX: Re-enforce MainMenuBar at y=0 AND width=512
 	-- UIParent_ManageFramePositions and vehicle exit can reset both.
-	MainMenuBar:ClearAllPoints();
-	MainMenuBar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 0);
+	--
+	-- SALVO QUE VOS LA HAYAS MOVIDO. Este reancle existe porque Blizzard y
+	-- la salida de vehiculo devuelven la barra al centro; pero corriendo
+	-- siempre, tambien pisaba la posicion que elegiste y la barra 1 volvia
+	-- sola al medio. Con posicion guardada, o con el modo mover encendido
+	-- (que es cuando la estas arrastrando), no se toca.
+	--
+	-- El ancho SI se reafirma siempre: no es posicion, y si se pierde la
+	-- barra se dibuja partida.
+	-- LA POSICION DE MainMenuBar YA NO SE DECIDE ACA.
+	--
+	-- La manda el contenedor de la fila 1, del que cuelga (ver
+	-- MiniBar_UpdateActionBars). Reanclarla aca la arrancaba de ahi en
+	-- cada repintado y el fondo se despegaba de la barra.
+	--
+	-- El ancho SI se reafirma: no es posicion, y si se pierde el arte se
+	-- dibuja partido.
 	MainMenuBar:SetWidth(512);
 
 	MakeInvisible(SlidingActionBarTexture0);
@@ -638,22 +1234,30 @@ local function MiniBar_OnEvent(self, event, unit)
 	elseif event == "UNIT_ENTERED_VEHICLE" and unit == "player" then
 		-- FIX: Hide BagPackFrame during vehicle (Blizzard uses VehicleMenuBar)
 		if BagPackFrame then BagPackFrame:Hide(); end
-		-- FIX: Reparent micro buttons to UIParent during vehicle.
-		-- MainMenuBar gets hidden -> MainMenuBarArtFrame hidden -> micro buttons vanish.
-		for _, name in ipairs(MicroButtons) do
-			local btn = _G[name];
-			if btn then btn:SetParent(UIParent); end
-		end
+		-- El micromenu lo coloca K.MiniBarPlaceVehicleMicro (ver el
+		-- comentario largo donde esta definida). Antes aca se hacia
+		-- SetParent(UIParent) a mano y eso lo dejaba POR DEBAJO de la
+		-- chapa de la barra del vehiculo: invisible en el demoledor.
+		if K.MiniBarPlaceVehicleMicro then K.MiniBarPlaceVehicleMicro(); end
 		MiniBar_UpdateUI();
 	elseif event == "UNIT_EXITED_VEHICLE" and unit == "player" then
 		-- FIX: Restore BagPackFrame and full layout after vehicle exit
 		if BagPackFrame then BagPackFrame:Show(); end
 		-- FIX: Reparent micro buttons back to UIParent (not MainMenuBarArtFrame)
+		--
+		-- Y devolverles el nivel de marco. Arriba del vehiculo se lo
+		-- subimos a proposito para que no queden debajo de la chapa; si
+		-- ese nivel alto se queda pegado al bajarse, el micromenu se
+		-- dibuja por encima de cosas con las que no tiene nada que ver.
+		-- +5 sobre MainMenuBar es la misma receta que usan los Holder de
+		-- las filas: por arriba del arte de la barra, por debajo del resto.
+		local microLevel = ((MainMenuBar and MainMenuBar:GetFrameLevel()) or 0) + 5;
 		for _, name in ipairs(MicroButtons) do
 			local btn = _G[name];
 			if btn then
 				btn:SetParent(UIParent);
 				btn:SetFrameStrata("MEDIUM");
+				btn:SetFrameLevel(microLevel);
 			end
 		end
 		if K.ApplyBagPackLayout then K.ApplyBagPackLayout(); end
@@ -716,6 +1320,52 @@ end
 -- ============================================================
 -- MiniBar internal: VehicleMenuBar hook for micro buttons
 -- ============================================================
+
+-- EL MICROMENU ARRIBA DE LA CHAPA DEL VEHICULO.
+--
+-- Sintoma: en el demoledor de Costa de los Ancestros, con MiniBar puesto,
+-- el micromenu no se veia por ningun lado.
+--
+-- No estaba escondido: estaba DETRAS. La barra del vehiculo se dibuja con
+-- una placa de metal grande, y el micromenu queda justo encima de ella
+-- (Blizzard lo ancla a VehicleMenuBar, 340 px desde la derecha). Mientras
+-- los botones cuelgan de VehicleMenuBarArtFrame heredan un nivel de marco
+-- por arriba de esa placa y se ven. Pero el handler de UNIT_ENTERED_VEHICLE
+-- los pasaba a UIParent, y ahi el nivel vuelve al de cualquier hijo de
+-- UIParent: por debajo de la chapa. Tapados.
+--
+-- Ese reparenteo a UIParent existia por un motivo real -- al subirse,
+-- Blizzard esconde MainMenuBarArtFrame y con el desaparecian los botones
+-- si todavia eran sus hijos -- pero VehicleMenuBarArtFrame ya resuelve lo
+-- mismo y ademas esta VISIBLE, que es lo que aca hacia falta.
+--
+-- Esta funcion es el unico lugar que decide padre y nivel en vehiculo, y
+-- la llaman los dos caminos (el hook de Blizzard y el evento), asi que no
+-- importa cual corra primero: el resultado es el mismo.
+--
+-- Va como campo de K a proposito: el handler del evento esta MAS ARRIBA en
+-- este archivo, y una local declarada despues es invisible para el codigo
+-- de arriba -- se leeria como global nil y no haria nada, sin avisar.
+function K.MiniBarPlaceVehicleMicro()
+	local art = _G["VehicleMenuBarArtFrame"];
+	for _, name in ipairs(MicroButtons) do
+		local btn = _G[name];
+		if btn then
+			if art then
+				btn:SetParent(art);
+				btn:SetFrameStrata(art:GetFrameStrata() or "MEDIUM");
+				btn:SetFrameLevel((art:GetFrameLevel() or 0) + 5);
+			else
+				-- Vehiculo sin arte propio: UIParent, pero arriba de todo,
+				-- que es lo que faltaba antes.
+				btn:SetParent(UIParent);
+				btn:SetFrameStrata("HIGH");
+			end
+			btn:Show();
+		end
+	end
+end
+
 local function MiniBar_VehicleMicroHook(skinName)
 	if not minibarEnabled then return; end
 	if not BagPackFrame then return; end
@@ -738,20 +1388,16 @@ local function MiniBar_VehicleMicroHook(skinName)
 		SocialsMicroButton:SetPoint("BOTTOMLEFT", QuestLogMicroButton, "BOTTOMRIGHT", -3, 0);
 		-- UpdateMicroButtons removed: handled by hooks
 	elseif skinName == "Mechanical" then
-		for _, frame in pairs(microBtns) do
-			frame:SetParent(VehicleMenuBarArtFrame);
-			frame:Show();
-		end
+		-- Padre y nivel los pone el helper; aca solo la posicion.
+		K.MiniBarPlaceVehicleMicro();
 		CharacterMicroButton:ClearAllPoints();
 		CharacterMicroButton:SetPoint("BOTTOMLEFT", VehicleMenuBar, "BOTTOMRIGHT", -340, 41);
 		SocialsMicroButton:ClearAllPoints();
 		SocialsMicroButton:SetPoint("TOPLEFT", CharacterMicroButton, "BOTTOMLEFT", 0, 20);
 		-- UpdateMicroButtons removed: handled by hooks
 	elseif skinName == "Natural" then
-		for _, frame in pairs(microBtns) do
-			frame:SetParent(VehicleMenuBarArtFrame);
-			frame:Show();
-		end
+		-- Padre y nivel los pone el helper; aca solo la posicion.
+		K.MiniBarPlaceVehicleMicro();
 		CharacterMicroButton:ClearAllPoints();
 		CharacterMicroButton:SetPoint("BOTTOMLEFT", VehicleMenuBar, "BOTTOMRIGHT", -365, 41);
 		SocialsMicroButton:ClearAllPoints();
@@ -768,6 +1414,22 @@ local minibarEvtFrame = CreateFrame("Frame", "NidhausMiniBarFrame", UIParent);
 -- ============================================================
 -- ENABLE MiniBar
 -- ============================================================
+-- ---------------------------------------------------------
+-- MARCAR EL MODO COMO NO PUESTO, SIN DESHACER NADA.
+--
+-- HOY NO LA LLAMA NADIE. Se escribio para un rearmado que reponia la foto
+-- de fabrica por su cuenta antes de prender el modo; eso resulto ser justo
+-- lo que rompia el alternar entre modos y se saco (ver LayoutRebuild).
+--
+-- Queda porque es la unica forma limpia de decir "el modo ya no esta
+-- puesto" sin disparar un teardown, y si algun dia hace falta de nuevo,
+-- mejor esto que volver a tocar la bandera desde afuera del modulo.
+-- ---------------------------------------------------------
+function K.MiniBarMarkOff()
+	minibarEnabled   = false;
+	K._minibarActive = false;
+end
+
 function K.EnableMiniBar()
 	-- Foto de los botones ANTES de acomodar nada: MiniBar reancla
 	-- ShapeshiftButton1 y el espaciado reancla el resto. Sin esta
@@ -804,7 +1466,14 @@ function K.EnableMiniBar()
 	-- Hook UIParent_ManageFramePositions (once, with guard)
 	if not minibarHooked then
 		hooksecurefunc("UIParent_ManageFramePositions", function()
-			if minibarEnabled then MiniBar_UpdateUI(); end
+			if not minibarEnabled then return; end
+			MiniBar_UpdateUI();
+			-- Y REPONER EL ANCLA DEL FONDO, SIEMPRE.
+			--
+			-- Blizzard acaba de reescribirle la posicion a MainMenuBar. Si
+			-- no se repone aca mismo, el fondo se queda en el borde de
+			-- abajo y los botones donde vos los pusiste: separados.
+			if K.PinMainMenuBarToRow1 then K.PinMainMenuBarToRow1(); end
 		end);
 		hooksecurefunc("VehicleMenuBar_MoveMicroButtons", MiniBar_VehicleMicroHook);
 		-- FIX (barra XP/rep que "sube"): MiniBar_UpdateActionBars calcula el
@@ -848,9 +1517,25 @@ function K.EnableMiniBar()
 
 	-- Resize bars to half width (512)
 	MainMenuBar:SetWidth(512);
-	-- FIX: Forzar MainMenuBar a y=0 para que no se eleve
-	MainMenuBar:ClearAllPoints();
-	MainMenuBar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 0);
+	-- Y el marco del arte con el mismo ancho, o el fondo se dibuja
+	-- centrado en 1024 mientras la barra mide 512 (ver PinMainMenuBarToRow1).
+	if MainMenuBarArtFrame then MainMenuBarArtFrame:SetWidth(512); end
+	-- ACA HABIA UN SEGUNDO DUEÑO DEL ANCLA DE MainMenuBar.
+	--
+	-- Decia asi, de una epoca en la que los botones todavia colgaban de
+	-- MainMenuBar y no existian los contenedores:
+	--
+	--     MainMenuBar:ClearAllPoints();
+	--     MainMenuBar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 0);
+	--
+	-- O sea: clavaba el arte al borde de abajo de la pantalla. Con el
+	-- sistema de contenedores eso es exactamente el bug de "el fondo queda
+	-- anclado abajo y mover la barra 1 ya no lo mueve": el ancla al
+	-- contenedor quedaba borrada y el arte se despegaba de los botones
+	-- para siempre.
+	--
+	-- El ancla la escribe UN solo lugar: PinMainMenuBarToRow1.
+	K.PinMainMenuBarToRow1();
 	MainMenuExpBar:SetWidth(512);
 	MainMenuExpBar:SetHeight(12);
 	ReputationWatchBar:SetWidth(512);
@@ -936,6 +1621,9 @@ function K.DisableMiniBar()
 	-- hay que devolverlos ANTES de restaurar los frames de las barras.
 	if K.RestoreActionBarButtonSpace then K.RestoreActionBarButtonSpace(); end
 	if K.DetachStanceButtons then K.DetachStanceButtons(); end
+	-- Los botones ya volvieron con RestoreActionBarButtonSpace; los
+	-- contenedores se esconden para que no queden cajas vacias sueltas.
+	if K.HideBarHolders then K.HideBarHolders(); end
 	-- MiniBar solto las texturas: que HideActionBarTextures vuelva a aplicar
 	if K._habReapply then K._habReapply(); end
 
@@ -957,6 +1645,10 @@ function K.DisableMiniBar()
 
 	-- Restaurar posiciones y tamaños de frames
 	MB_RestoreFrame("MainMenuBar",              MainMenuBar);
+	-- El marco del arte va por su propia puerta, con TODOS sus anclajes.
+	-- Y antes que las texturas que cuelgan de el: si se reponen sobre un
+	-- marco que todavia mide 512, caen centradas donde no va.
+	if K.RestoreArtFrame then K.RestoreArtFrame(); end
 	MB_RestoreFrame("MainMenuExpBar",           MainMenuExpBar);
 	MB_RestoreFrame("ReputationWatchBar",       ReputationWatchBar);
 	MB_RestoreFrame("MainMenuBarMaxLevelBar",   MainMenuBarMaxLevelBar);
@@ -1048,6 +1740,31 @@ function K.DisableMiniBar()
 		MainMenuBarRightEndCap:Show();
 	end
 
+
+	-- ── Y LA FOTO DE FABRICA, AL FINAL DE TODO ──
+	--
+	-- ESTE ERA EL BUG DE APAGAR EL MODO.
+	--
+	-- BarBaseline guarda una foto del estado limpio, tomada UNA vez por
+	-- sesion antes de que ningun modo tocara nada, y sabe reponer padre,
+	-- anclajes, ancho, alto, escala, alfa y visibilidad.
+	--
+	-- Pero solo se la llamaba al ENCENDER un modo. Si apagabas MiniBar y
+	-- no entraba ningun otro, nadie la llamaba: quedaba lo que este modulo
+	-- pudiera reponer con su propia lista, y esa lista solo tiene lo que
+	-- alguien se acordo de agregar. Medido: al apagar,
+	--
+	--     MainMenuBar  w=512   (tendria que ser 1024)
+	--     ArtFrame     w=512   (idem)
+	--
+	-- Peor todavia: la lista propia se captura AL ENCENDER, asi que si una
+	-- sesion anterior dejo la barra en 512, la foto siguiente guardaba 512
+	-- como si fuera el original. Una vez contaminada no se recuperaba mas.
+	--
+	-- Reponiendo la foto de fabrica al final, la barra vuelve SIEMPRE a lo
+	-- que trae el juego, y de paso se limpia esa contaminacion sola.
+	if K.RestoreBarBaseline then pcall(K.RestoreBarBaseline); end
+
 	-- Limpiar estado guardado
 	mb_savedFrames   = {};
 	mb_savedTextures = {};
@@ -1078,4 +1795,17 @@ initFrame:SetScript("OnEvent", function(self)
 	if C.ActionBarScale and C.ActionBarScale ~= 1.0 then
 		K.ApplyActionBarScale(C.ActionBarScale);
 	end
+end);
+
+-- AL SALIR DE COMBATE, REPONER.
+--
+-- Todo lo que mueve marcos protegidos esta prohibido en combate, asi que
+-- si algo desacomodo el fondo peleando, la correccion no podia aplicarse
+-- y quedaba corrido hasta el siguiente repintado -- que podia tardar.
+-- Apenas termina el combate se vuelve a pegar.
+local mbCombat = CreateFrame("Frame");
+mbCombat:RegisterEvent("PLAYER_REGEN_ENABLED");
+mbCombat:SetScript("OnEvent", function()
+	if C.MiniBarEnabled ~= true then return; end
+	if K.PinMainMenuBarToRow1 then K.PinMainMenuBarToRow1(); end
 end);

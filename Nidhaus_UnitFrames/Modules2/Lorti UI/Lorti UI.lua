@@ -381,6 +381,28 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 	local subUIHeight = math.abs(localY)
 	wrapper:SetHeight(subUIHeight)
 
+	-- RE-SINCRONIZAR LAS CASILLAS CON C.
+	--
+	-- LortiUI_Minimap tiene DOS duenos: esta casilla y el desplegable de
+	-- borde del minimapa (Interface > Minimap > Border style = "Lorti").
+	-- Cuando lo cambiabas desde el desplegable, el valor en C si cambiaba,
+	-- pero el tilde de aca se quedaba con el estado viejo hasta cerrar y
+	-- reabrir el panel: parecia que no se habia guardado.
+	--
+	-- El panel ya llamaba a K.RefreshLortiSubOptions para esto, solo que
+	-- la funcion no estaba definida en ningun archivo. Al estar la llamada
+	-- dentro de un "if K.X then" no daba error, simplemente no pasaba nada.
+	--
+	-- Se define aca adentro a proposito: necesita ver subOptions y
+	-- subCheckboxes, que son locales de esta funcion. C es el unico dueno
+	-- del valor; esto solo vuelve a leerlo.
+	function K.RefreshLortiSubOptions()
+		for i = 1, #subOptions do
+			local cb = subCheckboxes[i]
+			if cb then cb:SetChecked(C[subOptions[i].key] ~= false) end
+		end
+	end
+
 	-- Mostrar/ocultar según estado del módulo
 	local function SetSubsVisible(show)
 		if show then

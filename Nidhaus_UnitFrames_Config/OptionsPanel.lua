@@ -7,6 +7,10 @@ local K, C, L = unpack(ns);
 
 local mainFrame;
 local currentTab  = 1;
+-- Los botones del pie que MakeSecondary atenua. Se declara ACA ARRIBA
+-- porque la usan dos lugares muy lejos entre si: MakeSecondary, que la
+-- llena, y RegisterThemeFrames, que se la pasa al ThemeManager.
+local secondaryButtons = {};
 local tabs        = {};
 local tabPanels   = {};
 local checkboxes  = {};
@@ -317,9 +321,21 @@ local function SelectTab(id)
 		if i == id then panel:Show() else panel:Hide() end
 	end
 
-	local theme = K.GetActiveTheme and K.GetActiveTheme();
+	local theme  = K.GetActiveTheme and K.GetActiveTheme();
+	local native = theme and theme.nativeTabs;
 
 	for i, tab in ipairs(tabs) do
+		-- Las pestanas de Blizzard se pintan solas. SelectTab las hunde Y
+		-- LAS DESHABILITA, que es por que no se puede clickear la que ya
+		-- estas mirando; DeselectTab las levanta y las vuelve a habilitar.
+		-- Va con pcall: si alguna vez el template cambia, se pierde el
+		-- resaltado pero el panel sigue abriendose.
+		if native and tab.native then
+			local fn = (i == id) and PanelTemplates_SelectTab
+			                     or  PanelTemplates_DeselectTab;
+			if fn then pcall(fn, tab.native); end
+		end
+
 		if i == id then
 			tab.selected = true;
 			if theme then
@@ -347,6 +363,63 @@ end
 -- ────────────────────────────────────────────────────────────────────────────
 -- CreateTabs
 -- ────────────────────────────────────────────────────────────────────────────
+-- =========================================================
+-- LAS PESTANAS SE ACOMODAN AL ANCHO DE LA VENTANA
+--
+-- La barra de pestanas esta anclada a los dos costados, asi que SI se
+-- estira y se encoge con la ventana. Las pestanas de adentro, no: su ancho
+-- se calculaba UNA vez, al crearlas, y despues quedaba fijo. Achicabas la
+-- ventana y se salian por la derecha; la agrandabas y quedaba un hueco.
+--
+-- Esto lo reparte de nuevo cada vez que la barra cambia de tamano. Como la
+-- barra sigue a la ventana, alcanza con escucharla a ella y no hay que
+-- meterse con el arrastre del agarre de la esquina.
+--
+-- Y EL TEXTO TAMBIEN. Repartir el ancho sin mas dejaba "Interface" saliendo
+-- de su propia pestana en cuanto la ventana se ponia angosta. Se prueba la
+-- fuente de mayor a menor y se toma la primera que entra: asi el texto se
+-- achica solo en vez de desbordar.
+local TAB_FONT_STEPS = { 12, 11, 10, 9, 8 };
+
+local function LayoutTabs()
+	local bar = mainFrame and mainFrame.TabBar;
+	if not bar then return; end
+
+	local visible = 0;
+	for _, t in ipairs(tabs) do
+		if not t._nufHidden then visible = visible + 1; end
+	end
+	if visible == 0 then return; end
+
+	local barW = bar:GetWidth();
+	-- Durante el primer cuadro el ancho todavia puede ser 0: repartirlo
+	-- daria pestanas de ancho cero y no se veria ninguna.
+	if not barW or barW <= 1 then return; end
+
+	local tabW = barW / visible;
+
+	for _, t in ipairs(tabs) do
+		if not t._nufHidden then
+			t:SetWidth(tabW);
+
+			local lbl = t.label;
+			if lbl then
+				local path, _, flags = lbl:GetFont();
+				local avail = tabW - 10;      -- un respiro a cada lado
+				for _, size in ipairs(TAB_FONT_STEPS) do
+					lbl:SetFont(path, size, flags);
+					if (lbl:GetStringWidth() or 0) <= avail then break; end
+				end
+			end
+		end
+	end
+end
+
+-- Las de Blizzard (tema Classic) no entran aca a proposito: van pegadas a
+-- la izquierda y miden lo que mide su texto, igual que en la ventana
+-- Interface del juego. Estirarlas seria dejarlas distintas de las de
+-- Blizzard, que es justo lo que ese tema no quiere.
+
 local function CreateTabs()
 	-- 5 pestañas. "Modules" paso a llamarse "Addons", "Extra" quedo solo
 	-- como Profiles, y PvP dejo de ser pestaña: ahora son dos secciones
@@ -380,6 +453,7 @@ local function CreateTabs()
 	local tabBarWidth = mainFrame.TabBar:GetWidth() or (mainFrame:GetWidth() - 36);
 	local tabWidth    = tabBarWidth / visibleCount;
 	local prevVisible;
+	local prevNative;
 
 	for i, name in ipairs(tabNames) do
 		local tab = CreateFrame("Button", mainFrame:GetName().."Tab"..i, mainFrame.TabBar);
@@ -391,6 +465,7 @@ local function CreateTabs()
 			-- pero no se dibuja ni ocupa lugar en la barra.
 			tab:SetPoint("BOTTOMLEFT", mainFrame.TabBar, "BOTTOMLEFT", 0, 2);
 			tab:Hide();
+			tab._nufHidden = true;
 		elseif not prevVisible then
 			tab:SetPoint("BOTTOMLEFT", mainFrame.TabBar, "BOTTOMLEFT", 0, 2);
 			prevVisible = tab;
@@ -439,6 +514,42 @@ local function CreateTabs()
 		tab.selected = false;
 
 		tab:SetScript("OnClick", function(self) SelectTab(self:GetID()); end);
+
+		-- ── LA MISMA PESTANA, EN VERSION BLIZZARD ──
+		--
+		-- OptionsFrameTabButtonTemplate es la pestana de verdad del juego:
+		-- la lenguetita redondeada, la activa hundida y deshabilitada. No
+		-- hay que adivinar rutas de textura, el template trae la suya.
+		--
+		-- Se crea SIEMPRE, la use el tema o no. Armarla recien al elegir
+		-- Blizzard obligaria a recalcular anclajes en caliente; asi las dos
+		-- versiones estan hechas desde el arranque y el ThemeManager solo
+		-- decide cual se muestra.
+		--
+		-- A lo ancho NO se estiran como las dibujadas a mano: las de
+		-- Blizzard van pegadas a la izquierda y miden lo que mide su texto,
+		-- que es como se ven en la ventana Interface. El -14 es el solape
+		-- que llevan entre si.
+		local nat = CreateFrame("Button", mainFrame:GetName().."NativeTab"..i,
+			mainFrame.TabBar, "OptionsFrameTabButtonTemplate");
+		nat:SetID(i);
+		nat:SetText(name);
+		if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, nat, 0); end
+
+		if HIDDEN_TABS[i] then
+			nat:SetPoint("BOTTOMLEFT", mainFrame.TabBar, "BOTTOMLEFT", 0, 0);
+		elseif not prevNative then
+			nat:SetPoint("BOTTOMLEFT", mainFrame.TabBar, "BOTTOMLEFT", 4, -3);
+			prevNative = nat;
+		else
+			nat:SetPoint("LEFT", prevNative, "RIGHT", -14, 0);
+			prevNative = nat;
+		end
+
+		nat:SetScript("OnClick", function(self) SelectTab(self:GetID()); end);
+		nat:Hide();
+		tab.native = nat;
+
 		tabs[i] = tab;
 
 		-- Content panel
@@ -454,8 +565,16 @@ local function CreateTabs()
 
 	SelectTab(1);
 
+	-- Y a partir de aca, cada vez que la barra cambie de ancho.
+	mainFrame.TabBar:SetScript("OnSizeChanged", LayoutTabs);
+	LayoutTabs();
+
 	-- Los botones del pie necesitan poder saltar a las pestañas de fondo.
 	K.SelectPanelTab = SelectTab;
+
+	-- La llama el ThemeManager despues de cambiar de tema: recien ahi se
+	-- sabe cual de las dos versiones de la pestana quedo a la vista.
+	K.RefreshPanelTabs = function() SelectTab(currentTab or 1); end;
 end
 
 -- ────────────────────────────────────────────────────────────────────────────
@@ -534,20 +653,20 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 				end
 			end
 
-			-- Apagar lo que este puesto. Cada Enable vuelve ademas a la foto
-			-- compartida, asi que no depende de que estos reviertan perfecto.
-			if K._minibarActive and K.DisableMiniBar then K.DisableMiniBar(); end
-			if K._unifyActive and K.DisableUnifyActionBars then K.DisableUnifyActionBars(); end
-
-			if boolValue then
-				if setting == "UnifyActionBars" then
-					if K.EnableUnifyActionBars then K.EnableUnifyActionBars(); end
-				else
-					if K.EnableMiniBar then K.EnableMiniBar(); end
-				end
-			else
-				-- Los dos apagados: dejar las barras como las tiene Blizzard.
-				if K.RestoreBarBaseline then K.RestoreBarBaseline(); end
+			-- UNA SOLA LLAMADA. Ver Core/LayoutCore.lua.
+			--
+			-- Aca habia tres caminos distintos segun el caso: apagar esto,
+			-- apagar aquello, prender uno u otro, y si no quedaba ninguno
+			-- reponer la foto a mano. Tres caminos son tres formas de que
+			-- algo quede a medias, y de ahi salian los bugs de alternar.
+			--
+			-- Ahora el panel no decide nada: guarda la opcion y pide un
+			-- rearmado. Quien mira que modo corresponde es el core, y lo
+			-- hace SIEMPRE con la misma secuencia -- foto de fabrica, modo,
+			-- posiciones guardadas -- venga de un checkbox, de un /reload,
+			-- de un reset o de salir de combate.
+			if K.LayoutRebuild then
+				K.LayoutRebuild("cambio de modo de barras");
 			end
 
 			if K._UpdateBagPackVisibility then K._UpdateBagPackVisibility(); end
@@ -612,7 +731,15 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 					end
 				end
 			end
-			if K.ToggleArenaFrames then K.ToggleArenaFrames(boolValue); end
+			-- OJO: antes esto llamaba a K.ToggleArenaFrames, que no existe en
+			-- ningun archivo. Al estar dentro de un "if K.X then" no tiraba
+			-- error: simplemente no hacia nada. Los nombres reales son estos
+			-- dos, los mismos que usa la pestana Arena.
+			if boolValue then
+				if K.EnableArenaFrameMod then K.EnableArenaFrameMod(); end
+			else
+				if K.DisableArenaFrameMod then K.DisableArenaFrameMod(); end
+			end
 		elseif setting == "ArenaFrame_Trinkets" then
 			if K.ToggleArenaTrinketsTracking then K.ToggleArenaTrinketsTracking(boolValue); end
 		elseif setting == "ArenaMirrorMode" then
@@ -1530,11 +1657,16 @@ local function PopulateTabs()
 	barResetBtn:SetSize(100, 22);
 	barResetBtn:SetText(L["BTN_MOVE_RESET"] or "Reset");
 	barResetBtn:SetScript("OnClick", function()
-		-- Solo las barras: antes llamaba al reset global y te borraba
-		-- tambien la posicion de buffs, debuffs y todo lo demas.
-		if K.ResetGlobalPositions then
-			K.ResetGlobalPositions({ MainBar = true, CastBar = true });
-		end
+		-- TODA la secuencia vive en Core/ResetManager.lua.
+		--
+		-- Antes estaba escrita aca, y otra parecida en la consola de Move
+		-- Everything. Se parecian pero no eran iguales: esta borraba los datos
+		-- y reponia escalas, pero no deshacia el aplanado de la pila, asi que
+		-- en pantalla no volvia nada a su lugar. Cada arreglo en una dejaba a
+		-- la otra a medio camino.
+		--
+		-- Los dos botones piden ahora lo mismo; este, acotado a las barras.
+		if K.ResetActionBars then K.ResetActionBars(); end
 	end);
 
 	-- La columna mas larga manda: si no, con la derecha mas alta que la
@@ -1627,10 +1759,37 @@ local function PopulateTabs()
 			{ text = L["MINIMAP_BORDER_TOOLTIP"]  or "Tooltip",  value = "Tooltip"  },
 			{ text = L["MINIMAP_BORDER_THIN"]     or "Thin",     value = "Thin"     },
 			{ text = L["MINIMAP_BORDER_FLAT"]     or "Flat",     value = "Flat"     },
-			{ text = L["MINIMAP_BORDER_BLIZZARD"] or "Blizzard", value = "Blizzard" },
+			-- "Blizzard" se fue: era la misma que Default en las dos
+			-- formas -- el aro dorado en redondo, el borde de fabrica en
+			-- cuadrado -- asi que hacia elegir entre lo mismo y lo mismo.
+			--
+			-- En su lugar entra Lorti UI, que SI se ve distinto: oscurece
+			-- el aro en vez de reemplazarlo.
+			{ text = L["MINIMAP_BORDER_LORTI"] or "Lorti UI", value = "Lorti" },
 		};
+
+		-- Si Lorti tiene el minimapa prendido, el desplegable arranca
+		-- mostrando "Lorti UI": son la MISMA opcion en dos lugares y tienen
+		-- que decir lo mismo.
+		if C.LortiUI_Minimap == true and (C.MinimapBorderStyle or "Default") == "Default" then
+			C.MinimapBorderStyle = "Lorti";
+		end
+
 		CreateDropdown(paneMap, L["DD_MINIMAP_BORDER"] or "Border style",
-			"MinimapBorderStyle", opts, xL, mmY, function()
+			"MinimapBorderStyle", opts, xL, mmY, function(value)
+				-- SINCRONIZADO CON LORTI UI.
+				--
+				-- El borde de Lorti no es una textura de este modulo: lo
+				-- pinta el modulo Lorti UI desde su propia casilla. Elegirlo
+				-- aca prende esa casilla, y elegir cualquier otro la apaga,
+				-- para que no queden los dos dibujando a la vez.
+				local wantLorti = (value == "Lorti");
+				if (C.LortiUI_Minimap == true) ~= wantLorti then
+					C.LortiUI_Minimap = wantLorti;
+					if K.SaveConfig then K.SaveConfig("LortiUI_Minimap", wantLorti); end
+					if K.RefreshLortiSubOptions then pcall(K.RefreshLortiSubOptions); end
+				end
+
 				if K.ApplyMinimapSettings then K.ApplyMinimapSettings(); end
 				if K._UpdateBorderNote then K._UpdateBorderNote(); end
 			end);
@@ -1944,7 +2103,10 @@ local function PopulateTabs()
 	unlockAllReset:SetSize(120, 24);
 	unlockAllReset:SetText(L["BTN_MOVE_RESET"] or "Reset");
 	unlockAllReset:SetScript("OnClick", function()
-		if K.ResetGlobalPositions then K.ResetGlobalPositions(); end
+		-- Por ResetManager, igual que los otros botones de reset: la
+		-- secuencia completa vive en un solo lugar.
+		if K.ResetEverything then K.ResetEverything();
+		elseif K.ResetGlobalPositions then K.ResetGlobalPositions(); end
 	end);
 
 	-- ── Cuadricula ──
@@ -1978,8 +2140,14 @@ local function PopulateTabs()
 		b:SetSize(52, 22);
 		b:SetText("x" .. step);
 		b:SetScript("OnClick", function()
-			if K.SaveConfig then K.SaveConfig("MoveGridStep", step); end
+			-- Mismo comportamiento que los botones de la consola del modo
+			-- mover: el que ya esta puesto se apaga y queda movimiento
+			-- libre. Son los mismos tres botones en dos lugares.
+			local cur  = (C and C.MoveGridStep) or 10;
+			local want = (cur == step) and 0 or step;
+			if K.SaveConfig then K.SaveConfig("MoveGridStep", want); end
 			RefreshGridButtons();
+			if K.RefreshMoveConsoleGrid then pcall(K.RefreshMoveConsoleGrid); end
 		end);
 		b:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
@@ -2383,10 +2551,21 @@ local function CreateBottomButtons()
 	-- Left buttons
 	-- Footer: solo Close mantiene el tamaño completo; el resto son
 	-- acciones secundarias, mas chicas y atenuadas para no competir.
+	-- El 0.75 lo pone el TEMA, no este archivo.
+	--
+	-- El boton de Blizzard ya viene atenuado por su propio arte, y
+	-- bajarle el alfa encima lo dejaba lavado y rojizo. El tema Blizzard
+	-- pide 1.0; los otros tres siguen en 0.75.
+	local function FooterAlpha()
+		local t = K.GetActiveTheme and K.GetActiveTheme();
+		return (t and t.footerAlpha) or 0.75;
+	end
+
 	local function MakeSecondary(btn)
-		btn:SetAlpha(0.75);
+		btn:SetAlpha(FooterAlpha());
 		btn:HookScript("OnEnter", function(self) self:SetAlpha(1); end);
-		btn:HookScript("OnLeave", function(self) self:SetAlpha(0.75); end);
+		btn:HookScript("OnLeave", function(self) self:SetAlpha(FooterAlpha()); end);
+		secondaryButtons[#secondaryButtons + 1] = btn;
 	end
 
 	local reloadButton = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate");
@@ -2594,6 +2773,7 @@ local function InitializePanel()
 			tabs         = tabs,
 			tabPanels    = tabPanels,
 			themeButtons = themeButtons,
+			secondaryButtons = secondaryButtons,
 		});
 	end
 

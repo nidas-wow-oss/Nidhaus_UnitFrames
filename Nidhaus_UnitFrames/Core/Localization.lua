@@ -68,7 +68,7 @@ L["TIP_ArenaCastBarWidth"]       = "Cast bar width.";
 
 -- === OPTIONS PANEL ===
 L["PANEL_TITLE"]                 = "Nidhaus UnitFrames";
-L["PANEL_VERSION"]               = "|cffFFAA00v3.6|r";
+L["PANEL_VERSION"]               = "|cffFFAA00v3.7|r";
 L["PANEL_SUBTITLE"]              = "Unit Frame Customization & Arena Tools";
 L["PANEL_SIZE_RESET"]            = "Options window restored to 820x620 and centered.";
 
@@ -155,7 +155,7 @@ L["NOTE_FOCUS_SPELLBAR"]         = "Focus cast bar scale lives in Interface > Ca
 L["PANEL_LOAD_FAIL"]             = "Could not load the options panel";
 L["PANEL_LOAD_HINT"]             = "Check that the Nidhaus_UnitFrames_Config folder sits next to the addon folder and is enabled in the addon list.";
 L["MOD_PARTYPETFRAME"]           = "Party pet enhanced";
-L["MOD_PARTYPETFRAME_DESC"]      = "Custom frame for the pet of your first party member: portrait, health and mana, cast bar and CC warning.";
+L["MOD_PARTYPETFRAME_DESC"]      = "Custom frames for your party members' pets (party 1 to 4): portrait, health and mana, cast bar and CC warning. Arena only by default; /ppf arena changes that, /ppf lists the commands.";
 L["CB_PARTY_PETS_HIDE"]          = "Hide party pet frames";
 L["CB_PARTY_PETS"]               = "Show party pet frames";
 L["TIP_PartyPets"]               = "The small frames for your party members pets (hunter, warlock, DK...). Turning them off cleans up the screen in arena.";
@@ -256,7 +256,6 @@ L["NOTE_AURA_BORDERS"]           = "Thin border on every buff and debuff icon, c
 L["TIP_AuraBordersEnabled"]      = "Crops the spell icon and gives it a thin border. Debuffs take the colour of their school, replacing Blizzard's thick ring.";
 L["TIP_AuraBordersPurge"]        = "Glow around the enemy's Magic buffs, the ones a purge or a dispel can remove.";
 L["SIDE_MOVEALL"]                = "Move Everything";
-L["HEADER_CASTBAR"]              = "|cffFFD100Cast Bar|r";
 L["CB_CASTBAR_PW"]               = "Custom Cast Bar";
 L["CB_CASTBAR_PW_ICON"]          = "Show spell icon";
 L["CB_CASTBAR_PW_DARK"]          = "Dark border";
@@ -323,7 +322,6 @@ L["SIDE_SELF"]                   = "Yourself";
 
 L["HEADER_APPEARANCE"]           = "Appearance";
 L["HEADER_BAR_STYLE"]            = "Bar Style";
-L["HEADER_BAR_TEXT"]             = "Text and Feedback";
 L["HEADER_BAR_SIZE"]             = "Size";
 L["HEADER_SCALES"]               = "Scale";
 L["HEADER_PARTY_PETS"]          = "|cffAAAAAA\226\128\148 Pets \226\128\148|r";
@@ -341,8 +339,9 @@ L["MINIMAP_BORDER_LIGHT"]        = "Light";
 L["MINIMAP_BORDER_TOOLTIP"]      = "Tooltip";
 L["MINIMAP_BORDER_THIN"]         = "Thin";
 L["MINIMAP_BORDER_FLAT"]         = "Flat";
+L["MINIMAP_BORDER_LORTI"]        = "Lorti UI";
 L["MINIMAP_BORDER_BLIZZARD"]     = "Blizzard";
-L["NOTE_MINIMAP_BORDER"]         = "Tooltip, Thin, Flat and Blizzard work with both shapes.";
+L["NOTE_MINIMAP_BORDER"]         = "Tooltip, Thin and Flat work with both shapes.";
 L["NOTE_MINIMAP_BORDER_SQUARE"]  = "Light only works with the square shape.";
 L["HEADER_MINIMAP_DECOR"]        = "Decorations";
 L["HEADER_MINIMAP_ICONS"]        = "Addon Icons";
@@ -363,8 +362,8 @@ L["CB_HIDE_CHAT_BUTTON"]         = "Hide Chat Buttons";
 
 L["SUBTAB_ARENA_OPTIONS"]        = "Options";
 L["SUBTAB_ARENA_POINTS"]         = "Arena Points";
-L["SUBTAB_ARENA_TIMERS"]         = "Timers";
 L["HEADER_ARENA_POINTS"]         = "Arena Points";
+L["HEADER_ARENA_CALC"]           = "Arena Calculator";
 L["MOD_APC"]                     = "Arena Points Calculator";
 L["MOD_APC_DESC"]                = "Calculates the arena points you will get each week from your rating. /apc to open it.";
 L["BTN_APC_OPEN"]                = "Open the calculator";
@@ -372,8 +371,6 @@ L["BTN_MODULE_OPEN"]             = "Open";
 
 L["BTN_PARTY_TEST"]              = "Test mode (4 fake members)";
 L["BTN_MOVE_AURAS"]              = "Unlock buffs / debuffs";
-L["BTN_MOVE_BARS"]               = "Move the bars";
-L["BTN_LOCK_BARS"]               = "Lock the bars";
 
 L["PVP_DETECTED"]                = "Detected class:";
 L["PVP_DETECTED_SUB"]            = "Only the modules your class can actually use are shown here.";
@@ -719,6 +716,8 @@ L["BTN_IMPORT"]                  = "Import Profile";
 L["BTN_COPY"]                    = "Copy";
 L["PROFILE_COPY_FROM"]           = "Copy profile from:";
 L["PROFILE_CURRENT"]             = "current";
+L["PROFILE_OTHER_REALM"]         = "Other realm";
+L["PROFILE_NOTE_ACCOUNT"]        = "Only characters from this WoW account. For another account, use Export / Import.";
 L["PROFILE_ERR_SELECT"]          = "Select a profile first!";
 L["PROFILE_ERR_CURRENT"]         = "That is your current profile!";
 L["PROFILE_COPYING"]             = "Copying profile from";
@@ -838,7 +837,7 @@ L["BORDER_NONE"]                 = "No border";
 L["BORDER_BLIZZARD"]             = "Blizzard";
 L["MOVE_ON"]                     = "Move mode ON - drag the blue boxes. /nufmove to finish.";
 L["MOVE_OFF"]                    = "Move mode OFF - positions saved.";
-L["MOVE_RESET"]                  = "Saved positions cleared. /reload to restore the defaults.";
+L["MOVE_RESET"]                  = "Positions and scales are back to their defaults.";
 L["MOVE_COMBAT_BLOCK"]           = "Action bars cannot be moved during combat.";
 
 -- Minimapa
@@ -949,7 +948,7 @@ L["COLLAPSE_ICON_COLLAPSE"]      = "[v]";
 L["HEADER_ABOUT"]                = "|cffFFD100About|r";
 L["ABOUT_ADDON_NAME"]            = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["ABOUT_DESCRIPTION"]           = "A PVP-focused UI addon for WoW WotLK 3.3.5a.\nCustom arena frames, trinket tracking, mirror mode,\nclass-colored health bars, and optimized frame positioning\ndesigned for competitive arena gameplay.";
-L["ABOUT_VERSION"]               = "|cffFFAA00Version:|r 3.6";
+L["ABOUT_VERSION"]               = "|cffFFAA00Version:|r 3.7";
 L["ABOUT_COMMANDS_HEADER"]       = "|cffFFAA00Slash Commands:|r";
 L["ABOUT_CMD_OPTIONS"]           = "|cffFFFFFF/nuf|r — Open options panel";
 L["ABOUT_CMD_CONFIG"]            = "|cffFFFFFF/nuf config|r — Show saved variables";
@@ -982,6 +981,68 @@ L["TIP_UnifyActionBars"]   = "Repositions and cleans up default action bar UI el
 -- ============================================================
 -- ESPAÑOL (override si el cliente es esES o esMX)
 -- ============================================================
+
+-- === LISTA DE COMANDOS (/nuf help) ===
+-- Faltaban ENTERAS: el codigo las pedia con L["..."] or "ingles", asi
+-- que la lista salia en ingles en los dos idiomas y nadie lo notaba,
+-- porque el texto de respaldo estaba ahi mismo. Definidas aca, la
+-- version en espa�ol de mas abajo ya tiene que traducir.
+L["CMDLIST_GENERAL"] = "General";
+L["CMDLIST_NUF"] = "Open the options panel";
+L["CMDLIST_NUF_HELP"] = "This list";
+L["CMDLIST_NUF_RESET"] = "Reset every setting";
+L["CMDLIST_CFG_DB"] = "Dump the saved settings to chat";
+L["CMDLIST_CFG_SIZE"] = "Restore the panel window size";
+L["CMDLIST_MOVING"] = "Moving things";
+L["CMDLIST_MOVE"] = "Move Everything (also /move, /nufunlock)";
+L["CMDLIST_SLOT"] = "Layout profiles per character";
+L["CMDLIST_PARTYTEST"] = "Fake party, to position the frames alone";
+L["CMDLIST_FRAMES"] = "Frames";
+L["CMDLIST_PARTYSTYLE"] = "Party frame style: default | new | improved | pw | pw2";
+L["CMDLIST_PW2"] = "Fine tuning window for the Compact 2 party style";
+L["CMDLIST_PTSTYLE"] = "Square style for the unit frames";
+L["CMDLIST_NAMES"] = "Name colour and border";
+L["CMDLIST_POWER"] = "Power bar";
+L["CMDLIST_PPF"] = "Party pet frames (also /partypetframe)";
+L["CMDLIST_PTARGET"] = "Party targets (also /partytargets)";
+L["CMDLIST_PBUFFS"] = "Party buffs (also /partybuffs)";
+L["CMDLIST_PCB"] = "Party cast bars (also /partycastingbars)";
+L["CMDLIST_ARENA"] = "Arena and PvP";
+L["CMDLIST_TIMERS"] = "Arena timers: round end, pipe, pillars";
+L["CMDLIST_APC"] = "Arena points calculator (also /arenapts)";
+L["CMDLIST_DUEL"] = "Block duels";
+L["CMDLIST_SEDUC"] = "Succubus seduction alert";
+L["CMDLIST_CLASS"] = "Class";
+L["CMDLIST_CLASS_T"] = "Class timers (water elemental, mirror images)";
+L["CMDLIST_PAL"] = "Paladin auras and Turn Evil";
+L["CMDLIST_PALICD"] = "Paladin internal cooldowns";
+L["CMDLIST_SS"] = "Sacred Shield (also /sacredshield)";
+L["CMDLIST_SST"] = "Sacred Shield tracker";
+L["CMDLIST_GT"] = "Gargoyle tracker";
+L["CMDLIST_COMBO"] = "Combo point watcher";
+L["CMDLIST_SWING"] = "Melee swing timer";
+L["CMDLIST_SHOT"] = "Auto shot timer";
+L["CMDLIST_AMMO"] = "Ammo counter";
+L["CMDLIST_PETBUFFS"] = "Hunter pet buffs";
+L["CMDLIST_SWH"] = "Shield watch (also /swh)";
+L["CMDLIST_INTERFACE"] = "Interface";
+L["CMDLIST_MAP"] = "Minimap shape: square | round";
+L["CMDLIST_MMICON"] = "Show or hide the addon icons";
+L["CMDLIST_HIDEBAR"] = "Hide the action bar art";
+L["CMDLIST_HCB"] = "Hide the chat buttons";
+L["CMDLIST_COPY"] = "Copy chat text";
+L["CMDLIST_SPAM"] = "System message filter";
+L["CMDLIST_DTSU"] = "Damage / healing text";
+L["CMDLIST_ND"] = "Floating combat text (also /nd)";
+L["CMDLIST_HEADER"] = "commands";
+L["CMDLIST_OFF"] = "module off";
+L["FRAMEBORDER_FONT"] = "Button font:";
+L["MOD_FRAMEBORDERS"] = "Frame Borders";
+L["MOD_FRAMEBORDERS_DESC"] = "Thin rounded border and outer shadow around action bars, micro menu, bags, cast bar and auras. Stacks with Lorti UI: Lorti tints, this outlines.";
+L["KKBORDER_STYLE"] = "Border art:";
+L["MOD_KKBORDER"] = "Kkthnx Border";
+L["MOD_KKBORDER_DESC"] = "Thin border and outer shadow around bars, micro menu, bags, frames and auras. Art from KkthnxUI (MIT). Stacks with Lorti UI: Lorti tints, this outlines.";
+
 if isSpanish then
 
 -- Tags
@@ -1039,6 +1100,7 @@ L["TIP_ArenaCastBarWidth"]       = "Ancho de la castbar.";
 
 -- === OPTIONS PANEL ===
 L["PANEL_TITLE"]                 = "Nidhaus UnitFrames";
+L["PANEL_VERSION"]               = "|cffFFAA00v3.7|r";
 L["PANEL_SUBTITLE"]              = "Personalización de Unit Frames & Herramientas de Arena";
 L["PANEL_SIZE_RESET"]            = "Ventana de opciones restaurada a 820x620 y centrada.";
 
@@ -1125,7 +1187,7 @@ L["NOTE_FOCUS_SPELLBAR"]         = "La escala de la barra de casteo del foco est
 L["PANEL_LOAD_FAIL"]             = "No se pudo cargar el panel de opciones";
 L["PANEL_LOAD_HINT"]             = "Revisa que la carpeta Nidhaus_UnitFrames_Config este junto a la del addon y activada en la lista.";
 L["MOD_PARTYPETFRAME"]           = "Party pet enhanced";
-L["MOD_PARTYPETFRAME_DESC"]      = "Marco propio para la mascota de tu primer compa\195\177ero: retrato, vida y man\195\161, barra de casteo y aviso de CC.";
+L["MOD_PARTYPETFRAME_DESC"]      = "Marcos propios para las mascotas de tus compa\195\177eros (party 1 a 4): retrato, vida y man\195\161, barra de casteo y aviso de CC. Por defecto solo en arena; /ppf arena lo cambia, /ppf lista los comandos.";
 L["CB_PARTY_PETS_HIDE"]          = "Ocultar mascotas del grupo";
 L["CB_PARTY_PETS"]               = "Mostrar mascotas del grupo";
 L["TIP_PartyPets"]               = "Los marquitos de las mascotas de tus compa\195\177eros (cazador, brujo, DK...). Apagarlos despeja la pantalla en arena.";
@@ -1135,6 +1197,7 @@ L["PARTY_STYLE_DEFAULT"]         = "Blizzard";
 L["PARTY_STYLE_NEW"]             = "New Party";
 L["PARTY_STYLE_IMPROVED"]        = "Improved";
 L["PARTY_STYLE_PW"]              = "Compacto";
+L["PARTY_STYLE_PW2"]             = "Compacto 2";
 L["PARTY_STYLE_CURRENT"]         = "actual";
 L["TIP_PartyStyle_Default"]      = "Deja los marcos de party tal cual los hizo Blizzard.";
 L["TIP_PartyStyle_New"]          = "NewPartyFrame: estilo custom con las barras y el orden rehechos.";
@@ -1225,7 +1288,6 @@ L["NOTE_AURA_BORDERS"]           = "Borde fino en cada icono de buff y debuff, p
 L["TIP_AuraBordersEnabled"]      = "Recorta el icono del hechizo y le pone un borde fino. Los debuffs toman el color de su escuela, en lugar del aro gordo de Blizzard.";
 L["TIP_AuraBordersPurge"]        = "Resplandor alrededor de los buffs magicos del enemigo, los que saca una purga o una disipacion.";
 L["SIDE_MOVEALL"]                = "Mover todo";
-L["HEADER_CASTBAR"]              = "|cffFFD100Barra de casteo|r";
 L["CB_CASTBAR_PW"]               = "Barra de casteo personalizada";
 L["CB_CASTBAR_PW_ICON"]          = "Mostrar el icono del hechizo";
 L["CB_CASTBAR_PW_DARK"]          = "Borde oscuro";
@@ -1292,7 +1354,6 @@ L["SIDE_SELF"]                   = "Vos";
 
 L["HEADER_APPEARANCE"]           = "Apariencia";
 L["HEADER_BAR_STYLE"]            = "Estilo de barras";
-L["HEADER_BAR_TEXT"]             = "Textos y feedback";
 L["HEADER_BAR_SIZE"]             = "Tama\195\177o";
 L["HEADER_SCALES"]               = "Escala";
 L["HEADER_PARTY_PETS"]          = "|cffAAAAAA\226\128\148 Mascotas \226\128\148|r";
@@ -1310,8 +1371,9 @@ L["MINIMAP_BORDER_LIGHT"]        = "Fino";
 L["MINIMAP_BORDER_TOOLTIP"]      = "Tooltip";
 L["MINIMAP_BORDER_THIN"]         = "Delgado";
 L["MINIMAP_BORDER_FLAT"]         = "Plano";
+L["MINIMAP_BORDER_LORTI"]        = "Lorti UI";
 L["MINIMAP_BORDER_BLIZZARD"]     = "Blizzard";
-L["NOTE_MINIMAP_BORDER"]         = "Tooltip, Delgado, Plano y Blizzard sirven con las dos formas.";
+L["NOTE_MINIMAP_BORDER"]         = "Tooltip, Delgado y Plano sirven con las dos formas.";
 L["NOTE_MINIMAP_BORDER_SQUARE"]  = "Fino solo funciona con la forma cuadrada.";
 L["HEADER_MINIMAP_DECOR"]        = "Adornos";
 L["HEADER_MINIMAP_ICONS"]        = "Iconos de addons";
@@ -1332,8 +1394,8 @@ L["CB_HIDE_CHAT_BUTTON"]         = "Ocultar los botones del chat";
 
 L["SUBTAB_ARENA_OPTIONS"]        = "Opciones";
 L["SUBTAB_ARENA_POINTS"]         = "Puntos de arena";
-L["SUBTAB_ARENA_TIMERS"]         = "Tiempos";
 L["HEADER_ARENA_POINTS"]         = "Puntos de arena";
+L["HEADER_ARENA_CALC"]           = "Arena Calculator";
 L["MOD_APC"]                     = "Calculadora de puntos de arena";
 L["MOD_APC_DESC"]                = "Calcula los puntos de arena que vas a recibir cada semana seg\195\186n tu rating. /apc para abrirla.";
 L["BTN_APC_OPEN"]                = "Abrir la calculadora";
@@ -1341,8 +1403,6 @@ L["BTN_MODULE_OPEN"]             = "Abrir";
 
 L["BTN_PARTY_TEST"]              = "Modo prueba (4 miembros falsos)";
 L["BTN_MOVE_AURAS"]              = "Desbloquear buffos / debuffos";
-L["BTN_MOVE_BARS"]               = "Mover las barras";
-L["BTN_LOCK_BARS"]               = "Fijar las barras";
 
 L["PVP_DETECTED"]                = "Clase detectada:";
 L["PVP_DETECTED_SUB"]            = "Ac\195\161 solo se muestran los m\195\179dulos que tu clase puede usar.";
@@ -1683,6 +1743,8 @@ L["BTN_IMPORT"]                  = "Importar Perfil";
 L["BTN_COPY"]                    = "Copiar";
 L["PROFILE_COPY_FROM"]           = "Copiar perfil de:";
 L["PROFILE_CURRENT"]             = "actual";
+L["PROFILE_OTHER_REALM"]         = "Otro reino";
+L["PROFILE_NOTE_ACCOUNT"]        = "Solo personajes de esta cuenta de WoW. Para otra cuenta, usa Exportar / Importar.";
 L["PROFILE_ERR_SELECT"]          = "Selecciona un perfil primero!";
 L["PROFILE_ERR_CURRENT"]         = "Ese es tu perfil actual!";
 L["PROFILE_COPYING"]             = "Copiando perfil de";
@@ -1802,7 +1864,7 @@ L["BORDER_NONE"]                 = "Sin borde";
 L["BORDER_BLIZZARD"]             = "Blizzard";
 L["MOVE_ON"]                     = "Modo mover ACTIVADO - arrastr\195\161 los recuadros azules. /nufmove para terminar.";
 L["MOVE_OFF"]                    = "Modo mover DESACTIVADO - posiciones guardadas.";
-L["MOVE_RESET"]                  = "Posiciones borradas. /reload para volver a las de f\195\161brica.";
+L["MOVE_RESET"]                  = "Posiciones y escalas de vuelta a las de f\195\161brica.";
 L["MOVE_COMBAT_BLOCK"]           = "Las barras de acci\195\179n no se pueden mover en combate.";
 
 -- Minimapa
@@ -1867,7 +1929,7 @@ L["TIP_ButtonRange"]             = "Pinta de rojo los botones cuando el objetivo
 
 -- Subpesta\195\177as
 L["SUBTAB_ARENA_FRAMES"]         = "Frames";
-L["SUBTAB_ARENA_TIMERS"]         = "Timers";
+L["SUBTAB_ARENA_TIMERS"]         = "Tiempos";
 L["SUBTAB_ARENA_MODULES"]        = "Opciones";
 L["HEADER_ARENA_QUEUE"]          = "|cffFFD100Cola|r";
 L["CB_ARENA_TIMES"]              = "Tiempo de cola + timer del popup";
@@ -1913,7 +1975,7 @@ L["COLLAPSE_ICON_COLLAPSE"]      = "[v]";
 L["HEADER_ABOUT"]                = "|cffFFD100Acerca de|r";
 L["ABOUT_ADDON_NAME"]            = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["ABOUT_DESCRIPTION"]           = "Un addon de interfaz enfocado en PVP para WoW WotLK 3.3.5a.\nArena frames custom, tracking de trinkets, modo espejo,\nbarras de vida por clase, y posicionamiento optimizado\ndiseñado para arena competitivo.";
-L["ABOUT_VERSION"]               = "|cffFFAA00Versión:|r 3.6";
+L["ABOUT_VERSION"]               = "|cffFFAA00Versión:|r 3.7";
 L["ABOUT_COMMANDS_HEADER"]       = "|cffFFAA00Comandos:|r";
 L["ABOUT_CMD_OPTIONS"]           = "|cffFFFFFF/nuf|r — Abrir panel de opciones";
 L["ABOUT_CMD_CONFIG"]            = "|cffFFFFFF/nuf config|r — Mostrar variables guardadas";
@@ -1927,6 +1989,7 @@ L["ABOUT_CONTACT_LINK"]          = "https://discord.gg/p3sqeram";
 L["ABOUT_COPY_HINT"]             = "|cffAAAAAA(Click para seleccionar, Ctrl+C para copiar)|r";
 
 -- === MINIMAP BUTTON ===
+L["MINIMAP_TITLE"]               = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["MINIMAP_LEFT_CLICK"]          = "|cffFFFFFFClick Izquierdo:|r Abrir Opciones";
 L["MINIMAP_RIGHT_CLICK"]         = "|cffFFFFFFClick Derecho:|r Toggle Arena Mover";
 L["MINIMAP_CTRL_CLICK"]          = "|cffFFFFFFCtrl + Click:|r Mover todo";
@@ -1940,5 +2003,63 @@ L["MOD_UAB_DISABLED"]      = "|cffFFD100NUF:|r Unify Action Bars desactivado.";
 L["HEADER_ACTIONBARS"]     = "|cffFFD100Barras de Acción|r";
 L["CB_UNIFY_ACTIONBARS"]   = "Unificar Barras de Acción";
 L["TIP_UnifyActionBars"]   = "Reposiciona y limpia los elementos de la barra de acción:\nbolsas, micro menú, barra de mascota, posturas y botones de paginado.";
+
+
+-- === LISTA DE COMANDOS (/nuf help) ===
+L["CMDLIST_GENERAL"] = "General";
+L["CMDLIST_NUF"] = "Abrir el panel de opciones";
+L["CMDLIST_NUF_HELP"] = "Esta lista";
+L["CMDLIST_NUF_RESET"] = "Volver todo a los valores de f\195\161brica";
+L["CMDLIST_CFG_DB"] = "Volcar al chat lo que hay guardado";
+L["CMDLIST_CFG_SIZE"] = "Devolver el tama\195\177o de la ventana de opciones";
+L["CMDLIST_MOVING"] = "Mover cosas";
+L["CMDLIST_MOVE"] = "Move Everything (tambi\195\169n /move, /nufunlock)";
+L["CMDLIST_SLOT"] = "Perfiles de barras y bindeos por personaje";
+L["CMDLIST_PARTYTEST"] = "Grupo de prueba, para acomodar los marcos solo";
+L["CMDLIST_FRAMES"] = "Marcos";
+L["CMDLIST_PARTYSTYLE"] = "Estilo del marco de grupo: default | new | improved | pw | pw2";
+L["CMDLIST_PW2"] = "Ventana de ajuste fino del estilo Compact 2";
+L["CMDLIST_PTSTYLE"] = "Estilo cuadrado para los marcos de unidad";
+L["CMDLIST_NAMES"] = "Color y borde del nombre";
+L["CMDLIST_POWER"] = "Barra de poder";
+L["CMDLIST_PPF"] = "Marcos de mascota del grupo (tambi\195\169n /partypetframe)";
+L["CMDLIST_PTARGET"] = "Objetivos del grupo (tambi\195\169n /partytargets)";
+L["CMDLIST_PBUFFS"] = "Buffs del grupo (tambi\195\169n /partybuffs)";
+L["CMDLIST_PCB"] = "Barras de casteo del grupo (tambi\195\169n /partycastingbars)";
+L["CMDLIST_ARENA"] = "Arena y PvP";
+L["CMDLIST_TIMERS"] = "Tiempos de arena: fin de ronda, ca\195\177o, pilares";
+L["CMDLIST_APC"] = "Calculadora de puntos de arena (tambi\195\169n /arenapts)";
+L["CMDLIST_DUEL"] = "Bloquear duelos";
+L["CMDLIST_SEDUC"] = "Aviso de seducci\195\179n de la s\195\186cubo";
+L["CMDLIST_CLASS"] = "Clase";
+L["CMDLIST_CLASS_T"] = "Tiempos de clase (elemental de agua, im\195\161genes especulares)";
+L["CMDLIST_PAL"] = "Auras de palad\195\173n y Turn Evil";
+L["CMDLIST_PALICD"] = "Cooldowns internos del palad\195\173n";
+L["CMDLIST_SS"] = "Escudo sagrado (tambi\195\169n /sacredshield)";
+L["CMDLIST_SST"] = "Rastreador de escudo sagrado";
+L["CMDLIST_GT"] = "Rastreador de g\195\161rgola";
+L["CMDLIST_COMBO"] = "Vig\195\173a de puntos de combo";
+L["CMDLIST_SWING"] = "Temporizador de golpe cuerpo a cuerpo";
+L["CMDLIST_SHOT"] = "Temporizador de disparo autom\195\161tico";
+L["CMDLIST_AMMO"] = "Contador de munici\195\179n";
+L["CMDLIST_PETBUFFS"] = "Buffs de la mascota del cazador";
+L["CMDLIST_SWH"] = "Shield watch (tambi\195\169n /swh)";
+L["CMDLIST_INTERFACE"] = "Interfaz";
+L["CMDLIST_MAP"] = "Forma del minimapa: square | round";
+L["CMDLIST_MMICON"] = "Mostrar u ocultar los iconos de addons";
+L["CMDLIST_HIDEBAR"] = "Ocultar el arte de la barra de acci\195\179n";
+L["CMDLIST_HCB"] = "Ocultar los botones del chat";
+L["CMDLIST_COPY"] = "Copiar texto del chat";
+L["CMDLIST_SPAM"] = "Filtro de mensajes del sistema";
+L["CMDLIST_DTSU"] = "Texto de da\195\177o y curaci\195\179n";
+L["CMDLIST_ND"] = "Texto de combate flotante (tambi\195\169n /nd)";
+L["CMDLIST_HEADER"] = "comandos";
+L["CMDLIST_OFF"] = "m\195\179dulo apagado";
+L["FRAMEBORDER_FONT"] = "Fuente de los botones:";
+L["MOD_FRAMEBORDERS"] = "Bordes de marcos";
+L["MOD_FRAMEBORDERS_DESC"] = "Borde fino redondeado y sombra exterior alrededor de las barras de acci\195\179n, el micromen\195\186, las bolsas, la barra de casteo y las auras. Convive con Lorti UI: Lorti ti\195\177e, este delinea.";
+L["KKBORDER_STYLE"] = "Arte del borde:";
+L["MOD_KKBORDER"] = "Borde Kkthnx";
+L["MOD_KKBORDER_DESC"] = "Borde fino y sombra exterior alrededor de barras, micromen\195\186, bolsas, marcos y auras. Arte de KkthnxUI (MIT). Convive con Lorti UI: Lorti ti\195\177e, este delinea.";
 
 end -- isSpanish

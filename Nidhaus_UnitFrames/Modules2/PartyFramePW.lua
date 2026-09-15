@@ -308,13 +308,67 @@ local function DropAura(fn, suffix, s)
 	r:SetPoint(s.point, s.relTo, s.relPoint, s.x, s.y + AuraDrop());
 end
 
+-- =========================================================
+-- EN VEHICULO, EL MARCO ES DE BLIZZARD. PUNTO.
+--
+-- ERA EL BUG DEL CANON Y EL DEMOLEDOR, y estuve buscandolo en el lugar
+-- equivocado dos veces.
+--
+-- El marco de grupo tiene DOS texturas de fondo:
+--
+--     PartyMemberFrame{i}Texture         el marco normal
+--     PartyMemberFrame{i}VehicleTexture  el marco de vehiculo
+--
+-- Cuando el compa se sube a algo, Blizzard OCULTA la primera y MUESTRA la
+-- segunda, que es mas grande y tiene otra forma. Este estilo re-texturaba
+-- solo la primera -- la que en ese momento esta escondida -- asi que en
+-- pantalla quedaba el marco de vehiculo de Blizzard con las barras del
+-- estilo Compact encima: por eso la vida parecia salirse del fondo.
+--
+-- La salida NO es pintar tambien la de vehiculo. El arte de vehiculo tiene
+-- otras proporciones y otro lugar para el retrato: cualquier medida que le
+-- pongamos es una medida mas que mantener sincronizada, y es asi como se
+-- desfasan estas cosas.
+--
+-- La salida es no meterse: mientras este arriba de algo, el marco vuelve
+-- entero a como lo trae el juego -- fondo, barras y tamanos -- y cuando se
+-- baja se le devuelve el estilo. Es un caso raro y corto; que se vea como
+-- Blizzard lo hizo es exactamente lo correcto.
+-- =========================================================
+local function InPartyVehicle(i)
+	local f = _G["PartyMemberFrame" .. i];
+	-- Blizzard deja marcado el estado en el propio marco al cambiarle el
+	-- arte. Es la senal mas fiel porque es la MISMA que decide que textura
+	-- se muestra; UnitInVehicle es el respaldo por si un core no la pusiera.
+	if f and f.state == "vehicle" then return true; end
+	if UnitInVehicle and UnitInVehicle("party" .. i) then return true; end
+	return false;
+end
+
+-- Se llaman entre si: StyleOne devuelve el marco cuando hay vehiculo, y
+-- RestoreOne esta mas abajo. Declaradas aca para que las dos se vean.
+local StyleOne, RestoreOne;
+
 -- ---------------------------------------------------------
 -- Aplicar
 -- ---------------------------------------------------------
-local function StyleOne(i)
+function StyleOne(i)
 	local fn = "PartyMemberFrame" .. i;
 	local f  = _G[fn];
 	if not f then return; end
+
+	if InPartyVehicle(i) then
+		-- OJO CON LA FOTO DE FABRICA.
+		--
+		-- Si es la primera vez que vemos este marco y YA esta en vehiculo
+		-- (entraste al BG montado, que es como pasa en Isla), Capture
+		-- guardaria las medidas del arte de vehiculo como si fueran las
+		-- normales. Al bajarse restauraria a eso y el marco quedaria roto
+		-- para siempre. Sin foto, no se toca nada y listo: Blizzard ya lo
+		-- esta dibujando bien.
+		if orig[fn] then RestoreOne(i); end
+		return;
+	end
 
 	Capture(i);
 
@@ -488,7 +542,7 @@ local function StyleOne(i)
 	end
 end
 
-local function RestoreOne(i)
+function RestoreOne(i)
 	local fn = "PartyMemberFrame" .. i;
 	local s  = orig[fn];
 	if not s then return; end
@@ -594,12 +648,136 @@ local function Reapply()
 	for i = 1, MAX_PARTY do StyleOne(i); end
 end
 
+-- ---------------------------------------------------------
+-- LAS TRANSICIONES DE VEHICULO SI PASAN EN COMBATE
+--
+-- Y ese corte de arriba era la otra mitad del bug: subirse a un canon en
+-- medio de una pelea es LO NORMAL, no la excepcion. Con Reapply cortandose
+-- en combate, el marco se quedaba mal toda la pelea y recien se acomodaba
+-- al terminar -- justo cuando ya no importa. Por eso parecia que arreglar
+-- el enganche a ToVehicleArt no habia servido de nada.
+--
+-- Por que este camino puede correr en combate y el otro no: no es que uno
+-- sea mas seguro que el otro, es CUANTAS VECES corre cada uno. Reapply
+-- cuelga de PartyMemberFrame_UpdateMember, que se dispara con cada golpe
+-- que recibe cualquiera del grupo; si algun dia una de estas escrituras
+-- ensucia algo, va a ser por ese camino. Subirse o bajarse de un vehiculo
+-- son dos eventos sueltos y contados.
+--
+-- (El vecino NewPartyFrame mueve estas mismas barras sin ningun corte por
+-- combate, incluido desde UpdateMember, y funciona. O sea que el corte de
+-- arriba es prudencia, no una necesidad demostrada. Lo dejo igual: no
+-- estoy tocando lo que anda.)
+--
+-- SOLO CUANDO EL ESTADO CAMBIA DE VERDAD.
+--
+-- ToVehicleArt y ToPlayerArt no son eventos sueltos como yo suponia:
+-- PartyMemberFrame_UpdateArt llama a una o a la otra en CADA
+-- UpdateMember, o sea con cada golpe que recibe cualquiera del grupo.
+-- Colgarse ahi sin filtro seria re-estilar los cuatro marcos decenas de
+-- veces por segundo en plena pelea.
+--
+-- Con este filtro da igual cuantas veces las llamen: se trabaja unicamente
+-- en la transicion, cuando alguien se sube o se baja. Eso son dos veces
+-- por canon, y por eso se puede hacer en combate sin culpa.
+--
+-- La red por si acaso: si algo quedo a medias por estar peleando, se
+-- rehace al salir de combate.
+local pwVehiclePending = false;
+local pwVehState       = {};
+
+local function VehicleStateChanged()
+	local changed = false;
+	for i = 1, MAX_PARTY do
+		local now = InPartyVehicle(i) and true or false;
+		if pwVehState[i] ~= now then
+			pwVehState[i] = now;
+			changed = true;
+		end
+	end
+	return changed;
+end
+
+local function ReapplyVehicle(force)
+	if not applied then return; end
+	local changed = VehicleStateChanged();
+	if not changed and not force then return; end
+	for i = 1, MAX_PARTY do StyleOne(i); end
+	if InCombatLockdown() then pwVehiclePending = true; end
+end
+
 if type(PartyMemberFrame_UpdateMember) == "function" then
 	hooksecurefunc("PartyMemberFrame_UpdateMember", Reapply);
 end
 if type(PartyMemberFrame_ToPlayerArt) == "function" then
-	hooksecurefunc("PartyMemberFrame_ToPlayerArt", Reapply);
+	-- La VUELTA. Va por el mismo camino filtrado y por el mismo motivo: si
+	-- se cortara en combate, te bajabas del canon peleando y el marco se
+	-- quedaba con el aspecto de Blizzard hasta que terminara la pelea.
+	hooksecurefunc("PartyMemberFrame_ToPlayerArt", function() ReapplyVehicle(); end);
 end
+
+-- Y AL SUBIRSE A UN VEHICULO.
+--
+-- Cuando un compañero se sube a algo, Blizzard llama a
+-- PartyMemberFrame_ToVehicleArt: esconde la textura normal del marco y
+-- muestra la de vehiculo, que es mas grande y tiene otra forma. Al bajarse
+-- llama a ToPlayerArt y las vuelve a cambiar.
+--
+-- QUE CREI QUE ERA, Y QUE ERA. Lo dejo escrito porque me equivoque dos
+-- veces seguidas en el mismo bug.
+--
+--   1er intento: "falta engancharse a ToVehicleArt". Se agrego el hook y
+--      no cambio nada. Era necesario, pero reaplicaba el estilo sobre
+--      PartyMemberFrame{i}Texture -- la que en vehiculo esta ESCONDIDA.
+--      Pintabamos con todo cuidado algo que nadie estaba viendo.
+--
+--   2do intento: "entonces hay que pintar tambien la de vehiculo". Habria
+--      andado, pero es la solucion equivocada: el arte de vehiculo tiene
+--      otras proporciones y otro lugar para el retrato, asi que serian
+--      medidas nuevas que mantener sincronizadas con las otras. Justo la
+--      clase de duplicado del que salen todos los desfasajes de este
+--      addon.
+--
+--   Lo que quedo: mientras haya vehiculo, el marco vuelve entero a como lo
+--      trae el juego y no lo tocamos. Ver el bloque grande en StyleOne.
+if type(PartyMemberFrame_ToVehicleArt) == "function" then
+	-- Cierre y no la funcion pelada: hooksecurefunc reenvia los argumentos
+	-- del original, y el primero (el marco) caeria en 'force' -- que es
+	-- truthy y desactivaria justo el filtro que acabamos de poner.
+	hooksecurefunc("PartyMemberFrame_ToVehicleArt", function() ReapplyVehicle(); end);
+end
+
+-- RED DE SEGURIDAD POR EVENTO.
+--
+-- Los dos hooks de arriba cubren el camino normal. Pero al ENTRAR a un
+-- battleground ya montado en el vehiculo -- que es como pasa en Isla de
+-- la Conquista -- el marco se arma con el arte de vehiculo puesta de
+-- entrada y esas funciones no llegan a correr.
+--
+-- Estos eventos avisan igual, y Reapply es idempotente: llamarla de mas
+-- no cuesta nada, llamarla de menos deja el marco roto.
+local pwVehicle = CreateFrame("Frame");
+pwVehicle:RegisterEvent("UNIT_ENTERED_VEHICLE");
+pwVehicle:RegisterEvent("UNIT_EXITED_VEHICLE");
+pwVehicle:RegisterEvent("PLAYER_ENTERING_WORLD");
+pwVehicle:RegisterEvent("PLAYER_REGEN_ENABLED");
+pwVehicle:SetScript("OnEvent", function(self, event, unit)
+	if event == "PLAYER_REGEN_ENABLED" then
+		if not pwVehiclePending then return; end
+		pwVehiclePending = false;
+		Reapply();
+		return;
+	end
+	if event == "PLAYER_ENTERING_WORLD" then
+		-- Al entrar al mundo no hay estado anterior con que comparar, asi
+		-- que se fuerza: puede que ya estes montado desde el principio.
+		ReapplyVehicle(true);
+		return;
+	end
+	-- Solo interesa si el que se subio es alguien del grupo.
+	if type(unit) ~= "string" or string.sub(unit, 1, 5) ~= "party" then return; end
+	ReapplyVehicle();
+end);
 
 -- =========================================================
 -- /nufpw2  -  ajuste en vivo de las medidas de Compact 2

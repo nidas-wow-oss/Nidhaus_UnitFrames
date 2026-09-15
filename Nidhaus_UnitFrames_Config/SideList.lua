@@ -40,22 +40,37 @@ K._sideLists = K._sideLists or {};
 
 -- Colores por defecto (si todavia no hay tema cargado)
 local DEF = {
-	bg      = {0, 0, 0, 0.14},
-	selBG   = {0.16, 0.12, 0.06, 0.95},
-	accent  = {1, 0.82, 0},
+	bg       = {0, 0, 0, 0.14},
+	selBG    = {0.16, 0.12, 0.06, 0.95},
+	selAlpha = 0.55,
+	accent   = {1, 0.82, 0},
+	gold     = false,
 };
+
+-- Un punto mas grande que la fuente base del template
+local function BumpFont(fs, delta)
+	local file, size, flags = fs:GetFont();
+	if file and size then fs:SetFont(file, size + (delta or 1), flags); end
+end
 
 local function ThemeColors()
 	local t = K.GetActiveTheme and K.GetActiveTheme();
 	if not t then return DEF; end
+	-- Blizzard pinta la seleccion como la ventana Interface: una barra
+	-- azul llena, no un velo. Por eso trae su propio color y su propio
+	-- alpha, y no toma prestado el de la pestana activa.
+	local gold = t.sideGoldText and true or false;
+
 	return {
 		-- Solo el TONO del tema; el alpha lo forzamos bajo para que la
 		-- columna se lea como un velo y no como un bloque solido.
-		bg      = { (t.tabBarBGColor or DEF.bg)[1],
-		            (t.tabBarBGColor or DEF.bg)[2],
-		            (t.tabBarBGColor or DEF.bg)[3], 0.14 },
-		selBG   = t.tabSelBGColor  or DEF.selBG,
-		accent  = t.accent         or DEF.accent,
+		bg       = { (t.tabBarBGColor or DEF.bg)[1],
+		             (t.tabBarBGColor or DEF.bg)[2],
+		             (t.tabBarBGColor or DEF.bg)[3], 0.14 },
+		selBG    = (gold and t.sideSelColor) or t.tabSelBGColor or DEF.selBG,
+		selAlpha = gold and 0.95 or 0.55,
+		accent   = t.accent or DEF.accent,
+		gold     = gold,
 	};
 end
 
@@ -65,26 +80,83 @@ end
 local function StyleItem(item, selected, col)
 	col = col or ThemeColors();
 	if selected then
-		item.bg:SetTexture(col.selBG[1], col.selBG[2], col.selBG[3], 0.55);
-		item.marker:SetTexture(col.accent[1], col.accent[2], col.accent[3], 0.95);
-		item.marker:Show();
+		item.bg:SetTexture(col.selBG[1], col.selBG[2], col.selBG[3],
+			col.selAlpha or 0.55);
+		if col.gold then
+			-- La barra azul y la barrita de acento dicen lo mismo. Juntas
+			-- ensucian, asi que con la barra el marcador se apaga.
+			item.marker:Hide();
+		else
+			item.marker:SetTexture(col.accent[1], col.accent[2], col.accent[3], 0.95);
+			item.marker:Show();
+		end
 	else
 		item.bg:SetTexture(0, 0, 0, 0);
 		item.marker:Hide();
 	end
-	item.labelFS:SetTextColor(1, 1, 1);
-end
 
--- Un punto mas grande que la fuente base del template
-local function BumpFont(fs, delta)
-	local file, size, flags = fs:GetFont();
-	if file and size then fs:SetFont(file, size + (delta or 1), flags); end
+	-- En Classic, Dark Gold y Arcane el texto va blanco en las nueve
+	-- entradas y la seleccion se nota por el fondo.
+	--
+	-- Blizzard va al reves, porque asi es la ventana Interface: las
+	-- categorias son DORADAS y la seleccionada pasa a blanco sobre el azul.
+	if col.gold and not selected then
+		item.labelFS:SetTextColor(1, 0.82, 0);
+	else
+		item.labelFS:SetTextColor(1, 1, 1);
+	end
+
+	-- Y LA FUENTE.
+	--
+	-- La lista de categorias de la ventana Interface usa GameFontNormal
+	-- (FRIZQT 12). Aca la base es GameFontNormalSmall (10) subida un punto:
+	-- 11, un punto mas chica, y por eso al lado de la ventana del juego se
+	-- veia distinta aunque sea la misma familia.
+	--
+	-- Siempre desde item.baseFont y nunca desde lo que el texto tiene
+	-- puesto: asi repintar mil veces da mil veces lo mismo.
+	local base = item.baseFont;
+	if base and base[1] then
+		local size = base[2];
+		if col.gold then size = size + 1; end
+		item.labelFS:SetFont(base[1], size, base[3]);
+	end
 end
 
 -- La llama ThemeManager cuando cambia el tema
 function K.RestyleSideLists()
 	local col = ThemeColors();
 	for _, list in ipairs(K._sideLists) do
+
+		-- LA COLUMNA: velo o recuadro.
+		--
+		-- Los tres temas propios la dibujan como un velo apenas mas oscuro
+		-- con una linea divisoria al costado. La ventana Interface no hace
+		-- eso: la lista de categorias vive en su PROPIA CAJA, con borde.
+		--
+		-- El borde va sin tenir. UI-Tooltip-Border en blanco es el dorado
+		-- tostado que se ve en cualquier tooltip del juego, que es
+		-- exactamente el de esas cajas. Tenirlo de marron, como estaba,
+		-- daba ese gris embarrado.
+		if list.listFrame then
+			if col.gold then
+				list.listFrame:SetBackdrop({
+					bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+					edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+					tile     = true, tileSize = 16, edgeSize = 16,
+					insets   = {left=4, right=4, top=4, bottom=4},
+				});
+				list.listFrame:SetBackdropColor(0.06, 0.06, 0.06, 0.85);
+				list.listFrame:SetBackdropBorderColor(1, 1, 1, 1);
+				if list.listBG  then list.listBG:Hide();  end
+				if list.divider then list.divider:Hide(); end
+			else
+				list.listFrame:SetBackdrop(nil);
+				if list.listBG  then list.listBG:Show();  end
+				if list.divider then list.divider:Show(); end
+			end
+		end
+
 		if list.listBG then list.listBG:SetTexture(unpack(col.bg)); end
 		if list.divider then
 			list.divider:SetTexture(col.accent[1], col.accent[2], col.accent[3], 0.28);
@@ -116,7 +188,8 @@ function K.CreateSideList(panel, sections)
 	local listBG = list:CreateTexture(nil, "BACKGROUND");
 	listBG:SetAllPoints(list);
 	listBG:SetTexture(0, 0, 0, 0.14);
-	result.listBG = listBG;
+	result.listBG    = listBG;
+	result.listFrame = list;
 
 	-- Linea divisoria entre la lista y el contenido
 	local divider = list:CreateTexture(nil, "ARTWORK");
@@ -198,6 +271,18 @@ function K.CreateSideList(panel, sections)
 			item.labelFS:SetWidth(LIST_WIDTH - 18);
 			item.labelFS:SetText(name);
 			BumpFont(item.labelFS, 1);
+
+			-- LA MEDIDA BASE, GUARDADA UNA SOLA VEZ.
+			--
+			-- StyleItem corre en cada repintado, y repintar es cada click
+			-- en Classic / Dark Gold / Arcane. Si ahi adentro se volviera a
+			-- sumar un punto sobre lo que el texto tiene AHORA, la letra
+			-- creceria un punto por click y no pararia nunca -- que es
+			-- justo lo que pasaba.
+			--
+			-- Guardando la medida de arranque, StyleItem escribe siempre un
+			-- valor ABSOLUTO y da igual cuantas veces se lo llame.
+			item.baseFont = { item.labelFS:GetFont() };
 
 			item:SetScript("OnClick", function() Select(i); end);
 			item:SetScript("OnEnter", function(self)

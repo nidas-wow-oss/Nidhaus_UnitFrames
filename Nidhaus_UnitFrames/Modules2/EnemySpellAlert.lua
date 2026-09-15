@@ -117,11 +117,18 @@ local function DB()
 	end
 	local db = NidhausUnitFramesDB.EnemySpellAlert;
 	if not db.iconSize then db.iconSize = ICON_SIZE; end
-	-- Donde mostrarse (por defecto en todos lados)
-	if db.inArena == nil then db.inArena = true; end
-	if db.inBG    == nil then db.inBG    = true; end
-	if db.inDuel  == nil then db.inDuel  = true; end
-	if db.inWorld == nil then db.inWorld = true; end
+	-- DONDE MOSTRARSE, DE FABRICA: solo arena y duelos.
+	--
+	-- Antes venia encendido en los cuatro lados. En battleground y en
+	-- mundo abierto hay demasiada gente casteando y la alerta se vuelve
+	-- ruido constante en vez de aviso. Quien la quiera ahi la prende.
+	--
+	-- El == nil es importante: solo pone el valor si NUNCA se toco, asi
+	-- que a quien ya lo tenia configurado no se le cambia nada.
+	if db.inArena == nil then db.inArena = true;  end
+	if db.inBG    == nil then db.inBG    = false; end
+	if db.inDuel  == nil then db.inDuel  = true;  end
+	if db.inWorld == nil then db.inWorld = false; end
 	if not db.custom then db.custom = {}; end   -- hechizos agregados a mano
 	if not db.spells then db.spells = {}; end
 

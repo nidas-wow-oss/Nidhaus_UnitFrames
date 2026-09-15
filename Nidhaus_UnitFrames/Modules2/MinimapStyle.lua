@@ -45,8 +45,19 @@ local function GetSquareBorder()
 		return squareBorder;
 	end
 
-	-- Borde solido y GRUESO hecho con 4 lados (antes era el borde fino de
-	-- tooltip). Mas robusto, como el de la referencia.
+	-- ME EQUIVOQUE CON ESTO, Y LO DEJO ESCRITO.
+	--
+	-- Cuando el estilo "Default" no dibujaba nada en modo cuadrado, di por
+	-- sentado que no habia textura cuadrada de fabrica que copiar -- el
+	-- borde del minimapa de Blizzard es un anillo, una imagen redonda -- y
+	-- me puse a hacer visible este filo dibujado a mano.
+	--
+	-- Era mentira. En Media\Minimap\borders\square\ hay un Blizzard.tga,
+	-- hecho justamente para esto. Nunca se cargaba por otro motivo (mira
+	-- STYLE_FILE en ApplyMinimapBorderStyle), y en vez de ir a mirar la
+	-- carpeta me invent� una explicacion que sonaba razonable.
+	--
+	-- Este filo queda como estaba: hoy no lo usa ningun estilo.
 	local THICK = 3;
 	local COLOR = { 0.04, 0.04, 0.04, 1 };   -- casi negro
 	local function MakeEdge()
@@ -223,14 +234,36 @@ end
 -- una esquina del centro del mapa. Asi el borde acompaña el tamaño del
 -- minimapa sin deformarse.
 local BORDER_DIR = "Interface\\AddOns\\Nidhaus_UnitFrames\\Media\\Minimap\\borders\\";
+
+-- EL NOMBRE QUE VE EL USUARIO NO ES EL NOMBRE DEL ARCHIVO.
+--
+-- El estilo se llamaba "Blizzard" y se renombro a "Default" en el panel.
+-- Los .tga no se renombraron -- y esta bien, renombrar archivos rompe a
+-- quien tenga la carpeta vieja -- asi que la traduccion vive aca, en un
+-- solo lugar. Si algun dia se renombra otro estilo, se agrega una linea.
+local STYLE_FILE = {
+	Default = "Blizzard",
+};
+-- "Blizzard" YA NO ESTA.
+--
+-- Era redundante: en forma redonda el estilo Default ES el aro dorado de
+-- Blizzard, y en cuadrada tambien es el borde de fabrica. Tener las dos
+-- opciones al lado hacia elegir entre lo mismo y lo mismo.
+--
+-- Su lugar lo ocupa "Lorti", que no dibuja esquinas: lo resuelve el modulo
+-- Lorti UI oscureciendo el aro, por eso no figura en esta tabla.
 local CORNER_STYLES = {
-	Tooltip = true, Thin = true, Flat = true, Blizzard = true,
+	Tooltip = true, Thin = true, Flat = true,
 };
 
 -- Que estilo esta puesto.
 local function BorderStyle()
 	local s = C.MinimapBorderStyle;
 	if s == nil or s == "" then s = "Default"; end
+	-- Quien tenia "Blizzard" guardado pasa a "Default", que es lo mismo que
+	-- estaba viendo. Se traduce al leer y no con una migracion aparte: es
+	-- una sola linea y no hay que acordarse de correrla.
+	if s == "Blizzard" then s = "Default"; end
 	return s;
 end
 K.GetMinimapBorderStyle = BorderStyle;
@@ -293,13 +326,47 @@ function K.ApplyMinimapBorderStyle()
 	local style = BorderStyle();
 	local cs = GetCorners();
 
+	-- LIGHT TAMBIEN EN REDONDO.
+	--
+	-- Light no era como los demas: los otros estilos son UNA imagen de
+	-- anillo que se parte en cuatro esquinas, y Light era un MARCO con
+	-- borde (Border_Light.tga). Un marco es cuadrado por definicion, asi
+	-- que sobre un mapa redondo quedaba un cuadro alrededor de un circulo
+	-- y por eso estaba limitado al modo cuadrado -- de ahi que al elegirlo
+	-- en redondo pareciera que "no se activa".
+	--
+	-- Ahora existe Media\Minimap\borders\round\Light.tga, dibujada para
+	-- este sistema: mismo color (224,224,224) y mismo radio que Thin, pero
+	-- con el resplandor suave de Light en vez de una linea dura.
+	--
+	-- En CUADRADO se sigue usando el marco, que ahi calza perfecto.
+	local roundLight = (style == "Light") and (C.MinimapSquare ~= true);
+
+	-- "DEFAULT" EN CUADRADO: LA TEXTURA EXISTE, SOLO NO SE PEDIA.
+	--
+	-- Dos cosas la dejaban afuera, y hacian falta las dos para que se
+	-- viera:
+	--
+	--   1. El estilo se renombro de "Blizzard" a "Default" en el panel, y
+	--      el renombre se resolvio al LEER la config (mira BorderStyle).
+	--      Pero los archivos siguen llamandose Blizzard.tga, asi que pedir
+	--      "borders\square\Default" no encuentra nada.
+	--   2. "Default" no estaba en CORNER_STYLES, asi que ni siquiera
+	--      llegaba a intentar cargarla.
+	--
+	-- En REDONDO no entra por aca a proposito: ahi el borde de Blizzard es
+	-- el de verdad (MinimapBorder, el aro del juego), que siempre va a
+	-- verse mejor que una copia nuestra. La textura redonda queda de
+	-- respaldo, sin usar.
+	local squareDefault = (style == "Default") and (C.MinimapSquare == true);
+
 	-- SE APAGA TODO PRIMERO.
 	--
 	-- Son excluyentes: sin este barrido, cambiar de estilo dejaba el
 	-- anterior dibujado abajo del nuevo.
 	if cs then for _, tx in ipairs(cs) do tx:Hide(); end end
 
-	if CORNER_STYLES[style] and cs and Minimap then
+	if (CORNER_STYLES[style] or roundLight or squareDefault) and cs and Minimap then
 		local tb = GetThinBorder(); if tb then tb:Hide(); end
 		if squareBorder then squareBorder:Hide(); end
 		-- El aro de Blizzard estorba: estos estilos traen el suyo.
@@ -307,12 +374,14 @@ function K.ApplyMinimapBorderStyle()
 		if MinimapBorderTop then MinimapBorderTop:Hide(); end
 
 		local shape = C.MinimapSquare and "square\\" or "round\\";
+		-- El panel dice "Default"; el archivo se llama Blizzard.tga.
+		local file  = STYLE_FILE[style] or style;
 		-- La imagen esta dibujada para un mapa de 140: 70 de mapa + 10 de
 		-- borde por cuadrante. Se mantiene esa proporcion para que ande
 		-- igual si el minimapa cambia de tamaño.
 		local size = (Minimap:GetWidth() / 2) * (80 / 70);
 		for _, tx in ipairs(cs) do
-			tx:SetTexture(BORDER_DIR .. shape .. style);
+			tx:SetTexture(BORDER_DIR .. shape .. file);
 			tx:SetSize(size, size);
 			tx:SetVertexColor(1, 1, 1, 1);
 			tx:Show();
@@ -351,6 +420,62 @@ function K.ApplyMinimapBorderStyle()
 end
 
 -- ---------------------------------------------------------
+-- EL NORTE. UNO SOLO.
+--
+-- EL BUG DE LAS DOS "N".
+--
+-- El cliente tiene DOS indicadores de norte, no uno:
+--
+--   MinimapNorthTag        la "N" suelta que gira con el mapa
+--   MinimapCompassTexture  el aro con las letras
+--
+-- Nunca van los dos juntos: Blizzard prende uno y apaga el otro segun el
+-- CVar "rotateMinimap" (Interfaz > Mapa del mundo > Rotar minimapa), y
+-- rehace esa cuenta cada vez que ese ajuste cambia.
+--
+-- Aca abajo, ApplyMinimapShape hacia esto en la rama redonda:
+--
+--     if MinimapCompassTexture then MinimapCompassTexture:Show(); end
+--
+-- Prendia el aro A CIEGAS, sin mirar el CVar, y no tocaba la "N" suelta.
+-- Si Blizzard tenia prendida la "N" y nosotros prendiamos el aro encima,
+-- quedaban las dos a la vez: dos nortes, uno un poco corrido del otro.
+--
+-- Por eso pasaba "a veces" y no siempre: depende de quien corrio ultimo.
+-- En un login limpio Blizzard ordena primero y nosotros pisamos despues,
+-- y quedan dos. Si despues tocabas cualquier opcion del minimapa,
+-- Blizzard volvia a ordenar y quedaba una. No dependia de la zona.
+--
+-- La regla ahora es una sola y hay un solo dueño: decide Blizzard.
+-- Nosotros solo le pedimos que decida, y unicamente imponemos algo en
+-- modo cuadrado, donde no va ninguno de los dos.
+-- ---------------------------------------------------------
+function K.ApplyMinimapNorth()
+	-- En cuadrado no va ninguno: los dos son arte dibujada para el aro
+	-- redondo, y sobre un cuadrado quedan flotando fuera del borde.
+	if C.MinimapSquare then
+		if MinimapNorthTag then MinimapNorthTag:Hide(); end
+		if MinimapCompassTexture then MinimapCompassTexture:Hide(); end
+		return;
+	end
+
+	-- Redondo: que mande el juego. Esta es la funcion que Blizzard llama
+	-- sola cuando cambias "Rotar minimapa", asi que llamarla deja
+	-- exactamente el estado correcto, este el ajuste como este.
+	if type(Minimap_UpdateRotationSetting) == "function" then
+		pcall(Minimap_UpdateRotationSetting);
+		return;
+	end
+
+	-- Respaldo por si esa funcion no existiera en este cliente. No decide
+	-- cual de los dos "toca" -- no hay forma de saberlo sin el CVar --,
+	-- solo garantiza que nunca haya DOS prendidos.
+	if MinimapCompassTexture and MinimapCompassTexture:IsShown() then
+		if MinimapNorthTag then MinimapNorthTag:Hide(); end
+	end
+end
+
+-- ---------------------------------------------------------
 -- Forma
 -- ---------------------------------------------------------
 function K.ApplyMinimapShape()
@@ -360,22 +485,22 @@ function K.ApplyMinimapShape()
 		Minimap:SetMaskTexture(SQUARE_MASK);
 		if MinimapBorder then MinimapBorder:Hide(); end
 		if MinimapBorderTop then MinimapBorderTop:Hide(); end
-		if MinimapNorthTag then MinimapNorthTag:Hide(); end
-		if MinimapCompassTexture then MinimapCompassTexture:Hide(); end
-		-- El borde cuadrado simple es el del estilo "Default": con
-		-- cualquier otro se apaga, porque todos rodean lo mismo y se
-		-- encimarian (mira ApplyMinimapBorderStyle).
+		-- El filo dibujado a mano ya no lo usa nadie: "Default" ahora carga
+		-- su propia textura (square\Blizzard.tga), igual que los demas
+		-- estilos. Se apaga aca y no mas abajo para que no haya un cuadro
+		-- en el que se prende y se vuelve a apagar.
 		local b = GetSquareBorder();
-		if b then
-			if BorderStyle() == "Default" then b:Show(); else b:Hide(); end
-		end
+		if b then b:Hide(); end
 	else
 		Minimap:SetMaskTexture(ROUND_MASK);
 		if MinimapBorder then MinimapBorder:Show(); end
 		if MinimapBorderTop then MinimapBorderTop:Show(); end
-		if MinimapCompassTexture then MinimapCompassTexture:Show(); end
 		if squareBorder then squareBorder:Hide(); end
 	end
+
+	-- El norte tiene su propio dueño (mira ApplyMinimapNorth). Antes se
+	-- resolvia suelto aca adentro, y de ahi salian las dos "N".
+	K.ApplyMinimapNorth();
 
 	K.ApplyMinimapBorderStyle();
 	K.NudgeMinimapIcons();
@@ -578,6 +703,21 @@ events:RegisterEvent("PLAYER_ENTERING_WORLD");
 events:SetScript("OnEvent", function()
 	K.ApplyMinimapSettings();
 end);
+
+-- Blizzard rehace el norte solo cuando tocas "Rotar minimapa". Si estamos
+-- en modo cuadrado, eso volveria a prender un indicador que ahi no va, y
+-- reaparece sin que nadie del addon lo haya pedido. Nos colgamos de su
+-- llamada y volvemos a cerrar la puerta.
+--
+-- No hay vuelta infinita: en cuadrado ApplyMinimapNorth corta antes de
+-- llamar a Minimap_UpdateRotationSetting.
+if type(Minimap_UpdateRotationSetting) == "function" then
+	hooksecurefunc("Minimap_UpdateRotationSetting", function()
+		if C.MinimapSquare and K.ApplyMinimapNorth then
+			K.ApplyMinimapNorth();
+		end
+	end);
+end
 
 -- Blizzard vuelve a mostrar el aro al cambiar de zona
 if type(Minimap_SetPing) == "function" then

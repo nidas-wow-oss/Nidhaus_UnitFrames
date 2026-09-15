@@ -297,6 +297,9 @@ local function FindTeamFrame()
 end
 
 local function RepositionMainFrame()
+    -- Acoplada dentro del panel, la posicion la manda el panel. Sin esto,
+    -- abrir la ventana de PvP la arrancaba de ahi de un tiron.
+    if K.APC_IsDocked and K.APC_IsDocked() then return end
     if not mainFrame:IsShown() then return end
     if APC_DB().point and not teamWindowOpen then return end
     mainFrame:ClearAllPoints()
@@ -517,7 +520,9 @@ K.RegisterModule("ArenaPointsCalc", {
 	name    = L["MOD_APC"] or "Arena Points Calculator",
 	desc    = L["MOD_APC_DESC"]
 		or "Calculates the arena points you will get each week from your rating. /apc",
-	default = false,
+	-- Encendido de fabrica: es una calculadora que no dibuja nada hasta
+	-- que la abris con /apc o desde la pestana Arena.
+	default = true,
 	configLabel = L["BTN_MODULE_OPEN"] or "Open",
 	configFunc = function()
 		if mainFrame:IsShown() then mainFrame:Hide() else mainFrame:Show() end
@@ -541,3 +546,81 @@ K.RegisterModule("ArenaPointsCalc", {
 		if APC_PvPButton then APC_PvPButton:Hide(); end
 	end,
 });
+
+-- =========================================================
+-- ACOPLARLA DENTRO DEL PANEL DE ARENA
+--
+-- Mismo patron que se uso para PAB, y por el mismo motivo: NO se hace una
+-- segunda calculadora, se MUDA la que ya existe. SetParent se lleva todos
+-- los hijos, asi que la ventana entera entra y sale del hueco sin
+-- reconstruir nada -- y con un solo juego de controles no hay dos estados
+-- que se puedan desincronizar.
+--
+-- Lo que se le saca es la ropa de VENTANA: el marco, la cruz de cerrar y
+-- el poder arrastrarla. Todo eso ya lo pone el panel que la contiene, y
+-- repetirlo adentro se ve como una ventana dentro de otra.
+-- =========================================================
+local apcDocked = false
+local apcPrev   = nil
+
+function K.APC_IsDocked() return apcDocked end
+
+function K.APC_Dock(host)
+    if not host or apcDocked then return end
+    apcDocked = true
+
+    -- Foto de como estaba, para poder devolverla exactamente igual.
+    apcPrev = {
+        parent = mainFrame:GetParent(),
+        shown  = mainFrame:IsShown(),
+        strata = mainFrame:GetFrameStrata(),
+    }
+
+    mainFrame:SetBackdrop(nil)
+    if closeBtn then closeBtn:Hide() end
+    mainFrame:SetMovable(false)
+    mainFrame:SetClampedToScreen(false)
+
+    mainFrame:SetParent(host)
+    mainFrame:ClearAllPoints()
+    mainFrame:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
+    mainFrame:SetFrameStrata(host:GetFrameStrata())
+    mainFrame:SetFrameLevel((host:GetFrameLevel() or 0) + 1)
+    mainFrame:Show()
+end
+
+function K.APC_Undock()
+    if not apcDocked then return end
+    apcDocked = false
+
+    -- Le vuelve la ropa de ventana.
+    mainFrame:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true, tileSize = 32, edgeSize = 32,
+        insets = { left = 11, right = 12, top = 12, bottom = 11 },
+    })
+    if closeBtn then closeBtn:Show() end
+    mainFrame:SetMovable(true)
+    mainFrame:SetClampedToScreen(true)
+
+    mainFrame:SetParent((apcPrev and apcPrev.parent) or UIParent)
+    mainFrame:SetFrameStrata((apcPrev and apcPrev.strata) or "DIALOG")
+    mainFrame:ClearAllPoints()
+    -- Su tamaño propio: al acoplarla no se toco, pero se repone por las
+    -- dudas de que el panel se lo haya cambiado.
+    mainFrame:SetWidth(300)
+    mainFrame:SetHeight(248)
+    local db = APC_DB()
+    if db.point then
+        mainFrame:SetPoint(db.point, UIParent, db.relPoint, db.x, db.y)
+    else
+        mainFrame:SetPoint("CENTER")
+    end
+
+    -- Se cierra: mientras estuvo acoplada la estabas viendo DENTRO del
+    -- panel, no como ventana suelta. Dejarla abierta al salir del panel
+    -- seria abrirte una ventana que no pediste.
+    mainFrame:Hide()
+    apcPrev = nil
+end
