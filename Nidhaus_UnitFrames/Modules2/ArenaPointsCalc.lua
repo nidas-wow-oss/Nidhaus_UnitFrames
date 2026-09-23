@@ -369,26 +369,21 @@ local function AddPvPButton()
     local b = CreateFrame("Button", "APC_PvPButton", PVPFrame)
     b:SetWidth(95); b:SetHeight(18)
     b:SetAlpha(0.9)
-    -- Posicion por defecto dentro de la ventana de PvP. Se puede mover con
-    -- Alt + arrastrar y queda guardada en la DB (btnX / btnY).
+    -- ESTE BOTON NO SE MUEVE.
+    --
+    -- Se podia arrastrar con Alt y la posicion quedaba guardada en
+    -- btnX / btnY. Ahora va fijo en su lugar dentro de la ventana de PvP:
+    -- 233, -132 desde la esquina superior izquierda, que es justo debajo
+    -- de la linea de ARENA y donde se lee como una fila mas de esa
+    -- ventana.
+    --
+    -- Un btnX/btnY de antes se BORRA en vez de respetarse: si alguien lo
+    -- habia arrastrado, al sacar el drag se quedaria clavado ahi para
+    -- siempre y ya sin forma de acomodarlo.
     local db = APC_DB()
-    b:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", db.btnX or 233, db.btnY or -132)
-    b:SetMovable(true)
-    b:RegisterForDrag("LeftButton")
-    b:SetScript("OnDragStart", function(self)
-        if IsAltKeyDown() then self:StartMoving() end
-    end)
-    b:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        -- Guardar el offset relativo al PVPFrame, no la posicion absoluta:
-        -- la ventana de PvP no siempre aparece en el mismo lugar.
-        if not PVPFrame then return end
-        local x = self:GetLeft() - PVPFrame:GetLeft()
-        local y = self:GetTop() - PVPFrame:GetTop()
-        local d = APC_DB(); d.btnX = x; d.btnY = y
-        self:ClearAllPoints()
-        self:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", x, y)
-    end)
+    if db.btnX or db.btnY then db.btnX, db.btnY = nil, nil end
+    b:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", 233, -132)
+    b:SetMovable(false)
     b:SetFrameLevel(PVPFrame:GetFrameLevel() + 5)
     -- Sin fondo ni borde: el numero tiene que leerse como una linea mas de
     -- la ventana de PvP, al lado de HONOR y ARENA, no como un boton pegado.
@@ -427,7 +422,6 @@ local function AddPvPButton()
         end
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(L["APC_BTN_TIP_CLICK"] or "Click to open the calculator", 0.6, 0.6, 0.6)
-        GameTooltip:AddLine(L["APC_BTN_TIP_DRAG"] or "Alt + drag to move it", 0.6, 0.6, 0.6)
         GameTooltip:Show()
     end)
     b:SetScript("OnLeave", function(self) self:SetAlpha(0.9); GameTooltip:Hide() end)
@@ -456,22 +450,9 @@ SlashCmdList["ARENACALC"] = function(msg)
         if not found then print("|cff00ccff[APC]|r |cffff8080No arena teams.|r") end
         return
     end
-    if msg == "btnpos" then
-        local d = APC_DB()
-        print(string.format("|cff00ccff[APC]|r x = %s, y = %s",
-            tostring(d.btnX and math.floor(d.btnX + 0.5) or "default"),
-            tostring(d.btnY and math.floor(d.btnY + 0.5) or "default")))
-        return
-    end
-    if msg == "btnreset" then
-        local d = APC_DB(); d.btnX = nil; d.btnY = nil
-        if APC_PvPButton and PVPFrame then
-            APC_PvPButton:ClearAllPoints()
-            APC_PvPButton:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", 233, -132)
-        end
-        print("|cff00ccff[APC]|r " .. (L["APC_BTN_RESET_DONE"] or "Button position reset."))
-        return
-    end
+    -- Aca vivian /apc btnpos y /apc btnreset. Solo servian con el boton
+    -- movible: ahora esta fijo, btnpos siempre diria "default" y btnreset
+    -- no tendria nada que resetear.
     local r = tonumber(msg)
     if r then
         DetectServer()

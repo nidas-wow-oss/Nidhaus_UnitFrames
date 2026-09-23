@@ -97,6 +97,16 @@ SlashCmdList["NUF"] = function(msg)
 		ShowBossFrames();
 	elseif string_lower(msg) == "arena" then
 		if K.ToggleArenaFramesMover then K.ToggleArenaFramesMover(); end
+	-- /nuf arena 2 | 3 | 5  -> modo test con esa cantidad de marcos.
+	-- /nuf arena clear      -> esconderlos. Misma idea que sArena.
+	elseif string_lower(msg) == "arena 2" or string_lower(msg) == "arena2" then
+		if K.SetArenaTestCount then K.SetArenaTestCount(2); end
+	elseif string_lower(msg) == "arena 3" or string_lower(msg) == "arena3" then
+		if K.SetArenaTestCount then K.SetArenaTestCount(3); end
+	elseif string_lower(msg) == "arena 5" or string_lower(msg) == "arena5" then
+		if K.SetArenaTestCount then K.SetArenaTestCount(5); end
+	elseif string_lower(msg) == "arena clear" then
+		if K.ClearArenaTestFrames then K.ClearArenaTestFrames(); end
 	elseif string_lower(msg) == "modules" then
 		if K.ListModules then K.ListModules(); end
 	elseif string_lower(msg) == "reset" then

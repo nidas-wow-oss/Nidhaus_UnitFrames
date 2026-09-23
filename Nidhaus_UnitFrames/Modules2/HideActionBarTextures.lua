@@ -52,9 +52,53 @@ local habEnabled = false;
 local prevShown = {};
 local prevAlpha = {};
 
+local yaAgregada = {};
+
 local function AddTexture(tex)
-    if tex and tex.SetAlpha then
+    if tex and tex.SetAlpha and not yaAgregada[tex] then
+        yaAgregada[tex] = true;
         table.insert(textures, tex);
+    end
+end
+
+-- BARRIDO POR MARCO, ADEMAS DE LA LISTA POR NOMBRE.
+--
+-- La lista de arriba nombra las texturas una por una, y por eso se le
+-- escapaba lo que no estuviera nombrado -- que es la franja que quedaba
+-- dibujada abajo aunque estuviera todo "oculto". Esto recorre el marco y
+-- se lleva TODA textura que tenga, se llame como se llame.
+--
+-- SOLO REGIONES, NUNCA EL MARCO. MainMenuBarArtFrame es el padre de los
+-- botones de accion y cuelga de MainMenuBar, que es protegido: esconder
+-- el marco entero te tira "Interface action failed because of an AddOn"
+-- en cuanto entres en combate. Las texturas de adentro no son protegidas
+-- y se pueden tocar sin problema.
+--
+-- Y BAJA A LOS MARCOS HIJOS, PERO NO A LOS BOTONES.
+--
+-- La primera version solo miraba las regiones del propio marco, y por eso
+-- se le seguia escapando la franja: el arte de nivel maximo no cuelga
+-- directo de MainMenuBarArtFrame, vive en un marco propio adentro
+-- (MainMenuBarMaxLevelBar). Ahora baja.
+--
+-- Los BOTONES se saltean a proposito: sus regiones son el icono, el borde
+-- y el brillo. Barrerlos dejaria la barra de acciones en blanco. Con este
+-- filtro pasan los marcos de adorno y no pasa nada con lo que se usa.
+local function AddFrameTextures(frame, prof)
+    if not frame or not frame.GetRegions then return; end
+    prof = prof or 0;
+
+    for _, reg in ipairs({ frame:GetRegions() }) do
+        if reg and reg.GetObjectType and reg:GetObjectType() == "Texture" then
+            AddTexture(reg);
+        end
+    end
+
+    if prof >= 2 or not frame.GetChildren then return; end
+    for _, hijo in ipairs({ frame:GetChildren() }) do
+        if hijo and hijo.GetObjectType and hijo:GetObjectType() == "Frame" then
+            AddFrameTextures(hijo, prof + 1);
+        end
     end
 end
 
@@ -65,15 +109,25 @@ local function AddDimmer(frame)
 end
 
 local function SetupTextures()
-    textures = {};
-    dimmers  = {};
+    textures    = {};
+    dimmers     = {};
+    yaAgregada  = {};
 
     for i = 0, 3 do AddTexture(_G["MainMenuBarTexture" .. i]); end
 
-    -- Arte de nivel maximo: es la que REEMPLAZA a la barra de experiencia
-    -- al llegar a 80. Faltaba en la lista, asi que con la opcion activada
-    -- quedaba igual una franja colgada abajo.
-    for i = 0, 3 do AddTexture(_G["MainMenuMaxLevelBar" .. i]); end
+    -- Arte de nivel maximo: la que REEMPLAZA a la barra de experiencia al
+    -- llegar a 80.
+    --
+    -- Aca estaba el bug de la franja gris que no se iba. Esta linea
+    -- buscaba "MainMenuMaxLevelBar0..3" y ESE NOMBRE NO EXISTE: el marco
+    -- se llama MainMenuBarMaxLevelBar (con "Bar" en el medio) y sus
+    -- pedazos de 256x7 no tienen nombre propio. O sea que _G[...] devolvia
+    -- nil cuatro veces y AddTexture no agregaba nada -- sin error, sin
+    -- aviso, y pareciendo que el caso estaba cubierto.
+    --
+    -- Se lo trata por MARCO en vez de por nombre. Asi da igual como se
+    -- llamen las texturas de adentro, que es justo lo que fallaba.
+    AddFrameTextures(MainMenuBarMaxLevelBar);
 
     AddTexture(MainMenuXPBarTextureLeftCap);
     AddTexture(MainMenuXPBarTextureRightCap);
@@ -88,6 +142,12 @@ local function SetupTextures()
     AddTexture(CharacterBag1SlotBorder);
     AddTexture(CharacterBag2SlotBorder);
     AddTexture(CharacterBag3SlotBorder);
+
+    -- Y lo que quede suelto en los dos marcos de la barra. Va DESPUES de
+    -- la lista por nombre a proposito: asi lo que ya estaba nombrado
+    -- conserva su lugar y esto solo agrega lo que faltaba.
+    AddFrameTextures(MainMenuBarArtFrame);
+    AddFrameTextures(MainMenuBar);
 
     -- Estas dos NO van arriba. Mira la nota del encabezado.
     AddDimmer(MainMenuExpBar);

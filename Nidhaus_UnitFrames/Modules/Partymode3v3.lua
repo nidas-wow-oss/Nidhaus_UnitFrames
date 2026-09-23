@@ -12,6 +12,40 @@ local PARTY_3V3_CONFIG = {
 	[4] = { defScale = 1.3, point = "TOPLEFT", x = 10,  y = -460 },
 };
 
+-- ============================================================
+-- LOS MARCOS DE PARTY SON PROTEGIDOS: NADA DE TOCARLOS EN COMBATE.
+--
+-- TaintFixer lo cazo con el nombre y todo: peleando contra un muneco,
+-- PartyMemberFrame3 y 4 tiraban ADDON_ACTION_BLOCKED en SetScale,
+-- ClearAllPoints, SetParent y SetPoint -- los cuatro que hace este archivo,
+-- en ese mismo orden. No era ruido: el cliente estaba RECHAZANDO cada
+-- llamada, y de ahi el cartel "Interface action failed because of an AddOn".
+--
+-- Blizzard bloquea mover, reparentar o escalar estos marcos mientras estas
+-- en combate. Este archivo no tenia ni una sola guarda, asi que cualquier
+-- cosa que dispare CONFIG_CHANGED peleando -- mover un slider, entrar a
+-- arena, un cambio de grupo -- caia justo ahi.
+--
+-- No alcanza con salir temprano y listo: si te vas sin aplicar, los marcos
+-- se quedan mal hasta que algo mas los vuelva a tocar. Se anota el pedido
+-- y se repite apenas termina el combate, que es la misma receta que ya usa
+-- PartyFramePW para el vehiculo.
+-- ============================================================
+local pendingApply, pendingDisable = false, false;
+
+local combatWatch = CreateFrame("Frame");
+combatWatch:RegisterEvent("PLAYER_REGEN_ENABLED");
+combatWatch:SetScript("OnEvent", function()
+	if pendingApply then
+		pendingApply = false;
+		if K.Apply3v3PartyMode then K.Apply3v3PartyMode(); end
+	end
+	if pendingDisable then
+		pendingDisable = false;
+		if K.Disable3v3PartyMode then K.Disable3v3PartyMode(); end
+	end
+end);
+
 -- La escala de cada miembro ahora es configurable desde el panel
 local function Get3v3Scale(i)
 	local cfg = PARTY_3V3_CONFIG[i];
@@ -25,6 +59,8 @@ K.Get3v3Scale = Get3v3Scale;
 -- Aplicar la escala de un solo miembro (para los sliders en vivo)
 function K.Apply3v3MemberScale(i)
 	if not C.PartyMode3v3 then return; end
+	-- Mover el slider en combate: se anota y se aplica al salir.
+	if InCombatLockdown() then pendingApply = true; return; end
 	local pf = _G["PartyMemberFrame"..i];
 	if pf then pf:SetScale(Get3v3Scale(i)); end
 	if K.PartyBuffs_OnFramesMoved then K.PartyBuffs_OnFramesMoved(); end
@@ -34,6 +70,7 @@ end
 function K.Apply3v3PartyMode()
 	-- FIX: antes exigia C.SetPositions y sin eso el checkbox no hacia NADA
 	if not C.PartyMode3v3 then return; end;
+	if InCombatLockdown() then pendingApply = true; return; end
 
 	for i = 1, MAX_PARTY_MEMBERS do
 		local partyFrame = _G["PartyMemberFrame"..i];
@@ -76,6 +113,7 @@ end;
 -- Disable3v3PartyMode
 function K.Disable3v3PartyMode()
 	if not K.NidhausPartyFrame then return; end;
+	if InCombatLockdown() then pendingDisable = true; return; end
 
 	for i = 1, MAX_PARTY_MEMBERS do
 		local partyFrame = _G["PartyMemberFrame"..i];

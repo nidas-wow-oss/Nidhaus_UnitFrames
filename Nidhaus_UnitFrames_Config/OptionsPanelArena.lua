@@ -10,6 +10,7 @@ local castBarSubControls = {};
 local castBarBody;   -- cuerpo desplegable de la seccion Cast Bar
 local petStyleControls = {};
 local arenaShowBtn;
+local arenaTestRow;   -- fila de botones Test 2 / 3 / 5 / Clear
 local dropdownCount = 0;
 -- FIX: Constante para loops de test mode (consistente con ArenaMover.MOVER_ARENA_COUNT)
 local MOVER_ARENA_COUNT = 3;
@@ -68,6 +69,9 @@ local function CreateCheckBox(parent, label, setting, xOffset, yOffset)
 			if K._UpdateArenaOptionsVisibility then K._UpdateArenaOptionsVisibility(); end
 			if arenaShowBtn then
 				if checked then arenaShowBtn:Show(); else arenaShowBtn:Hide(); end
+			end
+			if arenaTestRow then
+				if checked then arenaTestRow:Show(); else arenaTestRow:Hide(); end
 			end
 			-- FIX: Activar/desactivar el mod en vivo (antes no hacía nada)
 			if checked then
@@ -365,6 +369,20 @@ function K.PopulateArenaTab(panel)
 			local checked = self:GetChecked() == 1 or self:GetChecked() == true;
 			if K.SetModuleEnabled then K.SetModuleEnabled(moduleId, checked); end
 			if K.RefreshModuleCheckbox then K.RefreshModuleCheckbox(moduleId); end
+
+			-- LA CALCULADORA NECESITA QUE ALGUIEN LA ACOPLE.
+			--
+			-- Prender el modulo no la mete sola en su hueco: eso lo hace
+			-- RefreshAPCBlock llamando a K.APC_Dock, y esta casilla no lo
+			-- llamaba. Por eso al tildarla no pasaba nada visible, y recien
+			-- aparecia al salir de la sub-pestana y volver -- que es cuando
+			-- corre el OnShow de panePoints, que si lo llama.
+			--
+			-- Por el campo de K y no por la local: RefreshAPCBlock se define
+			-- MUCHO mas abajo en este archivo y desde aca es invisible.
+			if moduleId == "ArenaPointsCalc" and K._RefreshArenaPointsBlock then
+				K._RefreshArenaPointsBlock();
+			end
 		end);
 
 		if K.RegisterModuleCheckbox then K.RegisterModuleCheckbox(moduleId, cb); end
@@ -393,12 +411,48 @@ function K.PopulateArenaTab(panel)
 		if K.ToggleArenaFramesMover then K.ToggleArenaFramesMover(); end
 	end);
 
+	-- -- TEST 2 / 3 / 5 / CLEAR (la idea sale de sArena) --
+	--
+	-- sArena tiene estos mismos cuatro botones y son la forma comoda de ver
+	-- como queda el armado en 2v2, 3v3 y 5v5 sin entrar a una arena.
+	--
+	-- Van debajo de la casilla, a la izquierda: a la derecha esta el cartel
+	-- de "/nuf arena" y ahi no entran.
+	arenaTestRow = CreateFrame("Frame", nil, content);
+	arenaTestRow:SetPoint("TOPLEFT", 20, yPos - 30);
+	arenaTestRow:SetSize(240, 24);
+
+	local testBtns = {};
+	local function MakeTestBtn(label, x, onClick)
+		local b = CreateFrame("Button", nil, arenaTestRow, "UIPanelButtonTemplate");
+		b:SetPoint("TOPLEFT", x, 0);
+		b:SetSize(52, 22);
+		b:SetText(label);
+		b:SetScript("OnClick", onClick);
+		testBtns[#testBtns + 1] = b;
+		return b;
+	end
+
+	for idx, n in ipairs({ 2, 3, 5 }) do
+		MakeTestBtn("Test " .. n, (idx - 1) * 56, function()
+			if K.SetArenaTestCount then K.SetArenaTestCount(n); end
+		end);
+	end
+	MakeTestBtn(L["BTN_ARENA_TEST_CLEAR"] or "Clear", 3 * 56, function()
+		if K.ClearArenaTestFrames then K.ClearArenaTestFrames(); end
+	end);
+
 	local function UpdateArenaShowButtonState()
 		if not arenaShowBtn then return; end
-		if IsActiveBattlefieldArena and IsActiveBattlefieldArena() then
+		local live = IsActiveBattlefieldArena and IsActiveBattlefieldArena();
+		if live then
 			arenaShowBtn:Disable(); arenaShowBtn:SetAlpha(0.5);
 		else
 			arenaShowBtn:Enable(); arenaShowBtn:SetAlpha(1.0);
+		end
+		-- En arena de verdad no se simula nada, asi que los Test tampoco.
+		for _, b in ipairs(testBtns) do
+			if live then b:Disable(); b:SetAlpha(0.5); else b:Enable(); b:SetAlpha(1.0); end
 		end
 	end
 	arenaShowBtn:SetScript("OnShow", function() UpdateArenaShowButtonState(); end);
@@ -407,7 +461,10 @@ function K.PopulateArenaTab(panel)
 	btnEvt:RegisterEvent("PLAYER_ENTERING_WORLD");
 	btnEvt:SetScript("OnEvent", function() UpdateArenaShowButtonState(); end);
 	UpdateArenaShowButtonState();
-	if not C.ArenaFrameOn then arenaShowBtn:Hide(); end
+	if not C.ArenaFrameOn then
+		arenaShowBtn:Hide();
+		if arenaTestRow then arenaTestRow:Hide(); end
+	end
 
 	local arenaHint = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
 	arenaHint:SetPoint("TOP", arenaShowBtn, "BOTTOM", 0, -2);
@@ -675,6 +732,16 @@ function K.PopulateArenaTab(panel)
 
 		if K.RepositionAllSpecIcons then K.RepositionAllSpecIcons(); end
 		if K.ApplyMirrorMode then K.ApplyMirrorMode(); end
+
+		-- Y reevaluar que se ve y que no: el desplegable de Pet Style
+		-- aparece solo en Flat, asi que cambiar de estilo tiene que
+		-- esconderlo o traerlo de vuelta.
+		--
+		-- Se llama por el campo de K y no por la local: la local
+		-- petContainerRef se declara MAS ABAJO en este archivo y desde
+		-- aca seria invisible -- se leeria como global nil, sin avisar.
+		-- Un campo de tabla se resuelve al llamar, cuando ya existe.
+		if K._UpdateArenaOptionsVisibility then K._UpdateArenaOptionsVisibility(); end
 	end
 
 	local styleDDContainer = CreateDropdown(content, L["LABEL_ARENA_STYLE"] or "Arena Style", "ArenaFrameStyle",
@@ -843,7 +910,17 @@ function K.PopulateArenaTab(panel)
 		if styleSep then if on then styleSep:Show(); else styleSep:Hide(); end end
 		if K._UpdateArenaBoxes then K._UpdateArenaBoxes(); end
 		if styleDDContainer then if on then styleDDContainer:Show(); else styleDDContainer:Hide(); end end
-		if petContainerRef then if on then petContainerRef:Show(); else petContainerRef:Hide(); end end
+		-- PET STYLE SOLO EXISTE EN FLAT.
+		--
+		-- Antes se mostraba con el mod de arena encendido y punto, en
+		-- cualquier estilo. Pero el estilo Flat para la mascota SOLO se
+		-- aplica en Flat: K.ApplyFlatPetFrames sale temprano si
+		-- IsFlatModeActive() es falso. O sea que en Blizzard, Custom,
+		-- Compact y Compact2 el desplegable estaba a la vista decidiendo
+		-- algo que no tenia efecto: se elegia "Flat" y no pasaba nada.
+		if petContainerRef then
+			if on and isFlat then petContainerRef:Show(); else petContainerRef:Hide(); end
+		end
 		if lowerSection then if on then lowerSection:Show(); else lowerSection:Hide(); end end
 		if flatWrapper then
 			if on and isFlat then flatWrapper:Show(); else flatWrapper:Hide(); end
@@ -1093,8 +1170,24 @@ function K.PopulateArenaTab(panel)
 	-- alto del contenido para que la barra de scroll no sobre.
 	local function RefreshAPCBlock()
 		local on = K.IsModuleEnabled and K.IsModuleEnabled("ArenaPointsCalc");
-		if apcBlock then
-			if on then apcBlock:Show(); else apcBlock:Hide(); end
+		-- EL BLOQUE YA NO SE ESCONDE ENTERO.
+		--
+		-- Antes, con el modulo apagado, se hacia apcBlock:Hide() -- y adentro
+		-- de ese bloque vive la casilla que lo prende. Resultado: esta
+		-- sub-pestana quedaba COMPLETAMENTE en blanco, sin titulo ni casilla,
+		-- y no habia forma de encenderlo desde aca: habia que ir hasta la
+		-- pestana Addons a buscarlo. Parecia que la pestana estaba rota.
+		--
+		-- Ese Hide() tenia sentido cuando el bloque iba al FINAL de un pane
+		-- compartido con los cronometros: esconderlo evitaba dejar un hueco
+		-- en el medio. Desde que tiene sub-pestana propia, esconderlo vacia
+		-- la pestana. La decision quedo atras del cambio de contexto.
+		--
+		-- Ahora el titulo y la casilla se quedan siempre; lo unico que se
+		-- esconde es la calculadora.
+		if apcBlock then apcBlock:Show(); end
+		if apcHost then
+			if on then apcHost:Show(); else apcHost:Hide(); end
 		end
 		-- Prender o apagar el modulo desde la casilla tiene que mover la
 		-- calculadora en el acto, no al volver a entrar a la pestana.
@@ -1110,7 +1203,9 @@ function K.PopulateArenaTab(panel)
 		-- modulo esta apagado.
 		sub.SetContentHeight(2, math.abs(mY));
 		-- 70 del encabezado y la casilla + 248 de la calculadora + aire.
-		sub.SetContentHeight(3, on and 340 or 40);
+		-- Apagado ya no son 40: el titulo y la casilla siguen visibles y
+		-- ocupan lugar. 340 con la calculadora puesta, 90 sin ella.
+		sub.SetContentHeight(3, on and 340 or 90);
 	end
 	K._RefreshArenaPointsBlock = RefreshAPCBlock;
 	RefreshAPCBlock();

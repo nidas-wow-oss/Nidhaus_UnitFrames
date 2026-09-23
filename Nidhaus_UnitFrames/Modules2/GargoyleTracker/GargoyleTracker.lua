@@ -21,7 +21,8 @@ local K, C, L = unpack(ns);
 -- /gt cast X Y -> mueve la castbar a TOPLEFT(X,Y) en vivo
 
 local GARGOYLE_SPELLID       = 49206
-local GARGOYLE_NAME          = "Ebon Gargoyle"
+local GARGOYLE_NAME          = "Ebon Gargoyle"   -- respaldo, ver GargName()
+local GARGOYLE_CAST_NAME     = "Gargoyle Strike" -- respaldo, ver GargCastName()
 local GARGOYLE_DURATION      = 30
 local GARGOYLE_CAST_FALLBACK = 1.5
 
@@ -44,6 +45,58 @@ local function GTDB()
   if db.inDuel  == nil then db.inDuel  = true end
   if db.inWorld == nil then db.inWorld = true end
   return db
+end
+
+-- =====================================================
+-- LOS NOMBRES, EN EL IDIOMA DEL CLIENTE
+--
+-- El modulo arranca bien en cualquier idioma: el disparador es el ID del
+-- hechizo (49206) y eso no se traduce. Pero despues hay cuatro cosas que
+-- se buscaban comparando contra el texto "Ebon Gargoyle":
+--
+--   * la placa de nombre, de donde sale la barra de vida
+--   * la barra de casteo de la gargola
+--   * el CC sobre la gargola cuando no tenemos su GUID
+--   * el cartel con el nombre
+--
+-- En un cliente en espanol la criatura se llama "Gargola de ebano", asi
+-- que esas cuatro fallaban en silencio: salia el reloj y nada mas.
+--
+-- No hay API que de el nombre de una criatura por ID en 3.3.5a, y una
+-- tabla de traducciones se rompe con cada idioma nuevo. Asi que el nombre
+-- SE APRENDE: el SPELL_SUMMON del registro de combate trae el nombre de la
+-- criatura invocada ya traducido, y UnitName() lo confirma cuando la
+-- tenemos a la vista. Se guarda en la DB, asi que se aprende una sola vez
+-- y despues ya esta desde el primer segundo.
+--
+-- Lo mismo con "Gargoyle Strike", que se aprende del SPELL_CAST_START.
+-- =====================================================
+-- Se guarda POR IDIOMA, no en un campo suelto.
+--
+-- Si guardaramos un solo nombre, aprender "Gargola de ebano" jugando en
+-- espanol dejaria roto el cliente en ingles hasta que apareciera otra
+-- gargola, y viceversa. Con una entrada por idioma cada cliente usa la
+-- suya y las dos quedan aprendidas para siempre.
+local function GTNames()
+  local db = GTDB()
+  if type(db.names) ~= "table" then db.names = {} end
+  local loc = GetLocale() or "enUS"
+  if type(db.names[loc]) ~= "table" then db.names[loc] = {} end
+  return db.names[loc]
+end
+
+local function GargName()
+  local n = GTNames().unit
+  return (type(n) == "string" and n ~= "") and n or GARGOYLE_NAME
+end
+
+local function GargCastName()
+  local n = GTNames().cast
+  return (type(n) == "string" and n ~= "") and n or GARGOYLE_CAST_NAME
+end
+
+local function LearnCastName(n)
+  if type(n) == "string" and n ~= "" then GTNames().cast = n end
 end
 
 local currentMode = GTDB().mode or MODE_BLIZZARD
@@ -205,7 +258,7 @@ bNameTxt:SetPoint("LEFT", bNameF, "LEFT", 0, 0)
 bNameTxt:SetTextColor(1, 0.82, 0, 1)
 bNameTxt:SetShadowOffset(1, -1)
 bNameTxt:SetShadowColor(0, 0, 0, 1)
-bNameTxt:SetText(GARGOYLE_NAME)
+bNameTxt:SetText(GargName())
 
 local bTimeTxt = bNameF:CreateFontString(nil, "OVERLAY")
 bTimeTxt:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
@@ -439,7 +492,20 @@ cNameTxt:SetJustifyH("LEFT")
 if cNameTxt.SetWordWrap then cNameTxt:SetWordWrap(false) end
 cNameTxt:SetTextColor(1, 0.82, 0, 1)
 cNameTxt:SetShadowOffset(1, -1)
-cNameTxt:SetText(GARGOYLE_NAME)
+cNameTxt:SetText(GargName())
+
+-- Aprender el nombre. Va aca abajo y no arriba porque necesita los dos
+-- carteles ya creados: si el nombre cambia con la ventana ya dibujada,
+-- seguirian diciendo el viejo.
+local function LearnGargName(n)
+  if type(n) ~= "string" or n == "" then return end
+  local t = GTNames()
+  if t.unit == n then return end
+  t.unit = n
+  if bNameTxt then bNameTxt:SetText(n) end
+  if cNameTxt then cNameTxt:SetText(n) end
+  dbg("nombre aprendido: " .. n)
+end
 
 local cTimeTxt = cNameF:CreateFontString(nil, "OVERLAY")
 cTimeTxt:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
@@ -721,7 +787,12 @@ local GARG_UNITS = { "target", "focus", "mouseover", "targettarget",
 local function ResolveGargUnit()
   if not state.gargGUID then return nil end
   for _, u in ipairs(GARG_UNITS) do
-    if UnitExists(u) and UnitGUID(u) == state.gargGUID then return u end
+    if UnitExists(u) and UnitGUID(u) == state.gargGUID then
+      -- Tenerla delante es la fuente mas confiable del nombre: si el
+      -- SPELL_SUMMON se perdio, se aprende igual por aca.
+      LearnGargName(UnitName(u))
+      return u
+    end
   end
   return nil
 end
@@ -876,7 +947,7 @@ local function FindGargoyleNameplate()
       for _, reg in ipairs({ plate:GetRegions() }) do
         if reg and reg.GetObjectType
            and reg:GetObjectType() == "FontString"
-           and reg:GetText() == GARGOYLE_NAME then
+           and reg:GetText() == GargName() then
           found = true; break
         end
       end
@@ -995,7 +1066,7 @@ f:SetScript("OnUpdate", function(self, elapsed)
       castBar:SetValue(now - state.castStart)
       castBar.txt:SetText(string.format("%.1fs", crem))
       if castBar.spellTxt then
-        castBar.spellTxt:SetText("Gargoyle Strike")
+        castBar.spellTxt:SetText(GargCastName())
       end
       -- Spark sigue el progreso de la barra
       if castBar.spark then
@@ -1073,6 +1144,10 @@ f:SetScript("OnEvent", function(self, event, ...)
     -- En SPELL_SUMMON el destino ES la gargola, asi que ese GUID es el
     -- suyo. En SPELL_CAST_SUCCESS el destino es otra cosa (o nada), y por
     -- eso solo se guarda en el primer caso.
+    --
+    -- Y de paso, el destino tambien trae el NOMBRE de la criatura en el
+    -- idioma del cliente. Es la forma mas limpia de aprenderlo.
+    if subEvent == "SPELL_SUMMON" then LearnGargName(destName) end
     StartGargoyle(sourceName, false,
       (subEvent == "SPELL_SUMMON") and destGUID or nil)
     return
@@ -1085,7 +1160,7 @@ f:SetScript("OnEvent", function(self, event, ...)
   -- gargola del otro DK) y por nombre cuando no, que es el mismo criterio
   -- que ya usa el resto del archivo.
   local isGarg = (state.gargGUID and destGUID == state.gargGUID)
-                 or ((not state.gargGUID) and destName == GARGOYLE_NAME)
+                 or ((not state.gargGUID) and destName == GargName())
   if isGarg then
     if subEvent == "SPELL_AURA_APPLIED" or subEvent == "SPELL_AURA_REFRESH" then
       local cc = spellName and ccByName[spellName]
@@ -1112,13 +1187,14 @@ f:SetScript("OnEvent", function(self, event, ...)
     end
   end
   if subEvent == "SPELL_CAST_START"
-     and sourceName == GARGOYLE_NAME and IsHostile(sourceFlags) then
+     and sourceName == GargName() and IsHostile(sourceFlags) then
+    LearnCastName(spellName)
     StartCast(GARGOYLE_CAST_FALLBACK, destName)
     return
   end
   if (subEvent == "SPELL_CAST_SUCCESS" or subEvent == "SPELL_INTERRUPT"
    or subEvent == "SPELL_CAST_FAILED")
-     and sourceName == GARGOYLE_NAME and IsHostile(sourceFlags) then
+     and sourceName == GargName() and IsHostile(sourceFlags) then
     StopCast()
     return
   end
@@ -1254,12 +1330,12 @@ SlashCmdList.GT = function(msg)
     castBar:SetMinMaxValues(0, 1)
     castBar:SetValue(0.6)
     castBar.txt:SetText("0.6s")
-    if castBar.spellTxt then castBar.spellTxt:SetText("Gargoyle Strike") end
+    if castBar.spellTxt then castBar.spellTxt:SetText(GargCastName()) end
     if castBar.holder then castBar.holder:Show() end
     if castBar.iconHolder then castBar.iconHolder:Show() end
     if castBar.txtHolder then castBar.txtHolder:Show() end
     if castBar.flashF then castBar.flashF:Show() end
-    nameTxt:SetText(GARGOYLE_NAME)
+    nameTxt:SetText(GargName())
     timeTxt:SetText("18.0s")
     timeTxt:SetTextColor(1, 1, 1, 1)
     ui:Show()

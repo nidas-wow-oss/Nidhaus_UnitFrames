@@ -7,9 +7,31 @@ local IsActiveBattlefieldArena = IsActiveBattlefieldArena;
 
 local ArenaMover;
 local MAX_ARENA_ENEMIES = MAX_ARENA_ENEMIES or 5;
--- FIX: Constante para el mover/test mode (antes hardcodeado como 3 en 6 lugares)
--- Cambiar a MAX_ARENA_ENEMIES si se quiere soportar 5v5 en el test mode
-local MOVER_ARENA_COUNT = 3;
+-- ============================================================
+-- CUANTOS MARCOS MUESTRA EL MODO TEST
+--
+-- Antes era una constante en 3 y no habia forma de probar 2v2 ni 5v5.
+-- sArena lo resuelve con tres botones (Test 2 / Test 3 / Test 5) que
+-- llaman a la misma rutina con distinto numero, y un Clear que esconde
+-- todo. Misma idea aca.
+--
+-- DOS NUMEROS, NO UNO. Es la parte que importa:
+--
+--   ArenaTestCount()  -> cuantos se MUESTRAN ahora (2, 3 o 5)
+--   MOVER_ARENA_MAX   -> hasta donde hay que BARRER al limpiar
+--
+-- Si los bucles de limpieza usaran la cantidad elegida, pasar de 5 a 2
+-- dejaria los marcos 3, 4 y 5 colgados en pantalla para siempre: nadie
+-- los volveria a tocar. Limpiar barre SIEMPRE hasta el maximo.
+-- ============================================================
+local MOVER_ARENA_MAX = 5;
+
+local function ArenaTestCount()
+	local n = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaTestCount;
+	if n == 2 or n == 3 or n == 5 then return n; end
+	return 3;
+end
+K.GetArenaTestCount = ArenaTestCount;
 
 local classIcons = {"DRUID","HUNTER","MAGE","PALADIN","PRIEST","ROGUE","SHAMAN","WARLOCK","WARRIOR","DEATHKNIGHT"};
 local classColors = {
@@ -87,7 +109,7 @@ local function CalcMoverHeight(scale, spacing)
 	local frameH = 60;
 	local s = spacing or C.ArenaFrameSpacing or 0;
 	-- FIX: Usar constante en vez de hardcoded 3
-	return (frameH * MOVER_ARENA_COUNT + (20 + s) * (MOVER_ARENA_COUNT - 1)) * scale;
+	return (frameH * ArenaTestCount() + (20 + s) * (ArenaTestCount() - 1)) * scale;
 end
 
 local function UpdateArenaMoverSize(scale)
@@ -141,7 +163,7 @@ local function CreateArenaMover()
 end
 
 local function ForceCreateArenaFrames()
-	for i = 1, MOVER_ARENA_COUNT do
+	for i = 1, ArenaTestCount() do
 		if not _G["ArenaEnemyFrame"..i] then
 			CreateFrame("Button", "ArenaEnemyFrame"..i, UIParent, "ArenaEnemyFrameTemplate");
 		end
@@ -183,7 +205,9 @@ end
 local function HideTestFrames()
 	-- sArena pattern: frames nunca se reparentearon ni se les cambió la escala.
 	-- Solo hay que ocultarlos y limpiar datos fake.
-	for i = 1, MOVER_ARENA_COUNT do
+	-- Barre hasta el MAXIMO: si venias de Test 5 y ahora hay 2, los otros
+	-- tres siguen visibles y hay que apagarlos igual.
+	for i = 1, MOVER_ARENA_MAX do
 		local frame = _G["ArenaEnemyFrame"..i];
 		if frame then
 			-- Pet frame: restaurar Hide original y ocultar
@@ -262,7 +286,7 @@ end
 K.RestorePetFramePositions = RestorePetFramePositions;
 
 local function CreatePetFrameDragOverlays()
-	for i = 1, MOVER_ARENA_COUNT do
+	for i = 1, ArenaTestCount() do
 		local petFrame = _G["ArenaEnemyFrame"..i.."PetFrame"];
 		if petFrame and petFrame:IsShown() then
 			local overlayName = "NUF_PetFrameDragOverlay"..i;
@@ -343,7 +367,7 @@ local function CreatePetFrameDragOverlays()
 end
 
 local function HidePetFrameDragOverlays()
-	for i = 1, MOVER_ARENA_COUNT do
+	for i = 1, MOVER_ARENA_MAX do
 		local overlay = _G["NUF_PetFrameDragOverlay"..i];
 		if overlay then overlay:Hide(); end
 	end
@@ -492,7 +516,7 @@ function K.ForceHideArenaMover()
 
 	-- Ocultar frames fake del test mode
 	HideTestFrames();
-	for i = 1, MOVER_ARENA_COUNT do
+	for i = 1, MOVER_ARENA_MAX do
 		local overlay = _G["NUF_CastBarDragOverlay"..i];
 		if overlay then overlay:Hide(); end
 	end
@@ -574,7 +598,7 @@ local function ToggleTestMode()
 		ShowDragOverlay(anchor);
 
 		-- Mostrar frames con datos fake (NO reparentar, NO cambiar escala)
-		for i = 1, MOVER_ARENA_COUNT do
+		for i = 1, ArenaTestCount() do
 			local frame = _G["ArenaEnemyFrame"..i];
 			if frame then
 				frame:Show();
@@ -651,14 +675,14 @@ local function ToggleTestMode()
 
 		-- Aplicar estilos (flat/custom/blizzard) sin tocar escala
 		if K.StyleSingleArenaFrame then
-			for i = 1, MOVER_ARENA_COUNT do
+			for i = 1, ArenaTestCount() do
 				local af = _G["ArenaEnemyFrame"..i];
 				if af then K.StyleSingleArenaFrame(af, i); end
 			end
 		end
 
 		-- Mostrar cast bars con datos fake
-		for i = 1, MOVER_ARENA_COUNT do
+		for i = 1, ArenaTestCount() do
 			local castBar = _G["ArenaEnemyFrame"..i.."CastingBar"];
 			if castBar then
 				castBar.fadeOut = nil;
@@ -688,7 +712,7 @@ local function ToggleTestMode()
 
 		-- Aplicar tamaño/escala de castbar (solo castbar, no frames)
 		if C.ArenaCastBarEnable then
-			for i = 1, MOVER_ARENA_COUNT do
+			for i = 1, ArenaTestCount() do
 				local castBar = _G["ArenaEnemyFrame"..i.."CastingBar"];
 				if castBar then
 					if C.ArenaCastBarScale then castBar:SetScale(C.ArenaCastBarScale); end
@@ -707,7 +731,7 @@ local function ToggleTestMode()
 		if C.ArenaPetFrameShow then RestorePetFramePositions(); end
 
 		-- Crear overlay frames para drag de castbars (Shift+Alt+Click)
-		for i = 1, MOVER_ARENA_COUNT do
+		for i = 1, ArenaTestCount() do
 			local castBar = _G["ArenaEnemyFrame"..i.."CastingBar"];
 			if castBar then
 				local overlayName = "NUF_CastBarDragOverlay"..i;
@@ -763,7 +787,7 @@ local function ToggleTestMode()
 						NidhausUnitFramesDB.CastBarPositions[posKey] = {"CENTER", "CENTER", offsetX, offsetY};
 
 						-- Sync ALL cast bars via single source of truth
-						for j = 1, MOVER_ARENA_COUNT do
+						for j = 1, ArenaTestCount() do
 							if K.PositionArenaCastBar then
 								K.PositionArenaCastBar(j);
 							end
@@ -803,7 +827,7 @@ local function ToggleTestMode()
 		anchor:EnableMouse(false);
 
 		HideTestFrames();
-		for i = 1, MOVER_ARENA_COUNT do
+		for i = 1, MOVER_ARENA_MAX do
 			local overlay = _G["NUF_CastBarDragOverlay"..i];
 			if overlay then overlay:Hide(); end
 		end
@@ -838,6 +862,62 @@ function K.ToggleArenaFramesMover()
 		EnsureArenaAnchor();
 		ToggleTestMode();
 	end
+end
+
+-- ============================================================
+-- TEST 2 / TEST 3 / TEST 5  (la idea sale de sArena)
+--
+-- sArena tiene tres botones que llaman a la misma rutina con 2, 3 o 5, y
+-- un Clear que esconde todo. Aca es lo mismo, apoyado en el modo test que
+-- ya existia: se guarda la cantidad y se re-arma.
+--
+-- POR QUE APAGAR Y VOLVER A ENCENDER.
+--
+-- ToggleTestMode arma los marcos al mostrarse, asi que cambiar el numero
+-- con el test ya en pantalla no lo re-arma solo. Se apaga y se prende. El
+-- apagado barre hasta MOVER_ARENA_MAX, de modo que al bajar de 5 a 2 no
+-- quedan los tres de mas colgados -- que es justo lo que pasaria si la
+-- limpieza usara la cantidad nueva.
+-- ============================================================
+function K.SetArenaTestCount(n)
+	if n ~= 2 and n ~= 3 and n ~= 5 then return false; end
+	if not C then return false; end
+	if InCombatLockdown() then
+		print("|cffFF0000NUF:|r Cannot toggle arena mover in combat.");
+		return false;
+	end
+	if not C.ArenaFrameOn then return false; end
+
+	EnsureArenaMoverDB();
+
+	-- En arena de verdad no se simula nada: los marcos son los reales.
+	if InLiveArena() then return false; end
+
+	NidhausUnitFramesDB.ArenaTestCount = n;
+
+	if not IsAddOnLoaded("Blizzard_ArenaUI") then LoadAddOn("Blizzard_ArenaUI"); end
+	ForceCreateArenaFrames();
+	EnsureArenaAnchor();
+
+	if NidhausUnitFramesDB.ArenaMover.IsShown then ToggleTestMode(); end
+	ToggleTestMode();
+
+	-- La caja del mover mide segun cuantos marcos hay (CalcMoverHeight usa
+	-- ArenaTestCount), asi que al cambiar el numero hay que remedirla.
+	UpdateArenaMoverSize(C.ArenaFrameScale);
+	return true;
+end
+
+-- El "Clear" de sArena: esconde los marcos de prueba y deja de mostrar el
+-- mover. Si no habia nada mostrandose, no hace nada.
+function K.ClearArenaTestFrames()
+	if InCombatLockdown() then
+		print("|cffFF0000NUF:|r Cannot toggle arena mover in combat.");
+		return false;
+	end
+	EnsureArenaMoverDB();
+	if NidhausUnitFramesDB.ArenaMover.IsShown then ToggleTestMode(); end
+	return true;
 end
 
 function K.ResetArenaMoverPosition()

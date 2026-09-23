@@ -2610,8 +2610,16 @@ local function CreateBottomButtons()
 	-- ── Fila de abajo: siguen a Reload UI y Reset Defaults ──
 	local profilesButton = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate");
 	profilesButton:SetPoint("LEFT", resetButton, "RIGHT", 8, 0);
-	profilesButton:SetSize(100, 22);
 	profilesButton:SetText(L["TAB_PROFILES"] or "Profiles");
+	-- Ancho segun el texto y no 100 fijos: "Profiles / MySlot" no entra,
+	-- y en ingles y en espanol no miden lo mismo. El boton de About cuelga
+	-- de este, asi que se corre solo.
+	do
+		local fs = profilesButton:GetFontString();
+		local w  = (fs and fs:GetStringWidth() or 0) + 26;
+		if w < 100 then w = 100; end
+		profilesButton:SetSize(w, 22);
+	end
 	MakeSecondary(profilesButton);
 	profilesButton:SetScript("OnClick", function()
 		if K.SelectPanelTab then K.SelectPanelTab(5); end

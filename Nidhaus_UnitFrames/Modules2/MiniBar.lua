@@ -524,11 +524,32 @@ local function MiniBar_BackgroundTextures()
 			});
 		end
 	end
+	-- LA FRANJA DE NIVEL MAXIMO.
+	--
+	-- Es el arte que REEMPLAZA a la barra de experiencia al llegar a 80
+	-- (MainMenuBarMaxLevelBar, cuatro tiras de 256x7). Faltaba, y por eso
+	-- quedaba una linea gris debajo de las barras aunque "ocultar fondo"
+	-- estuviera tildado.
+	--
+	-- Se agrega POR MARCO y no por nombre a proposito: sus cuatro pedazos
+	-- no tienen nombre propio, asi que no hay ningun _G["..."] que los
+	-- alcance. Buscarlos por nombre es justo lo que fallaba en el otro
+	-- modulo que tambien creia cubrir este caso.
+	local function addFrameTextures(frame)
+		if not frame or not frame.GetRegions then return; end
+		for _, reg in ipairs({ frame:GetRegions() }) do
+			if reg and reg.GetObjectType and reg:GetObjectType() == "Texture" then
+				add(reg);
+			end
+		end
+	end
+
 	for i = 0, 3 do add(_G["MainMenuBarTexture" .. i]); end
 	add(MainMenuXPBarTextureLeftCap);
 	add(MainMenuXPBarTextureRightCap);
 	add(MainMenuXPBarTextureMid);
 	for i = 0, 8 do add(_G["ReputationWatchBarTexture" .. i]); end
+	addFrameTextures(MainMenuBarMaxLevelBar);
 	return bgTextures;
 end
 
@@ -906,7 +927,29 @@ end
 -- Sin esto, escalar la barra 1 con la rueda terminaba aplicandole el mismo
 -- numero a las tres en el siguiente repintado.
 -- ---------------------------------------------------------
+-- Se declara ACA y no abajo con mbCombat: una local declarada despues
+-- es invisible para el codigo de arriba y se leeria como global nil,
+-- sin avisar. Ya me paso tres veces en este addon.
+local mbScalePending = false;
+
 function K.ApplyBarHolderScales(scale)
+	-- MainMenuBar ES UN MARCO PROTEGIDO. EN COMBATE, NO SE TOCA.
+	--
+	-- TaintFixer registro esta funcion entera bloqueada, en orden y todo:
+	-- NUF_ActionBarHolder1/2/3:SetScale() y despues MainMenuBar:SetScale(),
+	-- tres veces cada una, peleando contra un muneco. El cliente rechazaba
+	-- las cuatro llamadas y tiraba "Interface action failed because of an
+	-- AddOn".
+	--
+	-- Los Holder no son protegidos por si mismos, pero de ellos cuelgan los
+	-- botones de accion, que si lo son: escalar el padre de un boton
+	-- protegido cuenta como tocarlo.
+	--
+	-- K.ApplyActionBarScale ya tenia esta guarda; esta no, y se la puede
+	-- llamar directo (ResetManager, GlobalUnlock, MiniBar_UpdateActionBars).
+	-- Va aca, en el cuello de botella, para que ningun camino se la saltee.
+	-- Lo pendiente lo repone mbCombat al salir de combate (mas abajo).
+	if InCombatLockdown() then mbScalePending = true; return; end
 	if type(scale) ~= "number" or scale <= 0 then scale = 1.0; end
 
 	local firstScale = scale;
@@ -1807,5 +1850,13 @@ local mbCombat = CreateFrame("Frame");
 mbCombat:RegisterEvent("PLAYER_REGEN_ENABLED");
 mbCombat:SetScript("OnEvent", function()
 	if C.MiniBarEnabled ~= true then return; end
+	-- Si alguien pidio escalar peleando, la llamada se descarto para no
+	-- comerse un bloqueo. Se repone ahora, que ya se puede.
+	if mbScalePending then
+		mbScalePending = false;
+		if K.ApplyBarHolderScales then
+			K.ApplyBarHolderScales(C.ActionBarScale or 1.0);
+		end
+	end
 	if K.PinMainMenuBarToRow1 then K.PinMainMenuBarToRow1(); end
 end);

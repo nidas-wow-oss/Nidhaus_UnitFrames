@@ -706,14 +706,76 @@ local function ReapplyVehicle(force)
 	if InCombatLockdown() then pwVehiclePending = true; end
 end
 
+-- =========================================================
+-- EL NOMBRE SE VOLVIA SOLO A SU LUGAR DE FABRICA
+--
+-- SINTOMA. En algun momento de la pelea el nombre del compañero "se
+-- desliza" hacia abajo y queda pegado sobre la barra de vida, y ya no
+-- vuelve a su lugar hasta un /reload.
+--
+-- QUE PASA. Blizzard llama a PartyMemberFrame_UpdateArt dentro de CADA
+-- UpdateMember -- o sea con cada golpe que recibe cualquiera del grupo --
+-- y esa funcion re-ancla el nombre a la posicion de fabrica, porque el
+-- arte de vehiculo lo lleva en otro lado. Reapply cuelga justo de ahi y lo
+-- volveria a poner en su sitio... salvo que Reapply SE CORTA EN COMBATE.
+--
+-- Resultado: el primer golpe de la pelea lo baja y se queda asi el resto
+-- del combate. Por eso parecia pasar "en cualquier momento" y no se podia
+-- atar a ninguna accion concreta: no era minimizar el juego, era entrar en
+-- combate.
+--
+-- POR QUE NO SE SACA EL CORTE DE COMBATE DE Reapply. Reapply re-estila los
+-- cuatro marcos ENTEROS y, colgada de UpdateMember, corre decenas de veces
+-- por segundo en pelea. El corte esta para evitar justo eso, y con razon.
+--
+-- Lo que hace falta es muchisimo mas barato: reponer SOLO el anclaje del
+-- nombre. Es un SetPoint sobre un FontString -- no es un marco protegido y
+-- no toca nada de acciones -- y encima solo se ejecuta si de verdad se
+-- movio, asi que en el caso normal no hace absolutamente nada.
+-- =========================================================
+local function PinName(i)
+	if not applied then return; end
+	local fn = "PartyMemberFrame" .. i;
+	local f  = _G[fn];
+	if not f or not f:IsShown() then return; end
+	-- Con vehiculo el marco vuelve entero al de Blizzard (ver StyleOne), y
+	-- ahi el nombre tambien es suyo: no se toca.
+	if InPartyVehicle(i) then return; end
+
+	local nameFS = _G[fn .. "Name"];
+	local hp     = _G[fn .. "HealthBar"];
+	if not nameFS or not hp then return; end
+
+	-- Si ya esta donde lo queremos, no se escribe nada. Esto es lo que hace
+	-- que se pueda llamar sin miedo desde un camino que corre a cada rato.
+	local point, rel, relPoint, _, y = nameFS:GetPoint(1);
+	if point == "BOTTOM" and rel == hp and relPoint == "TOP" and y == 2 then
+		return;
+	end
+
+	nameFS:ClearAllPoints();
+	nameFS:SetPoint("BOTTOM", hp, "TOP", 0, 2);
+end
+
+local function PinNames()
+	for i = 1, MAX_PARTY do PinName(i); end
+end
+
 if type(PartyMemberFrame_UpdateMember) == "function" then
-	hooksecurefunc("PartyMemberFrame_UpdateMember", Reapply);
+	hooksecurefunc("PartyMemberFrame_UpdateMember", function()
+		Reapply();
+		-- Sin corte por combate: ver el bloque de arriba.
+		PinNames();
+	end);
 end
 if type(PartyMemberFrame_ToPlayerArt) == "function" then
 	-- La VUELTA. Va por el mismo camino filtrado y por el mismo motivo: si
 	-- se cortara en combate, te bajabas del canon peleando y el marco se
 	-- quedaba con el aspecto de Blizzard hasta que terminara la pelea.
-	hooksecurefunc("PartyMemberFrame_ToPlayerArt", function() ReapplyVehicle(); end);
+	hooksecurefunc("PartyMemberFrame_ToPlayerArt", function()
+		ReapplyVehicle();
+		PinNames();
+	end);
 end
 
 -- Y AL SUBIRSE A UN VEHICULO.

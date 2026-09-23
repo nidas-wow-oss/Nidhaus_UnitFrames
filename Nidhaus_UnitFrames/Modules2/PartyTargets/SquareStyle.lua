@@ -412,8 +412,23 @@ events:SetScript("OnEvent", function(_, event)
 		return;
 	end
 
-	if K.GetPartyTargetStyle() ~= "Square" then return; end
-
+	-- CLASSIC TAMBIEN SE REAPLICA.
+	--
+	-- Aca habia un "if K.GetPartyTargetStyle() ~= 'Square' then return end"
+	-- que dejaba a Classic sin reaplicarse NUNCA. Y el tinte de Lorti para
+	-- estos marcos vive adentro de ApplyClassic, asi que en Classic -- que
+	-- es el estilo por defecto -- el marco del objetivo del companero se
+	-- quedaba con el dorado de Blizzard y la casilla "Party targets" de
+	-- Lorti parecia no hacer nada.
+	--
+	-- No era la casilla: era que nadie llamaba a ApplyPartyTargetStyle en
+	-- Classic. Al entrar al mundo no corria, y el unico momento en que
+	-- Classic se pintaba era justo al cambiar de estilo desde el panel --
+	-- y se perdia en el siguiente repintado de Blizzard.
+	--
+	-- El costo es el mismo que ya paga Square en estos mismos eventos, y
+	-- Capture() esta protegida contra sacar la foto dos veces, asi que
+	-- reaplicar Classic no puede "congelar" un estado ya modificado.
 	K.ApplyPartyTargetStyle();
 end);
 

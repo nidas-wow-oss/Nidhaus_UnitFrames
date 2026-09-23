@@ -754,6 +754,17 @@ function K.PopulateExtraTab(panel)
 	slotStatus:SetWidth(540);
 	slotStatus:SetJustifyH("LEFT");
 
+	-- POR QUE NO ESTAN TODOS MIS PERSONAJES.
+	--
+	-- Dos motivos y ninguno se deduce mirando el desplegable, asi que van
+	-- dichos aca al lado: se filtran los de otra clase, y los de otra cuenta
+	-- de WoW el addon directamente no puede verlos.
+	local slotNote = slotBox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+	slotNote:SetPoint("LEFT", slotStatus, "RIGHT", 12, 0);
+	slotNote:SetPoint("RIGHT", slotBox, "RIGHT", -16, 0);
+	slotNote:SetJustifyH("LEFT");
+	slotNote:SetText("");
+
 	-- FILA 1: [dropdown de personajes] [Copiar] [Exportar] [Importar]
 	local slotImportBtn = CreateFrame("Button", nil, slotBox, "UIPanelButtonTemplate");
 	slotImportBtn:SetPoint("TOPRIGHT", slotBox, "TOPRIGHT", -14, -66);
@@ -799,8 +810,16 @@ function K.PopulateExtraTab(panel)
 		if width < 120 then width = 120; end
 		UIDropDownMenu_SetWidth(slotDD, width - 32);
 
-		local names = K.SlotGetCharNames();
+		local names, hidden = K.SlotGetCharNames();
 		local current = K.SlotGetCharKey();
+
+		local aviso = L["SLOT_NOTE_CLASS"]
+			or "Only characters of your class. Other WoW accounts: use Export / Import.";
+		if hidden and hidden > 0 then
+			aviso = aviso .. string.format(" (%d %s)", hidden,
+				L["SLOT_NOTE_HIDDEN"] or "hidden");
+		end
+		slotNote:SetText("|cff8A8A8A" .. aviso .. "|r");
 		UIDropDownMenu_Initialize(slotDD, function(self, level, menuList)
 			AddCharButtons(names, current, selectedSlotChar, function(key)
 				selectedSlotChar = key;

@@ -537,6 +537,10 @@ function K.SlotExport()
 		"@ NUF Slot Profile - " .. date(),
 		"@ " .. (UnitName("player") or "?") .. " - " .. (GetRealmName() or "?"),
 		"@ " .. (UnitClass("player") or "?") .. " nivel " .. (UnitLevel("player") or 0),
+		-- Nombre INTERNO de la clase ("PALADIN"), que no cambia con el idioma.
+		-- Lo usa el filtro del desplegable. Las lineas @ las descarta el
+		-- importador, asi que agregarla no rompe ninguna cadena, vieja ni nueva.
+		"@ CLASS " .. (select(2, UnitClass("player")) or "?"),
 		"@ Formato compatible con MySlot.",
 		"@ --------------------",
 		"",
@@ -802,11 +806,46 @@ function K.SlotSaveCurrentChar()
 	return true, CharKey();
 end
 
+-- ---------------------------------------------------------
+-- FILTRO POR CLASE
+--
+-- Las barras de un paladin no le sirven a un mago: los hechizos no existen
+-- y la mitad de los huecos quedarian vacios. Asi que el desplegable
+-- muestra solo personajes de TU clase.
+--
+-- DE DONDE SALE LA CLASE, SIN MIGRAR NADA. No hizo falta guardar un campo
+-- nuevo: la cadena exportada ya traia la clase en la cabecera desde
+-- siempre ("@ Paladin nivel 80"). Desde ahora se agrega ademas el nombre
+-- interno ("@ CLASS PALADIN"), que no depende del idioma del cliente, y el
+-- nombre traducido queda de respaldo para todo lo ya guardado. Por eso el
+-- filtro funciona con los personajes que ya estaban en la lista.
+-- ---------------------------------------------------------
+local function ClassTokenOf(data)
+	if type(data) ~= "string" then return nil; end
+	local token = string.match(data, "@ CLASS (%u+)");
+	if token then return token; end
+	-- Respaldo: nombre traducido, comparado contra el del propio jugador.
+	local shown = string.match(data, "@ ([^\n]-) nivel %d");
+	if shown and shown ~= "" then return "LOC:" .. shown; end
+	return nil;
+end
+
 function K.SlotGetCharNames()
-	local names = {};
-	for key in pairs(DB().SlotProfiles) do names[#names + 1] = key; end
+	local names, hidden = {}, 0;
+	local loc, mine = UnitClass("player");
+	local mineLoc = loc and ("LOC:" .. loc) or nil;
+	for key, data in pairs(DB().SlotProfiles) do
+		local c = ClassTokenOf(data);
+		-- Si no se pudo leer la clase se muestra igual: es peor esconderle a
+		-- alguien un personaje que el sabe que guardo, que mostrarle uno de mas.
+		if (not c) or c == mine or (mineLoc and c == mineLoc) then
+			names[#names + 1] = key;
+		else
+			hidden = hidden + 1;
+		end
+	end
 	table.sort(names);
-	return names;
+	return names, hidden;
 end
 
 function K.SlotGetCharKey() return CharKey(); end

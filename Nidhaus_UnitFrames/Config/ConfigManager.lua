@@ -67,7 +67,8 @@ local defaults = {
 
 	-- FLAT STYLE OPTIONS
 	ArenaFlatMode = false,
-	ArenaFlatWidth = 120,
+	-- 100 y no 120: es el ancho con el que quedo probado el estilo Flat.
+	ArenaFlatWidth = 100,
 	ArenaFlatHealthBarHeight = 20,
 	ArenaFlatPowerBarHeight = 8,
 	ArenaFlatHealthFontSize = 9,
