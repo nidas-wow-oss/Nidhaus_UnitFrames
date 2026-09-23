@@ -68,7 +68,7 @@ L["TIP_ArenaCastBarWidth"]       = "Cast bar width.";
 
 -- === OPTIONS PANEL ===
 L["PANEL_TITLE"]                 = "Nidhaus UnitFrames";
-L["PANEL_VERSION"]               = "|cffFFAA00v3.7|r";
+L["PANEL_VERSION"]               = "|cffFFAA00v3.8|r";
 L["PANEL_SUBTITLE"]              = "Unit Frame Customization & Arena Tools";
 L["PANEL_SIZE_RESET"]            = "Options window restored to 820x620 and centered.";
 
@@ -951,7 +951,7 @@ L["COLLAPSE_ICON_COLLAPSE"]      = "[v]";
 L["HEADER_ABOUT"]                = "|cffFFD100About|r";
 L["ABOUT_ADDON_NAME"]            = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["ABOUT_DESCRIPTION"]           = "A PVP-focused UI addon for WoW WotLK 3.3.5a.\nCustom arena frames, trinket tracking, mirror mode,\nclass-colored health bars, and optimized frame positioning\ndesigned for competitive arena gameplay.";
-L["ABOUT_VERSION"]               = "|cffFFAA00Version:|r 3.7";
+L["ABOUT_VERSION"]               = "|cffFFAA00Version:|r 3.8";
 L["ABOUT_COMMANDS_HEADER"]       = "|cffFFAA00Slash Commands:|r";
 L["ABOUT_CMD_OPTIONS"]           = "|cffFFFFFF/nuf|r — Open options panel";
 L["ABOUT_CMD_CONFIG"]            = "|cffFFFFFF/nuf config|r — Show saved variables";
@@ -1103,7 +1103,7 @@ L["TIP_ArenaCastBarWidth"]       = "Ancho de la castbar.";
 
 -- === OPTIONS PANEL ===
 L["PANEL_TITLE"]                 = "Nidhaus UnitFrames";
-L["PANEL_VERSION"]               = "|cffFFAA00v3.7|r";
+L["PANEL_VERSION"]               = "|cffFFAA00v3.8|r";
 L["PANEL_SUBTITLE"]              = "Personalización de Unit Frames & Herramientas de Arena";
 L["PANEL_SIZE_RESET"]            = "Ventana de opciones restaurada a 820x620 y centrada.";
 
@@ -1981,7 +1981,7 @@ L["COLLAPSE_ICON_COLLAPSE"]      = "[v]";
 L["HEADER_ABOUT"]                = "|cffFFD100Acerca de|r";
 L["ABOUT_ADDON_NAME"]            = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["ABOUT_DESCRIPTION"]           = "Un addon de interfaz enfocado en PVP para WoW WotLK 3.3.5a.\nArena frames custom, tracking de trinkets, modo espejo,\nbarras de vida por clase, y posicionamiento optimizado\ndiseñado para arena competitivo.";
-L["ABOUT_VERSION"]               = "|cffFFAA00Versión:|r 3.7";
+L["ABOUT_VERSION"]               = "|cffFFAA00Versión:|r 3.8";
 L["ABOUT_COMMANDS_HEADER"]       = "|cffFFAA00Comandos:|r";
 L["ABOUT_CMD_OPTIONS"]           = "|cffFFFFFF/nuf|r — Abrir panel de opciones";
 L["ABOUT_CMD_CONFIG"]            = "|cffFFFFFF/nuf config|r — Mostrar variables guardadas";

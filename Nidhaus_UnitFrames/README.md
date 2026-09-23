@@ -6,9 +6,9 @@ NUF was built by combining and reworking several existing addons — including E
 
 > ## Download
 >
-> **Latest version: 3.7** — this is the current, recommended build and the one actively in use.
+> **Latest version: 3.8** — this is the current, recommended build and the one actively in use.
 >
-> **[Download v3.7 (latest release)](../../releases/latest)**
+> **[Download v3.8 (latest release)](../../releases/latest)**
 >
 > Grab the `.zip` from the release page rather than the green *Code* button: the release is the packaged,
 > ready-to-install version with the correct folder name.
@@ -97,7 +97,7 @@ A full in-game configuration interface organized into tabs:
 
 ## Installation
 
-1. Download **v3.7** from the [releases page](../../releases/latest).
+1. Download **v3.8** from the [releases page](../../releases/latest).
 2. Extract it and copy the `Nidhaus_UnitFrames` folder into your WoW `Interface/AddOns/` directory.
 3. For the full options panel, also install the companion addon
    **[Nidhaus_UnitFrames_Config](https://github.com/nidas-wow-oss/Nidhaus_UnitFrames_Config)**
@@ -142,6 +142,17 @@ The minimap button also provides quick access: left-click opens the options pane
 ---
 
 ## Changelog
+
+### v3.8
+- Party member names no longer slide down over the health bar during a fight. Blizzard re-anchors them on every party update, and the restyle was skipped in combat.
+- Character Setup only lists characters of your own class. Other WoW accounts still need Export / Import: the game never loads their data.
+- Gargoyle Tracker works in any client language. The creature name is learned from the summon event instead of being hardcoded in English, and is remembered per language.
+- The grey strip left under the action bars is gone. It was looked up under a name that does not exist, so nothing was ever hidden and nothing ever complained.
+- Arena: 2, 3 and 5 test frames like sArena; Pet Style only offered in the Flat layout; default Flat width is 100.
+- Arena Points Calculator shows up on the first toggle instead of needing a tab change, and its position is fixed.
+- 3v3 party mode had no combat guards at all; it does now.
+- Lorti UI tints the party target frame again.
+- The profiles tab is now "Profiles / MySlot", and the footer button is measured from its text instead of a fixed width.
 
 ### v3.7
 - Party frames now fall back to Blizzard's own health bar and background while in a vehicle.

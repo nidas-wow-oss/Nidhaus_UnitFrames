@@ -8,7 +8,7 @@ NUF nació de combinar y reescribir varios addons existentes — entre ellos Eaz
 
 > ## Descarga
 >
-> **Última versión: 3.7** — es la build actual, la recomendada y la que está en uso.
+> **Última versión: 3.8** — es la build actual, la recomendada y la que está en uso.
 >
 > **[Descargar v3.7 (última release)](../../releases/latest)**
 >
@@ -265,6 +265,17 @@ Integración, port a 3.3.5a, corrección de bugs y todo lo demás: **Nidhaus**.
 ---
 
 ## Changelog
+
+### v3.8
+- El nombre de los companeros de party ya no se desliza sobre la barra de vida en plena pelea. Blizzard lo reancla en cada actualizacion del grupo, y el reestilado se cortaba en combate.
+- Character Setup lista solo personajes de tu clase. Las otras cuentas de WoW siguen siendo Exportar / Importar: el juego nunca carga sus datos.
+- El Gargoyle Tracker anda en cualquier idioma. El nombre de la criatura se aprende del evento de invocacion en vez de venir fijo en ingles, y se recuerda por idioma.
+- Se fue la franja gris que quedaba debajo de las barras de accion. Se la buscaba por un nombre que no existe, asi que nunca se ocultaba nada y nunca saltaba ningun error.
+- Arena: test de 2, 3 y 5 marcos como sArena; Pet Style solo en el estilo Flat; ancho por defecto de Flat en 100.
+- El Arena Points Calculator aparece al primer toggle en vez de necesitar un cambio de pestana, y su posicion quedo fija.
+- El modo de party 3v3 no tenia ninguna guarda de combate; ahora si.
+- Lorti UI vuelve a tenir el marco del objetivo de party.
+- La pestana de perfiles ahora se llama "Perfiles / MySlot", y el boton del pie se mide segun su texto en vez de un ancho fijo.
 
 ### v3.7
 - En vehiculo, los marcos de party vuelven a la barra de vida y al fondo propios de Blizzard.
