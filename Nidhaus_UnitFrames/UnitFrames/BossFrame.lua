@@ -137,6 +137,21 @@ combatWatcher:SetScript("OnEvent", function()
 	end
 end);
 
+-- Re-estilar los marcos de jefe sin reiniciarlos.
+--
+-- No habia forma de pedirlo desde afuera: el estilo se aplicaba una sola
+-- vez, al iniciar. Por eso al cambiar el tema visual los jefes se quedaban
+-- con la textura anterior hasta el proximo /reload.
+function K.RestyleBossFrames()
+	if not isInitialized then return; end
+	for i = 1, MAX_BOSS_FRAMES do
+		local bossFrame = _G["Boss"..i.."TargetFrame"];
+		if bossFrame then
+			pcall(Nidhaus_UnitFrames_Style_BossFrame, bossFrame);
+		end
+	end
+end
+
 function K.ApplyBossFrameScale(scale)
 	if not isInitialized then return; end
 	if type(scale) ~= "number" or scale <= 0 or scale > 3 then return; end

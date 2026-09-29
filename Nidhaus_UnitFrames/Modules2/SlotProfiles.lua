@@ -374,6 +374,35 @@ local function QuoteString(s)
 	return '"' .. s .. '"';
 end
 
+-- Una casilla como texto: {["a"]="S",["b"]=...,}
+--
+-- La usan las barras de Blizzard Y las de nExtraBars, asi las dos escriben
+-- exactamente el mismo formato. "s" (spellID), "n" (nombre de la mascota o
+-- montura) y "v" (su hechizo) son agregados nuestros: MySlot ignora las
+-- claves que no conoce.
+local function EntryString(data)
+	local value;
+	if type(data.b) == "table" then
+		if data.a == "M" then
+			value = string.format(
+				'{["b"]=%s,["c"]=%d,["d"]=%s,["e"]=%s,}',
+				QuoteString(data.b.b), data.b.c,
+				LongBracket(data.b.d),
+				data.b.e and "1" or "nil");
+		else
+			value = string.format('{["b"]=%s,["c"]=%d,}',
+				QuoteString(tostring(data.b.b)), tonumber(data.b.c) or 0);
+		end
+	else
+		value = QuoteString(tostring(data.b));
+	end
+
+	local extra = data.s and string.format(',["s"]=%d', data.s) or "";
+	if data.n then extra = extra .. ',["n"]=' .. QuoteString(tostring(data.n)); end
+	if data.v then extra = extra .. ',["v"]=' .. QuoteString(tostring(data.v)); end
+	return string.format('{["a"]="%s",["b"]=%s%s,}', data.a, value, extra);
+end
+
 -- =========================================================
 -- 4. LEER EL ESTADO ACTUAL
 -- =========================================================
@@ -497,6 +526,133 @@ local function ReadBindings()
 end
 
 -- =========================================================
+-- 4b. nExtraBars
+--
+-- Las dos barras extra NO son casillas de accion de Blizzard (1-120):
+-- son botones propios que guardan lo suyo en NEB_DB, que es POR
+-- PERSONAJE. Por eso Copy / Export / Import no las veian: se copiaban las
+-- barras de Blizzard y las de nExtraBars quedaban como estaban.
+--
+-- Ahora van en la misma cadena, en el indice 1000 (como el 999 de los
+-- bindeos): el contenido de los 24 botones, los DOS talentos (nExtraBars
+-- guarda uno por spec), y que barras estan prendidas, cuantos botones y
+-- si estan bloqueadas.
+--
+-- Los bindeos no necesitan nada: son "CLICK NEB_Bar...:LeftButton", salen
+-- de GetBinding como cualquier otro y ya viajaban en el 999.
+--
+-- Cadenas viejas, o de un personaje sin nExtraBars: no traen el 1000 y
+-- las barras extra no se tocan.
+-- =========================================================
+local NEB_KEY = 1000;
+
+local NEB_CONFIG_KEYS = {
+	LeftEnabled      = "boolean", RightEnabled      = "boolean",
+	LeftNumButtons   = "number",  RightNumButtons   = "number",
+	LeftLockButtons  = "boolean", RightLockButtons  = "boolean",
+};
+
+local NEB_BUTTONS = {};
+for _, side in ipairs({ "Left", "Right" }) do
+	for i = 1, 12 do NEB_BUTTONS[#NEB_BUTTONS + 1] = "NEB_Bar" .. side .. "Button" .. i; end
+end
+
+-- Se lee lo GUARDADO (NEB_DB.Settings) y no los botones: nExtraBars los
+-- carga recien en PLAYER_ENTERING_WORLD, despues del guardado automatico
+-- del login, y a esa altura los botones todavia estan vacios.
+local function NEBSettings()
+	if type(NEB_DB) ~= "table" or type(NEB_DB.Settings) ~= "table" then return nil; end
+	return NEB_DB.Settings;
+end
+
+-- Para APLICAR si hacen falta los botones vivos.
+local function NEBLive()
+	return type(NEB_ABT_SetCommand) == "function" and _G["NEB_BarLeftButton1"] ~= nil;
+end
+
+local function NEBHas(btn, s)
+	local t = btn["set" .. s .. "type"];
+	return t ~= nil and t ~= "" and t ~= "none";
+end
+
+local function NEBSpellId(fullName)
+	if type(NEB_ABT_FindSpellID) ~= "function" or not GetSpellLink then return nil; end
+	local book = NEB_ABT_FindSpellID(fullName);
+	local link = book and GetSpellLink(book, BOOKTYPE_SPELL);
+	return link and tonumber(string.match(link, "spell:(%d+)")) or nil;
+end
+
+-- Un boton de nExtraBars, un talento, al mismo formato que una casilla.
+local function ReadNEBSet(st, name, s)
+	local pre   = name .. "Set" .. s;
+	local kind  = st[pre .. "ActualType"];
+	local value = st[pre .. "Value"];
+	local nm    = st[pre .. "Name"];
+	local id    = st[pre .. "Id"];
+
+	if kind == "spell" then
+		if type(value) ~= "string" or value == "" then return nil; end
+		-- nExtraBars guarda "Nombre(Rango 3)", y "Nombre()" si no tiene
+		-- rango. Lo segundo no lo entiende FindSpellBookSlot: se saca.
+		local text = string.gsub(value, "%(%)$", "");
+		return { a = "S", b = text, s = NEBSpellId(value) };
+
+	elseif kind == "item" then
+		local itemId = tonumber(id);
+		if itemId then return { a = "I", b = tostring(itemId) }; end
+		if type(value) == "string" and value ~= "" then return { a = "I", b = value }; end
+
+	elseif kind == "macro" then
+		-- Por NOMBRE: el numero de macro cambia cuando se crean o borran otras.
+		local idx = (type(nm) == "string" and nm ~= "") and GetMacroIndexByName(nm) or 0;
+		if not idx or idx == 0 then return nil; end
+		local mname, tex, body = GetMacroInfo(idx);
+		if not mname or not body then return nil; end
+		local icon = IconIndexFor(tex);
+		if string.find(body, "#show") == 1 then icon = 1; end
+		return { a = "M", b = { b = mname, c = icon, d = body, e = (idx > 36) and 1 or nil } };
+
+	elseif kind == "MOUNT" or kind == "CRITTER" then
+		-- El numero de montura no sirve en otro personaje; el nombre si.
+		if type(nm) ~= "string" or nm == "" then return nil; end
+		return { a = "C", b = { b = kind, c = tonumber(id) or 0 }, n = nm, v = value };
+	end
+	return nil;
+end
+
+local function NEBSectionString()
+	local st = NEBSettings();
+	if not st then return nil; end
+
+	local parts = {};
+	for _, name in ipairs(NEB_BUTTONS) do
+		local sets = {};
+		for s = 1, 2 do
+			local ok, data = pcall(ReadNEBSet, st, name, s);
+			if ok and data then
+				sets[#sets + 1] = string.format("[%d]=%s,", s, EntryString(data));
+			end
+		end
+		if #sets > 0 then
+			parts[#parts + 1] = string.format("[%s]={%s},", QuoteString(name), table.concat(sets));
+		end
+	end
+
+	local cfg = {};
+	local c = NEB_DB.Config;
+	if type(c) == "table" then
+		for key, kind in pairs(NEB_CONFIG_KEYS) do
+			if type(c[key]) == kind then
+				cfg[#cfg + 1] = string.format("[%s]=%s,", QuoteString(key), tostring(c[key]));
+			end
+		end
+	end
+
+	return string.format('[%d]={["b"]={%s},["c"]={%s},},',
+		NEB_KEY, table.concat(parts), table.concat(cfg));
+end
+
+-- =========================================================
 -- 5. EXPORTAR
 -- =========================================================
 function K.SlotExport()
@@ -505,27 +661,13 @@ function K.SlotExport()
 	for slot = 1, MAX_ACTION_SLOTS do
 		local data = ReadSlot(slot);
 		if data then
-			local value;
-			if type(data.b) == "table" then
-				if data.a == "M" then
-					value = string.format(
-						'{["b"]=%s,["c"]=%d,["d"]=%s,["e"]=%s,}',
-						QuoteString(data.b.b), data.b.c,
-						LongBracket(data.b.d),
-						data.b.e and "1" or "nil");
-				else
-					value = string.format('{["b"]=%s,["c"]=%d,}',
-						QuoteString(tostring(data.b.b)), tonumber(data.b.c) or 0);
-				end
-			else
-				value = QuoteString(tostring(data.b));
-			end
-
-			local extra = data.s and string.format(',["s"]=%d', data.s) or "";
-			parts[#parts + 1] = string.format('[%d]={["a"]="%s",["b"]=%s%s,},',
-				slot, data.a, value, extra);
+			parts[#parts + 1] = string.format("[%d]=%s,", slot, EntryString(data));
 		end
 	end
+
+	-- nExtraBars (seccion 4b). Sin el addon no se agrega nada.
+	local neb = NEBSectionString();
+	if neb then parts[#parts + 1] = neb; end
 
 	local binds = {};
 	for key, command in pairs(ReadBindings()) do
@@ -658,6 +800,119 @@ local function PlaceOnSlot(slot, entry)
 end
 
 -- =========================================================
+-- 6b. APLICAR EN nExtraBars
+-- =========================================================
+
+-- Lo que nExtraBars necesita para un boton, a partir de la casilla
+-- guardada. nil si este personaje no lo tiene (hechizo sin aprender,
+-- montura que no tiene): en ese caso el boton se deja como esta, igual
+-- que hace PlaceOnSlot con las barras de Blizzard.
+local function NEBResolve(entry)
+	if entry.a == "S" then
+		local book = FindSpellBookSlot(entry.b, entry.s);
+		if not book then return nil; end
+		-- Llamada suelta, no "book and GetSpellName(...)": un "and" se queda
+		-- solo con el PRIMER valor y el rango se perdia ("Nombre()").
+		local nm, rank = GetSpellName(book, BOOKTYPE_SPELL);
+		if not nm then return nil; end
+		return "spell", nm .. "(" .. (rank or "") .. ")", "spell", nm, "";
+
+	elseif entry.a == "I" then
+		local id = tonumber(entry.b);
+		local itemName, link = GetItemInfo(id or entry.b);
+		-- Sin cache todavia: "item:ID" lo entienden igual todas las
+		-- funciones de objetos que usa el boton.
+		local value = itemName or (id and ("item:" .. id)) or entry.b;
+		return "item", value, "item", link or "", id or "";
+
+	elseif entry.a == "M" then
+		local idx = EnsureMacro(entry.b);
+		local mname = idx and GetMacroInfo(idx);
+		if not mname then return nil; end
+		return "macro", idx, "macro", mname, "";
+
+	elseif entry.a == "C" then
+		local kind = type(entry.b) == "table" and entry.b.b;
+		if (kind ~= "MOUNT" and kind ~= "CRITTER") or not entry.n then return nil; end
+		local id = type(NEB_ABT_FindCompanionID) == "function"
+			and NEB_ABT_FindCompanionID(kind, entry.n);
+		if not id then return nil; end
+		local _, cname, spellId = GetCompanionInfo(kind, id);
+		local spellName = (spellId and GetSpellInfo(spellId)) or entry.v;
+		if not spellName then return nil; end
+		return "spell", spellName, kind, cname or entry.n, id;
+	end
+	return nil;
+end
+
+local function NEBSet(btn, s, command, value, actualType, name, id)
+	-- Un boton que nunca se uso no tiene "type" todavia, y NEB_ABT_SetCommand
+	-- hace SetAttribute(tipoAnterior, ""): con nil daria error.
+	if s == GetActiveTalentGroup() and btn:GetAttribute("type") == nil then
+		btn:SetAttribute("type", "none");
+	end
+	local ok = pcall(NEB_ABT_SetCommand, btn, command, value, actualType, name, id, false, s);
+	return ok;
+end
+
+local function NEBImport(sec)
+	if type(sec) ~= "table" or not NEBLive() then return 0; end
+
+	local buttons = type(sec.b) == "table" and sec.b or {};
+	local placed = 0;
+	for _, name in ipairs(NEB_BUTTONS) do
+		local btn = _G[name];
+		if btn then
+			local sets = buttons[name];
+			for s = 1, 2 do
+				local entry = type(sets) == "table" and sets[s] or nil;
+				if type(entry) == "table" and entry.a then
+					local command, value, actualType, nm, id = NEBResolve(entry);
+					if command and NEBSet(btn, s, command, value, actualType, nm, id) then
+						placed = placed + 1;
+					end
+				elseif NEBHas(btn, s) then
+					-- Vacio en el original: vacio aca tambien.
+					NEBSet(btn, s, "none", "", "", "", "");
+				end
+			end
+		end
+	end
+
+	-- Que barras estan prendidas, cuantos botones, bloqueo.
+	if type(sec.c) == "table" and type(NEB_Config) == "table" then
+		local changed = false;
+		for key, kind in pairs(NEB_CONFIG_KEYS) do
+			local v = sec.c[key];
+			if type(v) == kind then
+				if kind == "number" then v = math.max(1, math.min(12, math.floor(v))); end
+				if NEB_Config[key] ~= v then NEB_Config[key] = v; changed = true; end
+			end
+		end
+		-- NEB_ApplyConfig es de nExtraBars 2.2.3. Con una version anterior
+		-- el cambio queda guardado y se ve despues del /reload.
+		if changed and type(NEB_ApplyConfig) == "function" then pcall(NEB_ApplyConfig); end
+	end
+
+	return placed;
+end
+
+-- Clear Bars: el talento ACTIVO, igual que las barras de Blizzard (que son
+-- las del spec que tenes puesto).
+local function NEBWipeActive()
+	if not NEBLive() then return 0; end
+	local s, n = GetActiveTalentGroup(), 0;
+	for _, name in ipairs(NEB_BUTTONS) do
+		local btn = _G[name];
+		if btn and NEBHas(btn, s) then
+			NEBSet(btn, s, "none", "", "", "", "");
+			n = n + 1;
+		end
+	end
+	return n;
+end
+
+-- =========================================================
 -- 7. BACKUP
 -- =========================================================
 local function DB()
@@ -719,6 +974,10 @@ function K.SlotImport(text)
 		end
 	end
 
+	-- nExtraBars, despues de las barras: las macros que comparten ya
+	-- estan creadas y no se duplican.
+	placed = placed + NEBImport(profile[NEB_KEY]);
+
 	local bound = 0;
 	local binds = profile[KEYBIND_KEY];
 	if type(binds) == "table" then
@@ -751,6 +1010,7 @@ function K.SlotWipeBars()
 			n = n + 1;
 		end
 	end
+	n = n + NEBWipeActive();
 	return true, n;
 end
 
@@ -861,7 +1121,18 @@ end
 -- Guardar el estado del personaje al entrar, para que aparezca en la lista.
 local init = CreateFrame("Frame");
 init:RegisterEvent("PLAYER_LOGIN");
-init:SetScript("OnEvent", function(self)
+-- Y OTRA VEZ AL SALIR (tambien corre con /reload).
+--
+-- Solo con el del login, lo que armabas durante la sesion no llegaba a la
+-- lista: salias, entrabas con el otro personaje, apretabas Copy y te
+-- traia las barras como estaban al ENTRAR. Las SavedVariables se
+-- escriben despues de PLAYER_LOGOUT, asi que guardar aca alcanza.
+init:RegisterEvent("PLAYER_LOGOUT");
+init:SetScript("OnEvent", function(self, event)
+	if event == "PLAYER_LOGOUT" then
+		pcall(K.SlotSaveCurrentChar);
+		return;
+	end
 	self:UnregisterEvent("PLAYER_LOGIN");
 	-- Un frame de espera: al momento del login las barras todavia pueden
 	-- no estar pobladas.

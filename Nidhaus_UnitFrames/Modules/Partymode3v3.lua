@@ -46,6 +46,40 @@ combatWatch:SetScript("OnEvent", function()
 	end
 end);
 
+-- =========================================================
+-- UNA SOLA FORMA DE PREGUNTAR "ESTA PUESTO EL 3v3"
+--
+-- ESTE ERA EL BUG DE LA ESCALA.
+--
+-- Apply3v3PartyMode se arreglo en su momento para NO exigir mas
+-- C.SetPositions ("antes exigia C.SetPositions y sin eso el checkbox no
+-- hacia NADA", dice el comentario de abajo). Pero los otros seis lugares
+-- del addon que preguntan si el 3v3 esta puesto se quedaron con la
+-- condicion vieja:
+--
+--     if C.SetPositions and C.PartyMode3v3 then ...
+--
+-- Con las posiciones custom APAGADAS y el 3v3 PRENDIDO, las dos mitades
+-- dejan de coincidir:
+--
+--   * Apply3v3PartyMode corre y pone 1.5 / 1.5 / 1.3 / 1.3 y las
+--     posiciones del modo;
+--   * y el CONFIG_CHANGED de PartyFrame.lua evalua
+--     "not (SetPositions and PartyMode3v3)" = not(false and true) = TRUE,
+--     asi que aplica C.PartyFrameScale -- tu 1.5 -- A LAS CUATRO.
+--
+-- Resultado: toma la POSICION del 3v3 pero no la ESCALA, que es
+-- exactamente el sintoma. Y no salta al tildarlo (el panel llama a
+-- Apply3v3PartyMode despues de guardar), sino en el siguiente cambio de
+-- cualquier opcion, que es por lo que "se bugea" un rato despues.
+--
+-- La respuesta no es agregar un reset mas: es que TODOS pregunten lo
+-- mismo. Esta funcion es esa pregunta, y los seis lugares la usan.
+-- =========================================================
+function K.Is3v3Active()
+	return C.PartyMode3v3 == true;
+end
+
 -- La escala de cada miembro ahora es configurable desde el panel
 local function Get3v3Scale(i)
 	local cfg = PARTY_3V3_CONFIG[i];
@@ -76,8 +110,14 @@ function K.Apply3v3PartyMode()
 		local partyFrame = _G["PartyMemberFrame"..i];
 		local cfg = PARTY_3V3_CONFIG[i];
 		if partyFrame and cfg then
-			-- FIX: If PartyIndividualMove is active, check for saved positions first.
-			if C.PartyIndividualMove and K.GetSavedPosition then
+			-- SI HAY POSICION GUARDADA, MANDA ELLA. SIEMPRE.
+			--
+			-- Antes esto pedia ademas C.PartyIndividualMove, y hay mas de
+			-- un camino que apaga ese flag. Cuando pasaba, el modo pisaba
+			-- una posicion que vos habias elegido a mano. El flag ahora
+			-- solo decide como se acomodan los marcos que NO tienen
+			-- posicion propia.
+			if K.GetSavedPosition then
 				local saved = K.GetSavedPosition("PartyMemberFrame"..i);
 				if saved then
 					partyFrame:SetScale(Get3v3Scale(i));
@@ -112,8 +152,28 @@ end;
 
 -- Disable3v3PartyMode
 function K.Disable3v3PartyMode()
-	if not K.NidhausPartyFrame then return; end;
 	if InCombatLockdown() then pendingDisable = true; return; end
+
+	-- LA ESCALA SE REPONE SIEMPRE, HAYA CONTENEDOR O NO.
+	--
+	-- Antes esta funcion arrancaba con "if not K.NidhausPartyFrame then
+	-- return end". El contenedor solo existe con las posiciones custom
+	-- puestas, asi que sin ellas destildar el 3v3 no hacia NADA: los marcos
+	-- se quedaban en 1.5 / 1.5 / 1.3 / 1.3 para siempre. Este es el "reset
+	-- de escala" que faltaba al cambiar de modo.
+	local base = C.PartyFrameScale;
+	if type(base) ~= "number" or base <= 0 or base > 3 then base = 1.0; end
+	for i = 1, MAX_PARTY_MEMBERS do
+		local pf = _G["PartyMemberFrame"..i];
+		if pf then pf:SetScale(base); end
+	end
+
+	if not K.NidhausPartyFrame then
+		-- Sin contenedor no hay a donde reanclarlos. La escala ya volvio a la
+		-- tuya; de la posicion se encarga quien corresponda.
+		if K.PartyBuffs_OnFramesMoved then K.PartyBuffs_OnFramesMoved(); end
+		return;
+	end
 
 	for i = 1, MAX_PARTY_MEMBERS do
 		local partyFrame = _G["PartyMemberFrame"..i];

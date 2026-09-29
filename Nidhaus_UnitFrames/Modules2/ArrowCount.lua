@@ -17,7 +17,8 @@ local bulletIDs = {
 	[3464] = true, [41164] = true,
 };
 
-local enabled = false;
+local enabled  = false;
+local unlocked = false;
 
 -- ---------------------------------------------------------
 -- Frame
@@ -48,6 +49,18 @@ frame.icon:SetAllPoints();
 frame.count = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge");
 frame.count:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -5, 5);
 frame.count:SetText("0");
+
+-- Senal de desbloqueado: el mismo tinte celeste y el mismo cartel que usa
+-- el AutoShotTimer, para que los movibles del addon se vean todos igual.
+local unlockOverlay = frame:CreateTexture(nil, "OVERLAY");
+unlockOverlay:SetAllPoints(frame);
+unlockOverlay:SetTexture(0, 0.8, 1, 0.25);
+unlockOverlay:Hide();
+
+local unlockText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+unlockText:SetPoint("CENTER", frame, "CENTER", 0, 0);
+unlockText:SetText("|cff00ccff" .. (L["DRAG_LABEL"] or "DRAG") .. "|r");
+unlockText:Hide();
 
 -- ---------------------------------------------------------
 -- Posicion / escala guardadas en la DB de NUF
@@ -89,7 +102,9 @@ end
 
 frame:RegisterForDrag("LeftButton");
 frame:SetScript("OnDragStart", function(self)
-	if IsAltKeyDown() then self:StartMoving(); end
+	-- Desbloqueado se arrastra directo. El Alt se deja funcionando porque
+	-- es lo que decia el cartel de siempre y no cuesta nada mantenerlo.
+	if unlocked or IsAltKeyDown() then self:StartMoving(); end
 end);
 frame:SetScript("OnDragStop", function(self)
 	self:StopMovingOrSizing();
@@ -160,6 +175,74 @@ local function UpdateDisplay()
 end
 
 -- ---------------------------------------------------------
+-- BLOQUEADO / DESBLOQUEADO
+--
+-- El boton "Mover" del panel era de IDA NOMAS: prendia el mouse del
+-- recuadro y no habia nada que lo volviera a apagar. O sea que despues de
+-- acomodarlo una vez, el contador se comia los clicks de todo lo que
+-- tuviera detras -- hasta el siguiente /reload o hasta apagar el modulo.
+--
+-- Los otros cinco movibles del addon (AutoShotTimer, MeleeSwingTimer,
+-- PowerBar, SeductionAlert y DungeonRoles) ya funcionan como interruptor:
+-- el mismo boton desbloquea y vuelve a bloquear. Este era el unico que
+-- faltaba. Se copia el patron del AutoShotTimer a proposito, para que
+-- todos se comporten y se vean igual.
+-- ---------------------------------------------------------
+-- El boton del panel dice en que estado esta. Se avisa desde las dos
+-- funciones de abajo, asi tambien queda bien cuando lo bloquea el combate
+-- o al apagar el modulo -- y no solo cuando lo apretas vos.
+local function SyncConfigButton()
+	if K.SetModuleConfigLabel then
+		K.SetModuleConfigLabel("ArrowCount",
+			unlocked and (L["BTN_MODULE_LOCK"] or "Lock")
+			          or (L["BTN_MODULE_MOVE"] or "Move"));
+	end
+end
+
+local function Lock()
+	unlocked = false;
+	frame:EnableMouse(false);
+	unlockOverlay:Hide();
+	unlockText:Hide();
+	SavePosition();
+	-- Que vuelva a decidir la municion de verdad: si estaba en modo prueba
+	-- (sin flechas equipadas) esto lo esconde.
+	UpdateDisplay();
+	SyncConfigButton();
+	print("|cff4FC3F7NUF:|r ArrowCount - bloqueado.");
+end
+
+local function Unlock()
+	unlocked = true;
+	RestorePosition();
+	frame:EnableMouse(true);
+	unlockOverlay:Show();
+	unlockText:Show();
+
+	if not frame:IsShown() then
+		-- Sin municion equipada no hay nada que mostrar, pero hay que poder
+		-- ubicarlo igual: modo prueba.
+		frame.icon:SetTexture("Interface\\Icons\\INV_Ammo_Arrow_02");
+		frame.count:SetText("---");
+		frame:Show();
+	end
+
+	SyncConfigButton();
+	print("|cff4FC3F7NUF:|r ArrowCount - desbloqueado: arrastralo, y apreta Bloquear (o /arrowcount lock) para fijarlo.");
+end
+
+-- SE BLOQUEA SOLO AL ENTRAR EN COMBATE.
+--
+-- Si te lo olvidas abierto, en la pelea el recuadro se come los clicks
+-- justo donde quedo. Este arranca en medio de la pantalla, asi que es el
+-- que mas molesta de todos.
+local combatLock = CreateFrame("Frame");
+combatLock:RegisterEvent("PLAYER_REGEN_DISABLED");
+combatLock:SetScript("OnEvent", function()
+	if unlocked then Lock(); end
+end);
+
+-- ---------------------------------------------------------
 -- Eventos
 -- ---------------------------------------------------------
 local events = CreateFrame("Frame");
@@ -202,7 +285,11 @@ end);
 SLASH_NUFARROWCOUNT1 = "/arrowcount";
 SlashCmdList["NUFARROWCOUNT"] = function(msg)
 	msg = string.lower(msg or "");
-	if msg == "hide" then
+	if msg == "lock" then
+		Lock();
+	elseif msg == "unlock" or msg == "move" then
+		Unlock();
+	elseif msg == "hide" then
 		frame:Hide();
 	elseif msg == "show" then
 		UpdateDisplay();
@@ -219,7 +306,7 @@ SlashCmdList["NUFARROWCOUNT"] = function(msg)
 			print("|cff4FC3F7NUF:|r ArrowCount - escala: " .. scale);
 		end
 	else
-		print("|cff4FC3F7NUF:|r /arrowcount show | hide | reset | scale <n>   (Alt + arrastrar para mover)");
+		print("|cff4FC3F7NUF:|r /arrowcount unlock | lock | show | hide | reset | scale <n>");
 	end
 end
 
@@ -238,20 +325,9 @@ K.RegisterModule("ArrowCount", {
 	desc    = L["MOD_ARROWCOUNT_DESC"] or "Shows how much ammo you have left. Alt + drag to move.",
 	default = false,
 	configLabel = L["BTN_MODULE_MOVE"] or "Move",
+	-- El mismo boton abre y cierra el candado, como en los otros movibles.
 	configFunc = function()
-		-- Mostrarlo aunque no haya municion equipada, para poder ubicarlo.
-		-- Mientras dura este modo se enciende el mouse para poder arrastrarlo.
-		RestorePosition();
-		frame:EnableMouse(true);
-		if frame:IsShown() then
-			UpdateDisplay();
-			print("|cff4FC3F7NUF:|r ArrowCount - Alt + arrastrar para moverlo.");
-		else
-			frame.icon:SetTexture("Interface\\Icons\\INV_Ammo_Arrow_02");
-			frame.count:SetText("---");
-			frame:Show();
-			print("|cff4FC3F7NUF:|r ArrowCount - modo prueba. Alt + arrastrar para moverlo.");
-		end
+		if unlocked then Lock(); else Unlock(); end
 	end,
 	onEnable = function()
 		enabled = true;
@@ -260,9 +336,13 @@ K.RegisterModule("ArrowCount", {
 		UpdateDisplay();
 	end,
 	onDisable = function()
-		enabled = false;
+		enabled  = false;
+		unlocked = false;
 		events:UnregisterAllEvents();
+		unlockOverlay:Hide();
+		unlockText:Hide();
 		frame:EnableMouse(false);
 		frame:Hide();
+		SyncConfigButton();
 	end,
 });

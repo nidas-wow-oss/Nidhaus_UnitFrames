@@ -68,7 +68,7 @@ L["TIP_ArenaCastBarWidth"]       = "Cast bar width.";
 
 -- === OPTIONS PANEL ===
 L["PANEL_TITLE"]                 = "Nidhaus UnitFrames";
-L["PANEL_VERSION"]               = "|cffFFAA00v3.8|r";
+L["PANEL_VERSION"]               = "|cffFFAA00v3.9|r";
 L["PANEL_SUBTITLE"]              = "Unit Frame Customization & Arena Tools";
 L["PANEL_SIZE_RESET"]            = "Options window restored to 820x620 and centered.";
 
@@ -252,7 +252,7 @@ L["PCB_BTN_DRAG_OFF"]            = "Stop moving";
 L["HEADER_AURA_BORDERS"]         = "|cffFFD100Target and Focus Auras|r";
 L["CB_AURA_BORDERS"]             = "Custom aura borders";
 L["CB_AURA_PURGE"]               = "Highlight purgeable buffs";
-L["NOTE_AURA_BORDERS"]           = "Thin border on every buff and debuff icon, coloured by school: Magic blue, Curse purple, Poison green, Disease brown.";
+L["NOTE_AURA_BORDERS"]           = "Thin border on every icon: neutral on buffs, school colour on debuffs (Magic blue, Curse purple, Poison green, Disease brown).";
 L["TIP_AuraBordersEnabled"]      = "Crops the spell icon and gives it a thin border. Debuffs take the colour of their school, replacing Blizzard's thick ring.";
 L["TIP_AuraBordersPurge"]        = "Glow around the enemy's Magic buffs, the ones a purge or a dispel can remove.";
 L["SIDE_MOVEALL"]                = "Move Everything";
@@ -801,6 +801,7 @@ L["TIP_HideMacroText"]           = "Hides the macro name text on action bar butt
 
 -- Frames subtabs
 L["BTN_RESET_SCALES"]            = "Reset All Scales";
+L["BTN_RESET_FRAMES"]            = "Reset Scales & Positions";
 L["BTN_RESET_POSITIONS"]         = "Reset Positions";
 L["SCALES_RESET_DONE"]           = "Scales and positions reset. /reload to fully restore the defaults.";
 L["SUBTAB_FR_SCALES"]            = "Frames";
@@ -826,6 +827,7 @@ L["HEADER_MOVE_ALL"]             = "|cffFFD100Move Everything|r";
 L["DESC_MOVE_ALL"]               = "Unlocks everything: unit frames, action bars, buffs, debuffs, cast bar and the NUF timer bars. Shows fake party members so you can place them. Ctrl + mouse wheel resizes.";
 L["BTN_MOVE_ALL"]                = "Unlock Everything";
 L["HEADER_MOVE_FRAMES"]          = "|cffFFD100Move Unit Frames|r";
+L["HEADER_3V3_SCALE"]            = "Party 3v3 Scale";
 L["DESC_MOVE_FRAMES"]            = "Unlocks only Player, Target, Focus, Party, Arena and Boss frames. Drag the blue boxes, Ctrl + mouse wheel to resize, then lock again.";
 L["BTN_MOVE_FRAMES"]             = "Unlock Unit Frames";
 L["PARTYTEST_ON"]                = "Party test mode ON - 4 fake members shown. /nufparty to turn it off.";
@@ -852,13 +854,14 @@ L["MINIMAP_TOGGLE_DISABLED"]     = "Enable the Minimap Icon Toggle module first.
 
 L["BTN_MODULE_CONFIG"]           = "Configure";
 L["BTN_MODULE_MOVE"]             = "Move";
+L["BTN_MODULE_LOCK"]             = "Lock";
 L["BTN_MODULE_TOGGLE"]           = "Toggle";
 
 -- Nuevos modulos
 L["MOD_ARROWCOUNT"]              = "Arrow / Bullet Count";
 L["MOD_DUNGEONROLES"]            = "Dungeon Finder Roles";
 L["MOD_DUNGEONROLES_DESC"]       = "While queued for a dungeon, shows tank, healer and 3 dps icons and lights up the roles already filled. Alt + drag to move.";
-L["MOD_ARROWCOUNT_DESC"]         = "Shows how much ammo you have left. Alt + drag to move it.";
+L["MOD_ARROWCOUNT_DESC"]         = "Shows how much ammo you have left. /arrowcount lock | unlock.";
 L["MOD_POWERBAR"]                = "Power Bar";
 L["MOD_POWERBAR_DESC"]           = "Movable mana / energy / rage / runic power bar next to your character. Alt + drag to move it.";
 L["BAR_WATER_ELE"]               = "Water Elemental";
@@ -951,7 +954,7 @@ L["COLLAPSE_ICON_COLLAPSE"]      = "[v]";
 L["HEADER_ABOUT"]                = "|cffFFD100About|r";
 L["ABOUT_ADDON_NAME"]            = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["ABOUT_DESCRIPTION"]           = "A PVP-focused UI addon for WoW WotLK 3.3.5a.\nCustom arena frames, trinket tracking, mirror mode,\nclass-colored health bars, and optimized frame positioning\ndesigned for competitive arena gameplay.";
-L["ABOUT_VERSION"]               = "|cffFFAA00Version:|r 3.8";
+L["ABOUT_VERSION"]               = "|cffFFAA00Version:|r 3.9";
 L["ABOUT_COMMANDS_HEADER"]       = "|cffFFAA00Slash Commands:|r";
 L["ABOUT_CMD_OPTIONS"]           = "|cffFFFFFF/nuf|r — Open options panel";
 L["ABOUT_CMD_CONFIG"]            = "|cffFFFFFF/nuf config|r — Show saved variables";
@@ -1103,7 +1106,7 @@ L["TIP_ArenaCastBarWidth"]       = "Ancho de la castbar.";
 
 -- === OPTIONS PANEL ===
 L["PANEL_TITLE"]                 = "Nidhaus UnitFrames";
-L["PANEL_VERSION"]               = "|cffFFAA00v3.8|r";
+L["PANEL_VERSION"]               = "|cffFFAA00v3.9|r";
 L["PANEL_SUBTITLE"]              = "Personalización de Unit Frames & Herramientas de Arena";
 L["PANEL_SIZE_RESET"]            = "Ventana de opciones restaurada a 820x620 y centrada.";
 
@@ -1287,7 +1290,7 @@ L["PCB_BTN_DRAG_OFF"]            = "Dejar de mover";
 L["HEADER_AURA_BORDERS"]         = "|cffFFD100Auras del objetivo y el foco|r";
 L["CB_AURA_BORDERS"]             = "Bordes de aura propios";
 L["CB_AURA_PURGE"]               = "Resaltar los buffs purgables";
-L["NOTE_AURA_BORDERS"]           = "Borde fino en cada icono de buff y debuff, pintado segun la escuela: Magia azul, Maldicion violeta, Veneno verde, Enfermedad marron.";
+L["NOTE_AURA_BORDERS"]           = "Borde fino en cada icono: neutro en los buffs, color de escuela en los debuffs (Magia azul, Maldicion violeta, Veneno verde, Enfermedad marron).";
 L["TIP_AuraBordersEnabled"]      = "Recorta el icono del hechizo y le pone un borde fino. Los debuffs toman el color de su escuela, en lugar del aro gordo de Blizzard.";
 L["TIP_AuraBordersPurge"]        = "Resplandor alrededor de los buffs magicos del enemigo, los que saca una purga o una disipacion.";
 L["SIDE_MOVEALL"]                = "Mover todo";
@@ -1831,6 +1834,7 @@ L["TIP_HideMacroText"]           = "Oculta el nombre de las macros en los botone
 
 -- Subpesta\195\177as de Frames
 L["BTN_RESET_SCALES"]            = "Restablecer todas las escalas";
+L["BTN_RESET_FRAMES"]            = "Reiniciar escalas y posiciones";
 L["BTN_RESET_POSITIONS"]         = "Restablecer posiciones";
 L["SCALES_RESET_DONE"]           = "Escalas y posiciones reseteadas. /reload para restaurar todo de f\195\161brica.";
 L["SUBTAB_FR_SCALES"]            = "Frames";
@@ -1856,6 +1860,7 @@ L["HEADER_MOVE_ALL"]             = "|cffFFD100Mover Todo|r";
 L["DESC_MOVE_ALL"]               = "Desbloquea Player, Target, Focus, Party, barras de acci\195\179n, buffs, debuffs, barra de casteo y las barras de timers de NUF. Arrastr\195\161 los recuadros azules y despu\195\169s volv\195\169 a bloquear.";
 L["BTN_MOVE_ALL"]                = "Desbloquear Todo";
 L["HEADER_MOVE_FRAMES"]          = "|cffFFD100Mover Marcos de Unidad|r";
+L["HEADER_3V3_SCALE"]            = "Escala Party 3v3";
 L["DESC_MOVE_FRAMES"]            = "Desbloquea solo Player, Target, Focus, Party, Arena y Boss. Arrastr\195\161 los recuadros azules, Ctrl + rueda para agrandar, y volv\195\169 a bloquear.";
 L["BTN_MOVE_FRAMES"]             = "Desbloquear Marcos";
 L["PARTYTEST_ON"]                = "Modo prueba de party ACTIVADO - 4 miembros falsos. /nufparty para apagarlo.";
@@ -1882,13 +1887,14 @@ L["MINIMAP_TOGGLE_DISABLED"]     = "Activ\195\161 primero el m\195\179dulo Ocult
 
 L["BTN_MODULE_CONFIG"]           = "Configurar";
 L["BTN_MODULE_MOVE"]             = "Mover";
+L["BTN_MODULE_LOCK"]             = "Bloquear";
 L["BTN_MODULE_TOGGLE"]           = "Alternar";
 
 -- Modulos nuevos
 L["MOD_ARROWCOUNT"]              = "Contador de Flechas / Balas";
 L["MOD_DUNGEONROLES"]            = "Roles del buscador de mazmorras";
 L["MOD_DUNGEONROLES_DESC"]       = "Mientras estas en la cola, muestra tanque, sanador y 3 dps, y enciende los puestos que ya estan cubiertos. Alt + arrastrar para moverlo.";
-L["MOD_ARROWCOUNT_DESC"]         = "Muestra cu\195\161nta munici\195\179n te queda. Alt + arrastrar para moverlo.";
+L["MOD_ARROWCOUNT_DESC"]         = "Muestra cu\195\161nta munici\195\179n te queda. /arrowcount lock | unlock.";
 L["MOD_POWERBAR"]                = "Barra de Recurso";
 L["MOD_POWERBAR_DESC"]           = "Barra movible de man\195\161 / energ\195\173a / rabia / poder r\195\186nico al lado del personaje. Alt + arrastrar para moverla.";
 L["BAR_WATER_ELE"]               = "Elemental de Agua";
@@ -1981,7 +1987,7 @@ L["COLLAPSE_ICON_COLLAPSE"]      = "[v]";
 L["HEADER_ABOUT"]                = "|cffFFD100Acerca de|r";
 L["ABOUT_ADDON_NAME"]            = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["ABOUT_DESCRIPTION"]           = "Un addon de interfaz enfocado en PVP para WoW WotLK 3.3.5a.\nArena frames custom, tracking de trinkets, modo espejo,\nbarras de vida por clase, y posicionamiento optimizado\ndiseñado para arena competitivo.";
-L["ABOUT_VERSION"]               = "|cffFFAA00Versión:|r 3.8";
+L["ABOUT_VERSION"]               = "|cffFFAA00Versión:|r 3.9";
 L["ABOUT_COMMANDS_HEADER"]       = "|cffFFAA00Comandos:|r";
 L["ABOUT_CMD_OPTIONS"]           = "|cffFFFFFF/nuf|r — Abrir panel de opciones";
 L["ABOUT_CMD_CONFIG"]            = "|cffFFFFFF/nuf config|r — Mostrar variables guardadas";

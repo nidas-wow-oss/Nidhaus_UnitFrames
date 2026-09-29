@@ -65,18 +65,28 @@ function K.ResetPositionsAndScale()
 
 	-- FIX: Setear valores directamente en vez de llamar SaveConfig 7 veces
 	-- (cada SaveConfig dispara CONFIG_CHANGED → callbacks se ejecutan 7 veces)
-	local scaleDefaults = {
-		PlayerFrameScale = 1.0,
-		TargetFrameScale = 1.0,
-		FocusScale = 1.0,
-		FocusSpellBarScale = 1.2,
-		PartyFrameScale = 1.0,
-		ArenaFrameScale = 1.5,
-		BossFrameScale = 0.65,
+	-- LOS NUMEROS SALEN DE ConfigManager, NO DE ACA.
+	--
+	-- Esta tabla era la segunda de tres copias de los valores de fabrica, y
+	-- las tres estaban desincronizadas (a esta le faltaban PetFrameScale y
+	-- las dos separaciones). Ahora es solo la LISTA de que se resetea; el
+	-- valor lo da GetConfigDefault, que lee el unico lugar donde estan
+	-- definidos de verdad.
+	local scaleKeys = {
+		"PlayerFrameScale", "TargetFrameScale",
+		"FocusScale", "FocusSpellBarScale",
+		"PetFrameScale",
+		"PartyFrameScale", "PartyMemberFrameSpacing",
+		"ArenaFrameScale",
+		"BossFrameScale", "BossTargetFrameSpacing",
+		"Party3v3Scale1", "Party3v3Scale2", "Party3v3Scale3", "Party3v3Scale4",
 	};
-	for key, val in pairs(scaleDefaults) do
-		C[key] = val;
-		NidhausUnitFramesDB[key] = val;
+	for _, key in ipairs(scaleKeys) do
+		local val = K.GetConfigDefault and K.GetConfigDefault(key);
+		if val ~= nil then
+			C[key] = val;
+			NidhausUnitFramesDB[key] = val;
+		end
 	end
 
 	-- Apply scales immediately
@@ -97,7 +107,8 @@ function K.ResetPositionsAndScale()
 	C.ArenaFramePoint = {"TOPRIGHT", UIParent, "TOPRIGHT", -390, -330};
 
 	-- FIX: Si PartyMode3v3 está activo, re-aplicar 3v3 en vez de reparentar al container
-	if C.SetPositions and C.PartyMode3v3 and K.Apply3v3PartyMode then
+	-- (la pregunta va por K.Is3v3Active: sin SetPositions, ver Partymode3v3.lua)
+	if K.Is3v3Active and K.Is3v3Active() and K.Apply3v3PartyMode then
 		K.Apply3v3PartyMode();
 	else
 		-- Re-anchor party frames to the container (undo individual move)
@@ -147,7 +158,7 @@ function K.ResetPositionsAndScale()
 	end
 
 	-- Party container (skip if 3v3 is active, since 3v3 parents frames to UIParent directly)
-	if not (C.SetPositions and C.PartyMode3v3) then
+	if not (K.Is3v3Active and K.Is3v3Active()) then
 		if K.NidhausPartyFrame and C.SetPositions and C.PartyMemberFramePoint then
 			K.NidhausPartyFrame:ClearAllPoints();
 			K.NidhausPartyFrame:SetPoint(unpack(C.PartyMemberFramePoint));
@@ -185,7 +196,7 @@ function K.ResetPositionsAndScale()
 	-- ya aplica todos los cambios de escala y posición directamente arriba.
 	-- (Antes cada SaveConfig disparaba CONFIG_CHANGED 7 veces innecesariamente)
 
-	print("|cff00FF00NUF:|r " .. (L["RESET_POS_DONE"] or "Positions & scale reset!"));
+	-- Sin cartel: el reset se ve solo.
 end
 
 -- DRAG OVERLAY
@@ -436,7 +447,7 @@ function K.ApplyIndividualPartyPositions()
 			-- Si no hay posición guardada, dejar el frame donde 3v3 lo puso
 			-- (ya está parented a UIParent con la escala correcta).
 			-- NO limpiar posiciones — eso borraba posiciones arrastradas.
-			if C.PartyMode3v3 and C.SetPositions then
+			if K.Is3v3Active and K.Is3v3Active() then
 				local saved = K.GetSavedPosition(key);
 				if saved then
 					pf:SetParent(UIParent);
@@ -479,7 +490,7 @@ function K.RestorePartyToGroup()
 	groupPending = false;
 
 	-- FIX: Si 3v3 está activo, restaurar a posiciones 3v3 en vez del container
-	if C.SetPositions and C.PartyMode3v3 and K.Apply3v3PartyMode then
+	if K.Is3v3Active and K.Is3v3Active() and K.Apply3v3PartyMode then
 		K.Apply3v3PartyMode();
 		return;
 	end

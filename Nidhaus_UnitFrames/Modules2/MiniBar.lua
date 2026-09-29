@@ -503,6 +503,20 @@ end
 -- ============================================================
 local bgTextures;
 
+-- LA FOTO DEL FONDO NO PUEDE SER ETERNA.
+--
+-- bgTextures guarda, al lado de cada textura, COMO ESTABA cuando se armo
+-- la lista, para poder reponerla tal cual al destildar el interruptor. La
+-- lista se armaba una sola vez por sesion y no se soltaba nunca, asi que
+-- la foto envejecia: apagabas MiniBar, lo volvias a prender, y el
+-- interruptor seguia reponiendo el estado de la vez anterior.
+--
+-- Se tira al prender y al apagar el modo, que son los dos momentos en que
+-- cambia quien manda sobre esas texturas.
+function K.InvalidateMiniBarBackgroundCache()
+	bgTextures = nil;
+end
+
 local function MiniBar_BackgroundTextures()
 	if bgTextures then return bgTextures; end
 	bgTextures = {};
@@ -1495,6 +1509,17 @@ function K.EnableMiniBar()
 	-- Y se parte SIEMPRE del mismo punto, sin restos del modo anterior.
 	if K.RestoreBarBaseline then K.RestoreBarBaseline(); end
 
+	-- HIDE ACTION BAR TEXTURES SUELTA LO SUYO, ANTES DE FOTOGRAFIAR NADA.
+	--
+	-- De aca en adelante las texturas de la barra las maneja MiniBar. Si
+	-- el otro modulo las dejara escondidas, la captura de abajo -- y la
+	-- del interruptor "ocultar fondo" -- guardarian "escondida" como
+	-- estado original, y al destildar no volveria nada. Era exactamente el
+	-- sintoma: tildar MiniBar con esa casilla puesta y que el toggle del
+	-- fondo dejara de responder.
+	if K._habRelease then K._habRelease(); end
+	if K.InvalidateMiniBarBackgroundCache then K.InvalidateMiniBarBackgroundCache(); end
+
 	-- Capturar estado original ANTES de tocar nada (pcall por si algún frame no existe)
 	local ok, err = pcall(MB_CaptureOriginals);
 	if not ok then
@@ -1667,8 +1692,14 @@ function K.DisableMiniBar()
 	-- Los botones ya volvieron con RestoreActionBarButtonSpace; los
 	-- contenedores se esconden para que no queden cajas vacias sueltas.
 	if K.HideBarHolders then K.HideBarHolders(); end
-	-- MiniBar solto las texturas: que HideActionBarTextures vuelva a aplicar
-	if K._habReapply then K._habReapply(); end
+	-- OJO: la llamada a K._habReapply NO va aca.
+	--
+	-- Estaba en este punto, y era inutil: el modulo escondia el arte y
+	-- cuatro lineas mas abajo MB_RestoreAllTextures -- y despues la foto
+	-- de fabrica -- lo volvian a mostrar. Con la casilla tildada el arte
+	-- reaparecia igual y no habia segunda pasada que lo corrigiera. Ahora
+	-- se llama AL FINAL de esta funcion, cuando ya no queda nadie mas
+	-- escribiendo sobre esas texturas.
 
 	-- Unregister events
 	minibarEvtFrame:UnregisterAllEvents();
@@ -1818,6 +1849,20 @@ function K.DisableMiniBar()
 	if C.ActionBarScale and C.ActionBarScale ~= 1.0 then
 		K.ApplyActionBarScale(C.ActionBarScale);
 	end
+
+	-- ── Y AHORA SI, HIDE ACTION BAR TEXTURES VUELVE A MANDAR ──
+	--
+	-- Al final de todo, despues de MB_RestoreAllTextures, de las
+	-- restauraciones de marcos, de los end caps y de la foto de fabrica.
+	-- Ese es el momento en que las texturas ya estan como las dejo el
+	-- juego y nadie mas va a escribirlas: recien ahi tiene sentido volver
+	-- a esconderlas si el usuario lo tiene tildado.
+	--
+	-- El modulo, ademas, rearma su rafaga de reintentos, porque abajo
+	-- quedan repintados en camino (el retry de 0.3s de aca y los de
+	-- Blizzard) que si no le pisarian el trabajo.
+	if K.InvalidateMiniBarBackgroundCache then K.InvalidateMiniBarBackgroundCache(); end
+	if K._habReapply then K._habReapply(); end
 end
 
 -- ============================================================

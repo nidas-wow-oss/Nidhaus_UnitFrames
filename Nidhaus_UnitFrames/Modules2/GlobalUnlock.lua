@@ -469,11 +469,26 @@ end
 -- Se define despues de ResolveFrame, que es de donde saca el frame real.
 local EntryHasContent;
 
+-- SI ESTE MOVIBLE ENTRA EN EL ALCANCE ACTUAL. UNA sola definicion.
+--
+-- La usan los recuadros azules Y ahora tambien las vistas previas, el
+-- modo prueba del grupo, el mover de arena y la consola. Antes el alcance
+-- solo filtraba los recuadros: todo lo demas se prendia siempre, fuera
+-- cual fuera el alcance. Por eso el "Move" de la pestaña Pet mostraba los
+-- marcos de prueba del grupo, el de arena y la consola entera.
+--
+-- "pet": el boton Move de la pestaña Pet. Un solo movible, no el grupo
+-- entero de "frames".
+local function ScopeMatches(entry)
+	if currentScope == "all" then return true; end
+	if currentScope == "pet" then return entry.key == "Pet"; end
+	return entry.group == currentScope;
+end
+
 local function EntryInScope(entry)
 	if not EntryModuleActive(entry) then return false; end
 	if not EntryHasContent(entry) then return false; end
-	if currentScope == "all" then return true; end
-	return entry.group == currentScope;
+	return ScopeMatches(entry);
 end
 
 -- Devuelve el frame real a mover para una entrada
@@ -1003,6 +1018,16 @@ local function RestoreOne(entry)
 
 	if entry.protected and InCombatLockdown() then return; end
 
+	-- Los marcos del grupo no se escalan desde aca (ver SCALE_SETTING): lo
+	-- que haya quedado guardado de antes se borra en vez de aplicarse.
+	if entry.partyIndex and pos.scale then
+		pos.scale = nil;
+		if not pos.point then
+			DB()[EntryKey(entry)] = nil;
+			return;
+		end
+	end
+
 	if pos.scale then
 		pcall(frame.SetScale, frame, pos.scale);
 	end
@@ -1239,6 +1264,116 @@ function K.MirrorPartyCastBars()
 		end
 	end
 end
+
+
+-- ---------------------------------------------------------
+-- OLVIDAR LA POSICION GUARDADA DE LAS BARRAS DE CASTEO
+--
+-- Es lo minimo que hace falta para que un reset venido DE AFUERA (el
+-- /pcb reset de PartyCastingBars, o su boton) funcione de verdad: sin
+-- esto, el candado sobre SetPoint le devolvia a la barra 1 la posicion
+-- guardada en el mismo instante en que PCB la reanclaba, y el mismo reset
+-- dejaba la 1 en un lugar y las otras tres en otro.
+--
+-- NO llama al reset de PCB a proposito: K.ResetGlobalPositions ya lo llama,
+-- asi que si esta funcion lo llamara las dos se llamarian entre si.
+-- ---------------------------------------------------------
+function K.ForgetPartyCastBarPosition()
+	local entry = BY_KEY["PartyCast"];
+	if not entry then return false; end
+	DB()[EntryKey(entry)] = nil;
+	UnlockFramePoint(PartyCastBar(1));
+	return true;
+end
+
+-- ---------------------------------------------------------
+-- LO MISMO, PERO ARRASTRANDO CUALQUIERA DE LAS CUATRO
+--
+-- PartyCastingBars tiene su propio modo mover (/pcb drag, o el boton "Move
+-- bars" de su ventana). Ahi se arrastran las cuatro barras por separado y
+-- no pasaba nada mas: las otras tres se quedaban donde estaban, y al
+-- recargar volvian TODAS al lugar de fabrica -- porque PCB no guarda
+-- posiciones, las guarda este modulo, en globalPos.PartyCast, y solo la
+-- del compa 1.
+--
+-- Esta funcion recibe el numero de la barra que se movio, traduce ese
+-- desplazamiento a la barra 1, lo guarda, y de ahi copia a las otras tres
+-- con MirrorPartyCastBars. Asi mover una mueve las cuatro, se venga de
+-- /nufmove o de /pcb, y queda guardado en un solo lugar.
+--
+-- POR QUE PASA TODO POR LA BARRA 1: es la unica que tiene entrada en
+-- MOVABLES, o sea la unica con posicion guardada y con candado sobre
+-- SetPoint. Si cada barra guardara la suya tendriamos cuatro dueños para
+-- una misma posicion, que es de donde salieron la mitad de los bugs de
+-- este archivo.
+--
+-- LA CUENTA VA EN PIXELES DE PANTALLA (GetLeft() * escala efectiva). Los
+-- marcos del grupo pueden tener escalas distintas -- el modo 3v3 usa 1.5
+-- para los dos primeros y 1.3 para los otros -- y restar offsets crudos
+-- dejaria las barras desparejas.
+-- ---------------------------------------------------------
+function K.SyncPartyCastBarsFrom(index)
+	index = tonumber(index) or 1;
+	if index < 1 or index > 4 then index = 1; end
+
+	local entry = BY_KEY["PartyCast"];
+	local b1, p1 = PartyCastBar(1), _G["PartyMemberFrame1"];
+	local b,  p  = PartyCastBar(index), _G["PartyMemberFrame" .. index];
+	if not (entry and b1 and p1 and b and p) then return false; end
+	if not (b:GetLeft() and p:GetRight() and p1:GetRight()) then return false; end
+
+	-- Estas barras cuelgan de los PartyMemberFrame, o sea que heredan su
+	-- proteccion: moverlas en combate lo bloquea el cliente y salta el
+	-- cartel de "Interface action failed because of an AddOn". Mejor no
+	-- hacer nada y que se reponga al salir de combate.
+	if InCombatLockdown() and b1.IsProtected and b1:IsProtected() then return false; end
+
+	-- Donde quedo la barra que se movio, respecto de SU marco de grupo.
+	local es, ep = b:GetEffectiveScale(), p:GetEffectiveScale();
+	local dx = (b:GetLeft() * es) - (p:GetRight() * ep);
+	local dy = (b:GetTop()  * es) - (p:GetTop()   * ep);
+
+	-- Ese mismo desplazamiento, ahora para la barra 1.
+	--
+	-- Se ancla al PartyMemberFrame1 y no a UIParent a proposito: asi las
+	-- cuatro guardan la misma relacion con su marco y mover los marcos del
+	-- grupo se las lleva a todas. Colgada de UIParent, la 1 se quedaba
+	-- clavada mientras las otras tres seguian a sus marcos.
+	local es1 = b1:GetEffectiveScale();
+	if not es1 or es1 == 0 then es1 = 1; end
+
+	-- _nufApplying: sin esto el candado de SetPoint la devuelve al lugar
+	-- viejo en el mismo instante en que la movemos.
+	b1._nufApplying = true;
+	b1:ClearAllPoints();
+	b1:SetPoint("TOPLEFT", p1, "TOPRIGHT", dx / es1, dy / es1);
+	b1._nufApplying = nil;
+
+	-- Y fuera del administrador de posiciones de Blizzard, igual que hace
+	-- SavePosition con todo lo demas: si no, UIParent_ManageFramePositions
+	-- puede volver a imantarla en el proximo repintado.
+	ReleaseManaged(entry, b1);
+
+	-- La posicion guardada, escrita a mano en vez de con SavePosition.
+	--
+	-- SavePosition lee GetPoint() y tira el frame de referencia (guarda
+	-- rel = nil, o sea UIParent). Aca hace falta conservarlo: rel es
+	-- justo el campo que ApplyPoint y LockFramePoint usan para volver a
+	-- colgarla del PartyMemberFrame1 en el proximo login.
+	local db  = DB();
+	local key = EntryKey(entry);
+	db[key] = db[key] or {};
+	db[key].point         = "TOPLEFT";
+	db[key].relativePoint = "TOPRIGHT";
+	db[key].x             = dx / es1;
+	db[key].y             = dy / es1;
+	db[key].rel           = "PartyMemberFrame1";
+
+	LockFramePoint(b1, entry, db[key]);
+	K.MirrorPartyCastBars();
+	return true;
+end
+
 
 -- ---------------------------------------------------------
 -- Modo prueba de los timers de arena
@@ -1635,13 +1770,37 @@ end
 		--
 		-- Dos sistemas empujando el mismo frame: el 1 quedaba donde decia el
 		-- lock y los otros tres donde decia el modulo.
-		local moduleOwned = self.entry.partyIndex or self.entry.partyTarget;
+		-- partyCast entra aca tambien: su posicion la escribe
+		-- SyncPartyCastBarsFrom mas abajo, con el frame de referencia
+		-- puesto. Si pasara por SavePosition se guardaria contra
+		-- UIParent y las dos escrituras se pelearian.
+		local moduleOwned = self.entry.partyIndex or self.entry.partyTarget
+			or self.entry.partyCast;
 
 		if not moduleOwned then
 			SavePosition(self.entry, self.target);
 			local pos = DB()[EntryKey(self.entry)];
 			if pos and pos.point then LockFramePoint(self.target, self.entry, pos); end
 		elseif self.entry.partyIndex then
+			-- PRIMERO SE GUARDA DONDE LO SOLTASTE. DESPUES SE REPONE.
+			--
+			-- ESTE ERA EL BUG DE "lo muevo y se vuelve solo" con el 3v3
+			-- puesto. SavePosition NO se llamaba nunca para los marcos del
+			-- grupo: caen del lado de moduleOwned -- "de esto se encarga su
+			-- modulo" -- y ahi se saltaba el guardado.
+			--
+			-- Sin 3v3 no se notaba: ApplyIndividualPartyPositions, si no
+			-- encuentra posicion guardada, CAPTURA la que el marco tiene en
+			-- pantalla y la guarda ella. Con el 3v3 puesto corre
+			-- Apply3v3PartyMode en su lugar, que no captura nada: reponia la
+			-- posicion de fabrica del modo y el arrastre se perdia.
+			--
+			-- SavePosition delega en SavePartyMemberPosition, que ademas
+			-- prende PartyIndividualMove. Con la posicion ya guardada,
+			-- Apply3v3PartyMode la respeta y el marco se queda donde lo
+			-- dejaste, con la escala del 3v3 puesta.
+			SavePosition(self.entry, self.target);
+
 			if C.PartyMode3v3 and K.Apply3v3PartyMode then
 				pcall(K.Apply3v3PartyMode);
 			elseif K.ApplyIndividualPartyPositions then
@@ -1651,8 +1810,15 @@ end
 
 		if self.entry.auraAnchor and K.ReanchorAuras then K.ReanchorAuras(); end
 		if self.entry.debuffAnchor and K.ReanchorDebuffs then K.ReanchorDebuffs(); end
-		if self.entry.partyCast and K.MirrorPartyCastBars then
-			pcall(K.MirrorPartyCastBars);
+		-- UNA SOLA PUERTA PARA LA POSICION DE LAS BARRAS DE CASTEO.
+		--
+		-- Antes aca se guardaba la posicion arriba (SavePosition +
+		-- candado) y despues se copiaba a las otras tres. Ahora las dos
+		-- cosas las hace SyncPartyCastBarsFrom, que es la misma que usa
+		-- el modo mover de PCB: un solo formato guardado, se venga de
+		-- donde se venga.
+		if self.entry.partyCast and K.SyncPartyCastBarsFrom then
+			pcall(K.SyncPartyCastBarsFrom, 1);
 		end
 		if self.entry.partyTarget and PartyTargets_AnchorFromFrame then
 			-- El modulo recalcula el offset compartido a partir de donde
@@ -1728,12 +1894,30 @@ end
 local SCALE_SETTING = {
 	Player = "PlayerFrameScale",
 	Target = "TargetFrameScale",
-	Focus  = "FocusScale",
+	-- "Focus" NO VA ACA, y esto es lo que rompia su slider.
+	--
+	-- El movible del foco se saco a proposito (ver la lista de MOVABLES),
+	-- pero esta linea quedo. Como GetMovablesForSetting devolvia
+	-- {"Focus"}, el slider del panel tomaba el camino de los movibles y
+	-- llamaba a SetGlobalFrameScale("Focus", v), que no encuentra la
+	-- entrada y sale sin hacer nada. Resultado: mover el slider del foco
+	-- no se veia hasta soltarlo, que es cuando el guardado dispara
+	-- CONFIG_CHANGED y ahi si se aplica por el otro camino.
+	--
+	-- Es el mismo caso que la clave "Party" de dos lineas mas abajo, que
+	-- ya se habia encontrado muerta antes.
 	Pet    = "PetFrameScale",
-	Party1 = "PartyFrameScale",
-	Party2 = "PartyFrameScale",
-	Party3 = "PartyFrameScale",
-	Party4 = "PartyFrameScale",
+	-- Party1..4 NO VAN ACA, y esto era lo que achicaba el grupo con el 3v3.
+	--
+	-- Con estas cuatro lineas, el slider "Party Frame Scale" -- y el reset
+	-- -- escribian la escala generica ADEMAS en el guardado del modo mover
+	-- de cada marco del grupo. Y RestoreGlobalPositions la reponia sobre el
+	-- marco cada vez que corria, pasandole por encima al 1.5 / 1.3 del 3v3.
+	-- En tu archivo quedaron guardadas: Party1..4 con scale = 1.
+	--
+	-- La escala del grupo ya tiene dos dueños y alcanzan: PartyFrameScale
+	-- sin 3v3, Party3v3Scale1..4 con 3v3. Un tercero en globalPos sobraba.
+	-- (Ctrl + rueda no los toca: los cuatro del grupo no son "scalable".)
 	MainBar = "ActionBarScale",
 	CastBar = "CastBarPWScale",
 };
@@ -1999,6 +2183,9 @@ function K.SetGlobalUnlock(state, scope)
 		end
 	end
 
+	-- EL ALCANCE, PRIMERO. Todo lo de abajo lo consulta.
+	currentScope = scope or "all";
+
 	-- Varios modulos tienen el frame oculto hasta que pasa algo (un CD, un
 	-- golpe). En modo mover hay que mostrarlos igual, si no el recuadro azul
 	-- apunta a algo invisible y no sabes donde lo estas dejando.
@@ -2006,11 +2193,15 @@ function K.SetGlobalUnlock(state, scope)
 		-- Solo de modulos PRENDIDOS: si no, se disparaba el modo prueba de
 		-- algo que el usuario tiene apagado y aparecia un marco que no
 		-- deberia existir.
+		--
+		-- Y solo si entra en el alcance: con el Move de la mascota no tiene
+		-- nada que hacer la vista previa de las barras de casteo del grupo.
+		-- Fuera del alcance se llama con false, que las apaga si venian de
+		-- un alcance anterior (cambiar de "frames" a "pet" sin trabar).
 		if entry.preview and K[entry.preview] and EntryModuleActive(entry) then
-			pcall(K[entry.preview], unlocked);
+			pcall(K[entry.preview], unlocked and ScopeMatches(entry));
 		end
 	end
-	currentScope = scope or "all";
 	BuildOverlays();
 
 	for _, ov in ipairs(overlays) do
@@ -2023,8 +2214,9 @@ function K.SetGlobalUnlock(state, scope)
 	end
 
 	-- Modo prueba de party: sin grupo no hay marcos que mover
+	-- (no con el Move de la mascota: ahi no hay marcos del grupo que mover)
 	if K.SetPartyTestMode then
-		pcall(K.SetPartyTestMode, unlocked);
+		pcall(K.SetPartyTestMode, unlocked and currentScope ~= "pet");
 	end
 
 	-- Marcos de arena: se usa exactamente el mismo camino que /nuf arena
@@ -2035,7 +2227,8 @@ function K.SetGlobalUnlock(state, scope)
 		local db = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover;
 		local shown = (db and db.IsShown) and true or false;
 
-		if unlocked then
+		local want = unlocked and currentScope ~= "pet";
+		if want then
 			if not shown then pcall(K.ToggleArenaFramesMover); end
 		else
 			if shown then pcall(K.ToggleArenaFramesMover); end
@@ -2043,7 +2236,11 @@ function K.SetGlobalUnlock(state, scope)
 	end
 
 	-- Consola en pantalla: solo mientras el modo esta activo.
-	if unlocked then
+	if unlocked and currentScope == "pet" then
+		-- Mover SOLO la mascota: sin consola. Se traba desde el mismo
+		-- boton de la pestaña Pet.
+		if console then console:Hide(); end
+	elseif unlocked then
 		local c = BuildConsole();
 		if c then
 			if c.RefreshGrid then c:RefreshGrid(); end
@@ -2070,6 +2267,12 @@ end
 
 function K.IsGlobalUnlocked()
 	return unlocked;
+end
+
+-- Que alcance esta destrabado ("all", "frames", "pet"...). Lo usa el boton
+-- de la pestaña Pet para no decir "Lock" cuando lo destrabado es otra cosa.
+function K.GetGlobalUnlockScope()
+	return currentScope;
 end
 
 function K.ToggleGlobalUnlock(scope)
@@ -2370,8 +2573,8 @@ function K.ResetGlobalPositions(only)
 	end
 	if K.UpdateActionBarsBox then pcall(K.UpdateActionBarsBox); end
 
-	print("|cff4FC3F7NUF:|r " .. (L["MOVE_RESET"]
-		or "Saved positions cleared. /reload to restore the defaults."));
+	-- Sin cartel: el reset se ve solo. (Ademas lo llaman varios botones
+	-- seguidos y cada uno sumaba su linea al chat.)
 end
 
 -- ---------------------------------------------------------

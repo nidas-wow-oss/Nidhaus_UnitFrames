@@ -110,6 +110,22 @@ function K.EnsureBarBaseline()
 	if baseline or capturing then return baseline ~= nil; end
 	capturing = true;
 
+	-- QUE NADIE ESTE ESCONDIENDO ARTE CUANDO SACAMOS LA FOTO.
+	--
+	-- "En ese momento todavia no toco nada nadie" era falso en un caso, y
+	-- es el que contaminaba la foto para toda la sesion: Hide Action Bar
+	-- Textures esconde el arte al entrar al mundo, mucho antes de que se
+	-- prenda ningun modo. Con esa casilla puesta, la foto guardaba los end
+	-- caps y la barra de experiencia en alfa 0 y ESCONDIDOS, como si asi
+	-- los trajera el juego -- y desde ahi cada rearmado reponia esa
+	-- suciedad, incluso despues de destildar la casilla.
+	--
+	-- Se le pide que devuelva lo suyo ANTES de disparar. Del arte se hace
+	-- cargo el modo que esta por prenderse, y cuando el modo se apague,
+	-- HideActionBarTextures vuelve a aplicar lo que el usuario tenga
+	-- tildado.
+	if K._habRelease then pcall(K._habRelease); end
+
 	-- Que Blizzard termine de acomodar todo antes de fotografiar.
 	if UIParent_ManageFramePositions then pcall(UIParent_ManageFramePositions); end
 	if MainMenuBar_UpdateExperienceBars then pcall(MainMenuBar_UpdateExperienceBars); end

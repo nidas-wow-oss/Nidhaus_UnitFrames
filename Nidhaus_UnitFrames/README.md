@@ -6,9 +6,9 @@ NUF was built by combining and reworking several existing addons — including E
 
 > ## Download
 >
-> **Latest version: 3.8** — this is the current, recommended build and the one actively in use.
+> **Latest version: 3.9** — this is the current, recommended build and the one actively in use.
 >
-> **[Download v3.8 (latest release)](../../releases/latest)**
+> **[Download v3.9 (latest release)](../../releases/latest)**
 >
 > Grab the `.zip` from the release page rather than the green *Code* button: the release is the packaged,
 > ready-to-install version with the correct folder name.
@@ -97,7 +97,7 @@ A full in-game configuration interface organized into tabs:
 
 ## Installation
 
-1. Download **v3.8** from the [releases page](../../releases/latest).
+1. Download **v3.9** from the [releases page](../../releases/latest).
 2. Extract it and copy the `Nidhaus_UnitFrames` folder into your WoW `Interface/AddOns/` directory.
 3. For the full options panel, also install the companion addon
    **[Nidhaus_UnitFrames_Config](https://github.com/nidas-wow-oss/Nidhaus_UnitFrames_Config)**
@@ -142,6 +142,19 @@ The minimap button also provides quick access: left-click opens the options pane
 ---
 
 ## Changelog
+
+### v3.9
+- Pet tab: Pet Buffs checkbox, a Move button that unlocks only the pet frame (no party test frames, arena mover or console), and a Reset that only touches the pet. It used to resize the party frames with 3v3 on: the party scale had a third, hidden owner in the move-mode positions. Old saved values are dropped automatically.
+- 3v3 party mode: the scale no longer breaks when you turn it back on after using Party Frame Scale, party frames dragged with 3v3 on stay where you drop them, and the checkbox and the four per-member sliders are mirrored in Frames > General.
+- One "Reset Scales & Positions" button for the unit frames: scale and position together, 3v3 sliders included, respecting 3v3 and without /reload.
+- Focus Scale applies live while dragging. A dead entry in the scale table made the slider skip its live path.
+- Switching the unit frame style or the custom texture applies at once instead of asking for /reload.
+- Frames > General reorganized: scales on top in two even columns (Player / Target / Focus and 3v3), position below with Unlock and Reset side by side.
+- Character Setup now includes nExtraBars: the 24 buttons of both talent specs, their macros, which bars are enabled, button count and lock. Clear Bars and Undo cover them too. Each character is also saved on logout, so what you set up during the session is what gets copied. With nExtraBars 2.2.3 the bar settings apply without /reload.
+- Party Casting Bars: moving one bar moves all four, and their reset brings back all four.
+- Hide Action Bar Textures and MiniBar's "Hide bar background" no longer fight each other when toggled.
+- Ammo counter: Lock / Unlock button, `/arrowcount lock | unlock`, and it locks itself in combat.
+- The resets no longer print to chat.
 
 ### v3.8
 - Party member names no longer slide down over the health bar during a fight. Blizzard re-anchors them on every party update, and the restyle was skipped in combat.

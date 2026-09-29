@@ -1516,6 +1516,11 @@ function K.EnableUnifyActionBars()
     -- quedaba con los restos que MiniBar no habia terminado de revertir.
     if K.RestoreBarBaseline then K.RestoreBarBaseline(); end
 
+    -- Y que Hide Action Bar Textures devuelva lo suyo ANTES de capturar.
+    -- Mismo motivo que en MiniBar: si deja el arte escondido, CaptureOriginals
+    -- guarda "escondido" como estado de fabrica y ya no vuelve nunca.
+    if K._habRelease then K._habRelease(); end
+
     -- FIX: Forzar que Blizzard recalcule TODAS las posiciones ANTES de capturar.
     if UIParent_ManageFramePositions then pcall(UIParent_ManageFramePositions); end
     if MainMenuBar_UpdateExperienceBars then pcall(MainMenuBar_UpdateExperienceBars); end
@@ -1726,12 +1731,19 @@ function K.DisableUnifyActionBars()
     if BagPackFrame then BagPackFrame:Hide(); end
 
     -- Restore decorative textures/frames to original alpha/visibility
-    -- Si HideActionBarTextures está activo, no restaurar — dejar ocultas
-    if K.IsModuleEnabled and K.IsModuleEnabled("HideActionBarTextures") then
-        if K._habReapply then K._habReapply(); end
-    else
-        RestoreAllTextures();
-    end
+    --
+    -- SE RESTAURA SIEMPRE, tambien con Hide Action Bar Textures puesto.
+    --
+    -- Antes, con esa casilla, se SALTEABA esta restauracion y se llamaba
+    -- directo al otro modulo. O sea que lo que Unify le hizo a estas
+    -- texturas -- alfas, rutas puestas en "" -- no se deshacia nunca: el
+    -- otro modulo anotaba ESE estado como "el original" y, el dia que
+    -- destildabas la casilla, reponia el disfraz de Unify en vez del arte
+    -- del juego. Contaminacion que solo se limpiaba con /reload.
+    --
+    -- Ahora Unify deshace lo suyo y HideActionBarTextures vuelve a aplicar
+    -- al final de la funcion, sobre un estado limpio.
+    RestoreAllTextures();
 
     -- Restore every saved frame to its exact original position & scale
     RestoreFrame("MainMenuBar",               MainMenuBar);
@@ -1838,6 +1850,15 @@ function K.DisableUnifyActionBars()
     if C.ActionBarScale and C.ActionBarScale ~= 1.0 then
         K.ApplyActionBarScale(C.ActionBarScale);
     end
+
+    -- ── Y AL FINAL, HIDE ACTION BAR TEXTURES ──
+    --
+    -- Despues de RestoreAllTextures, de las restauraciones de marcos, de
+    -- los end caps y de la foto de fabrica: recien ahi las texturas estan
+    -- como las trae el juego y tiene sentido volver a esconderlas si el
+    -- usuario lo tiene tildado. Antes se llamaba en el medio y el propio
+    -- Unify le pasaba por encima dos lineas despues.
+    if K._habReapply then K._habReapply(); end
 end
 
 

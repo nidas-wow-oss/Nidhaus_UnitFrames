@@ -324,7 +324,8 @@ function K.ApplyPartyFrameSpacing()
 	
 	-- FIX: Do NOT re-apply 3v3 positions if PartyIndividualMove is active.
 	-- The user dragged frames individually — re-applying 3v3 wipes those positions.
-	if C.SetPositions and C.PartyMode3v3 and not C.PartyIndividualMove and K.Apply3v3PartyMode then
+	-- Mismo criterio que el modulo del 3v3: no se le suma SetPositions.
+	if K.Is3v3Active and K.Is3v3Active() and not C.PartyIndividualMove and K.Apply3v3PartyMode then
 		K.Apply3v3PartyMode();
 		return;
 	end
@@ -358,7 +359,14 @@ K.RegisterConfigEvent("CONFIG_CHANGED", function()
 	-- FIX: Do NOT apply generic PartyFrameScale when 3v3 mode is active.
 	-- 3v3 mode sets per-frame scales (1.5 for frames 1-2, 1.3 for 3-4).
 	-- Applying the generic scale here would overwrite those to 1.0.
-	if not (C.SetPositions and C.PartyMode3v3) then
+	-- ACA ESTABA EL BUG DE LA ESCALA DEL 3v3.
+	--
+	-- La guarda pedia SetPositions ADEMAS de PartyMode3v3, pero el modulo
+	-- del 3v3 hace rato que no exige SetPositions. Con las posiciones
+	-- custom apagadas, esta condicion daba true con el 3v3 puesto y le
+	-- aplicaba C.PartyFrameScale a los cuatro marcos, pisando el
+	-- 1.5 / 1.5 / 1.3 / 1.3 del modo. Ahora los dos preguntan lo mismo.
+	if not (K.Is3v3Active and K.Is3v3Active()) then
 		if C.PartyFrameScale then
 			K.ApplyPartyFrameScale(C.PartyFrameScale);
 		end

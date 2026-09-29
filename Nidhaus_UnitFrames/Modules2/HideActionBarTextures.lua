@@ -54,6 +54,19 @@ local prevAlpha = {};
 
 local yaAgregada = {};
 
+-- ADELANTADAS. La rafaga de reintentos se arma mas abajo, pero las
+-- funciones de arriba la necesitan. Sin declararlas aca, escribir
+-- "retryFrame" dentro de ellas crearia una GLOBAL nueva -- distinta de la
+-- de abajo -- y la rafaga no arrancaria nunca, sin dar ningun error.
+local retryFrame, retryAttempts, retryElapsed;
+
+local function ArmarRafaga()
+    if not retryFrame then return; end
+    retryAttempts = 0;
+    retryElapsed  = 0;
+    retryFrame:Show();
+end
+
 local function AddTexture(tex)
     if tex and tex.SetAlpha and not yaAgregada[tex] then
         yaAgregada[tex] = true;
@@ -175,24 +188,34 @@ local function HideDecorations()
     end
 end
 
-local function ShowDecorations()
-    for _, tex in ipairs(textures) do
-        -- Si no la escondimos nosotros no la tocamos. Prenderla a ciegas
-        -- es exactamente lo que hacia aparecer arte que no correspondia.
-        if prevShown[tex] ~= nil then
-            tex:SetAlpha(prevAlpha[tex] or 1);
-            if prevShown[tex] then tex:Show(); else tex:Hide(); end
-            prevShown[tex] = nil;
-            prevAlpha[tex] = nil;
-        end
+-- DEVOLVER TODO LO QUE TENGAMOS ANOTADO.
+--
+-- VA POR EL ANOTADOR, NO POR LA LISTA DE TEXTURAS. La lista se rearma
+-- entera cada vez que cambia el modo de barras (SetupTextures), asi que
+-- algo escondido ANTES del cambio podia no estar en la lista de DESPUES:
+-- se quedaba escondido para siempre y no habia quien lo repusiera. El
+-- anotador, en cambio, esta indexado por el objeto mismo.
+--
+-- Solo se toca lo que escondimos nosotros. Prender a ciegas es justo lo
+-- que hacia aparecer arte que no correspondia (mira el encabezado).
+local function ReleaseAll()
+    for obj, shown in pairs(prevShown) do
+        if obj.SetAlpha then obj:SetAlpha(prevAlpha[obj] or 1); end
+        if shown then obj:Show(); else obj:Hide(); end
+        prevAlpha[obj] = nil;
     end
+    prevShown = {};
 
-    for _, f in ipairs(dimmers) do
-        if prevAlpha[f] ~= nil then
-            f:SetAlpha(prevAlpha[f]);
-            prevAlpha[f] = nil;
-        end
+    -- Los que solo atenuamos -- experiencia y reputacion -- llevan alfa y
+    -- nada mas: quien decide si estan es el juego.
+    for obj, a in pairs(prevAlpha) do
+        if obj.SetAlpha then obj:SetAlpha(a); end
     end
+    prevAlpha = {};
+end
+
+local function ShowDecorations()
+    ReleaseAll();
 end
 
 -- Con Unify o MiniBar activos, esos modos manejan las texturas ellos mismos.
@@ -203,9 +226,49 @@ local function AnyBarModeActive()
     return (K._unifyActive == true) or (K._minibarActive == true);
 end
 
+-- =========================================================
+-- CEDER LAS TEXTURAS AL MODO DE BARRAS
+--
+-- ACA ESTABA EL CHOQUE CON MINIBAR.
+--
+-- Antes, con un modo puesto, este modulo simplemente hacia "return": no
+-- volvia a esconder nada... pero TAMPOCO devolvia lo que ya tenia
+-- escondido. Quedaba el arte oculto y el anotador lleno, con el modulo
+-- mirando para otro lado. De ahi salian los tres sintomas que se veian al
+-- alternar las casillas:
+--
+--   1. "Hide bar background" de MiniBar parecia muerto. Ese interruptor
+--      saca una foto de como esta cada textura para poder reponerla tal
+--      cual; si las encontraba YA escondidas por nosotros, al destildarlo
+--      reponia "escondida" y no volvia nada. Toggle sin efecto.
+--
+--   2. La foto de fabrica (Core/BarBaseline.lua) salia contaminada. Se
+--      toma la primera vez que se prende un modo, dando por supuesto que
+--      nadie toco nada -- y nosotros ya habiamos tocado, desde el login.
+--      Los end caps y la barra de experiencia quedaban fotografiados en
+--      alfa 0 y escondidos COMO SI ASI LOS TRAJERA EL JUEGO, y a partir de
+--      ahi cada rearmado reponia esa suciedad, incluso con la casilla ya
+--      destildada.
+--
+--   3. Al apagar el modo, el modo reponia SUS texturas encima de las
+--      nuestras y el arte reaparecia con la casilla tildada.
+--
+-- Ahora se cede de verdad: se repone todo lo anotado y el modulo queda
+-- inerte hasta que el modo se apague. La casilla del usuario NO se toca;
+-- cuando el modo se va, vuelve a mandar el.
+-- =========================================================
+local function Release()
+    if retryFrame then retryFrame:Hide(); end
+    ReleaseAll();
+end
+
+-- La llaman BarBaseline (antes de fotografiar), MiniBar y Unify (antes de
+-- capturar lo suyo). Un solo dueño por textura, en todo momento.
+K._habRelease = Release;
+
 local function ApplyState()
     if #textures == 0 then SetupTextures(); end
-    if AnyBarModeActive() then return; end
+    if AnyBarModeActive() then Release(); return; end
     if habEnabled then
         HideDecorations();
     else
@@ -219,18 +282,26 @@ end
 K._habReapply = function()
     -- Reconstruir la lista: al cambiar de modo algunas texturas se recrean
     SetupTextures();
-    if AnyBarModeActive() then return; end
+    if AnyBarModeActive() then Release(); return; end
     if habEnabled then
         HideDecorations();
+        -- Y LA RAFAGA, TAMBIEN ACA.
+        --
+        -- Al apagar un modo de barras quedan repintados en camino: los
+        -- propios del modo (su retry de 0.3s) y los de Blizzard
+        -- (UIParent_ManageFramePositions, MainMenuBar_UpdateExperienceBars).
+        -- Una sola pasada nuestra llegaba antes que todos ellos y el arte
+        -- reaparecia; por eso "solo se arreglaba con /reload".
+        ArmarRafaga();
     else
         ShowDecorations();
     end
 end
 
 -- FIX RELOG: Más intentos y más frecuentes para cubrir relogs en arena
-local retryFrame = CreateFrame("Frame");
-local retryAttempts = 0;
-local retryElapsed = 0;
+retryFrame    = CreateFrame("Frame");
+retryAttempts = 0;
+retryElapsed  = 0;
 
 retryFrame:Hide();
 retryFrame:SetScript("OnUpdate", function(self, dt)
@@ -253,9 +324,7 @@ eventFrame:RegisterEvent("PLAYER_LOGIN");
 eventFrame:SetScript("OnEvent", function()
     if not habEnabled then return; end
     if AnyBarModeActive() then return; end
-    retryAttempts = 0;
-    retryElapsed = 0;
-    retryFrame:Show();
+    ArmarRafaga();
 end);
 
 -- FIX: el slash ahora pasa por SetModuleEnabled para que quede guardado en la DB
@@ -291,9 +360,9 @@ K.RegisterModule("HideActionBarTextures", {
         -- Se rearma la rafaga de reintentos igual que al entrar al mundo.
         SetupTextures();
         ApplyState();
-        retryAttempts = 0;
-        retryElapsed = 0;
-        retryFrame:Show();
+        -- Con un modo de barras puesto ApplyState ya cedio: no hay nada
+        -- que sostener y la rafaga solo gastaria vueltas.
+        if not AnyBarModeActive() then ArmarRafaga(); end
     end,
     onDisable = function()
         habEnabled = false;

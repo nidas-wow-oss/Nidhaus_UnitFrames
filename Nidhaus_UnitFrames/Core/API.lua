@@ -186,3 +186,36 @@ function K.RestoreAnchors(region, id)
 		end
 	end
 end
+
+
+-- =========================================================
+-- EL TEMA VISUAL, APLICADO ENTERO Y EN EL ACTO
+--
+-- POR QUE EL PANEL PEDIA /reload.
+--
+-- El desplegable de "Visual Theme" cambia tres banderas -- darkFrames,
+-- AsuriFrames y pwFrames -- y despues llamaba SOLO a dos consumidores: el
+-- skin del jugador y el del objetivo. Pero esas banderas las leen tambien
+-- los marcos del GRUPO, los de JEFE y el borde de los trinkets de arena.
+-- Esos tres se quedaban con el tema anterior.
+--
+-- O sea que el cartel no mentia del todo: el cambio se veia a medias, y
+-- recargar era la unica forma de emparejarlo. Lo que estaba mal no era el
+-- cartel sino que faltaba avisarle a la mitad de la casa.
+--
+-- Aca estan todos, en un solo lugar. Si manana aparece otro consumidor del
+-- tema, se agrega en esta funcion y no hay que acordarse de tocar tambien
+-- el desplegable -- que es exactamente como se llego a esto.
+--
+-- Los marcos de ARENA no estan: su estilo se rearma al entrar a la arena y
+-- tienen su propio camino (UpdateFlatStyle), que ademas sale temprano si el
+-- modo plano no esta puesto. Meterlos aca seria pelear con ese sistema.
+-- =========================================================
+function K.ApplyUnitFrameTheme()
+	if K.ApplyPlayerFrameSkin      then pcall(K.ApplyPlayerFrameSkin);      end
+	if K.ApplyTargetFrameSkin      then pcall(K.ApplyTargetFrameSkin);      end  -- objetivo Y foco
+	if K.RestylePartyFrames        then pcall(K.RestylePartyFrames);        end
+	if K.RestyleBossFrames         then pcall(K.RestyleBossFrames);         end
+	if K.RefreshClassOutlines      then pcall(K.RefreshClassOutlines);      end
+	if K.UpdateTrinketBorderColors then pcall(K.UpdateTrinketBorderColors); end
+end

@@ -897,8 +897,34 @@ function PartyCastingBars.OnDragStart(bar, button)
 	bar:StartMoving();
 end
 
+-- ---------------------------------------------------------
+-- MOVER UNA = MOVER LAS CUATRO
+--
+-- Antes esto era solo StopMovingOrSizing. O sea: cada barra quedaba donde
+-- la dejabas, las otras tres no se enteraban, y al recargar volvian todas
+-- al lugar de fabrica -- porque este modulo NO guarda posiciones (ver la
+-- cabecera: usa el espacio de NUF). Las guarda NUF, en globalPos.PartyCast,
+-- y solo la del compa 1.
+--
+-- Ahora al soltar se le avisa a NUF que barra se movio. El se encarga de
+-- pasar ese desplazamiento a la barra 1, guardarlo y copiarlo a las otras
+-- tres. Es exactamente lo que ya hacia /nufmove; lo unico que le faltaba a
+-- /pcb drag era avisar.
+--
+-- Si NUF no estuviera cargado, la barra se mueve sola como antes: nada se
+-- rompe, simplemente no se alinean ni se guarda.
+-- ---------------------------------------------------------
+local function BarIndex(bar)
+	local name = bar and bar.GetName and bar:GetName();
+	local i = name and tonumber(string.match(name, "PartyMemberFrame(%d)"));
+	return i or 1;
+end
+
 function PartyCastingBars.OnDragStop(bar)
 	bar:StopMovingOrSizing();
+	if K and K.SyncPartyCastBarsFrom then
+		pcall(K.SyncPartyCastBarsFrom, BarIndex(bar));
+	end
 end
 
 function PartyCastingBars.OnHide(bar)
@@ -1018,6 +1044,16 @@ end
 --------------------------------------------------
 
 function PartyCastingBars.ResetBarLocations()
+	-- PRIMERO SOLTAR EL CANDADO DE NUF.
+	--
+	-- La posicion de la barra 1 la guarda NUF y le pone un candado sobre
+	-- SetPoint. Sin borrarla antes, el SetPoint de abajo se revertia en el
+	-- acto: la barra 1 se quedaba donde estaba y las otras tres si volvian
+	-- al costado de su marco. El mismo reset con dos resultados distintos.
+	if K and K.ForgetPartyCastBarPosition then
+		pcall(K.ForgetPartyCastBarPosition);
+	end
+
 	for i, barFrame in ipairs(PartyCastingBars.Bars) do
 		barFrame:ClearAllPoints();
 		barFrame:SetPoint("TOPLEFT", barFrame.partyFrame, "TOPRIGHT", 7, 2);

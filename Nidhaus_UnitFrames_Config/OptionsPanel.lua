@@ -716,9 +716,9 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 			-- activo, los textos podian quedar corridos.
 			if K.InvalidateAbbrevAnchors then K.InvalidateAbbrevAnchors(); end
 		elseif setting == "UnitFrameCustomTexture" then
-			if K.ApplyPlayerFrameSkin then K.ApplyPlayerFrameSkin(); end
-			if K.RefreshClassOutlines then K.RefreshClassOutlines(); end
-			if K.ApplyTargetFrameSkin then K.ApplyTargetFrameSkin(); end
+			-- Misma lista que el desplegable de tema: prender o apagar el
+			-- skin cambia lo mismo que cambiar de tema.
+			if K.ApplyUnitFrameTheme then K.ApplyUnitFrameTheme(); end
 			if K._UpdateThemeVisibility then K._UpdateThemeVisibility(); end
 		elseif setting == "ArenaFrameOn" then
 			if showArenaBtn then
@@ -1172,9 +1172,16 @@ local function PopulateTabs()
 				K.SaveConfig("pwFrames",    btn.value == "Compact");
 				if K._UpdateThemeVisibility then K._UpdateThemeVisibility(); end
 
-				if K.ApplyPlayerFrameSkin then K.ApplyPlayerFrameSkin(); end
-				if K.ApplyTargetFrameSkin then K.ApplyTargetFrameSkin(); end
-				print(L["THEME_CHANGED"] or "|cffFFD100NUF:|r Theme changed. /reload to apply.");
+				-- TODOS los que leen el tema, no dos de seis. Ver
+				-- K.ApplyUnitFrameTheme en Core/API.lua: ahi esta la lista y
+				-- el por que este panel pedia /reload.
+				if K.ApplyUnitFrameTheme then
+					K.ApplyUnitFrameTheme();
+				else
+					if K.ApplyPlayerFrameSkin then K.ApplyPlayerFrameSkin(); end
+					if K.ApplyTargetFrameSkin then K.ApplyTargetFrameSkin(); end
+				end
+				-- Y sin cartel: el cambio se ve solo, no hay nada que avisar.
 			end;
 			info.checked = (opt.value == currentTheme);
 			UIDropDownMenu_AddButton(info, level);
@@ -2343,6 +2350,9 @@ local function PopulateTabs()
 					cfgBtn:SetSize(90, 20);
 					cfgBtn:SetPoint("TOPRIGHT", container, "TOPRIGHT", -10, -1);
 					cfgBtn:SetText(mod.configLabel or (L["BTN_MODULE_CONFIG"] or "Configure"));
+					-- Para que el modulo pueda cambiarle el texto segun su estado
+					-- (Mover / Bloquear). Ver K.SetModuleConfigLabel.
+					if K.RegisterModuleConfigButton then K.RegisterModuleConfigButton(id, cfgBtn); end
 					cfgBtn:SetScript("OnClick", function()
 						local ok, err = pcall(mod.configFunc);
 						if not ok then print("|cffFF0000NUF:|r " .. tostring(err)); end

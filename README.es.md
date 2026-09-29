@@ -8,9 +8,9 @@ NUF nació de combinar y reescribir varios addons existentes — entre ellos Eaz
 
 > ## Descarga
 >
-> **Última versión: 3.8** — es la build actual, la recomendada y la que está en uso.
+> **Última versión: 3.9** — es la build actual, la recomendada y la que está en uso.
 >
-> **[Descargar v3.7 (última release)](../../releases/latest)**
+> **[Descargar v3.9 (última release)](../../releases/latest)**
 >
 > Una sola descarga, todo incluido: el addon y su panel de opciones.
 
@@ -31,7 +31,7 @@ Este repositorio contiene **los dos addons**. Necesitás ambos:
 
 ## Instalación
 
-1. Descargá la **v3.7** desde la [página de releases](../../releases/latest).
+1. Descargá la **v3.9** desde la [página de releases](../../releases/latest).
 2. Extraé el archivo. Vas a obtener dos carpetas: `Nidhaus_UnitFrames` y `Nidhaus_UnitFrames_Config`.
 3. Copiá **las dos** carpetas a tu directorio `Interface/AddOns/` de WoW.
 4. Reiniciá el cliente, o escribí `/reload` si ya estás en el juego.
@@ -264,6 +264,19 @@ Integración, port a 3.3.5a, corrección de bugs y todo lo demás: **Nidhaus**.
 ---
 
 ## Changelog
+
+### v3.9
+- Pestana Pet: checkbox de Pet Buffs, un boton Move que destraba solo el marco de la mascota (sin los marcos de prueba del grupo, el de arena ni la consola) y un Reset que toca solo la mascota. Antes le cambiaba el tamano a los marcos del grupo con el 3v3 puesto: la escala del grupo tenia un tercer dueno escondido en las posiciones del modo mover. Los valores viejos guardados se borran solos.
+- Modo party 3v3: la escala ya no se rompe al volver a prenderlo despues de usar Party Frame Scale, los marcos del grupo que arrastras con el 3v3 puesto quedan donde los soltas, y el checkbox y los cuatro sliders por miembro estan tambien en Frames > General.
+- Un solo boton "Reiniciar escalas y posiciones" para los marcos de unidad: escala y posicion juntas, sliders del 3v3 incluidos, respetando el 3v3 y sin /reload.
+- Focus Scale se aplica en vivo mientras arrastras. Una entrada muerta en la tabla de escalas hacia que el slider se saltara el camino en vivo.
+- Cambiar el estilo de los marcos o la textura custom se aplica al instante en vez de pedir /reload.
+- Frames > General reorganizado: escalas arriba en dos columnas parejas (Player / Target / Focus y 3v3), posicion abajo con Unlock y Reset lado a lado.
+- Character Setup ahora incluye nExtraBars: los 24 botones de los dos talentos, sus macros, que barras estan prendidas, cantidad de botones y bloqueo. Clear Bars y Undo tambien las cubren. Cada personaje se guarda ademas al salir, asi se copia lo que armaste durante la sesion. Con nExtraBars 2.2.3 la config de las barras se aplica sin /reload.
+- Party Casting Bars: mover una barra mueve las cuatro, y su reset devuelve las cuatro.
+- Hide Action Bar Textures y el "Hide bar background" de MiniBar ya no se pelean al prenderlos y apagarlos.
+- Contador de municion: boton Lock / Unlock, `/arrowcount lock | unlock`, y se traba solo en combate.
+- Los resets ya no escriben en el chat.
 
 ### v3.8
 - El nombre de los companeros de party ya no se desliza sobre la barra de vida en plena pelea. Blizzard lo reancla en cada actualizacion del grupo, y el reestilado se cortaba en combate.

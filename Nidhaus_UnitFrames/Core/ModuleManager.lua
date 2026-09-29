@@ -33,6 +33,34 @@ function K.RegisterModule(id, info)
 	table.insert(K.ModuleOrder, id);
 end
 
+-- ---------------------------------------------------------
+-- EL BOTON DEL PANEL PUEDE CAMBIAR DE TEXTO
+--
+-- Los movibles usan ese boton como interruptor: el primer clic desbloquea
+-- y el segundo fija. Pero el texto era fijo ("Mover"), asi que mirando el
+-- panel no habia forma de saber en que estado estaba -- y si algo lo
+-- bloqueaba por su cuenta (entrar en combate, apagar el modulo), el boton
+-- seguia diciendo lo mismo.
+--
+-- Con esto el modulo avisa el estado y el boton lo muestra. El que no lo
+-- use se queda con su etiqueta de siempre.
+-- ---------------------------------------------------------
+K._moduleConfigButtons = K._moduleConfigButtons or {};
+
+function K.RegisterModuleConfigButton(id, btn)
+	if not id or not btn then return; end
+	if not K._moduleConfigButtons[id] then K._moduleConfigButtons[id] = {}; end
+	table.insert(K._moduleConfigButtons[id], btn);
+end
+
+function K.SetModuleConfigLabel(id, text)
+	local list = K._moduleConfigButtons and K._moduleConfigButtons[id];
+	if not list or not text then return; end
+	for _, btn in ipairs(list) do
+		if btn.SetText then btn:SetText(text); end
+	end
+end
+
 -- Un mismo modulo puede tener su checkbox en mas de un panel.
 -- Se guardan todos para poder refrescarlos juntos.
 K._moduleCheckboxes = K._moduleCheckboxes or {};
