@@ -102,6 +102,7 @@ local function ArenaFramesSettings()
 	if not NidhausArenaEnemyFrames then return; end
 	if not ArenaEnemyFrames then return; end
 	if not ArenaEnemyFrame1 then return; end
+	if K.AfterCombat("ArenaFramesSettings", ArenaFramesSettings) then return; end
 
 	-- SetParent: previene que Blizzard reposicione el contenedor
 	ArenaEnemyFrames:SetParent(NidhausArenaEnemyFrames);
@@ -230,8 +231,12 @@ local function RestoreDefaultArenaTextures()
 		local orig = arenaOriginals[i];
 		if not arenaFrame or not orig then break; end
 
+		-- El tamaño del marco es protegido: en combate no se toca y, al
+		-- terminar, se rearma todo (ArenaFrames_OnLoad deja el estilo que va).
 		if orig.frameWidth and orig.frameHeight then
-			arenaFrame:SetSize(orig.frameWidth, orig.frameHeight);
+			if not K.AfterCombat("ArenaFrames_OnLoad", function() if K.ArenaFrames_OnLoad then K.ArenaFrames_OnLoad(); end end) then
+				arenaFrame:SetSize(orig.frameWidth, orig.frameHeight);
+			end
 		end
 
 		local tex = _G["ArenaEnemyFrame"..i.."Texture"];
@@ -392,6 +397,7 @@ local function ApplyArenaTextures()
 end
 
 function K.ApplyArenaSpacing()
+	if K.AfterCombat("ApplyArenaSpacing", K.ApplyArenaSpacing) then return; end
 	local spacing = C.ArenaFrameSpacing;
 	if type(spacing) ~= "number" then spacing = 0; end
 
@@ -428,6 +434,17 @@ function K.ApplyArenaSpacing()
 end
 
 local function ArenaFrames_OnLoad()
+	-- EN COMBATE, SOLO EL ARTE.
+	--
+	-- Esto lo disparan los ganchos de Blizzard (un enemigo que aparece, se
+	-- esconde o se confirma), y eso pasa en plena pelea. Las texturas y
+	-- las barras se pueden tocar; mover, escalar o cambiar el padre de los
+	-- marcos no: eso queda para cuando termina el combate.
+	if InCombatLockdown() then
+		pcall(ApplyArenaTextures);
+		K.AfterCombat("ArenaFrames_OnLoad", ArenaFrames_OnLoad);
+		return;
+	end
 	ArenaFramesSettings();
 	ApplyArenaTextures();
 	K.ApplyArenaSpacing();
@@ -438,6 +455,7 @@ K.ArenaFrames_OnLoad = ArenaFrames_OnLoad;
 
 -- Forzar la escala correcta en el contenedor y frames individuales
 local function EnforceArenaScale()
+	if K.AfterCombat("EnforceArenaScale", EnforceArenaScale) then return; end
 	local scale = C.ArenaFrameScale;
 	if type(scale) ~= "number" or scale <= 0 or scale > 3 then return; end
 	-- Contenedor Blizzard
@@ -563,6 +581,7 @@ function K.ApplyArenaScale(scale)
 	-- FIX: Don't apply custom scale if mod is disabled
 	if not isInitialized then return; end
 	if type(scale) ~= "number" or scale <= 0 or scale > 3 then return; end
+	if K.AfterCombat("ApplyArenaScale", function() K.ApplyArenaScale(scale); end) then return; end
 	
 	-- Contenedor Blizzard: siempre setear scale aquí
 	if ArenaEnemyFrames then
@@ -1140,6 +1159,15 @@ worldHandler:RegisterEvent("ARENA_OPPONENT_UPDATE");
 worldHandler:SetScript("OnEvent", function(self, event)
 	if not IsAddOnLoaded("Blizzard_ArenaUI") then return; end
 
+	-- ARENA_OPPONENT_UPDATE salta en plena pelea cada vez que un enemigo
+	-- aparece o se esconde. Todo lo de abajo mueve o escala marcos
+	-- protegidos: se hace UNA vez, al terminar el combate.
+	if InCombatLockdown() then
+		local handler, ev = self:GetScript("OnEvent"), event;
+		K.AfterCombat("ArenaWorldEvent", function() handler(self, ev); end);
+		return;
+	end
+
 	-- FIX: Verificar ArenaFrameOn ANTES de isInitialized
 	-- (cuando el mod está desactivado, isInitialized es false pero
 	-- igual necesitamos restaurar defaults al entrar a arena)
@@ -1229,6 +1257,7 @@ end);
 -- ═══════════════════════════════════════════════════════════
 
 function K.EnableArenaFrameMod()
+	if K.AfterCombat("ArenaFrameMod", K.EnableArenaFrameMod) then return; end
 	Path = GetArenaTexturePath();
 
 	if not NidhausArenaEnemyFrames then
@@ -1259,6 +1288,7 @@ function K.EnableArenaFrameMod()
 end
 
 function K.DisableArenaFrameMod()
+	if K.AfterCombat("ArenaFrameMod", K.DisableArenaFrameMod) then return; end
 	-- FIX: Marcar como no inicializado SIEMPRE (antes retornaba si Blizzard_ArenaUI no estaba cargado)
 	-- Esto previene que el worldHandler re-aplique estilos al entrar a arena
 	isInitialized = false;

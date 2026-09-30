@@ -122,7 +122,11 @@ function K.ApplyFlatStyle(arenaFrame, index)
 	local blizzBG = _G["ArenaEnemyFrame"..index.."Background"];
 	if blizzBG then blizzBG:Hide(); end
 
-	arenaFrame:SetSize(width, maxHeight + 20);
+	-- El marco de arena es protegido: en combate el tamaño no se puede
+	-- cambiar. El resto del estilo si; el tamaño, al terminar la pelea.
+	if not K.AfterCombat("FlatSize" .. tostring(index), function() K.ApplyFlatStyle(arenaFrame, index); end) then
+		arenaFrame:SetSize(width, maxHeight + 20);
+	end
 
 	-- Contenedor de portrait por encima de las barras (z-order fix)
 	if not arenaFrame._flatPortraitContainer then
@@ -303,7 +307,9 @@ function K.RemoveFlatStyle(index)
 	arenaFrame.classPortrait:SetParent(arenaFrame);
 	arenaFrame.classPortrait:SetDrawLayer("ARTWORK");
 
-	arenaFrame:SetSize(orig.frameW, orig.frameH);
+	if not K.AfterCombat("FlatSize" .. tostring(index), function() K.RemoveFlatStyle(index); end) then
+		arenaFrame:SetSize(orig.frameW, orig.frameH);
+	end
 
 	arenaFrame.classPortrait:ClearAllPoints();
 	for _, pt in ipairs(orig.portraitPoints) do arenaFrame.classPortrait:SetPoint(unpack(pt)); end
@@ -463,6 +469,8 @@ end
 
 function K.ApplyFlatPetStyle(petFrame, index)
 	if not petFrame then return; end
+	-- Marco de mascota de arena: protegido. En combate, al terminar.
+	if K.AfterCombat("FlatPet" .. tostring(index), function() K.ApplyFlatPetStyle(petFrame, index); end) then return; end
 	CapturePetOriginals(petFrame, index);
 
 	local arenaFrame = _G["ArenaEnemyFrame"..index];
@@ -570,6 +578,7 @@ function K.ApplyFlatPetStyle(petFrame, index)
 end
 
 function K.RemoveFlatPetStyle(index)
+	if K.AfterCombat("FlatPet" .. tostring(index), function() K.RemoveFlatPetStyle(index); end) then return; end
 	local bg = flatPetBackgrounds[index];
 	if bg then bg:Hide(); end
 

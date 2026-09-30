@@ -6,9 +6,9 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 
 > ## Download
 >
-> **Latest version: 3.9.1** — this is the current, recommended build and the one actively in use.
+> **Latest version: 3.9.2** — this is the current, recommended build and the one actively in use.
 >
-> **[Download v3.9.1 (latest release)](../../releases/latest)**
+> **[Download v3.9.2 (latest release)](../../releases/latest)**
 >
 > Grab the `.zip` from the release page rather than the green *Code* button: the release is the packaged,
 > ready-to-install version with the correct folder name.
@@ -37,7 +37,7 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 
 ## Installation
 
-1. Download **v3.9.1** from the [releases page](../../releases/latest).
+1. Download **v3.9.2** from the [releases page](../../releases/latest).
 2. Extract it and copy the `Nidhaus_UnitFrames` folder into your WoW `Interface/AddOns/` directory.
 3. For the full options panel, also install the companion addon
    **[Nidhaus_UnitFrames_Config](https://github.com/nidas-wow-oss/Nidhaus_UnitFrames_Config)**
@@ -72,6 +72,9 @@ The minimap button also provides quick access: left-click opens the options pane
 - **API Level:** Compatible with 3.3.5a Lua sandbox (no HTTP, no hardware calls)
 
 ## Changelog
+
+### v3.9.2
+- Bug fixes.
 
 ### v3.9.1
 - Bug fixes.

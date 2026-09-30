@@ -219,3 +219,38 @@ function K.ApplyUnitFrameTheme()
 	if K.RefreshClassOutlines      then pcall(K.RefreshClassOutlines);      end
 	if K.UpdateTrinketBorderColors then pcall(K.UpdateTrinketBorderColors); end
 end
+
+-- =========================================================
+-- DESPUES DEL COMBATE
+--
+-- Los marcos de arena, los del grupo y sus mascotas son PROTEGIDOS: en
+-- combate el juego no deja moverlos, escalarlos, cambiarles el padre ni
+-- mostrarlos u ocultarlos desde un addon. Cada intento se corta y queda
+-- anotado en taint.log como "An action was blocked in combat". En una
+-- noche de arenas eran unos 3.700.
+--
+--   if K.AfterCombat("clave", fn) then return; end
+--
+-- Fuera de combate devuelve false y el llamador sigue normal. En combate
+-- anota fn, devuelve true y fn corre al terminar la pelea. Misma clave =
+-- una sola vez (gana la ultima): doscientos avisos de ARENA_OPPONENT_UPDATE
+-- en una pelea terminan en UNA pasada al final.
+-- =========================================================
+local afterCombat, afterCombatOrder = {}, {};
+local afterCombatFrame = CreateFrame("Frame");
+afterCombatFrame:RegisterEvent("PLAYER_REGEN_ENABLED");
+afterCombatFrame:SetScript("OnEvent", function()
+	local list, order = afterCombat, afterCombatOrder;
+	afterCombat, afterCombatOrder = {}, {};
+	for _, key in ipairs(order) do
+		local fn = list[key];
+		if fn then pcall(fn); end
+	end
+end);
+
+function K.AfterCombat(key, fn)
+	if not InCombatLockdown() then return false; end
+	if not afterCombat[key] then table.insert(afterCombatOrder, key); end
+	afterCombat[key] = fn;
+	return true;
+end

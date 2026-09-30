@@ -202,6 +202,20 @@ local function InLiveArena()
 	return instanceType == "arena";
 end
 
+-- Modo prueba de las mascotas de arena, sin tocar su metodo Hide.
+local petTestActive, petHideHooked = {}, {};
+local petReshowing = false;
+local function HookPetHideForTest(petFrame)
+	if petHideHooked[petFrame] then return; end
+	petHideHooked[petFrame] = true;
+	hooksecurefunc(petFrame, "Hide", function(self)
+		if petReshowing or not petTestActive[self] or InCombatLockdown() then return; end
+		petReshowing = true;
+		self:Show();
+		petReshowing = false;
+	end);
+end
+
 local function HideTestFrames()
 	-- sArena pattern: frames nunca se reparentearon ni se les cambió la escala.
 	-- Solo hay que ocultarlos y limpiar datos fake.
@@ -213,10 +227,7 @@ local function HideTestFrames()
 			-- Pet frame: restaurar Hide original y ocultar
 			local petFrame = _G["ArenaEnemyFrame"..i.."PetFrame"];
 			if petFrame then
-				if petFrame._origHide then
-					petFrame.Hide = petFrame._origHide;
-					petFrame._origHide = nil;
-				end
+				petTestActive[petFrame] = nil;
 				petFrame._testMode = nil;
 				petFrame:Hide();
 			end
@@ -272,6 +283,9 @@ function K.GetSavedPetFramePos()
 end
 
 local function RestorePetFramePositions()
+	-- Lo llaman los OnShow de los marcos de arena, tambien en combate, y el
+	-- marco de mascota es protegido: en ese caso, al terminar la pelea.
+	if K.AfterCombat("RestorePetFramePositions", RestorePetFramePositions) then return; end
 	local saved = K.GetSavedPetFramePos();
 	if not saved then return; end
 	for i = 1, MAX_ARENA_ENEMIES do
@@ -648,10 +662,15 @@ local function ToggleTestMode()
 						end
 					end
 					if C.ArenaPetFrameShow then
-						if not petFrame._origHide then
-							petFrame._origHide = petFrame.Hide;
-						end
-						petFrame.Hide = function() end;
+						-- ANTES: petFrame.Hide = function() end, y al salir se
+						-- le volvia a asignar el original. Las dos cosas las
+						-- escribe el addon sobre un marco protegido, y desde
+						-- ahi Blizzard, al esconder la mascota en una arena de
+						-- verdad, corria "manchado" y el juego le cortaba el
+						-- Hide en combate. Ahora un gancho seguro la vuelve a
+						-- mostrar solo mientras dura el modo prueba.
+						HookPetHideForTest(petFrame);
+						petTestActive[petFrame] = true;
 						petFrame._testMode = true;
 						petFrame:Show();
 						if petFrame.healthbar then

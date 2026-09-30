@@ -27,6 +27,7 @@ f:SetScript("OnEvent", function() SaveAnchorToDB(); end);
 function K.SaveArenaAnchorPosition() SaveAnchorToDB(); end
 
 function K.ResetArenaPosition()
+	if K.AfterCombat("ResetArenaPosition", K.ResetArenaPosition) then return; end
 	if NidhausUnitFramesDB and NidhausUnitFramesDB.positions then
 		NidhausUnitFramesDB.positions["ArenaMover"] = nil;
 		NidhausUnitFramesDB.positions["NidhausArenaAnchor"] = nil;
@@ -45,6 +46,8 @@ K.UpdateArenaScale = function(scale)
 	if type(scale) ~= "number" or scale <= 0 or scale > 3 then return; end
 	-- FIX: No interferir durante test mode — ArenaMover controla la escala
 	if K._testModeActive then return; end
+	-- ArenaMover la llama en cada ARENA_OPPONENT_UPDATE, tambien en combate.
+	if K.AfterCombat("UpdateArenaScale", function() K.UpdateArenaScale(scale); end) then return; end
 	-- Escalar el container de Blizzard.
 	-- En arena real: ArenaEnemyFrames es hijo de NidhausArenaEnemyFrames, y los
 	-- ArenaEnemyFrame1-5 son hijos de ArenaEnemyFrames. Escalar ArenaEnemyFrames

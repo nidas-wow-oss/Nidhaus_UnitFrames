@@ -13,7 +13,26 @@ local K, C, L = unpack(ns);
 local MAX_PARTY = MAX_PARTY_MEMBERS or 4;
 
 local active = false;
-local originalHide = {};
+
+-- Los marcos del grupo son PROTEGIDOS. Antes se les reemplazaba el metodo
+-- Hide (frame.Hide = function() end) y al salir se les volvia a asignar el
+-- original: las dos escrituras las hace el addon, y desde ahi cada vez que
+-- Blizzard escondia un marco del grupo en combate corria "manchado" y el
+-- juego se lo cortaba. Esa era la fila de "PartyMemberFrame1:Hide()" y la
+-- de sus mascotas en taint.log. Ahora un gancho seguro lo vuelve a mostrar
+-- solo mientras dura el modo prueba, y nunca en combate.
+local hideHooked = {};
+local reshowing = false;
+local function HookHideForTest(frame)
+	if hideHooked[frame] then return; end
+	hideHooked[frame] = true;
+	hooksecurefunc(frame, "Hide", function(self)
+		if reshowing or not active or InCombatLockdown() then return; end
+		reshowing = true;
+		self:Show();
+		reshowing = false;
+	end);
+end
 
 local FAKE = {
 	{ name = "Party 1", class = "PALADIN", hp = 0.85, mp = 0.60 },
@@ -85,13 +104,8 @@ local function Enable()
 	for i = 1, MAX_PARTY do
 		local frame = _G["PartyMemberFrame" .. i];
 		if frame then
-			-- Bloquear el auto-hide de Blizzard (mismo truco que usa el
-			-- modo prueba de los pet frames de arena)
-			if not originalHide[i] then
-				originalHide[i] = frame.Hide;
-			end
-			frame.Hide = function() end;
-			frame._nufTestMode = true;
+			-- Que Blizzard no lo esconda mientras dura el modo prueba.
+			HookHideForTest(frame);
 
 			-- UnitWatch oculta el frame si la unidad no existe
 			if UnregisterUnitWatch then pcall(UnregisterUnitWatch, frame); end
@@ -115,11 +129,6 @@ local function Disable()
 	for i = 1, MAX_PARTY do
 		local frame = _G["PartyMemberFrame" .. i];
 		if frame then
-			if originalHide[i] then
-				frame.Hide = originalHide[i];
-				originalHide[i] = nil;
-			end
-			frame._nufTestMode = nil;
 
 			if RegisterUnitWatch then pcall(RegisterUnitWatch, frame); end
 

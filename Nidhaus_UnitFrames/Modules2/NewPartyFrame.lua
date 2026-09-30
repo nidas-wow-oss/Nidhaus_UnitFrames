@@ -242,7 +242,9 @@ local function RestorePartyMemberFrame(id)
 
 	local pet = _G[fn.."PetFrame"];
 	if pet and o.petPoints then
-		RestorePoints(pet, o.petPoints);
+		if not K.AfterCombat("NewPartyPetRestore" .. id, function() RestorePoints(pet, o.petPoints); end) then
+			RestorePoints(pet, o.petPoints);
+		end
 	end
 
 	for j = 1, 4 do
@@ -434,6 +436,13 @@ local function StylePartyMemberFrame(id)
 	-- PET FRAME — Solo mover si PartyBuffs está activo (necesita más espacio)
 	-- Si PartyBuffs está OFF, restaurar posición original (controla espaciado entre frames)
 	local pet = _G[fn.."PetFrame"];
+	-- El marco de mascota es protegido y esto corre en cada actualizacion
+	-- de vida o retrato, tambien en combate: ahi se deja para el final.
+	if pet and K.AfterCombat("NewPartyPet", function()
+		for i = 1, 4 do StylePartyMemberFrame(i); end
+	end) then
+		pet = nil;
+	end
 	if pet then
 		if K.IsPartyBuffsActive and K.IsPartyBuffsActive() then
 			pet:ClearAllPoints();

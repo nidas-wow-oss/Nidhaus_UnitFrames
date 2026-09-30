@@ -213,16 +213,19 @@ end
 local function LockSetPoint(frame)
     if not frame then return; end
     if InCombatLockdown() then return; end
-    if not origSetPoints[frame] then
-        origSetPoints[frame] = frame.SetPoint;
-    end
-    frame.SetPoint = function() end;
+    -- YA NO SE TRABA: reemplazarle SetPoint a un marco de Blizzard lo deja
+    -- "manchado" (taint) y el juego empieza a cortarle acciones en combate.
+    -- Nadie la llama desde que el Holder de posturas se encarga (ver
+    -- ApplyShapeshiftBar); queda vacia por si algun codigo viejo la usa.
 end
 
 local function UnlockSetPoint(frame)
     if not frame then return; end
     if origSetPoints[frame] then
-        frame.SetPoint = origSetPoints[frame];
+        -- nil, no el original: asignarlo desde el addon deja el metodo
+        -- "manchado" para Blizzard. Sin el campo propio vuelve el de fabrica.
+        frame.SetPoint = nil;
+        origSetPoints[frame] = nil;
     end
 end
 

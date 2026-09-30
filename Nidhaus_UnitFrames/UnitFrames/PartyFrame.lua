@@ -217,8 +217,10 @@ local function Nidhaus_UnitFrames_PartyMemberFrame_UpdatePet(self, id)
 	-- Si el usuario apago las mascotas del grupo, se ocultan de nuevo aca:
 	-- Blizzard las vuelve a mostrar en cada update del miembro.
 	if C.PartyShowPetFrames == false then
-		local pf = _G[self:GetName().."PetFrame"];
-		if pf then pf:Hide(); end
+		-- Por ApplyPartyPetFrames, que en combate lo deja para despues y
+		-- solo llama a Hide si hace falta. Aca llamaba Hide directo: en
+		-- combate el juego lo cortaba (el marco de mascota es protegido).
+		if K.ApplyPartyPetFrames then K.ApplyPartyPetFrames(); end
 	end
 end;
 
