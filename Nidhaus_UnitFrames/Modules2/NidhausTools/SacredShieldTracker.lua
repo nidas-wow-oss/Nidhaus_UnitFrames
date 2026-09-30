@@ -358,7 +358,6 @@ function K.ResetSacredShieldTrackerPosition()
     anchor:ClearAllPoints();
     anchor:SetPoint("TOP", UIParent, SacredShieldTrackerDB.point,
         SacredShieldTrackerDB.x, SacredShieldTrackerDB.y);
-    print("|cff4FC3F7NUF:|r Sacred Shield Tracker - posicion restaurada a la de la WeakAura.");
 end
 
 SLASH_NUFSSTRACKER1 = "/sst";
@@ -366,6 +365,8 @@ SlashCmdList["NUFSSTRACKER"] = function(msg)
     msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "");
     if msg == "reset" then
         K.ResetSacredShieldTrackerPosition();
+        -- El aviso, solo cuando lo pediste escribiendo: el boton del panel no lo necesita.
+        print("|cff4FC3F7NUF:|r Sacred Shield Tracker - posicion restaurada.");
     else
         SetMoving(not moving);
     end

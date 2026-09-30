@@ -8,9 +8,9 @@ NUF combina y reescribe varios addons existentes — entre ellos Eazy Frames y s
 
 > ## Descarga
 >
-> **Última versión: 3.9** — es la build actual, la recomendada y la que está en uso.
+> **Última versión: 3.9.1** — es la build actual, la recomendada y la que está en uso.
 >
-> **[Descargar v3.9 (última release)](../../releases/latest)**
+> **[Descargar v3.9.1 (última release)](../../releases/latest)**
 >
 > Una sola descarga, todo incluido: el addon y su panel de opciones.
 
@@ -38,7 +38,7 @@ NUF combina y reescribe varios addons existentes — entre ellos Eazy Frames y s
 
 ## Instalación
 
-1. Descargá la **v3.9** desde la [página de releases](../../releases/latest).
+1. Descargá la **v3.9.1** desde la [página de releases](../../releases/latest).
 2. Extraé el archivo. Vas a obtener dos carpetas: `Nidhaus_UnitFrames` y `Nidhaus_UnitFrames_Config`.
 3. Copiá **las dos** carpetas a tu directorio `Interface/AddOns/` de WoW.
 4. Reiniciá el cliente, o escribí `/reload` si ya estás en el juego.
@@ -98,6 +98,9 @@ NUF está construido sobre el trabajo de mucha gente. El motor y varios módulos
 Integración, port a 3.3.5a, corrección de bugs y todo lo demás: **Nidhaus**.
 
 ## Changelog
+
+### v3.9.1
+- Fixes arreglados.
 
 ### v3.9
 - Pestana Pet: checkbox de Pet Buffs, un boton Move que destraba solo el marco de la mascota (sin los marcos de prueba del grupo, el de arena ni la consola) y un Reset que toca solo la mascota. Antes le cambiaba el tamano a los marcos del grupo con el 3v3 puesto: la escala del grupo tenia un tercer dueno escondido en las posiciones del modo mover. Los valores viejos guardados se borran solos.

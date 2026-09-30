@@ -181,7 +181,6 @@ function K.ResetSeductionAlertPosition()
     frame:ClearAllPoints();
     frame:SetPoint(SeductionAlertDB.point, UIParent, SeductionAlertDB.point,
         SeductionAlertDB.x, SeductionAlertDB.y);
-    print("|cff4FC3F7NUF:|r Seduction alert - posicion restaurada a la de la WeakAura.");
 end
 
 SLASH_NUFSEDUCTION1 = "/seduction";
@@ -189,6 +188,8 @@ SlashCmdList["NUFSEDUCTION"] = function(msg)
     msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "");
     if msg == "reset" then
         K.ResetSeductionAlertPosition();
+        -- El aviso, solo cuando lo pediste escribiendo: el boton del panel no lo necesita.
+        print("|cff4FC3F7NUF:|r Seduction alert - posicion restaurada.");
     elseif msg == "test" then
         ResolveIcon();
         frame.icon:SetTexture(iconTexture or "Interface\\Icons\\INV_Misc_QuestionMark");

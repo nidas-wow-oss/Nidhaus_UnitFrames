@@ -386,7 +386,12 @@ function K.CreateCustomPosCheckbox(parent, x, y)
 			-- Una sola fuente de verdad: si se usan las posiciones custom,
 			-- se descartan las guardadas por el modo mover para estos marcos.
 			local gp = NidhausUnitFramesDB and NidhausUnitFramesDB.globalPos;
-			if gp then gp.Player, gp.Target, gp.Party = nil, nil, nil; end
+			-- "Party" ya no existe: desde que el grupo son cuatro movibles
+			-- (Party1..Party4) esta linea no borraba nada del grupo.
+			if gp then
+				gp.Player, gp.Target = nil, nil;
+				for i = 1, 4 do gp["Party" .. i] = nil; end
+			end
 			if K.InitializePartyFrames then K.InitializePartyFrames(); end
 			if K.ApplyFramePositions then K.ApplyFramePositions(); end
 			if C.PartyMode3v3 and K.Apply3v3PartyMode then K.Apply3v3PartyMode(); end

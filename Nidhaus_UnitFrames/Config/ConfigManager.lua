@@ -642,6 +642,14 @@ function K.ExportProfile()
 	if NidhausUnitFramesDB.ArenaMover then
 		exportData.ArenaMover = NidhausUnitFramesDB.ArenaMover;
 	end
+	-- Y LO DEL MODO MOVER (Move Everything): barras, buffs, minimapa,
+	-- barra de casteo... y la escala de Player, Target, Pet y barras, que
+	-- el slider escribe en C Y aca. Sin esto, importar un perfil ponia la
+	-- escala del perfil en C y, al recargar, la vieja guardada aca le
+	-- pasaba por encima: el marco con un tamano y el slider con otro.
+	if NidhausUnitFramesDB.globalPos then
+		exportData.globalPos = NidhausUnitFramesDB.globalPos;
+	end
 
 	return "return " .. SerializeValue(exportData);
 end
@@ -701,8 +709,77 @@ function K.ImportProfile(str)
 		NidhausUnitFramesDB.ArenaMover = result.ArenaMover;
 	end
 
+	-- Modo mover: el del perfil. Si la cadena es vieja y no lo trae, al
+	-- menos se borra la ESCALA guardada de los marcos que tienen slider,
+	-- para que mande la del perfil (ver ExportProfile).
+	if result.globalPos and type(result.globalPos) == "table" then
+		NidhausUnitFramesDB.globalPos = result.globalPos;
+	elseif type(NidhausUnitFramesDB.globalPos) == "table" and K.GetMovablesForSetting then
+		for key in pairs(defaults) do
+			local movs = (result[key] ~= nil) and K.GetMovablesForSetting(key);
+			if movs then
+				for _, mk in ipairs(movs) do
+					for gk, pos in pairs(NidhausUnitFramesDB.globalPos) do
+						-- "MainBar#mini": la clave lleva el modo de barras.
+						local base = string.match(gk, "^([^#]+)") or gk;
+						if base == mk and type(pos) == "table" then pos.scale = nil; end
+					end
+				end
+			end
+		end
+	end
+
 	return true;
 end
+
+-- =========================================================
+-- PERFILES POR PERSONAJE (el "Copy" de Profiles / MySlot)
+--
+-- Vivian en el panel de opciones, que es un addon aparte que se carga
+-- RECIEN cuando lo abris. Por eso su "guardar al entrar" (PLAYER_LOGIN)
+-- nunca corria: cuando el panel se carga, ese evento ya paso. Un
+-- personaje entraba a la lista solo si abrias la pestaña de perfiles, y
+-- con la config de ESE momento: lo que cambiabas despues no se copiaba.
+--
+-- Ahora se guarda desde aca, que siempre esta cargado: al entrar y al
+-- salir (PLAYER_LOGOUT tambien corre con /reload). Mismo arreglo que el
+-- de Character Setup.
+-- =========================================================
+function K.GetCharProfileKey()
+	local name  = UnitName("player") or "Unknown";
+	local realm = GetRealmName() or "Unknown";
+	local realmType = tonumber(GetCVar("realmType")) or 0;
+	local tag = "";
+	if realmType == 1 then tag = " [PvP only]";
+	elseif realmType == 4 then tag = " [RP]";
+	elseif realmType == 6 then tag = " [RP-PvP]"; end
+	return name .. " - " .. realm .. tag;
+end
+
+function K.SaveCurrentCharProfile()
+	local data, err = K.ExportProfile();
+	if not data then return false, err; end
+	if not NidhausUnitFramesDB.CharProfiles then NidhausUnitFramesDB.CharProfiles = {}; end
+	local key = K.GetCharProfileKey();
+	NidhausUnitFramesDB.CharProfiles[key] = data;
+	return true, key;
+end
+
+local charProfileSaver = CreateFrame("Frame");
+charProfileSaver:RegisterEvent("PLAYER_LOGIN");
+charProfileSaver:RegisterEvent("PLAYER_LOGOUT");
+charProfileSaver:SetScript("OnEvent", function(self, event)
+	if event == "PLAYER_LOGOUT" then
+		pcall(K.SaveCurrentCharProfile);
+		return;
+	end
+	self:UnregisterEvent("PLAYER_LOGIN");
+	-- Un frame despues: que la config ya este cargada.
+	self:SetScript("OnUpdate", function(s)
+		s:SetScript("OnUpdate", nil);
+		pcall(K.SaveCurrentCharProfile);
+	end);
+end);
 
 -- Deep copy helper (for future profile copy features)
 function K.DeepCopy(orig)

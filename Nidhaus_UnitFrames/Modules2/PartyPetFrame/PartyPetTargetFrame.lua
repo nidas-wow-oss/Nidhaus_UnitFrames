@@ -805,11 +805,7 @@ local function ToggleLock()
     -- Solo el 1 se mueve, asi que solo el 1 cambia de movible.
     petFrames[1]:SetMovable(not settings.locked)
 
-    if settings.locked then
-        print("|cff00ff00[PartyPetFrame]|r Frame bloqueado")
-    else
-        print("|cff00ff00[PartyPetFrame]|r Frame desbloqueado - Arrastra el primero para mover la fila")
-    end
+    -- Sin aviso por chat: el indicador de bloqueo ya lo muestra.
 end
 
 local function ToggleClickable()

@@ -1018,9 +1018,11 @@ local function RestoreOne(entry)
 
 	if entry.protected and InCombatLockdown() then return; end
 
-	-- Los marcos del grupo no se escalan desde aca (ver SCALE_SETTING): lo
-	-- que haya quedado guardado de antes se borra en vez de aplicarse.
-	if entry.partyIndex and pos.scale then
+	-- Solo los movibles con Ctrl + rueda ("scalable") guardan escala aca.
+	-- Una escala guardada en cualquier otro es de una version vieja --
+	-- como la de Party1..4 que achicaba el grupo con el 3v3 -- y se borra
+	-- en vez de aplicarse.
+	if pos.scale and not entry.scalable then
 		pos.scale = nil;
 		if not pos.point then
 			DB()[EntryKey(entry)] = nil;
@@ -2538,9 +2540,16 @@ function K.ResetGlobalPositions(only)
 	-- agrandada. Hay que ponersela de vuelta a mano.
 	for _, entry in ipairs(MOVABLES) do
 		if entry.scalable and Wanted(entry.key) then
+			-- EL DE FABRICA DE SU AJUSTE, NO 1.0 FIJO.
+			--
+			-- La barra de casteo viene en 1.2 (CastBarPWScale); con el 1.0
+			-- escrito a mano, el Reset la dejaba mas chica que una
+			-- instalacion nueva, y encima guardaba ese 1.0 en el panel.
+			local setting = SCALE_SETTING[entry.key];
+			local def = (setting and K.GetConfigDefault and K.GetConfigDefault(setting)) or 1.0;
 			local f = ResolveFrame(entry);
 			if f and f.SetScale then
-				pcall(f.SetScale, f, 1.0);
+				pcall(f.SetScale, f, def);
 			end
 			-- Los anclas de auras guardan su escala en su propio store.
 			if entry.auraAnchor and K.SaveAuraAnchorScale then
@@ -2549,7 +2558,7 @@ function K.ResetGlobalPositions(only)
 				pcall(K.SaveDebuffAnchorScale, 1.0);
 			end
 			if K.SyncFrameScaleSetting then
-				pcall(K.SyncFrameScaleSetting, entry.key, 1.0);
+				pcall(K.SyncFrameScaleSetting, entry.key, def);
 			end
 		end
 	end

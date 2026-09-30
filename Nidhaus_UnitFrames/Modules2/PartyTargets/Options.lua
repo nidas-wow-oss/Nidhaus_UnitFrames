@@ -252,8 +252,7 @@ local function CreateOptionsPanel()
 	saveBtn:SetPoint("BOTTOMLEFT", 22, 16)
 	saveBtn:SetText(L["BTN_SAVE"] or "Save")
 	saveBtn:SetScript("OnClick", function()
-		-- Values already saved in real-time, just confirm and close
-		DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00PartyTargets:|r Settings saved!")
+		-- Los valores ya se guardan en vivo: solo cerrar (sin aviso por chat).
 		f:Hide()
 	end)
 

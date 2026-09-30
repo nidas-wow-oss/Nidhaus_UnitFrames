@@ -48,25 +48,38 @@ C["TargetNameOffset"] = {0, 0};
 -- NOTA: NO sobreescribir si ConfigManager ya lo cargó desde la DB
 -- Estos valores solo se usan como FALLBACK cuando no hay nada en la DB
 
+-- UNA SOLA COPIA DE LAS POSICIONES DE FABRICA.
+--
+-- Estaban escritas aca y OTRA VEZ en el reset de FrameDragger. Mientras
+-- coincidan no pasa nada; el dia que se cambie una y no la otra, el reset
+-- deja los marcos en un lugar distinto del de una instalacion nueva.
+K.DEFAULT_FRAME_POINTS = {
+	PlayerFramePoint      = {"TOPLEFT",  UIParent, "TOPLEFT",  239,  -4},
+	TargetFramePoint      = {"TOPLEFT",  UIParent, "TOPLEFT",  509,  -4},
+	PartyMemberFramePoint = {"TOPLEFT",  UIParent, "TOPLEFT",   10, -160},
+	BossTargetFramePoint  = {"TOPLEFT",  UIParent, "TOPLEFT", 1300, -220},
+	ArenaFramePoint       = {"TOPRIGHT", UIParent, "TOPRIGHT", -390, -330},
+};
+
 if not C["PlayerFramePoint"] then
-	C["PlayerFramePoint"] = {"TOPLEFT", UIParent, "TOPLEFT", 239, -4};
+	C["PlayerFramePoint"] = { unpack(K.DEFAULT_FRAME_POINTS.PlayerFramePoint) };
 end
 
 if not C["TargetFramePoint"] then
-	C["TargetFramePoint"] = {"TOPLEFT", UIParent, "TOPLEFT", 509, -4};
+	C["TargetFramePoint"] = { unpack(K.DEFAULT_FRAME_POINTS.TargetFramePoint) };
 end
 
 if not C["PartyMemberFramePoint"] then
-	C["PartyMemberFramePoint"] = {"TOPLEFT", UIParent, "TOPLEFT", 10, -160};
+	C["PartyMemberFramePoint"] = { unpack(K.DEFAULT_FRAME_POINTS.PartyMemberFramePoint) };
 end
 
 if not C["BossTargetFramePoint"] then
-	C["BossTargetFramePoint"] = {"TOPLEFT", UIParent, "TOPLEFT", 1300, -220};
+	C["BossTargetFramePoint"] = { unpack(K.DEFAULT_FRAME_POINTS.BossTargetFramePoint) };
 end
 
 -- ARENA FRAME POINT: Esta es la posición DEFAULT cuando SetPositions = true
 if not C["ArenaFramePoint"] then
-	C["ArenaFramePoint"] = {"TOPRIGHT", UIParent, "TOPRIGHT", -390, -330};
+	C["ArenaFramePoint"] = { unpack(K.DEFAULT_FRAME_POINTS.ArenaFramePoint) };
 end
 
 -- FLAT STYLE: Textura de barras

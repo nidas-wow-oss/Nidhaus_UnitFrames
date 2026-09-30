@@ -168,7 +168,7 @@ function K.ResetSacredShieldPosition()
     SacredShieldDB.point, SacredShieldDB.x, SacredShieldDB.y = DEFAULTS.point, DEFAULTS.x, DEFAULTS.y;
     frame:ClearAllPoints();
     frame:SetPoint(SacredShieldDB.point, UIParent, SacredShieldDB.point, SacredShieldDB.x, SacredShieldDB.y);
-    print("|cff4FC3F7NUF:|r SacredShield - posicion restaurada a la de la WeakAura.");
+    -- Sin aviso: lo usa el boton del panel. El /ss reset tiene el suyo.
 end
 
 SLASH_NUFSACREDSHIELD1 = "/ss";

@@ -543,7 +543,6 @@ local function ToggleLiveArena()
 		liveArenaOverlayActive = true;
 		-- FIX: NO setear IsShown = true. Eso activa escala individual
 		-- en K.ApplyArenaScale y causa compound scale.
-		print("|cff00ff00NUF:|r Arena frames unlocked. Drag to reposition.");
 	else
 		-- DESACTIVAR: guardar posición + bloquear anchor
 		HideDragOverlay();
@@ -563,7 +562,6 @@ local function ToggleLiveArena()
 		anchor:SetMovable(false);
 		anchor:EnableMouse(false);
 		liveArenaOverlayActive = false;
-		print("|cff00ff00NUF:|r Arena frames locked.");
 	end
 end
 

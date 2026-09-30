@@ -795,7 +795,6 @@ local function EnsureScalePanel()
 		ReanchorAll()
 		ApplyScaleAll(PartyBuffsDB.scale)
 		if movers.buffs or movers.debuffs then UpdateMoverPositions() end
-		print("|cff66CCFFPartyBuffs:|r Positions and scale reset.")
 	end)
 
 	local saveBtn = CreateFrame("Button", nil, scalePanel, "UIPanelButtonTemplate")
@@ -813,7 +812,6 @@ local function EnsureScalePanel()
 		end
 		ApplyScaleAll(PartyBuffsDB.scale)
 		LockUI()
-		print("|cff66CCFFPartyBuffs:|r Settings saved.")
 	end)
 end
 

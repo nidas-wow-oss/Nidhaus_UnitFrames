@@ -89,22 +89,23 @@ function K.ResetPositionsAndScale()
 		end
 	end
 
-	-- Apply scales immediately
-	if NidhausPlayerFrame then NidhausPlayerFrame:SetScale(1.0); end
-	if TargetFrame then TargetFrame:SetScale(1.0); end
-	if FocusFrame then FocusFrame:SetScale(1.0); end
-	if FocusFrameSpellBar then FocusFrameSpellBar:SetScale(1.2); end
+	-- Aplicar las escalas que se acaban de poner, no numeros escritos a
+	-- mano: aca decia 1.0 y 1.2 fijos, una segunda copia de los valores de
+	-- fabrica que se desincroniza sola si cambian los de ConfigManager.
+	if NidhausPlayerFrame then NidhausPlayerFrame:SetScale(C.PlayerFrameScale or 1.0); end
+	if TargetFrame then TargetFrame:SetScale(C.TargetFrameScale or 1.0); end
+	if FocusFrame then FocusFrame:SetScale(C.FocusScale or 1.0); end
+	if FocusFrameSpellBar then FocusFrameSpellBar:SetScale(C.FocusSpellBarScale or 1.2); end
 	for i = 1, MAX_PARTY_MEMBERS do
 		local pf = _G["PartyMemberFrame"..i];
-		if pf then pf:SetScale(1.0); end
+		if pf then pf:SetScale(C.PartyFrameScale or 1.0); end
 	end
 
-	-- Reset C[] position tables to original defaults from Settings.lua
-	C.PlayerFramePoint = {"TOPLEFT", UIParent, "TOPLEFT", 239, -4};
-	C.TargetFramePoint = {"TOPLEFT", UIParent, "TOPLEFT", 509, -4};
-	C.PartyMemberFramePoint = {"TOPLEFT", UIParent, "TOPLEFT", 10, -160};
-	C.BossTargetFramePoint = {"TOPLEFT", UIParent, "TOPLEFT", 1300, -220};
-	C.ArenaFramePoint = {"TOPRIGHT", UIParent, "TOPRIGHT", -390, -330};
+	-- Posiciones de fabrica: de Settings.lua, la unica copia. Se copian
+	-- las tablas para que mover un marco despues no modifique el original.
+	for key, pt in pairs(K.DEFAULT_FRAME_POINTS or {}) do
+		C[key] = { unpack(pt) };
+	end
 
 	-- FIX: Si PartyMode3v3 está activo, re-aplicar 3v3 en vez de reparentar al container
 	-- (la pregunta va por K.Is3v3Active: sin SetPositions, ver Partymode3v3.lua)

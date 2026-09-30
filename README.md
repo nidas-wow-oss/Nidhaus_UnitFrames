@@ -8,9 +8,9 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 
 > ## Download
 >
-> **Latest version: 3.9** — this is the current, recommended build and the one actively in use.
+> **Latest version: 3.9.1** — this is the current, recommended build and the one actively in use.
 >
-> **[Download v3.9 (latest release)](../../releases/latest)**
+> **[Download v3.9.1 (latest release)](../../releases/latest)**
 >
 > One download, everything included: the addon and its options panel.
 
@@ -38,7 +38,7 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 
 ## Installation
 
-1. Download **v3.9** from the [releases page](../../releases/latest).
+1. Download **v3.9.1** from the [releases page](../../releases/latest).
 2. Extract the archive. You will get two folders: `Nidhaus_UnitFrames` and `Nidhaus_UnitFrames_Config`.
 3. Copy **both** folders into your WoW `Interface/AddOns/` directory.
 4. Restart the WoW client, or type `/reload` if you are already in-game.
@@ -103,6 +103,9 @@ adaptations, and the credit for those belongs to their original authors:
 Integration, porting to 3.3.5a, bug fixing and everything else: **Nidhaus**.
 
 ## Changelog
+
+### v3.9.1
+- Bug fixes.
 
 ### v3.9
 - Pet tab: Pet Buffs checkbox, a Move button that unlocks only the pet frame (no party test frames, arena mover or console), and a Reset that only touches the pet. It used to resize the party frames with 3v3 on: the party scale had a third, hidden owner in the move-mode positions. Old saved values are dropped automatically.

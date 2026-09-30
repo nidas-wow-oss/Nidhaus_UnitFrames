@@ -399,39 +399,17 @@ end
 -- personajes que alguna vez usaron el addon.
 -- =========================================================
 
-local function GetRealmTag()
-	-- Detecta el tipo de reino para el tag
-	local realmType = tonumber(GetCVar("realmType")) or 0;
-	if realmType == 1 then
-		return " [PvP only]";
-	elseif realmType == 4 then
-		return " [RP]";
-	elseif realmType == 6 then
-		return " [RP-PvP]";
-	end
-	return "";
-end
-
+-- La clave y el guardado viven ahora en el addon principal (ConfigManager),
+-- que esta cargado siempre: aca el PLAYER_LOGIN nunca llegaba a correr.
 local function GetCurrentCharKey()
-	local name = UnitName("player") or "Unknown";
-	local realm = GetRealmName() or "Unknown";
-	local tag = GetRealmTag();
-	return name .. " - " .. realm .. tag;
+	if K.GetCharProfileKey then return K.GetCharProfileKey(); end
+	return (UnitName("player") or "Unknown") .. " - " .. (GetRealmName() or "Unknown");
 end
 
 local function GetCharProfiles()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.CharProfiles then NidhausUnitFramesDB.CharProfiles = {}; end
 	return NidhausUnitFramesDB.CharProfiles;
-end
-
--- Guarda la config del personaje actual en CharProfiles
-function K.SaveCurrentCharProfile()
-	local data, err = K.ExportProfile();
-	if not data then return false, err; end
-	local key = GetCurrentCharKey();
-	GetCharProfiles()[key] = data;
-	return true, key;
 end
 
 -- Copia la config de otro personaje al actual (requiere ReloadUI)
@@ -451,20 +429,6 @@ local function GetCharProfileNames()
 	table.sort(names);
 	return names;
 end
-
--- Auto-save al login (después de que ConfigManager carga la DB)
-local charProfileInit = CreateFrame("Frame");
-charProfileInit:RegisterEvent("PLAYER_LOGIN");
-charProfileInit:SetScript("OnEvent", function(self, event)
-	if event == "PLAYER_LOGIN" then
-		self:UnregisterEvent("PLAYER_LOGIN");
-		-- Esperar un frame para asegurarse de que ConfigManager terminó
-		self:SetScript("OnUpdate", function(s)
-			s:SetScript("OnUpdate", nil);
-			K.SaveCurrentCharProfile();
-		end);
-	end
-end);
 
 -- =========================================================
 -- EL DROPDOWN QUE "A VECES NO MOSTRABA TODO"

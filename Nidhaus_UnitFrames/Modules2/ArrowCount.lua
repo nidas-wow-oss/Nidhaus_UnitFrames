@@ -209,7 +209,8 @@ local function Lock()
 	-- (sin flechas equipadas) esto lo esconde.
 	UpdateDisplay();
 	SyncConfigButton();
-	print("|cff4FC3F7NUF:|r ArrowCount - bloqueado.");
+	-- Sin aviso por chat: el recuadro desaparece, y al entrar en combate
+	-- (que tambien bloquea) el mensaje solo ensuciaba.
 end
 
 local function Unlock()
@@ -228,7 +229,7 @@ local function Unlock()
 	end
 
 	SyncConfigButton();
-	print("|cff4FC3F7NUF:|r ArrowCount - desbloqueado: arrastralo, y apreta Bloquear (o /arrowcount lock) para fijarlo.");
+	-- Sin aviso por chat: el recuadro ya trae el texto de como moverlo.
 end
 
 -- SE BLOQUEA SOLO AL ENTRAR EN COMBATE.
