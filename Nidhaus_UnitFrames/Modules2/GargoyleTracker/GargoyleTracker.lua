@@ -1132,7 +1132,23 @@ end)
 -- El registro lo hace el modulo al prenderse (GT_SetEnabled). Antes se
 -- enganchaba aca y escuchaba el combat log siempre, aun apagado.
 f:SetScript("OnEvent", function(self, event, ...)
-  if event ~= "COMBAT_LOG_EVENT_UNFILTERED" then return end
+  if event ~= "COMBAT_LOG_EVENT_UNFILTERED" then
+    -- FIN DE LA PELEA.
+    --
+    -- El marco solo se cerraba cuando se acababan los 30 segundos. Si la
+    -- arena terminaba antes (o salias de la zona), quedaba en pantalla
+    -- contando para una gargola que ya no existe.
+    if not state.active then return end
+    if event == "UPDATE_BATTLEFIELD_STATUS" then
+      -- Este aviso llega por muchas cosas (colas, invitaciones). Solo
+      -- cierra cuando hay ganador, que es cuando termina la arena o el BG.
+      if GetBattlefieldWinner and GetBattlefieldWinner() then StopAll() end
+    else
+      -- PLAYER_ENTERING_WORLD / ZONE_CHANGED_NEW_AREA: cambiaste de zona.
+      StopAll()
+    end
+    return
+  end
   local timestamp, subEvent,
         sourceGUID, sourceName, sourceFlags,
         destGUID, destName, destFlags,
@@ -1153,6 +1169,15 @@ f:SetScript("OnEvent", function(self, event, ...)
     return
   end
   if not state.active then return end
+
+  -- LA GARGOLA MURIO (o la sacaron): se cierra en el acto, sin esperar
+  -- a que se termine el tiempo.
+  if subEvent == "UNIT_DIED" or subEvent == "UNIT_DESTROYED" or subEvent == "PARTY_KILL" then
+    local dead = (state.gargGUID and destGUID == state.gargGUID)
+                 or ((not state.gargGUID) and destName == GargName())
+    if dead then StopAll() end
+    return
+  end
 
   -- CC SOBRE LA GARGOLA.
   --
@@ -1440,6 +1465,10 @@ local function GT_SetEnabled(on)
   if on then
     SetActiveMode(GTDB().mode or MODE_BLIZZARD)
     f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    -- Para cerrarlo cuando termina la arena o cambias de zona.
+    f:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
+    f:RegisterEvent("PLAYER_ENTERING_WORLD")
+    f:RegisterEvent("ZONE_CHANGED_NEW_AREA")
   else
     -- COMBAT_LOG_EVENT_UNFILTERED es de los eventos mas caros del juego:
     -- con el modulo apagado no queda registrado.

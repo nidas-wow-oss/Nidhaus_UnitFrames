@@ -246,9 +246,25 @@ local function HookChatFrame(index)
 	end);
 end
 
+-- LAS DE SUSURRO SON ChatFrame11 EN ADELANTE.
+--
+-- Este barrido iba de 1 a NUM_CHAT_WINDOWS (10). Pero cuando no hay una
+-- ventana libre, FCF_OpenTemporaryWindow CREA una nueva y la numera desde
+-- NUM_CHAT_WINDOWS + 1: la pestaña de susurro era ChatFrame11 y nunca se
+-- enganchaba, por mas veces que se volviera a barrer. Por eso el doble
+-- click no hacia nada en el susurro.
+--
+-- Ahora se recorre tambien CHAT_FRAMES, la lista de Blizzard con TODAS las
+-- ventanas de chat, temporales incluidas.
 local function HookAllChatFrames()
-	for i = 1, (NUM_CHAT_WINDOWS or 7) do
+	for i = 1, (NUM_CHAT_WINDOWS or 10) do
 		HookChatFrame(i);
+	end
+	if type(CHAT_FRAMES) == "table" then
+		for _, name in ipairs(CHAT_FRAMES) do
+			local index = tonumber(string.match(name or "", "^ChatFrame(%d+)$"));
+			if index then HookChatFrame(index); end
+		end
 	end
 end
 
@@ -282,6 +298,10 @@ rehook:SetScript("OnUpdate", function(self)
 end);
 
 local function HookSoon()
+	-- Una pasada YA, para que el historial empiece a guardar desde el primer
+	-- susurro (el mensaje que abrio la pestaña llega enseguida), y otra un
+	-- cuadro despues para la pestaña, que todavia se esta terminando de armar.
+	HookAllChatFrames();
 	rehook:Show();
 end
 
@@ -326,7 +346,7 @@ if K.RegisterConfigEvent then
 
 		if not now then
 			if scroll:IsShown() then scroll:Hide(); end
-			for i = 1, NUM_CHAT_WINDOWS do
+			for i = 1, (NUM_CHAT_WINDOWS or 10) + 20 do
 				local cf = _G["ChatFrame" .. i];
 				if cf and cf.NUFHistory then wipe(cf.NUFHistory); end
 			end

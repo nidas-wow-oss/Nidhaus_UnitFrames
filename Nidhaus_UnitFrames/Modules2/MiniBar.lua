@@ -1181,7 +1181,10 @@ function MiniBar_UpdateActionBars(force)
 	   and not (K.HasGlobalPos and K.HasGlobalPos("StanceBar")) then
 		stanceTarget:ClearAllPoints();
 		local shapeshiftOffsetX = (playerClass == "DEATHKNIGHT") and -10 or config.ShapeshiftBar.offsetX;
-		stanceTarget:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", shapeshiftOffsetX, anchorOffset - 0.5);
+		-- Arriba de la barra izquierda de nExtraBars, si esta prendida (ver
+		-- NEBClassBarShift en ActionBars.lua). Sin esto la tapaba.
+		local nebShift = (K.NEBClassBarShift and K.NEBClassBarShift()) or 0;
+		stanceTarget:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", shapeshiftOffsetX, anchorOffset - 0.5 + nebShift);
 	end
 
 	-- Totem bar
@@ -1222,7 +1225,8 @@ function MiniBar_UpdateActionBars(force)
 		if K.HasGlobalPos and K.HasGlobalPos("PossessBar") and PossessBarFrame then
 			PossessButton1:SetPoint("BOTTOMLEFT", PossessBarFrame, "BOTTOMLEFT", 0, 0);
 		else
-			PossessButton1:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", config.PossessBar.offsetX, anchorOffset - 0.5);
+			PossessButton1:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", config.PossessBar.offsetX,
+				anchorOffset - 0.5 + ((K.NEBClassBarShift and K.NEBClassBarShift()) or 0));
 		end
 	end
 end

@@ -1200,11 +1200,44 @@ local stanceHolder;
 -- de estados queda exactamente donde el modo unificado la pone, y el
 -- boton Reset del modo mover la devuelve a ese mismo lugar: una sola
 -- posicion por defecto, no dos parecidas.
+-- nExtraBars: SU BARRA IZQUIERDA OCUPA LA FILA DE ARRIBA DE LAS DE ACCION.
+--
+-- nExtraBars sube 45 px las barras de clase (posturas, totems, posesion)
+-- moviendo ShapeshiftBarFrame. Pero desde que los botones de posturas
+-- cuelgan del Holder de NUF, mover ShapeshiftBarFrame no mueve nada: la
+-- barra de auras del paladin (o las posturas del guerrero, las formas del
+-- druida, las presencias del DK...) quedaba encima de la barra extra. Con
+-- el cazador andaba porque la barra de MASCOTA nExtraBars la maneja por su
+-- cuenta.
+--
+-- El Holder es de NUF, asi que el que lo sube es NUF: un solo dueño.
+-- Mismos 45 px que usa nExtraBars para las demas barras de clase.
+--
+-- La decision la toma nExtraBars (NEB_ClassBarsShifted): barra izquierda
+-- prendida y, si su opcion "Raise class bars only if used" esta puesta, con
+-- al menos un hechizo. Asi la barra de posturas sube exactamente cuando
+-- suben las de nExtraBars (totems, mascota), nunca una sin la otra.
+-- Con una version vieja de nExtraBars sin esa funcion: barra prendida.
+local function NEBClassBarShift()
+    local shifted;
+    if type(NEB_ClassBarsShifted) == "function" then
+        local ok, res = pcall(NEB_ClassBarsShifted);
+        shifted = ok and res;
+    else
+        shifted = type(NEB_Config) == "table" and NEB_Config.LeftEnabled and _G["NEB_BarLeft"];
+    end
+    if shifted then
+        return tonumber(_G.NEB_CLASSBAR_OFFSET) or 45;
+    end
+    return 0;
+end
+K.NEBClassBarShift = NEBClassBarShift;
+
 local function StanceDefaultPoint(holder)
     local ix, iy = StanceButtonInset();
     holder:ClearAllPoints();
     holder:SetPoint("BOTTOMLEFT", MainMenuBar or UIParent, "TOPLEFT",
-        30 + ix, 40 + GetBarOffset() + iy);
+        30 + ix, 40 + GetBarOffset() + iy + NEBClassBarShift());
 end
 
 function K.GetStanceHolder()
@@ -1240,6 +1273,29 @@ holderInit:SetScript("OnEvent", function(self)
     -- AttachStanceButtons se autolimita al modo unificado; en los otros
     -- modos no hace nada y deja la barra como la dejo cada uno.
     K.AttachStanceButtons();
+
+    -- Si prendes o apagas la barra izquierda de nExtraBars, la de posturas
+    -- se reacomoda en el momento (arriba de ella, o de vuelta a su fila).
+    local neb = _G["NEB_BarLeft"];
+    if neb and neb.HookScript then
+        local function Relayout()
+            if InCombatLockdown() then return; end
+            if C.MiniBarEnabled == true and K.RefreshMiniBarLayout then
+                K.RefreshMiniBarLayout(true);
+            else
+                K.AttachStanceButtons();
+            end
+        end
+        neb:HookScript("OnShow", Relayout);
+        neb:HookScript("OnHide", Relayout);
+        -- Y cuando la barra pasa de vacia a tener algo (o al reves), que
+        -- nExtraBars avisa por NEB_ClassBarShiftChanged.
+        if type(NEB_ClassBarShiftChanged) == "function" then
+            hooksecurefunc("NEB_ClassBarShiftChanged", function()
+                if not K.AfterCombat("NEBShiftRelayout", Relayout) then Relayout(); end
+            end);
+        end
+    end
 end);
 
 function K.AttachStanceButtons()

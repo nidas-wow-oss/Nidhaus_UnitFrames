@@ -550,6 +550,7 @@ local NEB_CONFIG_KEYS = {
 	LeftEnabled      = "boolean", RightEnabled      = "boolean",
 	LeftNumButtons   = "number",  RightNumButtons   = "number",
 	LeftLockButtons  = "boolean", RightLockButtons  = "boolean",
+	LeftShiftOnlyIfUsed = "boolean",
 };
 
 local NEB_BUTTONS = {};
