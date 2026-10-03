@@ -6,9 +6,9 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 
 > ## Download
 >
-> **Latest version: 4.0** — this is the current, recommended build and the one actively in use.
+> **Latest version: 4.1** — this is the current, recommended build and the one actively in use.
 >
-> **[Download v4.0 (latest release)](../../releases/latest)**
+> **[Download v4.1 (latest release)](../../releases/latest)**
 >
 > Grab the `.zip` from the release page rather than the green *Code* button: the release is the packaged,
 > ready-to-install version with the correct folder name.
@@ -37,7 +37,7 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 
 ## Installation
 
-1. Download **v4.0** from the [releases page](../../releases/latest).
+1. Download **v4.1** from the [releases page](../../releases/latest).
 2. Extract it and copy the `Nidhaus_UnitFrames` folder into your WoW `Interface/AddOns/` directory.
 3. For the full options panel, also install the companion addon
    **[Nidhaus_UnitFrames_Config](https://github.com/nidas-wow-oss/Nidhaus_UnitFrames_Config)**
@@ -72,6 +72,10 @@ The minimap button also provides quick access: left-click opens the options pane
 - **API Level:** Compatible with 3.3.5a Lua sandbox (no HTTP, no hardware calls)
 
 ## Changelog
+
+### v4.1
+- Full English and Spanish: every visible text now follows the game's language. That covers the options, tooltips, chat messages and alerts of the modules (Arena Calculator, Arena Times, Arrow Count, Auto Repair, the Auto Shot and Melee Swing timers, Button Range, Class Icons, Dungeon Roles, MiniBar, Paladin Auras, Sacred Shield, Seduction Alert, Party Buffs, Party Castbars, Party Pet Target, Party Targets, Power Bar, Spec Icons, System Spam Filter and more), the Move Everything labels and the Lorti UI options.
+- Lighter download: the release ships the code without comments (1.5 MB of Lua instead of 2.3 MB). It is the same code, so the line numbers in an error still match the source in this repository.
 
 ### v4.0
 - New DR tab in Arena: Diminishing Returns icons on every arena enemy (1/2, 1/4, immune), with preview, Shift+Alt drag, grow direction, size, spacing and a border colored by DR level. You pick which categories to show (All, My class, None, or one by one; hovering a category lists the spells that share it), and each icon shows the seconds left until the DR resets.

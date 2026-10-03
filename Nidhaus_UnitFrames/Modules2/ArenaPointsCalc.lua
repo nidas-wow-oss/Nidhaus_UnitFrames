@@ -447,7 +447,7 @@ SlashCmdList["ARENACALC"] = function(msg)
                     BRACKET_NAMES[ts] or "?", tn, tr, CalcPoints(tr, ts), sp or 0))
             end
         end
-        if not found then print("|cff00ccff[APC]|r |cffff8080No arena teams.|r") end
+        if not found then print("|cff00ccff[APC]|r |cffff8080" .. (L["APC_NO_TEAMS"] or "No arena teams.") .. "|r") end
         return
     end
     -- Aca vivian /apc btnpos y /apc btnreset. Solo servian con el boton

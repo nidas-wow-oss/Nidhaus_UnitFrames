@@ -185,7 +185,7 @@ local function MakeIcon(parent)
 		if type(db.auraHidden) ~= "table" then db.auraHidden = {}; end
 		db.auraHidden[self.spell] = true;
 		print("|cff4FC3F7NUF:|r Power Bar - |cffffff00" .. self.spell
-			.. "|r no se muestra mas. |cffaaaaaa/nufpower auras|r para volver a mostrarlas todas.");
+			.. "|r " .. (L["POWERBAR_AURA_HIDDEN"] or "is no longer shown.") .. " |cffaaaaaa/nufpower auras|r " .. (L["POWERBAR_AURA_HINT"] or "to show them all again."));
 		if K.ApplyPowerBarAuras then K.ApplyPowerBarAuras(); end
 	end);
 
@@ -658,7 +658,7 @@ K.RegisterModule("PowerBar", {
 				text:SetText("70 / 100");
 				frame:Show();
 			end
-			print("|cff4FC3F7NUF:|r Power Bar - Alt + arrastrar para moverla. Click derecho en un aura para esconderla. Click de nuevo en Move para salir.");
+			print("|cff4FC3F7NUF:|r " .. (L["POWERBAR_MOVE_ON"] or "Power Bar - Alt + drag to move it. Right-click an aura to hide it. Click Move again to exit."));
 		else
 			UpdateBar();
 		end
@@ -684,11 +684,11 @@ SlashCmdList["NUFPOWERBAR"] = function(msg)
 	msg = string.lower(msg or "");
 	if msg == "reset" then
 		K.ResetPowerBarPosition();
-		print("|cff4FC3F7NUF:|r Power Bar - posicion reiniciada.");
+		print("|cff4FC3F7NUF:|r " .. (L["POWERBAR_RESET"] or "Power Bar - position reset."));
 	elseif msg == "auras" then
 		K.ResetPowerBarHiddenAuras();
-		print("|cff4FC3F7NUF:|r Power Bar - se vuelven a mostrar todas las auras.");
+		print("|cff4FC3F7NUF:|r " .. (L["POWERBAR_AURAS"] or "Power Bar - all auras are shown again."));
 	else
-		print("|cff4FC3F7NUF:|r Power Bar - Alt + arrastrar para moverla. /nufpower reset  |  /nufpower auras");
+		print("|cff4FC3F7NUF:|r " .. (L["POWERBAR_HELP"] or "Power Bar - Alt + drag to move it.") .. " /nufpower reset  |  /nufpower auras");
 	end
 end

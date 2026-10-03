@@ -158,8 +158,8 @@ end
 -- ──────────────────────────────────────────────────────────────
 
 K.RegisterModule("ClassIcons", {
-    name = "Class Icons",
-    desc = "Replaces portraits with class icons (default, modern, hs, ex)",
+    name = L["MOD_CLASS_ICONS"] or "Class Icons",
+    desc = L["MOD_CLASS_ICONS_DESC"] or "Replaces portraits with class icons (default, modern, hs, ex)",
     default = false,
 
     onEnable = function()
@@ -203,10 +203,10 @@ K.RegisterModule("ClassIcons", {
     -- UI extra: dropdown de estilos (llamado por OptionsPanel)
     createUI = function(parent, yPos)
         local STYLES = {
-            { value = "default", label = "Default" },
-            { value = "modern",  label = "Modern" },
+            { value = "default", label = L["CLASSICON_DEFAULT"] or "Default" },
+            { value = "modern",  label = L["CLASSICON_MODERN"] or "Modern" },
             { value = "hs",      label = "HS" },
-            { value = "ex",      label = "Exprmtl" },
+            { value = "ex",      label = L["CLASSICON_EX"] or "Exprmtl" },
         };
 
         local label = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");

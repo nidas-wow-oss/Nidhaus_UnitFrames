@@ -13,7 +13,7 @@ local function OnMerchantShow()
 	if cost <= 0 or IsShiftKeyDown() then return; end
 
 	if cost > GetMoney() then
-		print("|cffFF0000NUF:|r Insufficient funds to repair!");
+		print("|cffFF0000NUF:|r " .. (L["REPAIR_NO_FUNDS"] or "Insufficient funds to repair!"));
 		return;
 	end
 

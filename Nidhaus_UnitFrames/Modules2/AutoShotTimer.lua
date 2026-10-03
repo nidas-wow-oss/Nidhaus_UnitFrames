@@ -429,25 +429,25 @@ SlashCmdList["NUFAUTOSHOT"] = function(msg)
 
 	if cmd == "unlock" or cmd == "move" then
 		Unlock();
-		print("|cff4FC3F7NUF:|r Auto Shot - arrastrá la barra. /nufshot lock para fijarla.");
+		print("|cff4FC3F7NUF:|r " .. (L["AUTOSHOT_UNLOCKED"] or "Auto Shot - drag the bar. /nufshot lock to lock it."));
 	elseif cmd == "lock" then
 		Lock();
-		print("|cff4FC3F7NUF:|r Auto Shot - barra fijada.");
+		print("|cff4FC3F7NUF:|r " .. (L["AUTOSHOT_LOCKED"] or "Auto Shot - bar locked."));
 	elseif cmd == "scale" then
 		local s = tonumber(val);
 		if s and s >= 0.5 and s <= 2.5 then
 			DB().scale = s;
 			mover:SetScale(s);
-			print("|cff4FC3F7NUF:|r Auto Shot - escala: " .. string.format("%.1f", s));
+			print("|cff4FC3F7NUF:|r " .. (L["AUTOSHOT_SCALE"] or "Auto Shot - scale:") .. " " .. string.format("%.1f", s));
 		else
-			print("|cff4FC3F7NUF:|r Uso: /nufshot scale <0.5 - 2.5>");
+			print("|cff4FC3F7NUF:|r " .. (L["CMD_USAGE"] or "Usage:") .. " /nufshot scale <0.5 - 2.5>");
 		end
 	elseif cmd == "reset" then
 		local db = DB();
 		db.x, db.y, db.scale = 0, 246, 1.0;
 		RestorePosition();
 		Lock();
-		print("|cff4FC3F7NUF:|r Auto Shot - posición y escala reiniciadas.");
+		print("|cff4FC3F7NUF:|r " .. (L["AUTOSHOT_RESET"] or "Auto Shot - position and scale reset."));
 	else
 		print("|cff4FC3F7NUF:|r /nufshot unlock | lock | scale <n> | reset");
 	end

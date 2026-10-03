@@ -746,8 +746,8 @@ SlashCmdList["NUFPALAURAS"] = function(msg)
 	local on = K.SetPaladinAurasPreview(not previewOn);
 	K.SetTurnEvilPreview(on);
 	print("|cff4FC3F7NUF:|r " .. (on
-		and "Paladin tracker + Turn Evil: arrastra cada grupo. /nufpal para fijar. /nufpal debug para diagnostico."
-		or  "Paladin tracker: posicion fijada."));
+		and (L["PAL_PREVIEW_ON"] or "Paladin tracker + Turn Evil: drag each group. /nufpal to lock. /nufpal debug for diagnostics.")
+		or  (L["PAL_PREVIEW_OFF"] or "Paladin tracker: position locked.")));
 end
 
 -- ---------------------------------------------------------

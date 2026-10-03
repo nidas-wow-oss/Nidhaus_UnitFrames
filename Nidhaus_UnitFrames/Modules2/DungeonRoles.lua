@@ -178,7 +178,7 @@ K.RegisterModule("DungeonRoles", {
 	configFunc = function()
 		K.SetDungeonRolesPreview(not testMode);
 		if testMode then
-			print("|cff4FC3F7NUF:|r Dungeon Roles - Alt + arrastrar para moverlo.");
+			print("|cff4FC3F7NUF:|r " .. (L["DUNGEONROLES_MOVE"] or "Dungeon Roles - Alt + drag to move it."));
 		end
 	end,
 	onEnable = function()

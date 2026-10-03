@@ -298,13 +298,13 @@ SlashCmdList["NUFARROWCOUNT"] = function(msg)
 		local db = DB();
 		db.point, db.relativePoint, db.x, db.y, db.scale = nil, nil, nil, nil, nil;
 		RestorePosition();
-		print("|cff4FC3F7NUF:|r ArrowCount - posición y escala reiniciadas.");
+		print("|cff4FC3F7NUF:|r " .. (L["ARROW_RESET"] or "Ammo counter - position and scale reset."));
 	elseif string.match(msg, "^scale%s+[%d%.]+") then
 		local scale = tonumber(string.match(msg, "^scale%s+([%d%.]+)"));
 		if scale and scale > 0 then
 			DB().scale = scale;
 			frame:SetScale(scale);
-			print("|cff4FC3F7NUF:|r ArrowCount - escala: " .. scale);
+			print("|cff4FC3F7NUF:|r " .. (L["ARROW_SCALE"] or "Ammo counter - scale:") .. " " .. scale);
 		end
 	else
 		print("|cff4FC3F7NUF:|r /arrowcount unlock | lock | show | hide | reset | scale <n>");

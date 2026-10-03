@@ -245,7 +245,7 @@ local function InitMinimap()
 		end
 	end)
 	if not ok then
-		print("|cffFF0000NUF Lorti:|r Minimap init error: " .. tostring(err))
+		print("|cffFF0000NUF Lorti:|r " .. (L["LORTI_MINIMAP_ERR"] or "Minimap init error:") .. " " .. tostring(err))
 	end
 end
 
@@ -342,6 +342,13 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		  tip="Dark minimap border. It is the same option as Interface > Minimap > Border style: Lorti UI, and they stay in sync.\nAlso: right-click the minimap to open the calendar." },
 	}
 
+	-- Textos en el idioma del cliente (Localization: LORTI_OPT_* / LORTI_TIP_*).
+	for _, opt in ipairs(subOptions) do
+		local short = string.gsub(opt.key, "^LortiUI_", "")
+		opt.label = L["LORTI_OPT_" .. short] or opt.label
+		opt.tip   = L["LORTI_TIP_" .. short] or opt.tip
+	end
+
 	local subCheckboxes = {}
 
 	for _, opt in ipairs(subOptions) do
@@ -365,7 +372,7 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		cb:SetChecked(C[opt.key] ~= false)
 
 		-- El minimapa se aplica en el momento: sin el cartel de /reload.
-		local tipText = opt.live and opt.tip or (opt.tip .. "\n\n|cffFFAA00⚠ Requires /reload|r")
+		local tipText = opt.live and opt.tip or (opt.tip .. "\n\n|cffFFAA00⚠ " .. (L["LORTI_REQ_RELOAD"] or "Requires /reload") .. "|r")
 		cb:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 			GameTooltip:SetText(opt.label, 1, 1, 1)
@@ -472,7 +479,7 @@ end
 -- =============================================
 K.RegisterModule("LortiUI", {
 	name     = "Lorti UI",
-	desc     = "Darkens frame textures and styles action bars. Requires /reload to apply changes.",
+	desc     = L["MOD_LORTI_DESC"] or "Darkens frame textures and styles action bars. Requires /reload to apply changes.",
 	default  = false,
 	onEnable = Init,
 	createUI = CreateLortiSubUI,

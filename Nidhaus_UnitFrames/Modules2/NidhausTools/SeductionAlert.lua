@@ -189,13 +189,13 @@ SlashCmdList["NUFSEDUCTION"] = function(msg)
     if msg == "reset" then
         K.ResetSeductionAlertPosition();
         -- El aviso, solo cuando lo pediste escribiendo: el boton del panel no lo necesita.
-        print("|cff4FC3F7NUF:|r Seduction alert - posicion restaurada.");
+        print("|cff4FC3F7NUF:|r " .. (L["SED_POS_RESET"] or "Seduction alert - position reset."));
     elseif msg == "test" then
         ResolveIcon();
         frame.icon:SetTexture(iconTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
         frame:Show();
         PlaySoundFile(SOUND);
-        print("|cff4FC3F7NUF:|r Seduction alert - prueba. /seduction test otra vez o cambia de zona para ocultarlo.");
+        print("|cff4FC3F7NUF:|r " .. (L["SED_TEST"] or "Seduction alert - test. /seduction test again or change zone to hide it."));
     else
         SetMoving(not moving);
     end

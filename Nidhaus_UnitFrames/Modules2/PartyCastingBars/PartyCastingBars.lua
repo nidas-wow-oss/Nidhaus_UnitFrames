@@ -1031,7 +1031,7 @@ end
 
 function PartyCastingBars.EnableDragging(value)
 	if value and not C.PCB_Enabled then
-		DEFAULT_CHAT_FRAME:AddMessage("PCB - Enable PartyCastingBars first (/pcb enable).", 1, 0.5, 0);
+		DEFAULT_CHAT_FRAME:AddMessage("PCB - " .. (L["PCB_ENABLE_FIRST"] or "Enable PartyCastingBars first (/pcb enable)."), 1, 0.5, 0);
 		return;
 	end
 	PartyCastingBars.draggable = (value == true);
@@ -1183,7 +1183,7 @@ SlashCmdList["PARTYCASTINGBARS"] = function(msg)
 			PartyCastingBars.SetScales(val);
 			DEFAULT_CHAT_FRAME:AddMessage(format("PCB - Bar scale set to %.1f", val), 0, 1, 1);
 		else
-			DEFAULT_CHAT_FRAME:AddMessage("PCB - Usage: /pcb scale <0.5 - 2.0>", 1, 1, 0);
+			DEFAULT_CHAT_FRAME:AddMessage("PCB - " .. (L["CMD_USAGE"] or "Usage:") .. " /pcb scale <0.5 - 2.0>", 1, 1, 0);
 		end
 
 	elseif cmd == "DRAG" then
@@ -1222,13 +1222,13 @@ SlashCmdList["PARTYCASTINGBARS"] = function(msg)
 		if PartyCastingBars.ToggleMenu then PartyCastingBars.ToggleMenu(); end
 
 	elseif cmd == "HELP" then
-		DEFAULT_CHAT_FRAME:AddMessage("PartyCastingBars (/pcb) commands:", 0, 1, 0);
-		DEFAULT_CHAT_FRAME:AddMessage("  (no argument) — Open the options window");
-		DEFAULT_CHAT_FRAME:AddMessage("  drag    — Toggle drag/position mode");
-		DEFAULT_CHAT_FRAME:AddMessage("  icon    — Toggle spell icons");
-		DEFAULT_CHAT_FRAME:AddMessage("  scale <0.5-2.0> — Set bar scale");
-		DEFAULT_CHAT_FRAME:AddMessage("  parent  — Toggle frame parenting");
-		DEFAULT_CHAT_FRAME:AddMessage("  reset   — Reset bar positions");
+		DEFAULT_CHAT_FRAME:AddMessage("PartyCastingBars (/pcb) " .. (L["CMD_COMMANDS"] or "commands:"), 0, 1, 0);
+		DEFAULT_CHAT_FRAME:AddMessage("  " .. (L["PCB_HELP_NOARG"] or "(no argument)") .. " — " .. (L["PCB_HELP_OPEN"] or "Open the options window"));
+		DEFAULT_CHAT_FRAME:AddMessage("  drag    — " .. (L["PCB_HELP_DRAG"] or "Toggle drag/position mode"));
+		DEFAULT_CHAT_FRAME:AddMessage("  icon    — " .. (L["PCB_HELP_ICON"] or "Toggle spell icons"));
+		DEFAULT_CHAT_FRAME:AddMessage("  scale <0.5-2.0> — " .. (L["PCB_HELP_SCALE"] or "Set bar scale"));
+		DEFAULT_CHAT_FRAME:AddMessage("  parent  — " .. (L["PCB_HELP_PARENT"] or "Toggle frame parenting"));
+		DEFAULT_CHAT_FRAME:AddMessage("  reset   — " .. (L["PCB_HELP_RESET"] or "Reset bar positions"));
 	else
 		DEFAULT_CHAT_FRAME:AddMessage(PCB_INVALID_COMMAND or "Unknown PCB command. Type /pcb help.", 0.5, 0.5, 0.5);
 	end

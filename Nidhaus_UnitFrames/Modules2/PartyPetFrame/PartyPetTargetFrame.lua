@@ -825,9 +825,9 @@ local function ToggleClickable()
     end
 
     if settings.clickable then
-        print("|cff00ff00[PartyPetFrame]|r Clic habilitado - Click para seleccionar mascota")
+        print("|cff00ff00[PartyPetFrame]|r " .. (L["PPF_CLICK_ON"] or "Click enabled - click to target the pet"))
     else
-        print("|cff00ff00[PartyPetFrame]|r Clic deshabilitado")
+        print("|cff00ff00[PartyPetFrame]|r " .. (L["PPF_CLICK_OFF"] or "Click disabled"))
     end
 end
 
@@ -852,20 +852,20 @@ SlashCmdList["PARTYPETFRAME"] = function(msg)
         if K.SaveConfig then K.SaveConfig("PartyPetArenaOnly", on) else C.PartyPetArenaOnly = on end
         PPF_ApplyVisibility(PPF_WantVisible)
         if on then
-            print("|cff00ff00[PartyPetFrame]|r Solo en arenas")
+            print("|cff00ff00[PartyPetFrame]|r " .. (L["PPF_ARENA_ONLY"] or "Arenas only"))
         else
-            print("|cff00ff00[PartyPetFrame]|r En todas partes")
+            print("|cff00ff00[PartyPetFrame]|r " .. (L["PPF_EVERYWHERE"] or "Everywhere"))
         end
     elseif msg == "reset" then
         ResetPosition()
-        print("|cff00ff00[PartyPetFrame]|r Posición reiniciada")
+        print("|cff00ff00[PartyPetFrame]|r " .. (L["PPF_POS_RESET"] or "Position reset"))
     else
-        print("|cff00ff00[PartyPetFrame] Comandos:|r")
-        print("  /ppf lock - Bloquear/desbloquear la fila")
-        print("  /ppf click - Habilitar/deshabilitar clic para seleccionar")
-        print("  /ppf arena - Alternar entre solo arenas y todas partes")
-        print("  /ppf reset - Reiniciar posición de la fila")
-        print("  |cff8A8A8AArrastra el marco de arriba: los otros tres lo siguen.|r")
+        print("|cff00ff00[PartyPetFrame] " .. (L["CMD_COMMANDS_TITLE"] or "Commands:") .. "|r")
+        print("  /ppf lock - " .. (L["PPF_HELP_LOCK"] or "Lock/unlock the row"))
+        print("  /ppf click - " .. (L["PPF_HELP_CLICK"] or "Enable/disable click to target"))
+        print("  /ppf arena - " .. (L["PPF_HELP_ARENA"] or "Switch between arenas only and everywhere"))
+        print("  /ppf reset - " .. (L["PPF_HELP_RESET"] or "Reset the row position"))
+        print("  |cff8A8A8A" .. (L["PPF_HELP_DRAG"] or "Drag the top frame: the other three follow it.") .. "|r")
     end
 end
 

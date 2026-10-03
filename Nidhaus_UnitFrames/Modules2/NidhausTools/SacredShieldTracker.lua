@@ -366,7 +366,7 @@ SlashCmdList["NUFSSTRACKER"] = function(msg)
     if msg == "reset" then
         K.ResetSacredShieldTrackerPosition();
         -- El aviso, solo cuando lo pediste escribiendo: el boton del panel no lo necesita.
-        print("|cff4FC3F7NUF:|r Sacred Shield Tracker - posicion restaurada.");
+        print("|cff4FC3F7NUF:|r " .. (L["SST_POS_RESET"] or "Sacred Shield Tracker - position reset."));
     else
         SetMoving(not moving);
     end

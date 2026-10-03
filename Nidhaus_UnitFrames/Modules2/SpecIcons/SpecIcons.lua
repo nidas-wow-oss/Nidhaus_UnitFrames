@@ -494,7 +494,7 @@ local function Enable()
 	metaDB  = ns.SpecMetaDB;
 	spellDB = ns.SpecSpellDB;
 	if not metaDB or not spellDB then
-		print("|cffFF0000NUF:|r SpecIcons: SpecDB not loaded!");
+		print("|cffFF0000NUF:|r " .. (L["SPEC_DB_MISSING"] or "SpecIcons: SpecDB not loaded!"));
 		return;
 	end
 
@@ -552,8 +552,8 @@ end);
 -- ══════════════════════════════════════════════════════════════
 
 K.RegisterModule("SpecIcons", {
-	name      = "Spec Icons",
-	desc      = "Detects enemy spec via combat log. Shows spec icon on Target, Focus and Arena frames.",
+	name      = L["MOD_SPEC_ICONS"] or "Spec Icons",
+	desc      = L["MOD_SPEC_ICONS_DESC"] or "Detects enemy spec via combat log. Shows spec icon on Target, Focus and Arena frames.",
 	default   = true,
 	onEnable  = Enable,
 	onDisable = Disable,

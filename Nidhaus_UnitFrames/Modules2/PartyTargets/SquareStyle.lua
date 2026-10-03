@@ -529,7 +529,7 @@ SlashCmdList["NUFPTSTYLE"] = function(msg)
 		K.SetPartyTargetStyle("Classic");
 		print("|cff4FC3F7NUF:|r party targets = Classic");
 	else
-		print("|cff4FC3F7NUF:|r /ptstyle square | classic   (ahora: "
+		print("|cff4FC3F7NUF:|r /ptstyle square | classic   (" .. (L["PARTY_STYLE_CURRENT"] or "current") .. ": "
 			.. K.GetPartyTargetStyle() .. ")");
 	end
 end

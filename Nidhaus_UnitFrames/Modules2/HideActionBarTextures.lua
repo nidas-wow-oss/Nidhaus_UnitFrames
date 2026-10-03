@@ -339,17 +339,17 @@ SlashCmdList["HIDEACTIONBAR"] = function()
         ApplyState();
     end
     if newState then
-        print("|cff4FC3F7NUF:|r HideBar: textures hidden.");
+        print("|cff4FC3F7NUF:|r " .. (L["HIDEBAR_HIDDEN"] or "HideBar: textures hidden."));
     else
-        print("|cff4FC3F7NUF:|r HideBar: textures visible.");
+        print("|cff4FC3F7NUF:|r " .. (L["HIDEBAR_VISIBLE"] or "HideBar: textures visible."));
     end
     -- Refrescar el checkbox del panel si esta creado
     if K.RefreshModuleCheckbox then K.RefreshModuleCheckbox("HideActionBarTextures"); end
 end
 
 K.RegisterModule("HideActionBarTextures", {
-    name = "Hide Action Bar Textures",
-    desc = "Hides action bar decorative textures.",
+    name = L["MOD_HIDE_BAR_TEX"] or "Hide Action Bar Textures",
+    desc = L["MOD_HIDE_BAR_TEX_DESC"] or "Hides action bar decorative textures.",
     default = false,
     -- El checkbox vive en General > Barras, no repetirlo en la pestaña Modules
     hideFromModulesTab = true,

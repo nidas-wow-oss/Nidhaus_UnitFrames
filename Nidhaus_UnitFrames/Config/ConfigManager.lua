@@ -271,7 +271,7 @@ local function FireConfigEvent(eventName)
 		for _, callback in ipairs(eventCallbacks[eventName]) do
 			local success, err = pcall(callback);
 			if not success then
-				print("|cffFF0000NUF:|r Error in " .. eventName .. ": " .. tostring(err));
+				print("|cffFF0000NUF:|r " .. (L["ERR_IN_EVENT"] or "Error in") .. " " .. eventName .. ": " .. tostring(err));
 			end
 		end
 	end
@@ -833,7 +833,7 @@ initFrame:SetScript("OnEvent", function(self, event, addonName)
 		local success, err = pcall(LoadConfigFromDB);
 		if not success then
 			-- FIX: Imprimir el error para que el usuario sepa que su config no cargó
-			print("|cffFF0000NUF:|r Config load error: " .. tostring(err));
+			print("|cffFF0000NUF:|r " .. (L["ERR_CONFIG_LOAD"] or "Config load error:") .. " " .. tostring(err));
 			for key, value in pairs(defaults) do
 				C[key] = value;
 			end

@@ -876,7 +876,7 @@ end
 function K.ToggleArenaFramesMover()
 	if not C then return; end
 	if InCombatLockdown() then
-		print("|cffFF0000NUF:|r Cannot toggle arena mover in combat.");
+		print("|cffFF0000NUF:|r " .. (L["ARENA_MOVER_COMBAT"] or "Cannot toggle arena mover in combat."));
 		return;
 	end
 	EnsureArenaMoverDB();
@@ -915,7 +915,7 @@ function K.SetArenaTestCount(n)
 	if n ~= 2 and n ~= 3 and n ~= 5 then return false; end
 	if not C then return false; end
 	if InCombatLockdown() then
-		print("|cffFF0000NUF:|r Cannot toggle arena mover in combat.");
+		print("|cffFF0000NUF:|r " .. (L["ARENA_MOVER_COMBAT"] or "Cannot toggle arena mover in combat."));
 		return false;
 	end
 	if not C.ArenaFrameOn then return false; end
@@ -944,7 +944,7 @@ end
 -- mover. Si no habia nada mostrandose, no hace nada.
 function K.ClearArenaTestFrames()
 	if InCombatLockdown() then
-		print("|cffFF0000NUF:|r Cannot toggle arena mover in combat.");
+		print("|cffFF0000NUF:|r " .. (L["ARENA_MOVER_COMBAT"] or "Cannot toggle arena mover in combat."));
 		return false;
 	end
 	EnsureArenaMoverDB();

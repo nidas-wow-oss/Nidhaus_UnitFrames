@@ -277,8 +277,8 @@ SlashCmdList["HCB"] = function(arg)
 end
 
 K.RegisterModule("HideChatButton", {
-    name = "Hide Chat Button",
-    desc = "Small button to hide or show the chat frame.",
+    name = L["MOD_HIDE_CHAT_BTN"] or "Hide Chat Button",
+    desc = L["MOD_HIDE_CHAT_BTN_DESC"] or "Small button to hide or show the chat frame.",
     default = true,
     onEnable = function()
         HCBmoduleOn = true;

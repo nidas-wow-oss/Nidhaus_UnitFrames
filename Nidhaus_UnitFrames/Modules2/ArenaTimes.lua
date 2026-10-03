@@ -234,8 +234,8 @@ local function Disable()
 end
 
 K.RegisterModule("ArenaTimes", {
-    name = "Arena Times",
-    desc = "Timer on arena invite popup + queue time next to minimap.",
+    name = L["MOD_ARENA_TIMES"] or "Arena Times",
+    desc = L["MOD_ARENA_TIMES_DESC"] or "Timer on arena invite popup + queue time next to minimap.",
     default = true,
     -- El checkbox vive en Arena > Options, no repetirlo aca
     hideFromModulesTab = true,

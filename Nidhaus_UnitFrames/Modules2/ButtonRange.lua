@@ -31,8 +31,8 @@ local function EnableButtonRange()
 end
 
 K.RegisterModule("ButtonRange", {
-    name = "Button Range",
-    desc = "Colors out-of-range action buttons red.",
+    name = L["MOD_BUTTON_RANGE"] or "Button Range",
+    desc = L["MOD_BUTTON_RANGE_DESC"] or "Colors out-of-range action buttons red.",
     default = false,
     -- El checkbox vive en General > Barras, no repetirlo en la pestaña Modules
     hideFromModulesTab = true,

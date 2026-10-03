@@ -616,7 +616,7 @@ end
 local function CreateMovers()
 	local f1 = GetPartyAnchor()
 	if not f1 then
-		print("|cff66CCFFPartyBuffs:|r PartyMemberFrame1 not available. Use /reload.")
+		print("|cff66CCFFPartyBuffs:|r " .. (L["PB_NO_FRAME"] or "PartyMemberFrame1 not available. Use /reload."))
 		return
 	end
 	ApplyDefaults()
@@ -966,12 +966,12 @@ SlashCmdList["PARTYBUFFS"] = function(msg)
 			scalePanel.maxDebuffSlider:SetValue(DEFAULTS_SHARED.maxDebuffs)
 			UpdateMoverPositions()
 		end
-		print("|cff66CCFFPartyBuffs:|r Reset done. Positions and scale restored.")
+		print("|cff66CCFFPartyBuffs:|r " .. (L["PB_RESET_DONE"] or "Reset done. Positions and scale restored."))
 
 	else
-		print("|cff66CCFFPartyBuffs:|r Available commands:")
-		print("  /pbuffs        — Open the settings panel and the movers")
-		print("  /pbuffs reset  — Reset positions and scale to defaults")
+		print("|cff66CCFFPartyBuffs:|r " .. (L["CMD_AVAILABLE"] or "Available commands:"))
+		print("  /pbuffs        — " .. (L["PB_HELP_OPEN"] or "Open the settings panel and the movers"))
+		print("  /pbuffs reset  — " .. (L["PB_HELP_RESET"] or "Reset positions and scale to defaults"))
 	end
 end
 
@@ -1154,7 +1154,7 @@ end
 ------------------------------------------------------------------------
 K.RegisterModule("PartyBuffs", {
 	name    = "Party Buffs",
-	desc    = "Extended buffs and/or debuffs (1-20 icons) on party frames. /pbuffs | /pbuffs reset",
+	desc    = L["MOD_PARTYBUFFS_DESC"] or "Extended buffs and/or debuffs (1-20 icons) on party frames. /pbuffs | /pbuffs reset",
 	default = false,   -- viene apagado: se prende desde Frames > Party
 	onEnable  = PB_Enable,
 	onDisable = PB_Disable,

@@ -434,25 +434,25 @@ SlashCmdList["NUFSWING"] = function(msg)
 
 	if cmd == "unlock" or cmd == "move" then
 		Unlock();
-		print("|cff4FC3F7NUF:|r Swing Timer - arrastrá la barra. /nufswing lock para fijarla.");
+		print("|cff4FC3F7NUF:|r " .. (L["SWING_UNLOCKED"] or "Swing Timer - drag the bar. /nufswing lock to lock it."));
 	elseif cmd == "lock" then
 		Lock();
-		print("|cff4FC3F7NUF:|r Swing Timer - barra fijada.");
+		print("|cff4FC3F7NUF:|r " .. (L["SWING_LOCKED"] or "Swing Timer - bar locked."));
 	elseif cmd == "scale" then
 		local s = tonumber(val);
 		if s and s >= 0.5 and s <= 2.5 then
 			DB().scale = s;
 			mover:SetScale(s);
-			print("|cff4FC3F7NUF:|r Swing Timer - escala: " .. string.format("%.1f", s));
+			print("|cff4FC3F7NUF:|r " .. (L["SWING_SCALE"] or "Swing Timer - scale:") .. " " .. string.format("%.1f", s));
 		else
-			print("|cff4FC3F7NUF:|r Uso: /nufswing scale <0.5 - 2.5>");
+			print("|cff4FC3F7NUF:|r " .. (L["CMD_USAGE"] or "Usage:") .. " /nufswing scale <0.5 - 2.5>");
 		end
 	elseif cmd == "reset" then
 		local db = DB();
 		db.x, db.y, db.scale = 0, 222, 1.0;
 		RestorePosition();
 		Lock();
-		print("|cff4FC3F7NUF:|r Swing Timer - posición y escala reiniciadas.");
+		print("|cff4FC3F7NUF:|r " .. (L["SWING_RESET"] or "Swing Timer - position and scale reset."));
 	else
 		print("|cff4FC3F7NUF:|r /nufswing unlock | lock | scale <n> | reset");
 	end

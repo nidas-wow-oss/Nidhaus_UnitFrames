@@ -355,19 +355,19 @@ SlashCmdList["DTSU"] = function(msg)
                 DTSU_DB.y = y
             end)
             anchor.moving = true
-            print("|cff00ff00DTSU|r: modo mover activado, arrastra el cuadro verde. /dtsu move de nuevo para fijar.")
+            print("|cff00ff00DTSU|r: " .. (L["DTSU_MOVE_ON"] or "move mode on, drag the green box. /dtsu move again to lock it."))
         else
             anchor.bg:Hide()
             anchor:EnableMouse(false)
             anchor.moving = false
-            print("|cff00ff00DTSU|r: anchor fijado.")
+            print("|cff00ff00DTSU|r: " .. (L["DTSU_MOVE_OFF"] or "anchor locked."))
         end
     elseif msg == "static" then
         DTSU_DB.static = not DTSU_DB.static
         print("|cff00ff00DTSU|r: static = " .. tostring(DTSU_DB.static))
     elseif msg == "short" then
         DTSU_DB.short_numbers = not DTSU_DB.short_numbers
-        print("|cff00ff00DTSU|r: numeros cortos = " .. tostring(DTSU_DB.short_numbers))
+        print("|cff00ff00DTSU|r: " .. (L["DTSU_SHORT"] or "short numbers =") .. " " .. tostring(DTSU_DB.short_numbers))
     else
         print("|cff00ff00DTSU|r: /dtsu move | /dtsu static | /dtsu short")
     end

@@ -8,9 +8,9 @@ NUF combina y reescribe varios addons existentes — entre ellos Eazy Frames y s
 
 > ## Descarga
 >
-> **Última versión: 4.0** — es la build actual, la recomendada y la que está en uso.
+> **Última versión: 4.1** — es la build actual, la recomendada y la que está en uso.
 >
-> **[Descargar v4.0 (última release)](../../releases/latest)**
+> **[Descargar v4.1 (última release)](../../releases/latest)**
 >
 > Una sola descarga, todo incluido: el addon y su panel de opciones.
 
@@ -38,7 +38,7 @@ NUF combina y reescribe varios addons existentes — entre ellos Eazy Frames y s
 
 ## Instalación
 
-1. Descargá la **v4.0** desde la [página de releases](../../releases/latest).
+1. Descargá la **v4.1** desde la [página de releases](../../releases/latest).
 2. Extraé el archivo. Vas a obtener dos carpetas: `Nidhaus_UnitFrames` y `Nidhaus_UnitFrames_Config`.
 3. Copiá **las dos** carpetas a tu directorio `Interface/AddOns/` de WoW.
 4. Reiniciá el cliente, o escribí `/reload` si ya estás en el juego.
@@ -98,6 +98,10 @@ NUF está construido sobre el trabajo de mucha gente. El motor y varios módulos
 Integración, port a 3.3.5a, corrección de bugs y todo lo demás: **Nidhaus**.
 
 ## Changelog
+
+### v4.1
+- Todo en español e inglés: cada texto visible sigue el idioma del juego. Incluye las opciones, los tooltips, los mensajes del chat y las alertas de los módulos (Arena Calculator, Arena Times, Arrow Count, Auto Repair, los timers de Auto Shot y Melee Swing, Button Range, Class Icons, Dungeon Roles, MiniBar, Paladin Auras, Sacred Shield, Seduction Alert, Party Buffs, Party Castbars, Party Pet Target, Party Targets, Power Bar, Spec Icons, System Spam Filter y más), los nombres de Move Everything y las opciones de Lorti UI.
+- Descarga más liviana: la release trae el código sin comentarios (1,5 MB de Lua en vez de 2,3 MB). Es el mismo código, así que los números de línea de un error siguen coincidiendo con el de este repositorio.
 
 ### v4.0
 - Nueva pestaña DR en Arena: iconos de rendimientos decrecientes en cada enemigo de arena (1/2, 1/4, inmune), con vista previa, arrastre con Shift+Alt, dirección de crecimiento, tamaño, separación y borde del color del nivel. Elegís qué categorías ver (Todas, Mi clase, Ninguna o una por una; al pasar el mouse por una categoría se ven los hechizos que la comparten), y cada icono muestra los segundos que faltan para que se resetee el DR.

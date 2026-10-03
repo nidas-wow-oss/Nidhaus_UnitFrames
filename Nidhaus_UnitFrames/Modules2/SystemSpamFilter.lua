@@ -116,9 +116,9 @@ end
 SLASH_NUFSPAMFILTER1 = "/nufspam";
 SlashCmdList["NUFSPAMFILTER"] = function(msg)
 	Construir();
-	print("|cff4FC3F7NUF:|r filtro de spam de sistema - " ..
-		(activo and "|cff00ff00activo|r" or "|cffff0000apagado|r") ..
-		", " .. #patrones .. " patrones.");
+	print("|cff4FC3F7NUF:|r " .. (L["SPAM_FILTER"] or "system spam filter") .. " - " ..
+		(activo and ("|cff00ff00" .. (L["SPAM_ON"] or "on") .. "|r") or ("|cffff0000" .. (L["SPAM_OFF"] or "off") .. "|r")) ..
+		", " .. #patrones .. " " .. (L["SPAM_PATTERNS"] or "patterns") .. ".");
 	if (msg or ""):lower():find("test") then
 		for i = 1, #patrones do print("   " .. patrones[i]); end
 	end

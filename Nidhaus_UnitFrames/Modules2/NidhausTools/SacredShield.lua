@@ -181,7 +181,7 @@ SlashCmdList["NUFSACREDSHIELD"] = function(msg)
         SacredShieldDB.point, SacredShieldDB.x, SacredShieldDB.y = DEFAULTS.point, DEFAULTS.x, DEFAULTS.y;
         frame:ClearAllPoints();
         frame:SetPoint(SacredShieldDB.point, UIParent, SacredShieldDB.point, SacredShieldDB.x, SacredShieldDB.y);
-        print("|cff4FC3F7NUF:|r SacredShield - posicion restaurada a la de la WeakAura.");
+        print("|cff4FC3F7NUF:|r " .. (L["SS_POS_RESET"] or "Sacred Shield - position restored to the WeakAura's."));
     else
         SetMoving(not moving);
     end

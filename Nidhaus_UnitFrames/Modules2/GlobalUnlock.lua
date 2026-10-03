@@ -360,6 +360,14 @@ local MOVABLES = {
 --
 -- Se resuelve una vez al cargar, porque la clase no cambia.
 -- ---------------------------------------------------------
+-- Nombres de los recuadros en el idioma del cliente (Localization:
+-- MOVER_LBL_<key>). Va ANTES del bloque de abajo, que despues le pone a la
+-- barra de posturas el nombre que corresponde a tu clase.
+for _, entry in ipairs(MOVABLES) do
+	local t = L["MOVER_LBL_" .. entry.key];
+	if t then entry.label = t; end
+end
+
 do
 	local _, class = UnitClass("player");
 	local byClass = {

@@ -13,6 +13,7 @@ assert(addon, "Failed to load library 'PartyTargets-3.3' with LibStub")
 -- FIX: Capture NUF namespace to access K.IsNewPartyFrameActive
 local _, _nufNS = ...;
 local _nufK = _nufNS and _nufNS[1] or nil;
+local _nufL = _nufNS and _nufNS[3] or {};   -- traducciones de NUF
 
 ----------------------------------------------------
 -- Saved Variables, Defaults & State
@@ -777,7 +778,7 @@ SlashCmdList["PARTYTARGETS"] = function(msg)
 		PartyTargetsDB = {}
 		ReloadUI()
 	else
-		DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00PartyTargets:|r /ptarget - Open config panel")
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00PartyTargets:|r /ptarget - " .. (_nufL["PT_HELP_OPEN"] or "Open config panel"))
 	end
 end
 

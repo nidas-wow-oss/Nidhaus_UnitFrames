@@ -291,7 +291,7 @@ local function CreateOptionsPanel()
 	end)
 
 	StaticPopupDialogs["PARTYTARGETS_RESET_CONFIRM"] = {
-		text = "Reset all PartyTargets settings to defaults?",
+		text = L["PT_RESET_CONFIRM"] or "Reset all PartyTargets settings to defaults?",
 		button1 = "Yes",
 		button2 = "No",
 		OnAccept = function()
@@ -317,7 +317,7 @@ local function CreateOptionsPanel()
 		-- La cajita del valor la sincroniza UIKit desde el OnValueChanged
 		-- del propio slider, no hay que repintarla a mano.
 
-		DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00PartyTargets:|r Config open - drag target frames to reposition.")
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00PartyTargets:|r " .. (L["PT_CONFIG_OPEN"] or "Config open - drag target frames to reposition."))
 	end)
 
 	-- ========================

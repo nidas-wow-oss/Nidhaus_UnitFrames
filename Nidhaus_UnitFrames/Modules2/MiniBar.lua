@@ -1527,7 +1527,7 @@ function K.EnableMiniBar()
 	-- Capturar estado original ANTES de tocar nada (pcall por si algún frame no existe)
 	local ok, err = pcall(MB_CaptureOriginals);
 	if not ok then
-		print("|cffFF0000NUF MiniBar:|r Error capturando estado original: " .. tostring(err));
+		print("|cffFF0000NUF MiniBar:|r " .. (L["MINIBAR_CAPTURE_ERR"] or "Error capturing the original state:") .. " " .. tostring(err));
 	end
 
 	minibarEnabled = true;
