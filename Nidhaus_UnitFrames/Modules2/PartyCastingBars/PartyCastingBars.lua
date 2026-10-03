@@ -235,7 +235,24 @@ function PartyCastingBars.OpenColorPicker(info)
 	ColorPickerFrame.func        = setBarColor;
 	ColorPickerFrame.cancelFunc  = cancelBarColorChange;
 	ColorPickerFrame.extraInfo   = info.extraInfo;
+	-- El menu de PCB va en FULLSCREEN_DIALOG (por encima del panel de NUF)
+	-- y el selector de color de Blizzard en DIALOG: se abria DETRAS del menu.
+	-- Se lo sube mientras se usa desde aca y al cerrarse vuelve a su capa,
+	-- asi no cambia para los demas que lo abran.
+	if not ColorPickerFrame._nufStrataHook then
+		ColorPickerFrame._nufStrataHook = true;
+		local origStrata = ColorPickerFrame:GetFrameStrata();
+		ColorPickerFrame:HookScript("OnHide", function(self)
+			if self._nufRaised then
+				self._nufRaised = nil;
+				self:SetFrameStrata(origStrata);
+			end
+		end);
+	end
+	ColorPickerFrame._nufRaised = true;
+	ColorPickerFrame:SetFrameStrata("FULLSCREEN_DIALOG");
 	ShowUIPanel(ColorPickerFrame);
+	ColorPickerFrame:Raise();
 	ColorPickerFrame:SetColorRGB(info.r, info.g, info.b);
 end
 

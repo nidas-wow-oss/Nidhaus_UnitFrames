@@ -216,6 +216,38 @@ local function HookPetHideForTest(petFrame)
 	end);
 end
 
+-- Una mascota de prueba: se muestra con datos falsos y el gancho seguro de
+-- arriba la mantiene visible mientras dure el Test. Lo usan el Test al
+-- abrirse y la casilla del panel (K.RefreshArenaTestPets).
+local function ShowTestPet(petFrame)
+	if not petFrame._blizzDefaultPoints then
+		petFrame._blizzDefaultPoints = {};
+		for p = 1, petFrame:GetNumPoints() do
+			petFrame._blizzDefaultPoints[p] = {petFrame:GetPoint(p)};
+		end
+	end
+	HookPetHideForTest(petFrame);
+	petTestActive[petFrame] = true;
+	petFrame._testMode = true;
+	petFrame:Show();
+	if petFrame.healthbar then
+		petFrame.healthbar:SetMinMaxValues(0, 100);
+		petFrame.healthbar:SetValue(100);
+		petFrame.healthbar:SetStatusBarColor(0, 1, 0);
+	end
+	if petFrame.manabar then
+		petFrame.manabar:SetMinMaxValues(0, 100);
+		petFrame.manabar:SetValue(100);
+		petFrame.manabar:SetStatusBarColor(0, 0, 1);
+	end
+end
+
+local function HideTestPet(petFrame)
+	petTestActive[petFrame] = nil;
+	petFrame._testMode = nil;
+	petFrame:Hide();
+end
+
 local function HideTestFrames()
 	-- sArena pattern: frames nunca se reparentearon ni se les cambió la escala.
 	-- Solo hay que ocultarlos y limpiar datos fake.
@@ -226,11 +258,7 @@ local function HideTestFrames()
 		if frame then
 			-- Pet frame: restaurar Hide original y ocultar
 			local petFrame = _G["ArenaEnemyFrame"..i.."PetFrame"];
-			if petFrame then
-				petTestActive[petFrame] = nil;
-				petFrame._testMode = nil;
-				petFrame:Hide();
-			end
+			if petFrame then HideTestPet(petFrame); end
 			-- Cast bar: ocultar
 			local castBar = _G["ArenaEnemyFrame"..i.."CastingBar"];
 			if castBar then
@@ -669,20 +697,7 @@ local function ToggleTestMode()
 						-- verdad, corria "manchado" y el juego le cortaba el
 						-- Hide en combate. Ahora un gancho seguro la vuelve a
 						-- mostrar solo mientras dura el modo prueba.
-						HookPetHideForTest(petFrame);
-						petTestActive[petFrame] = true;
-						petFrame._testMode = true;
-						petFrame:Show();
-						if petFrame.healthbar then
-							petFrame.healthbar:SetMinMaxValues(0, 100);
-							petFrame.healthbar:SetValue(100);
-							petFrame.healthbar:SetStatusBarColor(0, 1, 0);
-						end
-						if petFrame.manabar then
-							petFrame.manabar:SetMinMaxValues(0, 100);
-							petFrame.manabar:SetValue(100);
-							petFrame.manabar:SetStatusBarColor(0, 0, 1);
-						end
+						ShowTestPet(petFrame);
 					else
 						petFrame:Hide();
 					end
@@ -934,6 +949,41 @@ function K.ClearArenaTestFrames()
 	end
 	EnsureArenaMoverDB();
 	if NidhausUnitFramesDB.ArenaMover.IsShown then ToggleTestMode(); end
+	return true;
+end
+
+-- La casilla "Mostrar mascotas en el Test" con el Test ya abierto: muestra
+-- o esconde las mascotas de prueba en el momento, solo las de los marcos
+-- que hay (Test 2 / 3 / 5).
+--
+-- Una sola copia de esta logica. Antes el panel tenia la suya: le pisaba el
+-- metodo Hide al marco de la mascota (taint, el mismo patron que ya se
+-- habia sacado de aca) y, como ese Hide quedaba anulado, al cerrar el Test
+-- las mascotas se quedaban colgadas en pantalla. Ademas usaba un 3 fijo.
+function K.RefreshArenaTestPets()
+	EnsureArenaMoverDB();
+	if not NidhausUnitFramesDB.ArenaMover.IsShown then return false; end
+	if InCombatLockdown() then return false; end
+	local n = ArenaTestCount();
+	for i = 1, MOVER_ARENA_MAX do
+		local petFrame = _G["ArenaEnemyFrame"..i.."PetFrame"];
+		if petFrame then
+			if C.ArenaPetFrameShow and i <= n then
+				ShowTestPet(petFrame);
+			else
+				HideTestPet(petFrame);
+			end
+		end
+	end
+	if C.ArenaPetFrameShow then
+		if K.IsFlatModeActive and K.IsFlatModeActive() and C.ArenaFlatPetStyle and K.ApplyFlatPetFrames then
+			K.ApplyFlatPetFrames();
+		end
+		RestorePetFramePositions();
+		CreatePetFrameDragOverlays();
+	else
+		HidePetFrameDragOverlays();
+	end
 	return true;
 end
 

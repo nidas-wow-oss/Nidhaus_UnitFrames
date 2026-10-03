@@ -1,5 +1,8 @@
 -- PartyBuffs
 -- Muestra buffs/debuffs extendidos del grupo (slots 1-20)
+-- Buffs y debuffs se prenden por separado (Frames > Party: "Party Buffs" y
+-- "Party Debuffs"). El tipo que el modulo no maneja queda como Blizzard:
+-- debuffs = los 4 de fabrica en su lugar; buffs = ninguno.
 -- Posiciones independientes por modo: Blizzard / NewPartyFrame
 -- Offsets guardados en espacio LOCAL del party frame (compatibles con 3v3)
 --
@@ -202,6 +205,102 @@ local function GetMaxDebuffs()
 	return tonumber(PartyBuffsDB.maxDebuffs) or DEFAULTS_SHARED.maxDebuffs;
 end
 
+-- Que tipos maneja el modulo. Sin valor guardado, los dos (como antes).
+local function ShowBuffs()   return PartyBuffsDB.showBuffs   ~= false; end
+local function ShowDebuffs() return PartyBuffsDB.showDebuffs ~= false; end
+
+-- Devuelve Buff1 / Debuff1 al anclaje que tenian ANTES de que el modulo los
+-- tocara (lo captura SetupFrames). Se usa al apagar el modulo y al apagar
+-- uno de los dos tipos: desde ahi ese anclaje vuelve a ser de Blizzard o
+-- del estilo de party, no de este modulo (un solo dueño por anclaje).
+local function RestoreOrigAnchor(i, f, which)
+	local o = origAnchors[i];
+	if which == "debuff" then
+		local d1 = _G[f:GetName() .. "Debuff1"];
+		if d1 then
+			d1:ClearAllPoints();
+			if o and o.debuff and o.debuff[1] then
+				local pt, rel, rp, x, y = unpack(o.debuff);
+				d1:SetPoint(pt, rel or f, rp or pt, x or 0, y or 0);
+			else
+				d1:SetPoint("LEFT", f, "RIGHT", 5, 0);
+			end
+		end
+	else
+		local b1 = _G[f:GetName() .. "Buff1"];
+		if b1 then
+			b1:ClearAllPoints();
+			if o and o.buff and o.buff[1] then
+				local pt, rel, rp, x, y = unpack(o.buff);
+				b1:SetPoint(pt, rel or f, rp or pt, x or 0, y or 0);
+			else
+				b1:SetPoint("TOPLEFT", f, "TOPLEFT", 48, -32);
+			end
+		end
+	end
+end
+
+-- Crea los iconos que falten hasta el maximo actual (Debuff5..maxD y
+-- Buff1..maxB) y los encadena. Antes se creaban solo al prender el modulo,
+-- con el maximo de ese momento: subirlo despues no mostraba mas iconos.
+local function EnsureAuraFrames(f)
+	local maxB, maxD = GetMaxBuffs(), GetMaxDebuffs();
+	local dPrefix = f:GetName() .. "Debuff";
+	for j = 5, maxD do
+		local frame = _G[dPrefix .. j] or CreateFrame("Frame", dPrefix .. j, f, "PartyDebuffFrameTemplate");
+		frame:ClearAllPoints();
+		frame:SetPoint("LEFT", _G[dPrefix .. (j-1)], "RIGHT");
+	end
+	local bPrefix = f:GetName() .. "Buff";
+	for j = 1, maxB do
+		local frame = _G[bPrefix .. j];
+		if not frame then
+			frame = CreateFrame("Frame", bPrefix .. j, f, "TargetBuffFrameTemplate");
+			frame:EnableMouse(false);
+		end
+		if j > 1 then
+			frame:ClearAllPoints();
+			frame:SetPoint("LEFT", _G[bPrefix .. (j-1)], "RIGHT", 1, 0);
+		end
+	end
+end
+
+-- Refresca las auras de un marco segun que tipos maneja el modulo. Lo usa
+-- el UNIT_AURA propio y los cambios del panel. Lee el maximo en el momento
+-- (antes quedaba fijo el de cuando se prendio el modulo).
+local function RefreshFrameAuras(f)
+	local unit = f.unit;
+	if not unit or not UnitExists(unit) then return; end
+	if ShowDebuffs() then
+		if RefreshDebuffs then
+			RefreshDebuffs(f, unit, GetMaxDebuffs(), nil, 1);
+		else
+			PartyMemberFrame_RefreshDebuffs(f);
+		end
+	else
+		PartyMemberFrame_RefreshDebuffs(f);   -- los 4 de Blizzard
+	end
+	if ShowBuffs() then
+		if RefreshBuffs then
+			RefreshBuffs(f, unit, GetMaxBuffs(), nil, 1);
+		elseif PartyMemberFrame_RefreshBuffs then
+			PartyMemberFrame_RefreshBuffs(f);
+		end
+	else
+		for j = 1, 20 do
+			local bf = _G[f:GetName() .. "Buff" .. j];
+			if bf then bf:Hide(); end
+		end
+	end
+end
+
+local function RefreshAllAuras()
+	for i = 1, 4 do
+		local f = _G["PartyMemberFrame" .. i];
+		if f then RefreshFrameAuras(f); end
+	end
+end
+
 ------------------------------------------------------------------------
 -- ApplyScaleAll — aplica escala a todos los iconos visibles
 ------------------------------------------------------------------------
@@ -215,8 +314,8 @@ local function ApplyScaleAll(scaleTable)
 			for j = 1, 20 do
 				local b = _G[f:GetName() .. "Buff"   .. j]
 				local d = _G[f:GetName() .. "Debuff" .. j]
-				if b and b.SetScale then b:SetScale(sb) end
-				if d and d.SetScale then d:SetScale(sd) end
+				if b and b.SetScale then b:SetScale(ShowBuffs() and sb or 1) end
+				if d and d.SetScale then d:SetScale(ShowDebuffs() and sd or 1) end
 			end
 		end
 	end
@@ -239,25 +338,35 @@ local function ReanchorAll()
 	local maxB    = GetMaxBuffs();
 	local maxD    = GetMaxDebuffs();
 
+	local doB, doD = ShowBuffs(), ShowDebuffs()
+
 	for i = 1, 4 do
 		local f = _G["PartyMemberFrame" .. i]
 		if f then
-			local d1 = _G[f:GetName() .. "Debuff1"]
-			if d1 then
-				d1:ClearAllPoints()
-				d1:SetPoint("LEFT", f, "RIGHT", debuffs.x, debuffs.y)
+			EnsureAuraFrames(f)
+			-- El anclaje de Debuff1 / Buff1 solo se toca si ese tipo es del
+			-- modulo; si no, es de Blizzard o del estilo de party.
+			if doD then
+				local d1 = _G[f:GetName() .. "Debuff1"]
+				if d1 then
+					d1:ClearAllPoints()
+					d1:SetPoint("LEFT", f, "RIGHT", debuffs.x, debuffs.y)
+				end
 			end
-			local b1 = _G[f:GetName() .. "Buff1"]
-			if b1 then
-				b1:ClearAllPoints()
-				b1:SetPoint("TOPLEFT", f, "TOPLEFT", buffs.x, buffs.y)
+			if doB then
+				local b1 = _G[f:GetName() .. "Buff1"]
+				if b1 then
+					b1:ClearAllPoints()
+					b1:SetPoint("TOPLEFT", f, "TOPLEFT", buffs.x, buffs.y)
+				end
 			end
-			-- Ocultar iconos más allá del límite configurado
-			for j = maxB + 1, 20 do
+			-- Ocultar iconos más allá del límite (o todos los buffs si el
+			-- modulo no los maneja; los debuffs de Blizzard son 4).
+			for j = (doB and maxB or 0) + 1, 20 do
 				local b = _G[f:GetName() .. "Buff"   .. j]
 				if b then b:Hide() end
 			end
-			for j = maxD + 1, 20 do
+			for j = (doD and maxD or 4) + 1, 20 do
 				local d = _G[f:GetName() .. "Debuff" .. j]
 				if d then d:Hide() end
 			end
@@ -291,16 +400,7 @@ local function SetupFrames()
 			evt:SetScript("OnEvent", function(self, event, unit)
 				if not unit then return end
 				if unit == f.unit then
-					if RefreshDebuffs then
-						RefreshDebuffs(f, unit, maxD, nil, 1)
-					else
-						PartyMemberFrame_RefreshDebuffs(f)
-					end
-					if RefreshBuffs then
-						RefreshBuffs(f, unit, maxB, nil, 1)
-					else
-						PartyMemberFrame_RefreshBuffs(f)
-					end
+					RefreshFrameAuras(f)
 				elseif unit == f.unit .. "pet" then
 					PartyMemberFrame_RefreshPetDebuffs(f)
 				end
@@ -322,45 +422,10 @@ local function SetupFrames()
 				origAnchors[i] = o
 			end
 
-			-- Debuff1 posición inicial
-			local d1 = _G[f:GetName() .. "Debuff1"]
-			if d1 then
-				d1:ClearAllPoints()
-				d1:SetPoint("LEFT", f, "RIGHT", debuffs.x, debuffs.y)
-			end
-
-			-- Crear/anclar Debuffs 5 a maxD (2-4 los crea Blizzard)
-			for j = 5, maxD do
-				local prefix = f:GetName() .. "Debuff"
-				local frame  = _G[prefix .. j] or CreateFrame("Frame", prefix .. j, f, "PartyDebuffFrameTemplate")
-				frame:ClearAllPoints()
-				frame:SetPoint("LEFT", _G[prefix .. (j-1)], "RIGHT")
-			end
-
-			-- Ocultar debuffs más allá del límite
-			for j = maxD + 1, 20 do
-				local frame = _G[f:GetName() .. "Debuff" .. j]
-				if frame then frame:Hide() end
-			end
-
-			-- Crear/anclar Buffs 1 a maxB
-			for j = 1, maxB do
-				local prefix = f:GetName() .. "Buff"
-				local frame  = _G[prefix .. j] or CreateFrame("Frame", prefix .. j, f, "TargetBuffFrameTemplate")
-				frame:EnableMouse(false)
-				frame:ClearAllPoints()
-				if j == 1 then
-					frame:SetPoint("TOPLEFT", f, "TOPLEFT", buffs.x, buffs.y)
-				else
-					frame:SetPoint("LEFT", _G[prefix .. (j-1)], "RIGHT", 1, 0)
-				end
-			end
-
-			-- Ocultar buffs más allá del límite
-			for j = maxB + 1, 20 do
-				local frame = _G[f:GetName() .. "Buff" .. j]
-				if frame then frame:Hide() end
-			end
+			-- Crear los iconos que faltan; el anclaje de Debuff1 / Buff1 y
+			-- el ocultar lo de mas lo hace ReanchorAll segun que tipos
+			-- maneja el modulo.
+			EnsureAuraFrames(f)
 		end
 	end
 end
@@ -580,8 +645,11 @@ local function CreateMovers()
 end
 
 local function ShowMovers(show)
-	if movers.debuffs then if show then movers.debuffs:Show() else movers.debuffs:Hide() end end
-	if movers.buffs   then if show then movers.buffs:Show()   else movers.buffs:Hide()   end end
+	-- Solo el cuadro de arrastre del tipo que maneja el modulo: mover los
+	-- debuffs de Blizzard desde aca seria pelearle el anclaje al estilo.
+	local sd, sb = show and ShowDebuffs(), show and ShowBuffs()
+	if movers.debuffs then if sd then movers.debuffs:Show() else movers.debuffs:Hide() end end
+	if movers.buffs   then if sb then movers.buffs:Show()   else movers.buffs:Hide()   end end
 end
 
 ------------------------------------------------------------------------
@@ -659,7 +727,16 @@ local function EnsureScalePanel()
 	-- cajita editable que le cuelga ABAJO (la del resto del addon), asi que
 	-- las filas necesitan el doble de separacion.
 	scalePanel:SetSize(300, 268)
-	scalePanel:SetFrameStrata("DIALOG")
+	-- POR ENCIMA DEL PANEL DE NUF Y CON FONDO SOLIDO.
+	--
+	-- Estaba en "DIALOG", la misma capa que el panel principal: quien quedaba
+	-- arriba lo decidia el orden de dibujo, y el panel (que se abre antes y
+	-- es mas grande) la tapaba. Ademas el fondo tenia alfa 0.80, asi que los
+	-- botones del panel se veian a traves y se mezclaban con estos.
+	-- FULLSCREEN_DIALOG es una capa mas arriba, y SetToplevel la sube al
+	-- hacerle click. Mismo arreglo que la ventana de Party Targets.
+	scalePanel:SetFrameStrata("FULLSCREEN_DIALOG")
+	scalePanel:SetToplevel(true)
 	scalePanel:SetClampedToScreen(true)
 	scalePanel:EnableMouse(true)
 	scalePanel:SetMovable(true)
@@ -667,12 +744,12 @@ local function EnsureScalePanel()
 
 	if scalePanel.SetBackdrop then
 		scalePanel:SetBackdrop({
-			bgFile   = "Interface/Tooltips/UI-Tooltip-Background",
+			bgFile   = "Interface\\Buttons\\WHITE8x8",   -- pixel liso: opaco de verdad
 			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-			tile=true, tileSize=16, edgeSize=12,
+			tile = false, edgeSize = 12,
 			insets = { left=3, right=3, top=3, bottom=3 },
 		})
-		scalePanel:SetBackdropColor(0, 0, 0, 0.80)
+		scalePanel:SetBackdropColor(0.05, 0.06, 0.09, 1)
 	end
 
 	-- Header arrastrable
@@ -909,6 +986,7 @@ local function PB_Enable()
 	SetupFrames()
 	ReanchorAll()
 	ApplyScaleAll(PartyBuffsDB.scale)
+	RefreshAllAuras()
 
 	if K.UpdateNewPartyFrames then K.UpdateNewPartyFrames(); end
 
@@ -961,28 +1039,8 @@ local function PB_Disable()
 			-- Volver a los anclajes REALES que tenia Blizzard, no a numeros
 			-- puestos a ojo. El fallback solo entra si por algun motivo no
 			-- se llego a capturar (por ejemplo si nunca se activo el modulo).
-			local o  = origAnchors[i]
-			local d1 = _G[f:GetName() .. "Debuff1"]
-			if d1 then
-				d1:ClearAllPoints()
-				if o and o.debuff and o.debuff[1] then
-					local pt, rel, rp, x, y = unpack(o.debuff)
-					d1:SetPoint(pt, rel or f, rp or pt, x or 0, y or 0)
-				else
-					d1:SetPoint("LEFT", f, "RIGHT", 5, 0)
-				end
-			end
-
-			local b1 = _G[f:GetName() .. "Buff1"]
-			if b1 then
-				b1:ClearAllPoints()
-				if o and o.buff and o.buff[1] then
-					local pt, rel, rp, x, y = unpack(o.buff)
-					b1:SetPoint(pt, rel or f, rp or pt, x or 0, y or 0)
-				else
-					b1:SetPoint("TOPLEFT", f, "TOPLEFT", 48, -32)
-				end
-			end
+			RestoreOrigAnchor(i, f, "debuff")
+			RestoreOrigAnchor(i, f, "buff")
 
 			if f.unit and UnitExists(f.unit) then
 				if PartyMemberFrame_RefreshDebuffs then pcall(PartyMemberFrame_RefreshDebuffs, f) end
@@ -996,11 +1054,107 @@ local function PB_Disable()
 end
 
 ------------------------------------------------------------------------
+-- Buffs y debuffs por separado (Frames > Party)
+------------------------------------------------------------------------
+-- Para los estilos de party: de quien es el anclaje de Debuff1 / Buff1.
+function K.PartyBuffsOwnsDebuffs() return pbEnabled and ShowDebuffs(); end
+function K.PartyBuffsOwnsBuffs()   return pbEnabled and ShowBuffs();   end
+
+-- Lo que muestran las dos casillas del panel.
+function K.PartyBuffs_GetShown()
+	local on = K.IsModuleEnabled and K.IsModuleEnabled("PartyBuffs");
+	return (on and ShowBuffs()) and true or false, (on and ShowDebuffs()) and true or false;
+end
+
+-- Prende o apaga un tipo ("buffs" / "debuffs"). El modulo queda prendido
+-- mientras maneje alguno de los dos.
+function K.PartyBuffs_SetShown(which, on)
+	on = on and true or false;
+	local key = (which == "buffs") and "showBuffs" or "showDebuffs";
+	local moduleOn = K.IsModuleEnabled and K.IsModuleEnabled("PartyBuffs");
+
+	if on and not moduleOn then
+		-- Desde apagado: solo el tipo que tocaste.
+		PartyBuffsDB.showBuffs   = (which == "buffs");
+		PartyBuffsDB.showDebuffs = (which ~= "buffs");
+		K.SetModuleEnabled("PartyBuffs", true);
+	elseif not on and moduleOn and not (key == "showBuffs" and ShowDebuffs() or key == "showDebuffs" and ShowBuffs()) then
+		-- Era el ultimo que quedaba: se apaga el modulo (vuelve todo a Blizzard).
+		PartyBuffsDB[key] = false;
+		K.SetModuleEnabled("PartyBuffs", false);
+	else
+		local was = PartyBuffsDB[key] ~= false;
+		PartyBuffsDB[key] = on;
+		if pbEnabled and was ~= on then
+			-- El tipo que se suelta vuelve a su anclaje de antes.
+			if not on then
+				for i = 1, 4 do
+					local f = _G["PartyMemberFrame" .. i];
+					if f then RestoreOrigAnchor(i, f, (which == "buffs") and "buff" or "debuff"); end
+				end
+			end
+			ReanchorAll();
+			ApplyScaleAll(PartyBuffsDB.scale);
+			RefreshAllAuras();
+			if scalePanel and scalePanel:IsShown() then ShowMovers(true); end
+			-- Que el estilo de party retome (o suelte) los debuffs de fabrica.
+			if K.UpdateNewPartyFrames then K.UpdateNewPartyFrames(); end
+		end
+	end
+	if K.RefreshModuleCheckbox then K.RefreshModuleCheckbox("PartyBuffs"); end
+end
+
+------------------------------------------------------------------------
+-- Opciones del juego que filtran las auras del grupo
+-- (Interface > Buffs and Debuffs). Viven en la CVar: el panel del juego y
+-- el de NUF muestran lo mismo, y tildarla aca la tilda alla.
+------------------------------------------------------------------------
+local BLIZZ_FILTERS = {
+	buffs   = { cvar = "showCastableBuffs", uvar = "SHOW_CASTABLE_BUFFS",      event = "SHOW_CASTABLE_BUFFS_TEXT" },
+	debuffs = { cvar = "showDispelDebuffs", uvar = "SHOW_DISPELLABLE_DEBUFFS", event = "SHOW_DISPELLABLE_DEBUFFS_TEXT" },
+};
+
+-- Existe esa opcion en este cliente? (si no, la casilla no se muestra)
+function K.PartyBuffs_HasBlizzFilter(which)
+	local info = BLIZZ_FILTERS[which];
+	return info and GetCVar(info.cvar) ~= nil or false;
+end
+
+function K.PartyBuffs_GetBlizzFilter(which)
+	local info = BLIZZ_FILTERS[which];
+	return info and GetCVar(info.cvar) == "1" or false;
+end
+
+function K.PartyBuffs_SetBlizzFilter(which, on)
+	local info = BLIZZ_FILTERS[which];
+	if not info or GetCVar(info.cvar) == nil then return false; end
+	local v = on and "1" or "0";
+	-- Con el evento del panel del juego, como lo hace el propio panel.
+	SetCVar(info.cvar, v, info.event);
+	-- RefreshBuffs / RefreshDebuffs de Blizzard leen la copia en Lua de la
+	-- opcion. Si el cliente no la actualizo con el evento, se actualiza
+	-- aca: si no, el cambio recien se veria despues de /reload.
+	if _G[info.uvar] ~= nil and _G[info.uvar] ~= v then _G[info.uvar] = v; end
+	-- Que se vea en el momento.
+	if pbEnabled then
+		RefreshAllAuras();
+	else
+		for i = 1, 4 do
+			local f = _G["PartyMemberFrame" .. i];
+			if f and f.unit and UnitExists(f.unit) and PartyMemberFrame_RefreshDebuffs then
+				pcall(PartyMemberFrame_RefreshDebuffs, f);
+			end
+		end
+	end
+	return true;
+end
+
+------------------------------------------------------------------------
 -- Registro del módulo
 ------------------------------------------------------------------------
 K.RegisterModule("PartyBuffs", {
 	name    = "Party Buffs",
-	desc    = "Extended buffs/debuffs (1-20 icons) on party frames. /pbuffs | /pbuffs reset",
+	desc    = "Extended buffs and/or debuffs (1-20 icons) on party frames. /pbuffs | /pbuffs reset",
 	default = false,   -- viene apagado: se prende desde Frames > Party
 	onEnable  = PB_Enable,
 	onDisable = PB_Disable,

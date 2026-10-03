@@ -211,13 +211,16 @@ end
 local function InitMinimap()
 	if not SubOpt("LortiUI_Minimap") then return end
 	local ok, err = pcall(function()
-		-- Oscurecer el borde del minimapa
-		if MinimapBorder then MinimapBorder:SetVertexColor(.05, .05, .05) end
-		if MinimapBorderTop then MinimapBorderTop:Hide() end
-		-- Mantener botones visibles
-		if MinimapZoomIn then MinimapZoomIn:Show() end
-		if MinimapZoomOut then MinimapZoomOut:Show() end
-		if MiniMapWorldMapButton then MiniMapWorldMapButton:Show() end
+		-- EL BORDE YA NO SE PINTA ACA.
+		--
+		-- Lo dibuja MinimapStyle como el estilo "Lorti UI" del desplegable
+		-- de borde (redondo y cuadrado, en caliente y reversible). Esta
+		-- casilla es el espejo de ese estilo: ver K.SyncLortiMinimap.
+		--
+		-- Tampoco se fuerzan a mostrar los botones de zoom y el del mapa
+		-- del mundo: los decide Interface > Minimap > Decorations, y
+		-- forzarlos aca les ganaba a "Hide Zoom Buttons" / "Hide World Map"
+		-- segun quien corriera ultimo.
 		if MiniMapTracking then
 			MiniMapTracking:Show()
 			MiniMapTracking.Show = kill
@@ -335,7 +338,8 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		{ key="LortiUI_PartyPet",          label="Party pet",               tip="Darkens the enhanced party pet frame and its castbar border." },
 		{ key="LortiUI_Arena",             label="Arena",                   tip="Darkens enemy arena frame textures." },
 		{ key="LortiUI_ActionBars",        label="Action Bars",             tip="Darkens action bar, bonus, XP and Reputation textures." },
-		{ key="LortiUI_Minimap",           label="Minimap",                 tip="Scroll zoom with mouse wheel + right-click for calendar." },
+		{ key="LortiUI_Minimap",           label="Minimap",                 live=true,
+		  tip="Dark minimap border. It is the same option as Interface > Minimap > Border style: Lorti UI, and they stay in sync.\nAlso: right-click the minimap to open the calendar." },
 	}
 
 	local subCheckboxes = {}
@@ -360,7 +364,8 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		end
 		cb:SetChecked(C[opt.key] ~= false)
 
-		local tipText = opt.tip .. "\n\n|cffFFAA00⚠ Requires /reload|r"
+		-- El minimapa se aplica en el momento: sin el cartel de /reload.
+		local tipText = opt.live and opt.tip or (opt.tip .. "\n\n|cffFFAA00⚠ Requires /reload|r")
 		cb:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 			GameTooltip:SetText(opt.label, 1, 1, 1)
@@ -371,6 +376,20 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		cb:SetScript("OnClick", function(self)
 			local checked = self:GetChecked() == 1 or self:GetChecked() == true
 			K.SaveConfig(opt.key, checked)
+			-- ESPEJO DEL BORDE DEL MINIMAPA.
+			--
+			-- Antes solo guardaba la casilla: el desplegable de borde no se
+			-- enteraba y no cambiaba nada hasta un /reload. Ahora tildar pone
+			-- el borde "Lorti UI" y destildar vuelve a "Default", en el acto.
+			if opt.key == "LortiUI_Minimap" then
+				local cur = (K.GetMinimapBorderStyle and K.GetMinimapBorderStyle()) or C.MinimapBorderStyle
+				if checked then
+					K.SaveConfig("MinimapBorderStyle", "Lorti")
+				elseif cur == "Lorti" then
+					K.SaveConfig("MinimapBorderStyle", "Default")
+				end
+				if K.ApplyMinimapSettings then K.ApplyMinimapSettings() end
+			end
 		end)
 
 		table.insert(subCheckboxes, cb)

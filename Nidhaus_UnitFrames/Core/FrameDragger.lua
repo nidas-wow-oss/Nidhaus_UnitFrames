@@ -187,6 +187,11 @@ function K.ResetPositionsAndScale()
 	-- Reset castbar and trinket saved positions
 	NidhausUnitFramesDB.CastBarPositions = nil;
 	NidhausUnitFramesDB.TrinketPositions = nil;
+	-- y las filas de DR y DoT (vuelven a su lugar automatico)
+	NidhausUnitFramesDB.ArenaDRPositions = nil;
+	if K.RefreshArenaDRLayout then K.RefreshArenaDRLayout(); end
+	NidhausUnitFramesDB.ArenaDoTPositions = nil;
+	if K.RefreshArenaDoTLayout then K.RefreshArenaDoTLayout(); end
 
 	-- Hide arena mover if shown
 	if K.ForceHideArenaMover then

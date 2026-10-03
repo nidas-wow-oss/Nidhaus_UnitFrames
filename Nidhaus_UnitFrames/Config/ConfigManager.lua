@@ -127,6 +127,10 @@ local defaults = {
 	AsuriFrames = false, -- tema Asuri: marco de cadenas, barras finas
 	-- Texto de vida/mana (portado de ZyrokofArenaFrames)
 	ShowCurrentValueOnly = false,     -- "33401" en vez de "33401 / 33401"
+	BigStatusText = false,            -- Status Text > Big text: nombre arriba del marco (Light/Dark/Compact)
+	BigTextCustomSize = false,        -- Big text: tamaño propio de los numeros
+	BigTextHealthSize = 12,           -- Big text: tamaño del texto de vida (8-16)
+	BigTextManaSize = 10,             -- Big text: tamaño del texto de mana (8-16)
 	PartyHideHealthManaText = false,  -- esconde los numeros solo en el party
 	PartyFontSize = 0,                -- 0 = tamaño original de cada estilo
 	PartyFontOutline = "OUTLINE", -- contorno del texto de los del grupo
@@ -139,6 +143,23 @@ local defaults = {
 
 	-- EXTRA OPTIONS
 	ArenaCountDown = true,
+	ShadowSightTimer = true,   -- ojo (Shadow Sight): icono + cuenta, checkbox propio
+	ArenaDR = false,           -- iconos de DR (pestaña Arena > DR)
+	ArenaDRSize = 22,          -- DR: tamaño de cada icono
+	ArenaDRSpacing = 2,        -- DR: separacion entre iconos
+	ArenaDRGrow = "AUTO",      -- DR: AUTO / LEFT / RIGHT / UP / DOWN
+	ArenaDRBorder = true,      -- DR: borde del color del nivel
+	ArenaDRText = true,        -- DR: texto 1/2 1/4 X
+	ArenaDRTimer = true,       -- DR: segundos que faltan para el reset
+	ArenaDRClassOnly = false,  -- DR: solo categorias de tu clase
+	ArenaDRHideCats = "",      -- DR: categorias ocultas, separadas por coma ("" = todas)
+	ArenaDoTWarn = false,      -- aviso de DoTs (pestaña Arena > DoT)
+	ArenaDoTSize = 16,         -- DoT: tamaño de los iconos
+	ArenaDoTSpacing = 2,       -- DoT: separacion
+	ArenaDoTMax = 3,           -- DoT: iconos como maximo
+	ArenaDoTGrow = "AUTO",     -- DoT: AUTO / LEFT / RIGHT / UP / DOWN
+	ArenaDoTLabel = true,      -- DoT: texto "DoT"
+	ArenaDoTBorder = true,     -- DoT: borde rojo
 	AutoSellGray = true,
 	AutoRepair = true,
 	ErrorHideInCombat = true,

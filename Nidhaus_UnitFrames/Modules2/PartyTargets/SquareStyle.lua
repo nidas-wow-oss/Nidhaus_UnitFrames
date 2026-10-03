@@ -133,7 +133,8 @@ local function Snap(region)
 	};
 end
 
-local function Restore(region, s)
+-- keepShown: no tocar si se ve o no (lo decide otro; ver el nombre abajo).
+local function Restore(region, s, keepShown)
 	if not region or not s then return; end
 	region:ClearAllPoints();
 	if s.point then
@@ -141,7 +142,9 @@ local function Restore(region, s)
 	end
 	if s.w and s.w > 0 then region:SetWidth(s.w); end
 	if s.h and s.h > 0 then region:SetHeight(s.h); end
-	if s.shown then region:Show(); else region:Hide(); end
+	if not keepShown then
+		if s.shown then region:Show(); else region:Hide(); end
+	end
 	if s.font and s.font[1] and region.SetFont then
 		pcall(region.SetFont, region, s.font[1], s.font[2], s.font[3]);
 	end
@@ -206,6 +209,18 @@ end
 -- Los que no son jugadores no tienen clase: se quedan con su cara.
 -- ---------------------------------------------------------
 local FACE_COORDS = { 0.08, 0.92, 0.08, 0.92 };   -- recorte normal de retrato
+-- Classic tiene el retrato REDONDO: ahi van los iconos de clase redondos
+-- (misma grilla que el atlas de arriba, asi que CLASS_ICON_TCOORDS sirve).
+local CIRCLE_ATLAS = "Interface\\TargetingFrame\\UI-Classes-Circles";
+
+-- Icono de clase en el retrato: casilla "Class icon in portrait" de las
+-- opciones (PartyTargetsDB.classIcon). Sin valor guardado queda lo de
+-- siempre: Square con icono, Classic con la cara.
+local function WantClassIcon()
+	local v = PartyTargetsDB and PartyTargetsDB.classIcon;
+	if v == nil then return K.GetPartyTargetStyle() == "Square"; end
+	return v and true or false;
+end
 
 local function ApplyClassPortrait(f)
 	local por = _G[f:GetName() .. "Portrait"];
@@ -217,7 +232,7 @@ local function ApplyClassPortrait(f)
 		local _, class = UnitClass(unit);
 		local coords = class and CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class];
 		if coords then
-			por:SetTexture(CLASS_ATLAS);
+			por:SetTexture((K.GetPartyTargetStyle() == "Square") and CLASS_ATLAS or CIRCLE_ATLAS);
 			por:SetTexCoord(unpack(coords));
 			return;
 		end
@@ -237,6 +252,25 @@ local function ApplyClassPortrait(f)
 		por:SetTexture(nil);
 	end
 	por:SetTexCoord(unpack(FACE_COORDS));
+end
+
+-- La cara del objetivo (casilla apagada).
+local function ApplyFacePortrait(f)
+	local por = _G[f:GetName() .. "Portrait"];
+	if not por then return; end
+	local unit = "party" .. f:GetID() .. "target";
+	if UnitExists(unit) then
+		SetPortraitTexture(por, unit);
+	else
+		por:SetTexture(nil);
+	end
+	por:SetTexCoord(unpack(FACE_COORDS));
+end
+
+-- Icono o cara, segun la casilla. El retrato no es protegido: se puede
+-- cambiar tambien en combate.
+local function UpdatePortrait(f)
+	if WantClassIcon() then ApplyClassPortrait(f); else ApplyFacePortrait(f); end
 end
 
 -- ---------------------------------------------------------
@@ -310,7 +344,7 @@ local function ApplySquare(f)
 		nm:SetTextColor(1, 0.82, 0);
 	end
 
-	ApplyClassPortrait(f);
+	UpdatePortrait(f);
 end
 
 local function ApplyClassic(f)
@@ -323,7 +357,21 @@ local function ApplyClassic(f)
 	Restore(por, s.portrait);
 	Restore(hp,  s.health);
 	Restore(mp,  s.mana);
-	Restore(nm,  s.name);
+	-- EL NOMBRE NO SE MUESTRA SEGUN LA FOTO.
+	--
+	-- Restore le devolvia el "visible" de fabrica, y esto corre en cada
+	-- cambio de objetivo, de grupo y al salir de combate: los mismos
+	-- eventos en que Frames.lua lo esconde por "Hide target name". El orden
+	-- entre los dos no esta garantizado, asi que la opcion andaba a veces
+	-- si y a veces no (y al salir de combate el nombre volvia siempre).
+	-- Ademas, si la foto se sacaba con el nombre ya oculto, destildar la
+	-- opcion no lo traia de vuelta.
+	--
+	-- Ahora manda solo la opcion, igual que en Square.
+	Restore(nm,  s.name, true);
+	if nm then
+		if PartyTargetsDB and PartyTargetsDB.hideName then nm:Hide(); else nm:Show(); end
+	end
 	Restore(tex, s.texture);
 	if nm then nm:SetJustifyH("LEFT"); end
 
@@ -347,6 +395,8 @@ local function ApplyClassic(f)
 	-- SetPortraitTexture la reescribe en la proxima actualizacion del
 	-- objetivo, que ocurre enseguida.
 	if por then por:SetTexCoord(unpack(FACE_COORDS)); end
+	-- Con la casilla del icono de clase, tambien en Classic.
+	if por and WantClassIcon() then ApplyClassPortrait(f); end
 end
 
 -- ---------------------------------------------------------
@@ -380,6 +430,20 @@ function K.ApplyPartyTargetStyle()
 			Capture(f);
 			if square then ApplySquare(f) else ApplyClassic(f) end
 		end
+	end
+end
+
+-- Casilla "Class icon in portrait" (opciones de Party Targets).
+function K.GetPartyTargetClassIcon()
+	return WantClassIcon();
+end
+
+function K.SetPartyTargetClassIcon(on)
+	if not PartyTargetsDB then PartyTargetsDB = {}; end
+	PartyTargetsDB.classIcon = on and true or false;
+	for i = 1, FRAMES do
+		local f = _G[FRAME_NAME .. i];
+		if f then UpdatePortrait(f); end
 	end
 end
 
@@ -445,7 +509,9 @@ end);
 -- siempre despues.
 if type(UnitFramePortrait_Update) == "function" then
 	hooksecurefunc("UnitFramePortrait_Update", function(self)
-		if not self or K.GetPartyTargetStyle() ~= "Square" then return; end
+		-- Antes: solo en Square. Ahora manda la casilla del icono de clase
+		-- (que sin tocarla sigue siendo "Square si, Classic no").
+		if not self or not WantClassIcon() then return; end
 		local n = self.GetName and self:GetName();
 		if n and string.find(n, "^PartyTargetFrame%d") then
 			ApplyClassPortrait(self);

@@ -8,9 +8,9 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 
 > ## Download
 >
-> **Latest version: 3.9.3** — this is the current, recommended build and the one actively in use.
+> **Latest version: 4.0** — this is the current, recommended build and the one actively in use.
 >
-> **[Download v3.9.3 (latest release)](../../releases/latest)**
+> **[Download v4.0 (latest release)](../../releases/latest)**
 >
 > One download, everything included: the addon and its options panel.
 
@@ -23,14 +23,14 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 <img src="images/panel.png" width="559" alt="NUF options panel" />
 
 - **Unit frames** — player, target, focus, party and boss, with custom skins, class colors and per-frame scale.
-- **Arena** — arena frames in two styles (Default and Flat) with trinkets, spec icons and countdown, plus a test mode to place them outside a match.
+- **Arena** — arena frames in two styles (Default and Flat) with trinkets, spec icons, DR and DoT tracking and countdown, plus a test mode to place them outside a match.
 - **Party** — 3v3 arena layout with per-member scale, and a test mode to arrange the group while you are alone.
 - **Move Everything** — drag any frame and resize it with Ctrl + mouse wheel.
 - **Optional modules** — action bars, class trackers, tooltip, chat and quality-of-life extras, each one on or off from the panel.
 - **Character Setup** — copy action bars, macros and keybinds between characters (nExtraBars included).
 - **Profiles** — export and import your whole configuration.
 
-<img width="215" alt="Arena" src="https://github.com/user-attachments/assets/ace03d46-ccb9-4952-b3c1-bdbd25d2b891" /> <img width="220" alt="Arena" src="https://github.com/user-attachments/assets/ba6e5101-b017-4d48-a4bc-9b57ba7d2023" /> <img width="212" alt="Arena" src="https://github.com/user-attachments/assets/431c3a78-f485-40e2-b942-b1a4e6202e0c" />
+<img width="215" alt="Arena" src="https://github.com/user-attachments/assets/ace03d46-ccb9-4952-b3c1-bdbd25d2b891" /> <img width="220" alt="Arena" src="https://github.com/user-attachments/assets/ba6e5101-b017-4d48-a4bc-9b57ba7d2023" /> <img width="212" alt="Arena" src="https://github.com/user-attachments/assets/431c3a78-f485-40e2-b942-b1a4e6202e0c" /> <img width="137" alt="DoT warning" src="images/arena-dot-warning.png" />
 
 | New Party Frame | Party Targets | NiceDamage |
 |:-:|:-:|:-:|
@@ -38,7 +38,7 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 
 ## Installation
 
-1. Download **v3.9.3** from the [releases page](../../releases/latest).
+1. Download **v4.0** from the [releases page](../../releases/latest).
 2. Extract the archive. You will get two folders: `Nidhaus_UnitFrames` and `Nidhaus_UnitFrames_Config`.
 3. Copy **both** folders into your WoW `Interface/AddOns/` directory.
 4. Restart the WoW client, or type `/reload` if you are already in-game.
@@ -104,13 +104,25 @@ Integration, porting to 3.3.5a, bug fixing and everything else: **Nidhaus**.
 
 ## Changelog
 
-### v3.9.3
-- Bug fixes.
-
-### v3.9.2
-- Bug fixes.
-
-### v3.9.1
+### v4.0
+- New DR tab in Arena: Diminishing Returns icons on every arena enemy (1/2, 1/4, immune), with preview, Shift+Alt drag, grow direction, size, spacing and a border colored by DR level. You pick which categories to show (All, My class, None, or one by one; hovering a category lists the spells that share it), and each icon shows the seconds left until the DR resets.
+- New DoT tab in Arena: marks the enemies that have a damage-over-time effect on them, with the same preview and layout options.
+- Arena > Frames reorganized: scale and style at the top, and a single 2v2 / 3v3 / 5v5 / Hide preview row instead of Show Arena Frame plus the Test buttons. The test pets follow the number of frames and no longer stay on screen after closing the test.
+- Shadow Sight timer starts with the arena start message and stops when the match ends.
+- "Arena Points" is now "Arena Calculator".
+- Arena, party and pet frames are no longer moved, scaled or hidden during combat (the game blocks it): those changes wait until the fight ends. This removes the "action blocked" errors that filled the taint log.
+- Party Buffs and Party Debuffs are now separate options, each with its Castable Buffs / Dispellable Debuffs sub-option, synced with Blizzard's Interface options.
+- Party Targets: optional class icon in the portrait, and "Hide target name" now works every time.
+- The Party Castbars and Party Buffs windows open above the NUF panel, with a solid background.
+- Big text (Interface > General > Status Text): moves the name above the Player, Target and Focus frames and centers the health number, with optional sizes for the health and mana text. Available with the Light, Dark and Compact themes.
+- Abbreviated status text: default positions for the Blizzard frames, and a separate set of positions for Big text.
+- The Lorti UI minimap border works with the square minimap, applies without /reload, and is the same option as Lorti UI > Minimap in the Addons tab.
+- nExtraBars: the stance / aura / presence bar sits above the nExtraBars left bar instead of under it.
+- Chat Copy works in whisper tabs.
+- Gargoyle Tracker closes when the gargoyle dies, when the match ends or when you change zone.
+- Profiles: export and import include the Move Everything positions and scales, and every character is saved on login and logout for Profiles / MySlot.
+- The resets use the real default scales and positions, and the panel buttons no longer print messages in the chat.
+- Lighter in combat: Spec Icons only read the combat log in arenas, battlegrounds and duels, and the Gargoyle Tracker timer sleeps while there is no gargoyle.
 - Bug fixes.
 
 ### v3.9

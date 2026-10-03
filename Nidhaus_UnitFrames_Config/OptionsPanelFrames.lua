@@ -218,28 +218,27 @@ end
 -- NOTA: el checkbox "New Party" se fue de aca. El aspecto de los marcos
 -- ahora se elige con el selector de 3 estilos (Default / New / Improved),
 -- porque los dos addons retexturizan lo mismo y no pueden convivir.
-function K.BuildPartyFeatureCheckboxes(parent, x, y)
-	-- UNA FILA POR FUNCION, no dos columnas.
-	--
-	-- Antes iban Buffs y Targets en la misma linea y Castbars solo debajo:
-	-- con el boton al lado de cada uno eso no cierra, porque las etiquetas
-	-- miden distinto y los botones quedaban a distinta altura y en distinta
-	-- x. En columna, los tres botones se alinean solos.
+function K.BuildPartyFeatureCheckboxes(parent, x, y, onResize)
+	-- UNA FILA POR FUNCION, no dos columnas: con el boton al lado de cada
+	-- uno, en columna los botones "Open" se alinean solos.
 	--
 	--   [x] Party Buffs      [ Open ]
+	--       [ ] Castable Buffs            (solo con Party Buffs tildado)
+	--   [x] Party Debuffs    [ Open ]
+	--       [ ] Dispellable Debuffs       (solo con Party Debuffs tildado)
 	--   [x] Party Targets    [ Open ]
 	--   [x] Party Castbars   [ Open ]
-	local ROW_H  = 28;
-	local BTN_X  = x + 150;   -- misma x para los tres
-
-	-- Boton "Open" al lado de un checkbox.
 	--
-	-- Se apaga cuando la funcion esta destildada: abrir la ventana de
-	-- opciones de algo que no esta corriendo no sirve de nada, y encima
-	-- confunde porque los cambios no se ven.
-	local function OpenButton(row, slashKey, isOn)
+	-- Las sub-casillas se despliegan y las filas de abajo se corren: por eso
+	-- todo se ubica en Relayout, y onResize avisa el alto nuevo.
+	local ROW_H, SUB_H = 28, 24;
+	local BTN_X  = x + 150;   -- misma x para todos los botones
+	local rows, buttons = {}, {};
+
+	-- Boton "Open" al lado de un checkbox. Se apaga cuando la funcion esta
+	-- destildada: abrir las opciones de algo que no corre no sirve.
+	local function OpenButton(slashKey, isOn)
 		local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate");
-		b:SetPoint("TOPLEFT", BTN_X, y - row * ROW_H + 2);
 		b:SetSize(70, 20);
 		b:SetText(L["BTN_OPEN"] or "Open");
 		b:SetScript("OnClick", function()
@@ -251,41 +250,117 @@ function K.BuildPartyFeatureCheckboxes(parent, x, y)
 			if isOn() then b:Enable(); else b:Disable(); end
 		end;
 		b:Sync();
+		buttons[#buttons + 1] = b;
 		return b;
 	end
 
-	local buttons = {};
+	local function AddRow(cb, btn, indent, h, visible)
+		rows[#rows + 1] = { cb = cb, btn = btn, indent = indent or 0, h = h or ROW_H, visible = visible };
+	end
 
-	-- ── Party Buffs ──
-	if K.Modules and K.Modules["PartyBuffs"] then
+	local function Relayout()
+		local cy = y;
+		for _, r in ipairs(rows) do
+			if not r.visible or r.visible() then
+				r.cb:ClearAllPoints();
+				r.cb:SetPoint("TOPLEFT", x + r.indent, cy);
+				r.cb:Show();
+				if r.btn then
+					r.btn:ClearAllPoints();
+					r.btn:SetPoint("TOPLEFT", BTN_X, cy + 2);
+					r.btn:Show();
+				end
+				cy = cy - r.h;
+			else
+				r.cb:Hide();
+				if r.btn then r.btn:Hide(); end
+			end
+		end
+		if onResize then onResize(y - cy); end
+	end
+
+	-- ── Party Buffs / Party Debuffs ──
+	-- Dos casillas sobre el mismo modulo (PartyBuffs): cada una dice si el
+	-- modulo maneja ese tipo. Apagada, ese tipo queda como Blizzard (debuffs:
+	-- los 4 de fabrica; buffs: ninguno). Con las dos apagadas el modulo se
+	-- apaga. Las dos abren la misma ventana (/pbuffs).
+	--
+	-- NO se registran con K.RegisterModuleCheckbox: eso las pondria las dos
+	-- en el estado del modulo (prendido = las dos tildadas).
+	--
+	-- Debajo de cada una, la opcion del juego que filtra ese tipo (Interface
+	-- > Buffs and Debuffs). No se guarda aparte: es la misma CVar.
+	local SyncPB;
+	if K.Modules and K.Modules["PartyBuffs"] and K.PartyBuffs_SetShown then
 		local pbCB = CreateFeatureCheckBox(parent, L["CB_PARTY_BUFFS_SHORT"] or "Party Buffs",
 			x, y, L["TIP_PartyBuffs"], "PartyBuffs");
-		pbCB:SetChecked(K.IsModuleEnabled("PartyBuffs"));
-
-		local pbBtn = OpenButton(0, "PARTYBUFFS", function()
-			return K.IsModuleEnabled and K.IsModuleEnabled("PartyBuffs");
+		local pbBtn = OpenButton("PARTYBUFFS", function()
+			return (K.PartyBuffs_GetShown());
 		end);
-		buttons[#buttons + 1] = pbBtn;
+		local castCB = CreateFeatureCheckBox(parent, L["CB_PARTY_CASTABLE_BUFFS"] or "Castable Buffs",
+			x, y, L["TIP_PartyCastableBuffs"], "PartyCastableBuffs");
+
+		local pdCB = CreateFeatureCheckBox(parent, L["CB_PARTY_DEBUFFS_SHORT"] or "Party Debuffs",
+			x, y, L["TIP_PartyDebuffs"], "PartyDebuffs");
+		local pdBtn = OpenButton("PARTYBUFFS", function()
+			local _, d = K.PartyBuffs_GetShown();
+			return d;
+		end);
+		local dispCB = CreateFeatureCheckBox(parent, L["CB_PARTY_DISPEL_DEBUFFS"] or "Dispellable Debuffs",
+			x, y, L["TIP_PartyDispelDebuffs"], "PartyDispelDebuffs");
+
+		local function HasFilter(which)
+			return K.PartyBuffs_HasBlizzFilter and K.PartyBuffs_HasBlizzFilter(which);
+		end
+
+		SyncPB = function()
+			local bOn, dOn = K.PartyBuffs_GetShown();
+			pbCB:SetChecked(bOn);
+			pdCB:SetChecked(dOn);
+			if K.PartyBuffs_GetBlizzFilter then
+				castCB:SetChecked(K.PartyBuffs_GetBlizzFilter("buffs"));
+				dispCB:SetChecked(K.PartyBuffs_GetBlizzFilter("debuffs"));
+			end
+			pbBtn:Sync();
+			pdBtn:Sync();
+		end
+
+		AddRow(pbCB, pbBtn);
+		AddRow(castCB, nil, 22, SUB_H, function() return pbCB:GetChecked() and HasFilter("buffs"); end);
+		AddRow(pdCB, pdBtn);
+		AddRow(dispCB, nil, 22, SUB_H, function() return pdCB:GetChecked() and HasFilter("debuffs"); end);
 
 		pbCB:SetScript("OnClick", function(self)
-			local val = self:GetChecked() and true or false;
-			K.SetModuleEnabled("PartyBuffs", val);
-			if K.RefreshModuleCheckbox then K.RefreshModuleCheckbox("PartyBuffs"); end
-			pbBtn:Sync();
+			K.PartyBuffs_SetShown("buffs", self:GetChecked() and true or false);
+			SyncPB();
+			Relayout();
 		end);
-		if K.RegisterModuleCheckbox then K.RegisterModuleCheckbox("PartyBuffs", pbCB); end
+		pdCB:SetScript("OnClick", function(self)
+			K.PartyBuffs_SetShown("debuffs", self:GetChecked() and true or false);
+			SyncPB();
+			Relayout();
+		end);
+		castCB:SetScript("OnClick", function(self)
+			if K.PartyBuffs_SetBlizzFilter then
+				K.PartyBuffs_SetBlizzFilter("buffs", self:GetChecked() and true or false);
+			end
+			SyncPB();
+		end);
+		dispCB:SetScript("OnClick", function(self)
+			if K.PartyBuffs_SetBlizzFilter then
+				K.PartyBuffs_SetBlizzFilter("debuffs", self:GetChecked() and true or false);
+			end
+			SyncPB();
+		end);
 	end
 
 	-- ── Party Targets ──
 	local ptCB = CreateFeatureCheckBox(parent, L["CB_PARTY_TARGETS_SHORT"] or "Party Targets",
-		x, y - ROW_H, L["TIP_PartyTargets"], "PartyTargetsEnabled");
+		x, y, L["TIP_PartyTargets"], "PartyTargetsEnabled");
 	ptCB:SetChecked(C.PartyTargetsEnabled);
-
-	local ptBtn = OpenButton(1, "PARTYTARGETS", function()
+	local ptBtn = OpenButton("PARTYTARGETS", function()
 		return C.PartyTargetsEnabled and true or false;
 	end);
-	buttons[#buttons + 1] = ptBtn;
-
 	ptCB:SetScript("OnClick", function(self)
 		local val = self:GetChecked() and true or false;
 		C.PartyTargetsEnabled = val;
@@ -293,17 +368,15 @@ function K.BuildPartyFeatureCheckboxes(parent, x, y)
 		if K.ApplyPartyTargetsState then K.ApplyPartyTargetsState(val); end
 		ptBtn:Sync();
 	end);
+	AddRow(ptCB, ptBtn);
 
 	-- ── Party Castbars ──
 	local pcbCB = CreateFeatureCheckBox(parent, L["CB_PARTY_CASTBARS_SHORT"] or "Party Castbars",
-		x, y - ROW_H * 2, L["TIP_PartyCastingBars"] or "", "PartyCastingBars");
+		x, y, L["TIP_PartyCastingBars"] or "", "PartyCastingBars");
 	pcbCB:SetChecked(C.PCB_Enabled == true);
-
-	local pcbBtn = OpenButton(2, "PARTYCASTINGBARS", function()
+	local pcbBtn = OpenButton("PARTYCASTINGBARS", function()
 		return C.PCB_Enabled and true or false;
 	end);
-	buttons[#buttons + 1] = pcbBtn;
-
 	pcbCB:SetScript("OnClick", function(self)
 		local val = self:GetChecked() and true or false;
 		K.SaveConfig("PCB_Enabled", val);
@@ -312,14 +385,20 @@ function K.BuildPartyFeatureCheckboxes(parent, x, y)
 		end
 		pcbBtn:Sync();
 	end);
+	AddRow(pcbCB, pcbBtn);
 
-	-- Los checkbox tambien se tocan desde otras pestañas y desde Reset, asi
-	-- que al abrir el panel hay que repasar el estado de los tres botones.
+	-- Los checkbox tambien se tocan desde otras pestañas, desde Reset y desde
+	-- Interface (las opciones del juego), asi que al abrir el panel se repasa
+	-- todo y se reacomoda.
 	if parent.HookScript then
 		parent:HookScript("OnShow", function()
+			if SyncPB then SyncPB(); end
 			for _, b in ipairs(buttons) do b:Sync(); end
+			Relayout();
 		end);
 	end
+	if SyncPB then SyncPB(); end
+	Relayout();
 end
 
 -- =========================================================
@@ -1197,14 +1276,26 @@ function K.PopulateFramesTab(panel)
 	local featBox = CreateFrame("Frame", nil, paneParty);
 	featBox:SetPoint("TOPLEFT", scaleGroup, "BOTTOMLEFT", 0, -20);
 	featBox:SetWidth(460);
-	-- Encabezado + TRES filas de 28. Antes eran dos columnas y entraba en
-	-- 90; ahora cada funcion tiene su fila para que los botones "Open"
-	-- queden alineados.
-	featBox:SetHeight(116);
+	-- Encabezado + CUATRO filas de 28 (Buffs y Debuffs van por separado).
+	-- Antes eran dos columnas y entraba en 90; ahora cada funcion tiene su
+	-- fila para que los botones "Open" queden alineados.
+	featBox:SetHeight(144);
 
 	FHeader(featBox, L["HEADER_PARTY_FEATURES"] or "Party Features", 0, 0);
-	K.BuildPartyFeatureCheckboxes(featBox, 0, -26);
-	py = py - 74 - SCALE_H - 110;
+
+	-- El alto de esta seccion cambia (las sub-casillas de Party Buffs /
+	-- Debuffs se despliegan), y con el el alto del scroll de la pestaña.
+	local partyTailPy;   -- lo deja la cola de la seccion, mas abajo
+	local function UpdatePartyHeight()
+		if not partyTailPy then return; end
+		-- El -810 de abajo se calculo con Party Features de 116 de alto.
+		side.SetContentHeight(2, -810 - (featBox:GetHeight() - 116) + partyTailPy - 30);
+	end
+	K.BuildPartyFeatureCheckboxes(featBox, 0, -26, function(rowsH)
+		featBox:SetHeight(26 + rowsH + 6);
+		UpdatePartyHeight();
+	end);
+	py = py - 74 - SCALE_H - 138;
 
 	-- ── Cola de la seccion ──────────────────────────────────────
 	-- Va en su propio frame anclado a "Party Features", que a su vez cuelga
@@ -1300,7 +1391,8 @@ function K.PopulateFramesTab(panel)
 	-- +90 sobre lo de antes: la seccion crecio con los dos encabezados
 	-- nuevos (Pets y su separador, el separador de Mode) y con el boton de
 	-- prueba, que paso de ir al lado del checkbox a su propio renglon.
-	side.SetContentHeight(2, -810 + py - 30);
+	partyTailPy = py;
+	UpdatePartyHeight();
 
 	-- ══════════════════════════════════════════════════════
 	-- 3) BUFFS Y DEBUFFS

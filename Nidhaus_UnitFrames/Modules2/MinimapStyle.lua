@@ -243,7 +243,21 @@ local BORDER_DIR = "Interface\\AddOns\\Nidhaus_UnitFrames\\Media\\Minimap\\borde
 -- solo lugar. Si algun dia se renombra otro estilo, se agrega una linea.
 local STYLE_FILE = {
 	Default = "Blizzard",
+	Lorti   = "Blizzard",   -- en cuadrado: el borde de fabrica, oscurecido
 };
+
+-- EL BORDE "LORTI UI" LO DIBUJA ESTE MODULO.
+--
+-- Antes lo pintaba el modulo Lorti UI, una sola vez al cargar, oscureciendo
+-- el aro de Blizzard (MinimapBorder). Eso fallaba por tres lados:
+--   * en CUADRADO el aro esta oculto, y "Lorti" no tenia rama propia aca:
+--     el minimapa quedaba sin ningun borde;
+--   * el oscurecido solo pasaba al hacer /reload, y nunca se deshacia: al
+--     pasar a "Default" el aro seguia negro;
+--   * si el modulo Lorti estaba apagado, elegir "Lorti UI" no hacia nada.
+-- Ahora es un estilo mas: en redondo es el aro de Blizzard tenido con el
+-- mismo valor que usa Lorti, y en cuadrado el borde de fabrica tenido igual.
+local LORTI_TINT = 0.05;
 -- "Blizzard" YA NO ESTA.
 --
 -- Era redundante: en forma redonda el estilo Default ES el aro dorado de
@@ -341,6 +355,15 @@ function K.ApplyMinimapBorderStyle()
 	--
 	-- En CUADRADO se sigue usando el marco, que ahi calza perfecto.
 	local roundLight = (style == "Light") and (C.MinimapSquare ~= true);
+	local lorti = (style == "Lorti");
+
+	-- El tinte del aro (y de la barra del nombre de zona) se fija SIEMPRE:
+	-- oscuro con Lorti y blanco con cualquier otro, asi salir de Lorti lo
+	-- devuelve al dorado sin /reload. Mostrarlos u ocultarlos sigue siendo
+	-- cosa de la forma y de "Hide Zone Name Background".
+	local tint = lorti and LORTI_TINT or 1;
+	if MinimapBorder then MinimapBorder:SetVertexColor(tint, tint, tint); end
+	if MinimapBorderTop then MinimapBorderTop:SetVertexColor(tint, tint, tint); end
 
 	-- "DEFAULT" EN CUADRADO: LA TEXTURA EXISTE, SOLO NO SE PEDIA.
 	--
@@ -358,7 +381,8 @@ function K.ApplyMinimapBorderStyle()
 	-- el de verdad (MinimapBorder, el aro del juego), que siempre va a
 	-- verse mejor que una copia nuestra. La textura redonda queda de
 	-- respaldo, sin usar.
-	local squareDefault = (style == "Default") and (C.MinimapSquare == true);
+	-- Lorti en cuadrado usa el mismo borde de fabrica, tenido (ver arriba).
+	local squareDefault = (style == "Default" or lorti) and (C.MinimapSquare == true);
 
 	-- SE APAGA TODO PRIMERO.
 	--
@@ -383,7 +407,7 @@ function K.ApplyMinimapBorderStyle()
 		for _, tx in ipairs(cs) do
 			tx:SetTexture(BORDER_DIR .. shape .. file);
 			tx:SetSize(size, size);
-			tx:SetVertexColor(1, 1, 1, 1);
+			tx:SetVertexColor(tint, tint, tint, 1);
 			tx:Show();
 		end
 		return;
@@ -401,9 +425,9 @@ function K.ApplyMinimapBorderStyle()
 	-- Se probo y no va.
 	if not C.MinimapSquare then b:Hide(); return; end
 
-	-- Y NO junto con el minimapa de Lorti UI: ese modo trae su propio
-	-- marco, asi que los dos prendidos se encimaban.
-	if C.LortiUI_Minimap == true then b:Hide(); return; end
+	-- (Antes aca se apagaba si Lorti UI tenia el minimapa prendido. Ya no
+	-- hace falta: Lorti es un estilo de este mismo desplegable, asi que
+	-- nunca estan los dos a la vez.)
 
 	b:ClearAllPoints();
 	b:SetPoint("TOPLEFT",     Minimap, "TOPLEFT",     -4,  4);
@@ -687,7 +711,38 @@ end
 -- ---------------------------------------------------------
 -- Todo junto
 -- ---------------------------------------------------------
+-- ---------------------------------------------------------
+-- LORTI UI > MINIMAP  ==  BORDER STYLE "LORTI UI"
+--
+-- La casilla "Minimap" de Lorti UI (pestana Addons) y el desplegable de
+-- borde (Interface > Minimap) son la MISMA opcion vista desde dos lados.
+-- Manda el desplegable (C.MinimapBorderStyle); la casilla es su espejo
+-- (C.LortiUI_Minimap). Esto ordena lo que venga guardado de antes:
+--   * Lorti prendido con su casilla en si (es el default) y el borde en
+--     "Default": el borde pasa a "Lorti UI", que es lo que pedia la casilla.
+--   * Cualquier otro caso: la casilla dice lo mismo que el desplegable.
+-- Se guarda en silencio para no disparar CONFIG_CHANGED en cada pasada.
+-- ---------------------------------------------------------
+function K.SyncLortiMinimap()
+	local style = BorderStyle();
+	local lortiMod = K.IsModuleEnabled and K.IsModuleEnabled("LortiUI");
+	if lortiMod and C.LortiUI_Minimap ~= false and style == "Default" then
+		style = "Lorti";
+		C.MinimapBorderStyle = "Lorti";
+		if K.SaveConfigSilent then K.SaveConfigSilent("MinimapBorderStyle", "Lorti"); end
+	end
+	local want = (style == "Lorti");
+	if (C.LortiUI_Minimap ~= false) ~= want then
+		C.LortiUI_Minimap = want;
+		if K.SaveConfigSilent then K.SaveConfigSilent("LortiUI_Minimap", want); end
+	end
+	-- Los dos controles del panel, si ya estan armados.
+	if K.RefreshLortiSubOptions then pcall(K.RefreshLortiSubOptions); end
+	if K.RefreshMinimapBorderDropdown then pcall(K.RefreshMinimapBorderDropdown); end
+end
+
 function K.ApplyMinimapSettings()
+	K.SyncLortiMinimap();
 	K.ApplyMinimapShape();
 	K.ApplyMinimapDecorations();
 	if K.ApplyMinimapIconState then K.ApplyMinimapIconState(); end

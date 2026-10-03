@@ -78,6 +78,28 @@ end
 
 local origNameFont;
 
+-- ── TEXTO GRANDE ──────────────────────────────────────────────
+-- Interface > General > Status Text > Big text. La regla de cuando vale
+-- esta en Core/API.lua (K.BigStatusTextOn): Light, Dark o Compact.
+-- 35 = el borde de arriba del marco: la barra de vida empieza 26 px por
+-- encima del centro, asi que el nombre queda justo encima, sin tocarla.
+local BIG_NAME_Y = 35;
+
+local function BigTextOn()
+	return K.BigStatusTextOn and K.BigStatusTextOn("player") or false;
+end
+
+-- Fuera del marco no hay fondo detras del nombre: se le suma el contorno
+-- a la MISMA fuente (cara, tamaño y color quedan), y la sombra queda por
+-- si otro modulo (Name border) despues le cambia la fuente.
+local function OutlineName(fs)
+	if not fs or not fs.GetFont then return; end
+	local face, size = fs:GetFont();
+	if face and size then pcall(fs.SetFont, fs, face, size, "OUTLINE"); end
+	fs:SetShadowOffset(1, -1);
+end
+K.OutlineBigName = OutlineName;   -- TargetFrame usa la misma
+
 local function InitializePlayerFrame()
 	if isInitialized then return; end
 	
@@ -247,6 +269,17 @@ local function Nidhaus_UnitFrames_PlayerFrame_ToPlayerArt(self)
 		self.name:SetShadowOffset(1, -1);
 	end
 
+	-- TEXTO GRANDE: el nombre sale de la barra y va arriba del marco, en el
+	-- borde de arriba (como los marcos gruesos de RougeUI). Va DESPUES del
+	-- bloque de arriba a proposito: ese repone la fuente de fabrica en cada
+	-- pasada, asi que al apagar la opcion el nombre vuelve solo.
+	if BigTextOn() then
+		local nameHost = _G["NidhausPlayerFrame"] or self;
+		self.name:ClearAllPoints();
+		self.name:SetPoint("CENTER", nameHost, "CENTER", 50, BIG_NAME_Y);
+		OutlineName(self.name);
+	end
+
 	-- Sin nivel en Asuri ni en Compact: ninguno de los dos marcos tiene
 	-- donde ponerlo. Se usa alfa y no Hide() porque Blizzard vuelve a
 	-- mostrar ese FontString en cada actualizacion, y pelearle con Hide
@@ -279,7 +312,10 @@ local function Nidhaus_UnitFrames_PlayerFrame_ToPlayerArt(self)
 		K.RestoreAnchors(self.healthbar, "PlayerHealthBarAnchors");
 		self.healthbar:SetPoint("TOPLEFT", 106, -24);
 		self.healthbar:SetHeight(28);
-		self.healthbar.TextString:SetPoint("CENTER", self.healthbar, "CENTER", 0, -5);
+		-- -5 deja lugar al nombre, que va arriba de la barra. Con el texto
+		-- grande el nombre ya no esta ahi: el numero va centrado.
+		self.healthbar.TextString:SetPoint("CENTER", self.healthbar, "CENTER", 0,
+			BigTextOn() and 0 or -5);
 	else
 		-- FIX: restaurar geometría de la barra y anclaje del texto default
 		-- (capturados en init). Restaurar el ANCLAJE del texto es clave: el

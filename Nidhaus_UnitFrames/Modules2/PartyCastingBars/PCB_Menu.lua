@@ -70,7 +70,16 @@ local function Build()
 	if K.UI and K.UI.AutoRestyle then K.UI.AutoRestyle(menu); end
 
 	menu:SetSize(PANEL_W, PANEL_H);
-	menu:SetFrameStrata("DIALOG");
+	-- POR ENCIMA DEL PANEL DE NUF Y CON FONDO SOLIDO.
+	--
+	-- Estaba en "DIALOG", la misma capa que el panel principal: quien quedaba
+	-- arriba lo decidia el orden de dibujo, y el panel (que se abre antes y
+	-- es mas grande) la tapaba. Ademas el fondo tenia alfa 0.80, asi que los
+	-- botones del panel se veian a traves y se mezclaban con estos.
+	-- FULLSCREEN_DIALOG es una capa mas arriba; SetToplevel la sube al
+	-- hacerle click. Mismo arreglo que la ventana de Party Targets.
+	menu:SetFrameStrata("FULLSCREEN_DIALOG");
+	menu:SetToplevel(true);
 	menu:SetClampedToScreen(true);
 	menu:EnableMouse(true);
 	menu:SetMovable(true);
@@ -78,12 +87,12 @@ local function Build()
 
 	if menu.SetBackdrop then
 		menu:SetBackdrop({
-			bgFile   = "Interface/Tooltips/UI-Tooltip-Background",
+			bgFile   = "Interface\\Buttons\\WHITE8x8",   -- pixel liso: opaco de verdad
 			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-			tile = true, tileSize = 16, edgeSize = 12,
+			tile = false, edgeSize = 12,
 			insets = { left = 3, right = 3, top = 3, bottom = 3 },
 		});
-		menu:SetBackdropColor(0, 0, 0, 0.80);
+		menu:SetBackdropColor(0.05, 0.06, 0.09, 1);
 	end
 
 	-- ── Cabecera arrastrable ──

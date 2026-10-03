@@ -456,8 +456,16 @@ local function StylePartyMemberFrame(id)
 		end
 	end
 
-	-- DEBUFFS por defecto (solo si PartyBuffs NO controla la posición)
-	if not K.IsPartyBuffsActive or not K.IsPartyBuffsActive() then
+	-- DEBUFFS por defecto (solo si PartyBuffs NO controla la posición).
+	-- Se pregunta por los DEBUFFS: PartyBuffs puede estar prendido manejando
+	-- solo los buffs, y ahi los debuffs de fabrica siguen siendo de aca.
+	local pbOwnsDebuffs;
+	if K.PartyBuffsOwnsDebuffs then
+		pbOwnsDebuffs = K.PartyBuffsOwnsDebuffs();
+	else
+		pbOwnsDebuffs = K.IsPartyBuffsActive and K.IsPartyBuffsActive();
+	end
+	if not pbOwnsDebuffs then
 		if mana then
 			for j = 1, 4 do
 				local debuff = _G[fn.."Debuff"..j];

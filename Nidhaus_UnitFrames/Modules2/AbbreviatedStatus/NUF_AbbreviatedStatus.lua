@@ -75,13 +75,27 @@ end
 -- Y si el "Custom Skin" esta apagado, los marcos son los de Blizzard
 -- pelados: ese es un tema mas, aparte de los otros.
 -- =========================================================
-local function VisualTheme()
+-- "TEXTO GRANDE" (Status Text > Big text) es una ranura aparte.
+--
+-- En Light, Dark y Compact el nombre va arriba de la barra de vida, asi
+-- que el texto se baja unos pixeles para no pisarlo. Con el texto grande
+-- el nombre sale del marco y el texto va centrado: un offset que servia en
+-- un modo queda corrido en el otro. Por eso cada uno guarda el suyo
+-- ("uf:Light" y "uf:Light+Big"). Solo vale para jugador, objetivo y foco,
+-- que son los marcos que mueve; la mascota sigue con la de siempre.
+--
+-- Las cadenas van escritas enteras, sin concatenar: esto corre en cada
+-- refresco de barra (ver la nota de KeyCache mas abajo).
+local BIG_UNITS = { player = true, target = true, focus = true };
+
+local function VisualTheme(unit)
 	if C.UnitFrameCustomTexture ~= true then return "Blizzard"; end
 	-- Mismo orden de prioridad que el desplegable en OptionsPanel.lua.
 	if C.AsuriFrames then return "Asuri"; end
-	if C.pwFrames    then return "Compact"; end
-	if C.darkFrames  then return "Dark"; end
-	return "Light";
+	local big = BIG_UNITS[unit] and K.BigStatusTextOn and K.BigStatusTextOn(unit);
+	if C.pwFrames    then return big and "Compact+Big" or "Compact"; end
+	if C.darkFrames  then return big and "Dark+Big" or "Dark"; end
+	return big and "Light+Big" or "Light";
 end
 
 -- SIN CONCATENAR EN CALIENTE.
@@ -114,7 +128,7 @@ local function ThemeKey(unit)
 		if C.ArenaFlatMode then return ARENA_KEYS["Flat"]; end
 		return ARENA_KEYS[C.ArenaFrameStyle or "Default"];
 	end
-	return UF_KEYS[VisualTheme()];
+	return UF_KEYS[VisualTheme(unit)];
 end
 
 -- Nombre lindo para mostrar arriba de los sliders, asi se ve que ranura
@@ -143,11 +157,38 @@ local PLAYER_LIKE = {
 	mpNumX = -3, mpNumY =  0, mpPctX =  2, mpPctY =  0,
 };
 
+-- Con el texto grande el nombre ya no esta encima de la barra, asi que no
+-- hay que bajar el texto: mismo reparto a los costados, centrado en alto.
+local PLAYER_BIG = {
+	hpNumX = -1, hpNumY = 0, hpPctX = 1, hpPctY = 0,
+	mpNumX = -3, mpNumY = 0, mpPctX = 2, mpPctY = 0,
+};
+
+-- Marcos de Blizzard (Custom Skin apagado): el juego que quedo acomodado
+-- en el marco del jugador (Velyda). Con numero y porcentaje a la vez, el
+-- numero va pegado al borde derecho y el % al izquierdo; asi quedan un
+-- poco despegados del borde. El objetivo y el foco tienen la barra del
+-- mismo ancho y el texto se ancla a sus bordes, asi que les sirve igual.
+local BLIZZARD_LIKE = {
+	hpNumX = -1, hpNumY = 0, hpPctX = 5, hpPctY = 0,
+	mpNumX =  0, mpNumY = 0, mpPctX = 5, mpPctY = 0,
+};
+
 -- Los cuatro temas de marcos custom comparten el mismo juego: las barras
 -- estan en el mismo sitio en todos, lo que cambia es el arte de alrededor.
--- El tema "Blizzard" (Custom Skin apagado) NO figura a proposito: ahi los
--- marcos son los del juego pelados y el texto va donde lo pone Blizzard.
 local POS_DEFAULTS = {
+	["uf:Blizzard"] = {
+		player = BLIZZARD_LIKE, target = BLIZZARD_LIKE, focus = BLIZZARD_LIKE,
+	},
+	["uf:Compact+Big"] = {
+		player = PLAYER_BIG, target = PLAYER_BIG, focus = PLAYER_BIG,
+	},
+	["uf:Light+Big"] = {
+		player = PLAYER_BIG, target = PLAYER_BIG, focus = PLAYER_BIG,
+	},
+	["uf:Dark+Big"] = {
+		player = PLAYER_BIG, target = PLAYER_BIG, focus = PLAYER_BIG,
+	},
 	["uf:Asuri"] = {
 		player = PLAYER_LIKE, target = PLAYER_LIKE, focus = PLAYER_LIKE,
 	},
@@ -889,6 +930,11 @@ K.RegisterModule("AbbreviatedStatus", {
 	end,
 	onDisable = function()
 		RefreshAllBars();
+		-- La posicion "de fabrica" que se devuelve pudo haberse guardado con
+		-- otro tema u otro modo de texto (p. ej. antes de prender el texto
+		-- grande). Que el skin vuelva a poner el texto donde va AHORA.
+		if K.ApplyPlayerFrameSkin then pcall(K.ApplyPlayerFrameSkin); end
+		if K.ApplyTargetFrameSkin then pcall(K.ApplyTargetFrameSkin); end
 		-- El otro modo reescribe el texto: hay que pedirle que lo repinte,
 		-- si no quedan los numeros abreviados hasta el proximo cambio de vida.
 		if K.ApplyHealthTextFormat then K.ApplyHealthTextFormat(); end

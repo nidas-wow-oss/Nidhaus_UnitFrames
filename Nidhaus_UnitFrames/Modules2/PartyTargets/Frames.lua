@@ -795,9 +795,31 @@ local function TruncateName(fontString)
 	end
 end
 
+-- GUARDIA DEL NOMBRE OCULTO
+--
+-- "Hide target name" andaba a veces si y a veces no porque dependia de
+-- que NUESTRO Hide() fuera lo ultimo en correr. Cualquier otro Show()
+-- (el layout de un estilo, un Restore, otro addon) que corriera despues
+-- en el mismo evento lo volvia a mostrar, y el orden entre manejadores
+-- del mismo evento no esta garantizado.
+--
+-- Con un gancho en el Show() del propio FontString el orden deja de
+-- importar: venga de donde venga, si la opcion esta tildada se vuelve a
+-- ocultar en el acto. hooksecurefunc corre despues del original sin
+-- reemplazarlo, y el FontString no es protegido, asi que no ensucia nada
+-- ni en combate. Se instala una sola vez por marco.
+local function GuardName(nameText)
+	if nameText.nufHideGuard then return end
+	nameText.nufHideGuard = true
+	hooksecurefunc(nameText, "Show", function(fs)
+		if PartyTargetsDB and PartyTargetsDB.hideName then fs:Hide() end
+	end)
+end
+
 local function StyleNameText(self)
 	local nameText = _G[self:GetName().."Name"]
 	if not nameText then return end
+	GuardName(nameText)
 
 	-- Mostrar u ocultar va ACA y no en un sitio aparte porque esta funcion
 	-- es el unico punto por el que pasa el nombre, y ya la llaman tanto
@@ -825,6 +847,14 @@ end
 
 -- Reaplicar a los cuatro, para el checkbox del panel.
 function PartyTargets_ApplyNameVisibility()
+	-- En Square el nombre va centrado sobre el cuadrado, y ese lugar se lo
+	-- da el layout del estilo, que lo saltea mientras esta oculto. Sin esto,
+	-- al destildar aparecia en la posicion de Classic hasta el proximo
+	-- cambio de objetivo. Va ANTES del bucle para que el ultimo en tocar
+	-- el nombre sea StyleNameText.
+	if PartyTargetsDB.style == "Square" and _nufK and _nufK.ApplyPartyTargetStyle then
+		_nufK.ApplyPartyTargetStyle()
+	end
 	for i = 1, MAX_PARTY_MEMBERS do
 		local f = _G["PartyTargetFrame"..i]
 		if f then StyleNameText(f) end
@@ -916,6 +946,10 @@ addon.OnEvent = function(self, e, ...)
 	
 	if (e == "VARIABLES_LOADED") then
 		EnsureDefaults()
+		-- OnLoad corre desde el XML ANTES de que carguen las variables
+		-- guardadas, o sea con la opcion todavia en "no". Aca ya esta la de
+		-- verdad: se aplica sin esperar a que el companero elija objetivo.
+		StyleNameText(self)
 		self:SetScale(GetScale())
 		if PartyTargetsDB.anchor then
 			-- Apply saved anchor offset

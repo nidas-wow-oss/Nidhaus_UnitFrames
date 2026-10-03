@@ -321,6 +321,40 @@ end
 
 local eventFrame = CreateFrame("Frame");
 
+-- EL COMBAT LOG SOLO DONDE HAY PVP DE VERDAD.
+--
+-- Antes quedaba registrado siempre que el modulo estuviera prendido (y
+-- viene prendido por defecto): en una ciudad llena o en una raid, cada
+-- linea del combat log de cualquiera pasaba por aca para descartarse. Es
+-- de los eventos mas caros del juego.
+--
+-- Ahora se escucha en arena, en BG, en la zona de duelos (Winterspring de
+-- Blackrock) y durante cualquier duelo. Lo unico que se pierde es ver la
+-- spec en el PvP de mundo abierto. La spec ya detectada se sigue mostrando
+-- igual al targetear (eso no usa el combat log).
+local dueling = false;
+
+local function UpdateCombatLog()
+	local want = moduleActive and (instanceType == "arena" or instanceType == "pvp"
+		or duelZone or dueling);
+	if want then
+		eventFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
+	else
+		eventFrame:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
+	end
+end
+
+-- Duelo que pedis vos (menu o /duel): no hay evento propio para el que
+-- desafia, asi que se engancha la funcion. El que te desafian a vos llega
+-- por DUEL_REQUESTED, y los dos terminan en DUEL_FINISHED.
+if type(StartDuel) == "function" then
+	hooksecurefunc("StartDuel", function()
+		if not moduleActive then return; end
+		dueling = true;
+		UpdateCombatLog();
+	end);
+end
+
 local function OnEvent(self, event, ...)
 	if not moduleActive then return; end
 
@@ -378,11 +412,23 @@ local function OnEvent(self, event, ...)
 		if instanceType == "pvp" or instanceType == "arena" then wipe(specDB); end
 		if instanceType == "arena" then EnsureArenaFrames(); end
 		UpdateZoneInfo();
+		dueling = false;   -- cambio de zona: ningun duelo sigue en pie
+		UpdateCombatLog();
 		UpdateOnChange("target");
 		UpdateOnChange("focus");
 
 	elseif event == "ZONE_CHANGED_NEW_AREA" then
+		instanceType = select(2, IsInInstance());
 		UpdateZoneInfo();
+		UpdateCombatLog();
+
+	elseif event == "DUEL_REQUESTED" then
+		dueling = true;
+		UpdateCombatLog();
+
+	elseif event == "DUEL_FINISHED" then
+		dueling = false;
+		UpdateCombatLog();
 
 	elseif event == "ARENA_OPPONENT_UPDATE" then
 		for i = 1, MAX_ARENA_ENEMIES do
@@ -466,19 +512,23 @@ local function Enable()
 	moduleActive = true;
 	EnsureUnitFrames();
 
-	eventFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
+	-- El combat log NO va aca: lo prende UpdateCombatLog solo en PvP.
 	eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED");
 	eventFrame:RegisterEvent("PLAYER_FOCUS_CHANGED");
 	eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 	eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA");
 	eventFrame:RegisterEvent("ARENA_OPPONENT_UPDATE");
+	eventFrame:RegisterEvent("DUEL_REQUESTED");
+	eventFrame:RegisterEvent("DUEL_FINISHED");
 	eventFrame:SetScript("OnEvent", OnEvent);
 
 	local _, iType = IsInInstance();
+	instanceType = iType or "";
 	if iType == "arena" then
-		instanceType = "arena";
 		EnsureArenaFrames();
 	end
+	UpdateZoneInfo();
+	UpdateCombatLog();
 end
 
 local function Disable()

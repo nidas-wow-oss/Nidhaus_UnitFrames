@@ -874,6 +874,9 @@ local function StopCast()
   cIconGlowTex:SetVertexColor(0.6, 0.2, 1, 0)
 end
 
+-- Despierta el reloj (el OnUpdate de abajo). Se define junto a el.
+local WakeGTDriver
+
 local function StopAll()
   state.active     = false
   state.castActive = false
@@ -907,6 +910,7 @@ local function StartGargoyle(sourceName, isTest, gargGUID)
   state.gargGUID   = gargGUID
   ClearCC()
   state.active     = true
+  if WakeGTDriver then WakeGTDriver() end
   state.tStart     = GetTime()
   state.tEnd       = state.tStart + GARGOYLE_DURATION
   state.castActive = false
@@ -972,9 +976,19 @@ end
 local glowAlpha, glowDir = 0, 1
 local f = CreateFrame("Frame")
 
+-- EL RELOJ SOLO CORRE CON UNA GARGOLA EN PANTALLA.
+--
+-- Antes este marco no se ocultaba nunca: el OnUpdate corria en cada frame
+-- del juego, con o sin gargola, y hasta con el modulo apagado, solo para
+-- salir en la segunda linea. Ahora arranca oculto, StartGargoyle lo
+-- despierta y se vuelve a dormir solo cuando la gargola se termina.
+-- Ocultarlo no le saca los eventos: un marco oculto los sigue recibiendo.
+f:Hide()
+WakeGTDriver = function() f:Show() end
+
 f:SetScript("OnUpdate", function(self, elapsed)
   if GT_CALIBRATING then return end
-  if not state.active then return end
+  if not state.active then self:Hide() return end
 
   local now = GetTime()
   local rem = state.tEnd - now

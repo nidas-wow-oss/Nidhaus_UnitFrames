@@ -12,8 +12,6 @@ local petStyleControls = {};
 local arenaShowBtn;
 local arenaTestRow;   -- fila de botones Test 2 / 3 / 5 / Clear
 local dropdownCount = 0;
--- FIX: Constante para loops de test mode (consistente con ArenaMover.MOVER_ARENA_COUNT)
-local MOVER_ARENA_COUNT = 3;
 local MAX_ARENA_ENEMIES = MAX_ARENA_ENEMIES or 5;
 
 local tooltips = {
@@ -34,6 +32,21 @@ local tooltips = {
 	ArenaCastBarEnable      = "TIP_ArenaCastBarEnable",
 	ArenaCastBarScale       = "TIP_ArenaCastBarScale",
 	ArenaCastBarWidth       = "TIP_ArenaCastBarWidth",
+	ShadowSightTimer        = "TIP_ShadowSightTimer",
+	ArenaDR                 = "TIP_ArenaDR",
+	ArenaDoTWarn            = "TIP_ArenaDoTWarn",
+	ArenaDRSize             = "TIP_ArenaDRSize",
+	ArenaDRSpacing          = "TIP_ArenaDRSpacing",
+	ArenaDRBorder           = "TIP_ArenaDRBorder",
+	ArenaDRText             = "TIP_ArenaDRText",
+	ArenaDRTimer            = "TIP_ArenaDRTimer",
+	ArenaDRClassOnly        = "TIP_ArenaDRClassOnly",
+	ArenaPetFrameShow       = "TIP_ArenaPetFrameShow",
+	ArenaDoTSize            = "TIP_ArenaDoTSize",
+	ArenaDoTSpacing         = "TIP_ArenaDoTSpacing",
+	ArenaDoTMax             = "TIP_ArenaDoTMax",
+	ArenaDoTLabel           = "TIP_ArenaDoTLabel",
+	ArenaDoTBorder          = "TIP_ArenaDoTBorder",
 };
 
 local function AddTooltip(frame, setting)
@@ -95,99 +108,38 @@ local function CreateCheckBox(parent, label, setting, xOffset, yOffset)
 			if K._RefreshArenaLayout then K._RefreshArenaLayout(); end
 		elseif setting == "ArenaMirrorMode" then
 			if K.ApplyMirrorMode then K.ApplyMirrorMode(); end
+			if K.RefreshArenaDRLayout then K.RefreshArenaDRLayout(); end
+			if K.RefreshArenaDoTLayout then K.RefreshArenaDoTLayout(); end
+		elseif setting == "ShadowSightTimer" then
+			if K.ApplyShadowSightSetting then K.ApplyShadowSightSetting(); end
+		elseif setting == "ArenaDR" then
+			if K.ToggleArenaDR then K.ToggleArenaDR(); end
+			if K._UpdateDRPreviewBtn then K._UpdateDRPreviewBtn(); end
+		elseif setting == "ArenaDRBorder" or setting == "ArenaDRText" or setting == "ArenaDRTimer"
+			or setting == "ArenaDRClassOnly" then
+			if K.RefreshArenaDRLayout then K.RefreshArenaDRLayout(); end
+		elseif setting == "ArenaDoTWarn" then
+			if K.ToggleArenaDoTWarn then K.ToggleArenaDoTWarn(); end
+			if K._UpdateDoTPreviewBtn then K._UpdateDoTPreviewBtn(); end
+		elseif setting == "ArenaDoTLabel" or setting == "ArenaDoTBorder" then
+			if K.RefreshArenaDoTLayout then K.RefreshArenaDoTLayout(); end
 		elseif setting == "ArenaFrame_Trinkets" then
 			if K.ToggleArenaTrinketsTracking then K.ToggleArenaTrinketsTracking(checked); end
 		elseif setting == "ArenaFrame_Trinket_Voice" then
 			-- voice only applies on next trinket use
 		elseif setting == "ArenaPetFrameShow" then
-			-- Toggle pet frames in test mode - usar nombre global
-			if NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover and NidhausUnitFramesDB.ArenaMover.IsShown then
-				for i = 1, MOVER_ARENA_COUNT do
-					local petFrame = _G["ArenaEnemyFrame"..i.."PetFrame"];
-					if petFrame then
-						-- FIX: Capture Blizzard default before any modifications
-						if not petFrame._blizzDefaultPoints then
-							petFrame._blizzDefaultPoints = {};
-							for p = 1, petFrame:GetNumPoints() do
-								petFrame._blizzDefaultPoints[p] = {petFrame:GetPoint(p)};
-							end
-						end
-						if checked then
-							-- FIX NUCLEAR: Override Hide() para bloquear el auto-hide de Blizzard
-							if not petFrame._origHide then
-								petFrame._origHide = petFrame.Hide;
-							end
-							petFrame.Hide = function() end;
-							petFrame._testMode = true;
-							petFrame:Show();
-							if petFrame.healthbar then
-								petFrame.healthbar:SetMinMaxValues(0, 100);
-								petFrame.healthbar:SetValue(100);
-								petFrame.healthbar:SetStatusBarColor(0, 1, 0);
-							end
-							if petFrame.manabar then
-								petFrame.manabar:SetMinMaxValues(0, 100);
-								petFrame.manabar:SetValue(100);
-								petFrame.manabar:SetStatusBarColor(0, 0, 1);
-							end
-						else
-							-- FIX: Restaurar Hide original antes de ocultar
-							if petFrame._origHide then
-								petFrame.Hide = petFrame._origHide;
-								petFrame._origHide = nil;
-							end
-							petFrame._testMode = nil;
-							petFrame:Hide();
-						end
-					end
-				end
-				-- Aplicar flat pet style si está activo
-				if checked and K.IsFlatModeActive and K.IsFlatModeActive() and C.ArenaFlatPetStyle then
-					if K.ApplyFlatPetFrames then K.ApplyFlatPetFrames(); end
-				end
-				-- FIX: Restore saved positions and create drag overlays
-				if checked then
-					if K.RestorePetFramePositions then K.RestorePetFramePositions(); end
-					if K.CreatePetFrameDragOverlays then K.CreatePetFrameDragOverlays(); end
-				else
-					-- Hide drag overlays when pet frames disabled
-					if K.HidePetFrameDragOverlays then K.HidePetFrameDragOverlays(); end
-				end
-			end
+			-- Mostrar / esconder las mascotas del Test en el momento. La logica
+			-- vive en ArenaMover (K.RefreshArenaTestPets): una sola copia, que
+			-- no le pisa el Hide al marco. Antes estaba repetida aca, con
+			-- "petFrame.Hide = function() end" (taint) y un 3 fijo, y al cerrar
+			-- el Test las mascotas se quedaban colgadas.
+			if K.RefreshArenaTestPets then K.RefreshArenaTestPets(); end
 		elseif setting == "ArenaFlatPetStyle" then
-			-- Aplicar/remover flat pet style en tiempo real
-			if NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover and NidhausUnitFramesDB.ArenaMover.IsShown then
-				if checked then
-					-- Asegurar que los pet frames estén visibles
-					if C.ArenaPetFrameShow then
-						for i = 1, MOVER_ARENA_COUNT do
-							local petFrame = _G["ArenaEnemyFrame"..i.."PetFrame"];
-							if petFrame then
-								-- FIX: Asegurar que Hide override está activo
-								if not petFrame._origHide then
-									petFrame._origHide = petFrame.Hide;
-								end
-								petFrame.Hide = function() end;
-								petFrame._testMode = true;
-								petFrame:Show();
-								if petFrame.healthbar then
-									petFrame.healthbar:SetMinMaxValues(0, 100);
-									petFrame.healthbar:SetValue(100);
-									petFrame.healthbar:SetStatusBarColor(0, 1, 0);
-								end
-								if petFrame.manabar then
-									petFrame.manabar:SetMinMaxValues(0, 100);
-									petFrame.manabar:SetValue(100);
-									petFrame.manabar:SetStatusBarColor(0, 0, 1);
-								end
-							end
-						end
-					end
-					if K.ApplyFlatPetFrames then K.ApplyFlatPetFrames(); end
-				else
-					-- Remover flat pet styles
-					if K.RemoveAllFlatPetStyles then K.RemoveAllFlatPetStyles(); end
-				end
+			if checked then
+				if K.RefreshArenaTestPets then K.RefreshArenaTestPets(); end
+				if K.ApplyFlatPetFrames then K.ApplyFlatPetFrames(); end
+			elseif K.RemoveAllFlatPetStyles then
+				K.RemoveAllFlatPetStyles();
 			end
 		end
 	end);
@@ -257,6 +209,10 @@ local function CreateSlider(parent, label, setting, minVal, maxVal, step, xOffse
 			if K.UpdateArenaCastBarScale then K.UpdateArenaCastBarScale(value); end
 		elseif setting == "ArenaCastBarWidth" then
 			if K.UpdateArenaCastBarWidth then K.UpdateArenaCastBarWidth(value); end
+		elseif setting == "ArenaDRSize" or setting == "ArenaDRSpacing" then
+			if K.RefreshArenaDRLayout then K.RefreshArenaDRLayout(); end
+		elseif setting == "ArenaDoTSize" or setting == "ArenaDoTSpacing" or setting == "ArenaDoTMax" then
+			if K.RefreshArenaDoTLayout then K.RefreshArenaDoTLayout(); end
 		end
 	end);
 
@@ -327,21 +283,26 @@ function K.PopulateArenaTab(panel)
 	-- ═══════════════════════════════════════════════════════════
 	-- SUBPESTANAS: Frames | Timers | Modulos
 	-- ═══════════════════════════════════════════════════════════
-	-- Lista lateral: Frames | Options.
+	-- Lista lateral: Frames | Options | DR | DoT | Arena Points.
 	-- El usuario pidio que Options y Timers vivan en un solo submenu, asi
-	-- que ahora "Options" junta Target of Target + cronometros + puntos.
+	-- que ahora "Options" junta Target of Target + cronometros.
+	-- DR y DoT tienen su propia entrada (opciones + vista previa).
 	local sub = K.CreateSideList(panel, {
 		{ name = L["SUBTAB_ARENA_FRAMES"]  or "Frames" },
 		{ name = L["SUBTAB_ARENA_OPTIONS"] or "Options" },
-		{ name = L["SUBTAB_ARENA_POINTS"]  or "Arena Points" },
+		{ name = L["SUBTAB_ARENA_DR"]      or "DR" },
+		{ name = L["SUBTAB_ARENA_DOT"]     or "DoT" },
+		{ name = L["SUBTAB_ARENA_POINTS"]  or "Arena Calculator" },
 	});
 
 	local paneFrames  = sub[1];
 	-- Options y Timers comparten el mismo pane (sub[2]).
 	local paneModules = sub[2];
 	local paneTimers  = sub[2];
-	-- Los puntos de arena tienen su propia entrada, debajo de Options.
-	local panePoints  = sub[3];
+	-- DR, DoT y puntos de arena tienen su propia entrada, debajo de Options.
+	local paneDR      = sub[3];
+	local paneDoT     = sub[4];
+	local panePoints  = sub[5];
 
 	local fCol1 = 30;
 	local fCol2 = 285;
@@ -391,89 +352,145 @@ function K.PopulateArenaTab(panel)
 
 	-- ═══════════════════════════════════════════════════════════
 	-- SUBPESTANA 1 · FRAMES
-	-- Orden pedido: activar -> estilo -> opciones flat -> escala -> castbar
+	-- Orden: activar + Test -> estilo y tamaño (estilo, escala,
+	-- separacion) -> opciones Flat -> modulos -> cast bar -> mascotas.
+	-- Escala y estilo siempre arriba: las opciones Flat van DEBAJO y ya no
+	-- empujan la escala hacia abajo.
 	-- ═══════════════════════════════════════════════════════════
 	local content = paneFrames;
 
 	local moveHint = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
-	moveHint:SetPoint("TOPLEFT", 20, -8);
+	moveHint:SetPoint("TOPLEFT", 20, -100);
 	moveHint:SetText(L["ARENA_MOVE_HINT"] or "|cffFFAA00\226\128\160Shift+Alt+Click to move various elements|r");
 
-	local yPos = -30;
+	local yPos = -12;
 	CreateCheckBox(content, L["CB_ARENA_ON"], "ArenaFrameOn", 20, yPos);
 
-	arenaShowBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate");
-	arenaShowBtn:SetPoint("TOPLEFT", 280, yPos + 2);
-	arenaShowBtn:SetSize(180, 25);
-	arenaShowBtn:SetText(L["BTN_SHOW_ARENA"]);
-	arenaShowBtn:SetScript("OnClick", function()
-		if IsActiveBattlefieldArena and IsActiveBattlefieldArena() then return; end
-		if K.ToggleArenaFramesMover then K.ToggleArenaFramesMover(); end
-	end);
-
-	-- -- TEST 2 / 3 / 5 / CLEAR (la idea sale de sArena) --
+	-- ── VISTA PREVIA: 2v2 / 3v3 / 5v5 / Ocultar ──
 	--
-	-- sArena tiene estos mismos cuatro botones y son la forma comoda de ver
-	-- como queda el armado en 2v2, 3v3 y 5v5 sin entrar a una arena.
-	--
-	-- Van debajo de la casilla, a la izquierda: a la derecha esta el cartel
-	-- de "/nuf arena" y ahi no entran.
+	-- Antes habia un boton "Show Arena Frame" y aparte Test 2 / 3 / 5 /
+	-- Clear: hacian lo mismo (el modo Test de arena) con cinco botones.
+	-- Ahora es una sola fila: el que esta a la vista queda resaltado, tocarlo
+	-- de nuevo lo oculta, y "Ocultar" solo se habilita si hay algo a la
+	-- vista. En una arena de verdad no se simula nada: se deshabilitan.
 	arenaTestRow = CreateFrame("Frame", nil, content);
-	arenaTestRow:SetPoint("TOPLEFT", 20, yPos - 30);
-	arenaTestRow:SetSize(240, 24);
+	arenaTestRow:SetPoint("TOPLEFT", 20, yPos - 34);
+	arenaTestRow:SetSize(420, 24);
+	-- OptionsPanel.lua muestra / esconde lo que devuelve PopulateArenaTab
+	-- segun el mod este prendido: ahora es esta fila.
+	arenaShowBtn = arenaTestRow;
 
-	local testBtns = {};
-	local function MakeTestBtn(label, x, onClick)
-		local b = CreateFrame("Button", nil, arenaTestRow, "UIPanelButtonTemplate");
-		b:SetPoint("TOPLEFT", x, 0);
-		b:SetSize(52, 22);
-		b:SetText(label);
-		b:SetScript("OnClick", onClick);
-		testBtns[#testBtns + 1] = b;
-		return b;
+	local testLbl = arenaTestRow:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+	testLbl:SetPoint("LEFT", 2, 0);
+	testLbl:SetText(L["ARENA_TEST_LABEL"] or "Preview:");
+
+	local function TestShownCount()
+		local db = NidhausUnitFramesDB;
+		if db and db.ArenaMover and db.ArenaMover.IsShown then
+			return (K.GetArenaTestCount and K.GetArenaTestCount()) or 3;
+		end
+		return nil;
 	end
 
-	for idx, n in ipairs({ 2, 3, 5 }) do
-		MakeTestBtn("Test " .. n, (idx - 1) * 56, function()
-			if K.SetArenaTestCount then K.SetArenaTestCount(n); end
+	local countBtns = {};
+	local hideTestBtn;
+
+	local function RefreshTestButtons()
+		local live = IsActiveBattlefieldArena and IsActiveBattlefieldArena();
+		local shown = TestShownCount();
+		for n, btn in pairs(countBtns) do
+			if live then
+				btn:Disable(); btn:SetAlpha(0.5);
+			else
+				btn:Enable(); btn:SetAlpha(1.0);
+			end
+			if shown == n and not live then
+				btn:LockHighlight();
+				btn:SetNormalFontObject("GameFontHighlight");
+			else
+				btn:UnlockHighlight();
+				btn:SetNormalFontObject("GameFontNormal");
+			end
+		end
+		if hideTestBtn then
+			if shown and not live then
+				hideTestBtn:Enable(); hideTestBtn:SetAlpha(1.0);
+			else
+				hideTestBtn:Disable(); hideTestBtn:SetAlpha(0.5);
+			end
+		end
+	end
+
+	local bx = 104;
+	for _, n in ipairs({ 2, 3, 5 }) do
+		local btn = CreateFrame("Button", nil, arenaTestRow, "UIPanelButtonTemplate");
+		btn:SetPoint("LEFT", bx, 0);
+		btn:SetSize(56, 22);
+		btn:SetText(n .. "v" .. n);
+		btn:SetScript("OnClick", function()
+			if TestShownCount() == n then
+				if K.ClearArenaTestFrames then K.ClearArenaTestFrames(); end
+			elseif K.SetArenaTestCount then
+				K.SetArenaTestCount(n);
+			end
+			RefreshTestButtons();
 		end);
+		btn:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(n .. "v" .. n, 1, 1, 1);
+			GameTooltip:AddLine(string.format(L["ARENA_TEST_TIP"]
+				or "Shows %d test frames. Click it again to hide them.", n), nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		btn:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+		countBtns[n] = btn;
+		bx = bx + 60;
 	end
-	MakeTestBtn(L["BTN_ARENA_TEST_CLEAR"] or "Clear", 3 * 56, function()
+
+	hideTestBtn = CreateFrame("Button", nil, arenaTestRow, "UIPanelButtonTemplate");
+	hideTestBtn:SetPoint("LEFT", bx + 10, 0);
+	hideTestBtn:SetSize(80, 22);
+	hideTestBtn:SetText(L["BTN_ARENA_TEST_CLEAR"] or "Hide");
+	hideTestBtn:SetScript("OnClick", function()
 		if K.ClearArenaTestFrames then K.ClearArenaTestFrames(); end
+		RefreshTestButtons();
 	end);
 
-	local function UpdateArenaShowButtonState()
-		if not arenaShowBtn then return; end
-		local live = IsActiveBattlefieldArena and IsActiveBattlefieldArena();
-		if live then
-			arenaShowBtn:Disable(); arenaShowBtn:SetAlpha(0.5);
-		else
-			arenaShowBtn:Enable(); arenaShowBtn:SetAlpha(1.0);
-		end
-		-- En arena de verdad no se simula nada, asi que los Test tampoco.
-		for _, b in ipairs(testBtns) do
-			if live then b:Disable(); b:SetAlpha(0.5); else b:Enable(); b:SetAlpha(1.0); end
-		end
+	-- El Test tambien se abre / cierra desde otros lados (/nuf arena, Move
+	-- Everything, la vista previa de DR o DoT). ArenaMover avisa al abrirlo y
+	-- al cerrarlo con K.SetTrinketMouseState: con eso el resaltado queda al dia.
+	if type(K.SetTrinketMouseState) == "function" then
+		hooksecurefunc(K, "SetTrinketMouseState", function() RefreshTestButtons(); end);
 	end
-	arenaShowBtn:SetScript("OnShow", function() UpdateArenaShowButtonState(); end);
+	arenaTestRow:SetScript("OnShow", RefreshTestButtons);
 	local btnEvt = CreateFrame("Frame");
 	btnEvt:RegisterEvent("ZONE_CHANGED_NEW_AREA");
 	btnEvt:RegisterEvent("PLAYER_ENTERING_WORLD");
-	btnEvt:SetScript("OnEvent", function() UpdateArenaShowButtonState(); end);
-	UpdateArenaShowButtonState();
-	if not C.ArenaFrameOn then
-		arenaShowBtn:Hide();
-		if arenaTestRow then arenaTestRow:Hide(); end
-	end
+	btnEvt:SetScript("OnEvent", function() RefreshTestButtons(); end);
+	RefreshTestButtons();
+	if not C.ArenaFrameOn then arenaTestRow:Hide(); end
 
+	-- Mascotas en el Test: es una opcion del modo prueba, asi que va con
+	-- la vista previa. Antes estaba abajo, mezclada con los modulos que
+	-- funcionan en arenas de verdad.
+	local petShowCB = CreateCheckBox(content, L["CB_PET_FRAME_SHOW"] or "Show pets in Test mode",
+		"ArenaPetFrameShow", 20, yPos - 62);
+
+	-- /nuf arena: una linea chica a la derecha de la casilla de activar (donde
+	-- estaba el boton "Show Arena Frame").
 	local arenaHint = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
-	arenaHint:SetPoint("TOP", arenaShowBtn, "BOTTOM", 0, -2);
-	arenaHint:SetText(L["ARENA_HINT"]);
-	arenaHint:SetJustifyH("CENTER");
+	arenaHint:SetPoint("TOPLEFT", 280, yPos - 2);
+	arenaHint:SetWidth(270);
+	arenaHint:SetJustifyH("LEFT");
+	arenaHint:SetText(L["ARENA_HINT_INLINE"]
+		or "|cff00FFFF/nuf arena|r does the same from chat, and inside an arena it lets you move the frames.");
 
 	-- ── ESTILO (primera opcion debajo de activar/desactivar) ──
-	local styleSep = CreateSeparator(content, 14, -96, 540);
-	local styleStartY = -110;
+	local styleSep = CreateSeparator(content, 14, -118, 540);
+	local styleHead = content:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+	styleHead:SetPoint("TOPLEFT", 20, -126);
+	styleHead:SetText("|cffFFD100" .. (L["HEADER_ARENA_STYLE_SIZE"] or "Style and size") .. "|r");
+	local styleStartY = -148;
 
 	local styleOptions = {
 		{text = "Blizzard", value = "Blizzard"},
@@ -490,8 +507,18 @@ function K.PopulateArenaTab(panel)
 		{text = "Flat",     value = "Flat"},
 	};
 
+	-- Escala y separacion: justo debajo del estilo, siempre arriba. Antes
+	-- iban despues de las opciones Flat y, con Flat puesto, quedaban lejos.
+	local scaleS = CreateSlider(content, L["SLIDER_ARENA_SCALE"],
+		"ArenaFrameScale", 0.5, 2.0, 0.1, fCol1, styleStartY - 76);
+	scaleS:SetWidth(200);
+
+	local spaceS = CreateSlider(content, L["SLIDER_ARENA_SPACING"],
+		"ArenaFrameSpacing", 0, 100, 5, fCol2, styleStartY - 76);
+	spaceS:SetWidth(200);
+
 	-- ── OPCIONES FLAT (solo visibles con estilo Flat) ──
-	local flatAnchorY = styleStartY - 62;
+	local flatAnchorY = styleStartY - 118;
 
 	local flatWrapper = CreateFrame("Frame", "NidhausArenaFlatWrapper", content);
 	flatWrapper:SetPoint("TOPLEFT", 14, flatAnchorY);
@@ -578,17 +605,19 @@ function K.PopulateArenaTab(panel)
 
 	local lY = 0;
 	CreateSeparator(lowerSection, 14, lY, 540);
+	lY = lY - 8;
+
+	-- Modulos del marco: espejo y trinket (antes iban al final de todo).
+	local modH = lowerSection:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+	modH:SetPoint("TOPLEFT", 20, lY);
+	modH:SetText(L["HEADER_ARENA_MODULES"]);
 	lY = lY - 24;
+	CreateCheckBox(lowerSection, L["CB_MIRROR_MODE"],   "ArenaMirrorMode",      20, lY);
+	CreateCheckBox(lowerSection, L["CB_TRINKET_TRACK"], "ArenaFrame_Trinkets", 285, lY);
+	lY = lY - 28;
+	CreateCheckBox(lowerSection, L["CB_TRINKET_VOICE"], "ArenaFrame_Trinket_Voice", 20, lY);
+	lY = lY - 40;
 
-	local scaleS = CreateSlider(lowerSection, L["SLIDER_ARENA_SCALE"],
-		"ArenaFrameScale", 0.5, 2.0, 0.1, fCol1, lY);
-	scaleS:SetWidth(200);
-
-	local spaceS = CreateSlider(lowerSection, L["SLIDER_ARENA_SPACING"],
-		"ArenaFrameSpacing", 0, 100, 5, fCol2, lY);
-	spaceS:SetWidth(200);
-
-	lY = lY - 62;
 	CreateSeparator(lowerSection, 14, lY, 540);
 	lY = lY - 8;
 
@@ -715,7 +744,7 @@ function K.PopulateArenaTab(panel)
 
 		if NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover and NidhausUnitFramesDB.ArenaMover.IsShown then
 			if K.StyleSingleArenaFrame then
-				for i = 1, MOVER_ARENA_COUNT do
+				for i = 1, MAX_ARENA_ENEMIES do
 					local af = _G["ArenaEnemyFrame"..i];
 					if af and af:IsShown() then K.StyleSingleArenaFrame(af, i); end
 				end
@@ -795,15 +824,38 @@ function K.PopulateArenaTab(panel)
 	-- La llama OnStyleChange, que se define mas arriba y no la tiene en scope.
 	K._UpdateArenaBlizzClassColorBox = UpdateBlizzClassColorBox;
 
-	-- Pet Style dropdown (a la derecha de Arena Style)
+	-- ── MASCOTAS ──
+	-- Todo lo de la mascota junto: estilo (solo Flat) y resetear posicion.
+	-- Va en su propio frame ANCLADO AL CUERPO del cast bar: al colapsar el
+	-- desplegable no queda hueco.
+	local tail = CreateFrame("Frame", nil, lowerSection);
+	tail:SetPoint("TOPLEFT", cbBody, "BOTTOMLEFT", 0, -16);
+	tail:SetWidth(540);
+	tail:SetHeight(96);
+
+	CreateSeparator(tail, 14, 0, 540);
+
+	local petH = tail:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+	petH:SetPoint("TOPLEFT", 20, -12);
+	petH:SetText("|cffFFD100" .. (L["HEADER_ARENA_PETS"] or "Pets") .. "|r");
+
+	-- El estilo de mascota solo existe en Flat (K.ApplyFlatPetFrames no hace
+	-- nada en los otros estilos). Fuera de Flat, en su lugar, un aviso.
+	local petNote = tail:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
+	petNote:SetPoint("TOPLEFT", 22, -42);
+	petNote:SetWidth(245);
+	petNote:SetJustifyH("LEFT");
+	petNote:SetText("|cff8EAEC9" .. (L["PET_STYLE_FLAT_ONLY"]
+		or "The pet style only applies with the Flat arena style.") .. "|r");
+
 	local petContainerRef;
 	do
 		dropdownCount = dropdownCount + 1;
 		local petDDName = "NidhausArenaDD"..dropdownCount;
 
-		local petContainer = CreateFrame("Frame", nil, content);
-		petContainer:SetPoint("TOPLEFT", 280, styleStartY);
-		petContainer:SetSize(200, 50);
+		local petContainer = CreateFrame("Frame", nil, tail);
+		petContainer:SetPoint("TOPLEFT", 20, -32);
+		petContainer:SetSize(240, 50);
 		petContainerRef = petContainer;
 
 		local petLabel = petContainer:CreateFontString(nil, "ARTWORK", "GameFontNormal");
@@ -843,58 +895,38 @@ function K.PopulateArenaTab(panel)
 		local initText = C.ArenaFlatPetStyle and "Flat" or "Default";
 		UIDropDownMenu_SetSelectedValue(petDD, initText);
 		UIDropDownMenu_SetText(petDD, initText);
+	end
 
-		local resetPetBtn = CreateFrame("Button", nil, petContainer, "UIPanelButtonTemplate");
-		resetPetBtn:SetPoint("LEFT", petDD, "RIGHT", -10, 2);
-		resetPetBtn:SetSize(80, 22);
-		resetPetBtn:SetText(L["BTN_RESET_PET_POS"] or "Reset");
-		resetPetBtn:SetScript("OnClick", function()
-			if NidhausUnitFramesDB then
-				NidhausUnitFramesDB.PetFramePositions = nil;
-			end
-			local isFlat = K.IsFlatModeActive and K.IsFlatModeActive();
-			if isFlat and C.ArenaFlatPetStyle then
-				if K.ApplyFlatPetFrames then K.ApplyFlatPetFrames(); end
-			else
-				for i = 1, MOVER_ARENA_COUNT do
-					local pf = _G["ArenaEnemyFrame"..i.."PetFrame"];
-					if pf and pf._blizzDefaultPoints then
-						pf:ClearAllPoints();
-						for _, pt in ipairs(pf._blizzDefaultPoints) do
-							pf:SetPoint(unpack(pt));
-						end
+	-- Resetear posicion: sirve en cualquier estilo (las posiciones de la
+	-- mascota se guardan por estilo + espejo), asi que va siempre a la vista.
+	local resetPetBtn = CreateFrame("Button", nil, tail, "UIPanelButtonTemplate");
+	resetPetBtn:SetPoint("TOPLEFT", 285, -50);
+	resetPetBtn:SetSize(170, 24);
+	resetPetBtn:SetText(L["BTN_RESET_PET_POS"] or "Reset position");
+	resetPetBtn:SetScript("OnClick", function()
+		if NidhausUnitFramesDB then
+			NidhausUnitFramesDB.PetFramePositions = nil;
+		end
+		local isFlat = K.IsFlatModeActive and K.IsFlatModeActive();
+		if isFlat and C.ArenaFlatPetStyle then
+			if K.ApplyFlatPetFrames then K.ApplyFlatPetFrames(); end
+		else
+			for i = 1, MAX_ARENA_ENEMIES do
+				local pf = _G["ArenaEnemyFrame"..i.."PetFrame"];
+				if pf and pf._blizzDefaultPoints then
+					pf:ClearAllPoints();
+					for _, pt in ipairs(pf._blizzDefaultPoints) do
+						pf:SetPoint(unpack(pt));
 					end
 				end
 			end
-		end);
-	end
-
-	-- ── MODULOS DEL MARCO DE ARENA ──
-	-- Van en su propio frame ANCLADO AL CUERPO del cast bar. Antes usaban
-	-- coordenadas fijas de lowerSection, asi que al colapsar el desplegable
-	-- quedaba el hueco y esto no subia.
-	local tail = CreateFrame("Frame", nil, lowerSection);
-	tail:SetPoint("TOPLEFT", cbBody, "BOTTOMLEFT", 0, -16);
-	tail:SetWidth(540);
-	tail:SetHeight(120);
-
-	CreateSeparator(tail, 14, 0, 540);
-
-	local modH = tail:CreateFontString(nil, "ARTWORK", "GameFontNormal");
-	modH:SetPoint("TOPLEFT", 20, -12);
-	modH:SetText(L["HEADER_ARENA_MODULES"]);
-
-	CreateCheckBox(tail, L["CB_MIRROR_MODE"],   "ArenaMirrorMode",       20, -38);
-	CreateCheckBox(tail, L["CB_TRINKET_TRACK"], "ArenaFrame_Trinkets",  285, -38);
-
-	CreateCheckBox(tail, L["CB_TRINKET_VOICE"], "ArenaFrame_Trinket_Voice", 20, -66);
-	CreateCheckBox(tail, L["CB_PET_FRAME_SHOW"] or "Show Pet Frame (Test Mode)",
-		"ArenaPetFrameShow", 285, -66);
+		end
+	end);
 
 	-- El alto de la seccion depende de si el cast bar esta desplegado.
 	local function UpdateLowerHeight()
 		local open = C.ArenaCastBarEnable and true or false;
-		lowerSectionHeight = math.abs(lY) + (open and 58 or 0) + 136;
+		lowerSectionHeight = math.abs(lY) + (open and 58 or 0) + 122;
 		lowerSection:SetHeight(lowerSectionHeight);
 	end
 	K._UpdateArenaLowerHeight = UpdateLowerHeight;
@@ -910,6 +942,10 @@ function K.PopulateArenaTab(panel)
 		if styleSep then if on then styleSep:Show(); else styleSep:Hide(); end end
 		if K._UpdateArenaBoxes then K._UpdateArenaBoxes(); end
 		if styleDDContainer then if on then styleDDContainer:Show(); else styleDDContainer:Hide(); end end
+		-- Lo que ahora cuelga de "content" en la parte de arriba.
+		for _, w in ipairs({ styleHead, scaleS, spaceS, petShowCB }) do
+			if on then w:Show(); else w:Hide(); end
+		end
 		-- PET STYLE SOLO EXISTE EN FLAT.
 		--
 		-- Antes se mostraba con el mod de arena encendido y punto, en
@@ -920,6 +956,9 @@ function K.PopulateArenaTab(panel)
 		-- algo que no tenia efecto: se elegia "Flat" y no pasaba nada.
 		if petContainerRef then
 			if on and isFlat then petContainerRef:Show(); else petContainerRef:Hide(); end
+		end
+		if petNote then
+			if on and not isFlat then petNote:Show(); else petNote:Hide(); end
 		end
 		if lowerSection then if on then lowerSection:Show(); else lowerSection:Hide(); end end
 		if flatWrapper then
@@ -947,11 +986,11 @@ function K.PopulateArenaTab(panel)
 	local arenaBoxes = {};
 	if K.UI and K.UI.SectionBox then
 		-- Enable + Show Arena
-		table.insert(arenaBoxes, K.UI.SectionBox(content, nil, 8, -24, 580, 66));
+		table.insert(arenaBoxes, K.UI.SectionBox(content, nil, 8, -4, 580, 112));
 		-- Estilos (dropdowns). Sin titulo: el label "Arena Style" del
 		-- dropdown ya lo dice y quedaba duplicado.
 		local b = K.UI.SectionBox(content, nil,
-			8, styleStartY + 8, 580, 62);
+			8, styleStartY + 30, 580, 130);
 		table.insert(arenaBoxes, b);
 	end
 
@@ -986,8 +1025,11 @@ function K.PopulateArenaTab(panel)
 		or "/nuftimers to show them, Alt + drag to move") .. "|r");
 
 	tY = tY - 30;
-	CreateCheckBox(paneTimers, L["CB_ARENA_COUNTDOWN"] or "Arena Countdown + Shadow Sight",
+	CreateCheckBox(paneTimers, L["CB_ARENA_COUNTDOWN"] or "Arena Countdown",
 		"ArenaCountDown", 20, tY);
+	tY = tY - 28;
+	CreateCheckBox(paneTimers, L["CB_SHADOW_SIGHT"] or "Shadow Sight timer (eye icon)",
+		"ShadowSightTimer", 20, tY);
 	tY = tY - 28;
 	CreateCheckBox(paneTimers, L["CB_ARENA_END"] or "Arena Time Remaining",
 		"ArenaEndTimer", 20, tY);
@@ -1116,6 +1158,343 @@ function K.PopulateArenaTab(panel)
 	mY = mY - 90;
 
 	-- ═══════════════════════════════════════════════════════════
+	-- PESTAÑAS DR y DoT  (opciones + vista previa)
+	--
+	-- Las dos se arman igual: casilla para prenderlo, vista previa (el modo
+	-- Test de arena: aparecen iconos de ejemplo en cada marco y se mueven
+	-- con Shift+Alt+arrastrar, como el trinket y la cast bar), reset de la
+	-- posicion, direccion, sliders y casillas de aspecto.
+	-- ═══════════════════════════════════════════════════════════
+	local function BuildTrackerPane(pane, o)
+		o.pane = pane;
+		local y = -12;
+		local head = pane:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+		head:SetPoint("TOPLEFT", 20, y);
+		head:SetText("|cffFFD100" .. o.header .. "|r");
+
+		y = y - 20;
+		local intro = pane:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
+		intro:SetPoint("TOPLEFT", 22, y);
+		intro:SetWidth(430);
+		intro:SetJustifyH("LEFT");
+		intro:SetText("|cff8EAEC9" .. o.intro .. "|r");
+		y = y - math.max(28, math.ceil(intro:GetStringHeight() or 0) + 12);
+
+		CreateCheckBox(pane, o.enableLabel, o.enableSetting, 20, y);
+		y = y - 44;
+
+		-- Todo lo que sigue va en "body": con la opcion apagada se esconde
+		-- entero y la pestaña queda en titulo + descripcion + casilla.
+		local bodyTop = y;
+		local body = CreateFrame("Frame", nil, pane);
+		body:SetPoint("TOPLEFT", 0, bodyTop);
+		body:SetSize(540, 10);
+		pane = body;
+		y = 0;
+
+		-- ── Posicion y vista previa ──
+		CreateSeparator(pane, 14, y + 12, 440);
+		local posH = pane:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+		posH:SetPoint("TOPLEFT", 20, y);
+		posH:SetText("|cffFFD100" .. (L["HEADER_DR_POS"] or "Position and preview") .. "|r");
+
+		y = y - 20;
+		local hint = pane:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
+		hint:SetPoint("TOPLEFT", 22, y);
+		hint:SetWidth(430);
+		hint:SetJustifyH("LEFT");
+		hint:SetText("|cffFFAA00" .. (L["DR_MOVE_HINT"] or "Preview: Shift+Alt+drag the icons to move them.") .. "|r");
+		y = y - math.max(18, math.ceil(hint:GetStringHeight() or 0) + 10);
+
+		local previewBtn = CreateFrame("Button", nil, pane, "UIPanelButtonTemplate");
+		previewBtn:SetPoint("TOPLEFT", 20, y);
+		previewBtn:SetSize(170, 24);
+
+		local function UpdateBtn()
+			local on = o.isPreviewOn and o.isPreviewOn();
+			previewBtn:SetText(on and (L["BTN_DR_PREVIEW_OFF"] or "Hide preview")
+				or (L["BTN_DR_PREVIEW"] or "Preview"));
+			local live = IsActiveBattlefieldArena and IsActiveBattlefieldArena();
+			if C[o.enableSetting] and C.ArenaFrameOn and not live then
+				previewBtn:Enable();
+			else
+				previewBtn:Disable();
+			end
+		end
+
+		previewBtn:SetScript("OnClick", function()
+			if o.togglePreview then o.togglePreview(); end
+			UpdateBtn();
+		end);
+		previewBtn:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(L["BTN_DR_PREVIEW"] or "Preview", 1, 1, 1);
+			if not C.ArenaFrameOn then
+				GameTooltip:AddLine(L["DR_PREVIEW_NEEDS_ARENA"] or "Needs the arena frames mod.", 1, 0.3, 0.3, true);
+			elseif not C[o.enableSetting] then
+				GameTooltip:AddLine(o.needEnable or "Turn it on first.", 1, 0.3, 0.3, true);
+			else
+				GameTooltip:AddLine(L["DR_MOVE_HINT"] or "Shift+Alt+drag to move.", nil, nil, nil, true);
+			end
+			GameTooltip:Show();
+		end);
+		previewBtn:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+
+		local resetBtn = CreateFrame("Button", nil, pane, "UIPanelButtonTemplate");
+		resetBtn:SetPoint("LEFT", previewBtn, "RIGHT", 10, 0);
+		resetBtn:SetSize(170, 24);
+		resetBtn:SetText(L["BTN_DR_RESET"] or "Reset position");
+		resetBtn:SetScript("OnClick", function()
+			if o.resetPos then o.resetPos(); end
+		end);
+
+		y = y - 40;
+
+		-- Direccion en la que crece la fila (texto traducido en el desplegable).
+		local growOpts = {
+			{ value = "AUTO",  text = L["DR_GROW_AUTO"]  or "Auto (outward)" },
+			{ value = "LEFT",  text = L["DR_GROW_LEFT"]  or "Left" },
+			{ value = "RIGHT", text = L["DR_GROW_RIGHT"] or "Right" },
+			{ value = "UP",    text = L["DR_GROW_UP"]    or "Up" },
+			{ value = "DOWN",  text = L["DR_GROW_DOWN"]  or "Down" },
+		};
+		local function GrowText(v)
+			for _, g in ipairs(growOpts) do
+				if g.value == v then return g.text; end
+			end
+			return growOpts[1].text;
+		end
+
+		local growBox = CreateFrame("Frame", nil, pane);
+		growBox:SetPoint("TOPLEFT", 20, y);
+		growBox:SetSize(220, 50);
+		local growLbl = growBox:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+		growLbl:SetPoint("TOPLEFT", 0, 0);
+		growLbl:SetText(L["DD_DR_GROW"] or "Grow direction");
+
+		local growDD = CreateFrame("Frame", o.ddName, growBox, "UIDropDownMenuTemplate");
+		growDD:SetPoint("TOPLEFT", -16, -16);
+		UIDropDownMenu_SetWidth(growDD, 160);
+		UIDropDownMenu_Initialize(growDD, function(self, level)
+			for _, g in ipairs(growOpts) do
+				local info = UIDropDownMenu_CreateInfo();
+				info.text = g.text;
+				info.value = g.value;
+				info.checked = ((C[o.growSetting] or "AUTO") == g.value);
+				info.func = function(btn)
+					UIDropDownMenu_SetSelectedValue(growDD, btn.value);
+					UIDropDownMenu_SetText(growDD, GrowText(btn.value));
+					K.SaveConfig(o.growSetting, btn.value);
+					if o.refresh then o.refresh(); end
+				end;
+				UIDropDownMenu_AddButton(info, level);
+			end
+		end);
+		UIDropDownMenu_SetSelectedValue(growDD, C[o.growSetting] or "AUTO");
+		UIDropDownMenu_SetText(growDD, GrowText(C[o.growSetting] or "AUTO"));
+
+		y = y - 66;
+
+		-- ── Aspecto ──
+		CreateSeparator(pane, 14, y + 12, 440);
+		local lookH = pane:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+		lookH:SetPoint("TOPLEFT", 20, y);
+		lookH:SetText("|cffFFD100" .. (L["HEADER_DR_LOOK"] or "Look") .. "|r");
+
+		-- Sliders de a dos por fila: { titulo, setting, min, max, paso }
+		y = y - 40;
+		for i, s in ipairs(o.sliders) do
+			local col = (i % 2 == 1) and 24 or 260;
+			CreateSlider(pane, s[1], s[2], s[3], s[4], s[5], col, y);
+			if i % 2 == 0 and i < #o.sliders then y = y - 56; end
+		end
+
+		y = y - 48;
+		for _, c in ipairs(o.checks) do
+			CreateCheckBox(pane, c[1], c[2], 20, y);
+			y = y - 28;
+		end
+		-- Seccion propia de cada pestana (DR: la lista de categorias).
+		if o.extra then y = o.extra(pane, y, o); end
+		y = y - 16;
+
+		local fullH = math.abs(bodyTop) + math.abs(y);
+		local shortH = math.abs(bodyTop) + 6;
+		local function UpdateAll()
+			UpdateBtn();
+			if o.sync then o.sync(); end
+			local on = C[o.enableSetting] and true or false;
+			if on then body:Show(); else body:Hide(); end
+			sub.SetContentHeight(o.index, on and fullH or shortH);
+		end
+
+		o.pane:HookScript("OnShow", UpdateAll);
+		UpdateAll();
+		return UpdateAll;
+	end
+
+	-- ── DR: que categorias se ven ──
+	--
+	-- Una casilla por categoria, con el icono que vas a ver en el marco
+	-- (el de tu clase si tenes un hechizo de esa categoria). En dos
+	-- columnas, llenando primero la izquierda: como las de tu clase van
+	-- primero en la lista, quedan todas arriba a la izquierda.
+	-- El tooltip lista los hechizos que comparten ese DR (la trampa lo
+	-- comparte con poli, sap, arrepentimiento...).
+	local function BuildDRCategories(pane, y, o)
+		y = y - 8;
+		CreateSeparator(pane, 14, y + 12, 440);
+		local head = pane:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+		head:SetPoint("TOPLEFT", 20, y);
+		head:SetText("|cffFFD100" .. (L["HEADER_DR_CATS"] or "Categories to show") .. "|r");
+
+		y = y - 20;
+		local note = pane:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
+		note:SetPoint("TOPLEFT", 22, y);
+		note:SetWidth(430);
+		note:SetJustifyH("LEFT");
+		note:SetText("|cff8EAEC9" .. (L["DR_CATS_NOTE"] or "DR is shared per category. Hover one to see its spells.") .. "|r");
+		y = y - math.max(18, math.ceil(note:GetStringHeight() or 0) + 10);
+
+		local boxes = {};
+		local function Sync()
+			if not K.IsArenaDRCategoryShown then return; end
+			for _, cb in ipairs(boxes) do
+				cb:SetChecked(K.IsArenaDRCategoryShown(cb.cat) and true or false);
+			end
+		end
+		o.sync = Sync;
+
+		-- Atajos: todas / las de mi clase / ninguna (para despues tildar una).
+		local presets = {
+			{ "all",   L["BTN_DR_CATS_ALL"]   or "All" },
+			{ "class", L["BTN_DR_CATS_CLASS"] or "My class" },
+			{ "none",  L["BTN_DR_CATS_NONE"]  or "None" },
+		};
+		local x = 20;
+		for _, pr in ipairs(presets) do
+			local which = pr[1];
+			local btn = CreateFrame("Button", nil, pane, "UIPanelButtonTemplate");
+			btn:SetPoint("TOPLEFT", x, y);
+			btn:SetSize(110, 22);
+			btn:SetText(pr[2]);
+			btn:SetScript("OnClick", function()
+				if K.SetArenaDRCategoryPreset then K.SetArenaDRCategoryPreset(which); end
+				Sync();
+			end);
+			x = x + 118;
+		end
+		y = y - 32;
+
+		local cats = K.GetArenaDRCategories and K.GetArenaDRCategories() or {};
+		local rows = math.ceil(#cats / 2);
+		for i, info in ipairs(cats) do
+			local col = (i <= rows) and 0 or 1;
+			local row = (col == 0) and (i - 1) or (i - 1 - rows);
+
+			local cb = CreateFrame("CheckButton", nil, pane, "UICheckButtonTemplate");
+			cb:SetSize(22, 22);
+			cb:SetPoint("TOPLEFT", 20 + col * 220, y - row * 24);
+			cb.cat = info.key;
+			cb.mine = info.mine;
+
+			local ic = cb:CreateTexture(nil, "ARTWORK");
+			ic:SetSize(16, 16);
+			ic:SetPoint("LEFT", cb, "RIGHT", 2, 0);
+			ic:SetTexture(info.icon);
+			ic:SetTexCoord(0.07, 0.93, 0.07, 0.93);
+
+			local label = L["DR_CAT_" .. info.key] or info.key;
+			local t = cb:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
+			t:SetPoint("LEFT", ic, "RIGHT", 4, 0);
+			t:SetWidth(172);
+			t:SetJustifyH("LEFT");
+			t:SetText(label);
+			-- Las que tu clase no aplica, en gris: se pueden tildar igual
+			-- (el DR que deja tu companero tambien cuenta).
+			if not info.mine then t:SetTextColor(0.62, 0.62, 0.62); end
+			cb.label = label;
+
+			cb:SetChecked(K.IsArenaDRCategoryShown and K.IsArenaDRCategoryShown(info.key) and true or false);
+			cb:SetScript("OnClick", function(self)
+				local on = self:GetChecked() and true or false;
+				if K.SetArenaDRCategoryShown then K.SetArenaDRCategoryShown(self.cat, on); end
+			end);
+			cb:SetScript("OnEnter", function(self)
+				GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+				GameTooltip:SetText(self.label, 1, 1, 1);
+				if self.mine then
+					GameTooltip:AddLine(L["DR_CATS_TIP_MINE"] or "Your class applies it.", 0.3, 1, 0.3, true);
+				else
+					GameTooltip:AddLine(L["DR_CATS_TIP_OTHER"] or "Your class doesn't apply it; your teammates can.", 0.7, 0.7, 0.7, true);
+				end
+				local spells = K.GetArenaDRCategorySpells and K.GetArenaDRCategorySpells(self.cat) or {};
+				if #spells > 0 then
+					GameTooltip:AddLine(" ");
+					GameTooltip:AddLine(L["DR_CATS_TIP_SPELLS"] or "Share this DR:", 1, 0.82, 0);
+					GameTooltip:AddLine(table.concat(spells, ", "), 1, 1, 1, true);
+				end
+				GameTooltip:Show();
+			end);
+			cb:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+			boxes[#boxes + 1] = cb;
+		end
+		y = y - rows * 24 - 6;
+		return y;
+	end
+
+	-- ── DR ──
+	K._UpdateDRPreviewBtn = BuildTrackerPane(paneDR, {
+		index         = 3,
+		header        = L["HEADER_ARENA_DR"] or "Diminishing Returns",
+		intro         = L["DR_INTRO"] or "One icon per DR category on each arena enemy: 1/2, 1/4, X = immune.",
+		enableLabel   = L["CB_ARENA_DR"] or "Diminishing Returns icons (your class spells)",
+		enableSetting = "ArenaDR",
+		needEnable    = L["DR_NEED_ENABLE"],
+		isPreviewOn   = function() return K.IsArenaDRPreviewOn and K.IsArenaDRPreviewOn(); end,
+		togglePreview = function() if K.ToggleArenaDRPreview then K.ToggleArenaDRPreview(); end end,
+		resetPos      = function() if K.ResetArenaDRPosition then K.ResetArenaDRPosition(); end end,
+		refresh       = function() if K.RefreshArenaDRLayout then K.RefreshArenaDRLayout(); end end,
+		growSetting   = "ArenaDRGrow",
+		ddName        = "NidhausArenaDRGrowDD",
+		sliders = {
+			{ L["SLIDER_DR_SIZE"] or "Icon size", "ArenaDRSize", 12, 48, 1 },
+			{ L["SLIDER_DR_SPACING"] or "Spacing", "ArenaDRSpacing", 0, 20, 1 },
+		},
+		checks = {
+			{ L["CB_DR_BORDER"] or "Colored border (DR level)", "ArenaDRBorder" },
+			{ L["CB_DR_TEXT"] or "Show 1/2 - 1/4 - X", "ArenaDRText" },
+			{ L["CB_DR_TIMER"] or "Show time left", "ArenaDRTimer" },
+		},
+		extra = BuildDRCategories,
+	});
+
+	-- ── DoT ──
+	K._UpdateDoTPreviewBtn = BuildTrackerPane(paneDoT, {
+		index         = 4,
+		header        = L["HEADER_ARENA_DOT"] or "DoT warning",
+		intro         = L["DOT_INTRO"] or "Marks every arena enemy that has a damage-over-time effect.",
+		enableLabel   = L["CB_ARENA_DOTWARN"] or "Show DoTs on arena enemies",
+		enableSetting = "ArenaDoTWarn",
+		needEnable    = L["DOT_NEED_ENABLE"],
+		isPreviewOn   = function() return K.IsArenaDoTPreviewOn and K.IsArenaDoTPreviewOn(); end,
+		togglePreview = function() if K.ToggleArenaDoTPreview then K.ToggleArenaDoTPreview(); end end,
+		resetPos      = function() if K.ResetArenaDoTPosition then K.ResetArenaDoTPosition(); end end,
+		refresh       = function() if K.RefreshArenaDoTLayout then K.RefreshArenaDoTLayout(); end end,
+		growSetting   = "ArenaDoTGrow",
+		ddName        = "NidhausArenaDoTGrowDD",
+		sliders = {
+			{ L["SLIDER_DR_SIZE"] or "Icon size", "ArenaDoTSize", 10, 40, 1 },
+			{ L["SLIDER_DR_SPACING"] or "Spacing", "ArenaDoTSpacing", 0, 20, 1 },
+			{ L["SLIDER_DOT_MAX"] or "Max icons", "ArenaDoTMax", 1, 6, 1 },
+		},
+		checks = {
+			{ L["CB_DOT_LABEL"] or 'Show the "DoT" text', "ArenaDoTLabel" },
+			{ L["CB_DOT_BORDER"] or "Red border", "ArenaDoTBorder" },
+		},
+	});
+
+	-- ═══════════════════════════════════════════════════════════
 	-- PUNTOS DE ARENA  (al final: no es un timer ni parte del marco)
 	--
 	-- El bloque ENTERO se esconde cuando el modulo esta apagado. Se prende
@@ -1205,7 +1584,7 @@ function K.PopulateArenaTab(panel)
 		-- 70 del encabezado y la casilla + 248 de la calculadora + aire.
 		-- Apagado ya no son 40: el titulo y la casilla siguen visibles y
 		-- ocupan lugar. 340 con la calculadora puesta, 90 sin ella.
-		sub.SetContentHeight(3, on and 340 or 90);
+		sub.SetContentHeight(5, on and 340 or 90);
 	end
 	K._RefreshArenaPointsBlock = RefreshAPCBlock;
 	RefreshAPCBlock();

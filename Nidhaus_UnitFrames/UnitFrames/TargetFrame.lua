@@ -178,6 +178,20 @@ local function Nidhaus_UnitFrames_Style_TargetFrame(self)
 			self.name:SetShadowOffset(1, -1);
 		end
 
+		-- TEXTO GRANDE (Status Text > Big text): el nombre sale de la barra
+		-- y va arriba del marco, del lado de las barras (el retrato del
+		-- objetivo esta a la derecha, por eso -50; el jugador usa +50).
+		-- Va despues de reponer la fuente de fabrica: al apagar la opcion
+		-- el nombre vuelve solo con la pasada siguiente.
+		local big = K.BigStatusTextOn and K.BigStatusTextOn(keyBase == "Focus" and "focus" or "target");
+		if big then
+			self.name:ClearAllPoints();
+			self.name:SetPoint("CENTER", self, "CENTER", -50, 35);
+			if K.OutlineBigName then K.OutlineBigName(self.name); end
+		end
+		-- El "Dead" va donde va el numero.
+		self.deadText:SetPoint("CENTER", self.healthbar, "CENTER", 0, big and 0 or -5);
+
 		self.healthbar:SetHeight(28);
 		-- FIX: el look custom depende de un DOBLE anclaje: el TOPRIGHT default
 		-- del XML (que el addon original nunca borra) + este TOPLEFT. Los dos
@@ -187,7 +201,8 @@ local function Nidhaus_UnitFrames_Style_TargetFrame(self)
 		-- solo anclaje y "flota" al costado (bug con Custom Positions).
 		K.RestoreAnchors(self.healthbar, keyBase.."HealthBarAnchors");
 		self.healthbar:SetPoint("TOPLEFT", 5, -24);
-		self.healthbar.TextString:SetPoint("CENTER", self.healthbar, "CENTER", 0, -5);
+		-- -5 deja lugar al nombre; con el texto grande va centrado.
+		self.healthbar.TextString:SetPoint("CENTER", self.healthbar, "CENTER", 0, big and 0 or -5);
 	else
 		-- FIX: restaurar TODO a default (capturado): geometría de barra,
 		-- anclaje del texto de vida, anclaje del nombre y el fondo del nombre.

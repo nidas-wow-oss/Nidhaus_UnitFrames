@@ -32,6 +32,8 @@
 	<Script file="Modules\ArenaMover.lua"/>
 	<Script file="Modules\ActionBars.lua"/>
 	<Script file="Modules2\ArenaCountDown.lua"/>
+	<Script file="Modules2\ArenaDR.lua"/>
+	<Script file="Modules2\ArenaDoTMark.lua"/>
 	<!-- PartyTargets -->
 	<Script file="Modules2\PartyTargets\LibStub\LibStub.lua"/>
 	<Script file="Modules2\PartyTargets\Frames.lua"/>
@@ -133,6 +135,8 @@
 	<!-- Modulos de esta sesion. Cargan pero arrancan APAGADOS (reset de
 	     emergencia + default off). El panel se arma diferido al abrirlo. -->
 	<Script file="Modules2\AbbreviatedStatus\NUF_AbbreviatedStatus.lua"/>
+	<!-- Texto grande (Status Text > Big text): DESPUES del abreviado, su hook tiene que correr despues -->
+	<Script file="Modules2\BigStatusText.lua"/>
 	<Script file="Modules2\NidhausTools\DTSU.lua"/>
 	<Script file="Modules2\NidhausTools\PaladinICD.lua"/>
 	<Script file="Modules2\NidhausTools\SacredShield.lua"/>

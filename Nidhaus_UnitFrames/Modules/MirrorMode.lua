@@ -685,8 +685,11 @@ function K.ApplyMirrorMode()
 				if K.ApplyFlatStyle then K.ApplyFlatStyle(frame, i); end
 			end
 		end
-		-- Re-aplicar pet frames si están activos (su layout también usa ArenaMirrorMode)
-		if C.ArenaPetFrameShow and C.ArenaFlatPetStyle and K.ApplyFlatPetFrames then
+		-- Re-aplicar pet frames (su layout también usa ArenaMirrorMode).
+		-- No depende de "Mostrar mascotas en el Test": esa casilla es solo
+		-- para el modo prueba, y en una arena de verdad las mascotas
+		-- tambien tienen que voltearse al cambiar el espejo.
+		if C.ArenaFlatPetStyle and K.ApplyFlatPetFrames then
 			K.ApplyFlatPetFrames();
 		end
 		-- UpdateTrinketPositions como fallback para trinkets via _G (por si ns.ArenaFrame_Trinkets

@@ -15,7 +15,7 @@ local function CreateOptionsPanel()
 	-- Mas ancha y mas alta que antes (240x240): el contenido entraba justo,
 	-- las filas se tocaban y el slider no tenia lugar para su cajita.
 	f:SetWidth(300)
-	f:SetHeight(336)
+	f:SetHeight(362)
 	f:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
 	-- Por ENCIMA del panel principal de NUF.
 	--
@@ -192,15 +192,37 @@ local function CreateOptionsPanel()
 	end)
 
 	-- ========================
+	-- Icono de clase en el retrato
+	-- ========================
+	local classCB = CreateFrame("CheckButton", "PTOptionsClassIcon", f, "UICheckButtonTemplate")
+	classCB:SetPoint("TOPLEFT", 16, -208)
+	classCB:SetWidth(24)
+	classCB:SetHeight(24)
+	_G[classCB:GetName().."Text"]:SetText(L["PT_CLASS_ICON"] or "Class icon in portrait")
+	_G[classCB:GetName().."Text"]:SetFontObject("GameFontNormalSmall")
+	classCB:SetChecked(K and K.GetPartyTargetClassIcon and K.GetPartyTargetClassIcon() or false)
+	classCB:SetScript("OnClick", function(self)
+		if K and K.SetPartyTargetClassIcon then K.SetPartyTargetClassIcon(IsChecked(self)) end
+	end)
+	classCB:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		GameTooltip:SetText(L["PT_CLASS_ICON"] or "Class icon in portrait", 1, 1, 1)
+		GameTooltip:AddLine(L["PT_CLASS_ICON_TIP"]
+			or "Shows the class icon instead of the face (players only; NPCs keep their face).", nil, nil, nil, true)
+		GameTooltip:Show()
+	end)
+	classCB:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+	-- ========================
 	-- Scale Slider (live preview)
 	-- ========================
 	local sliderLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-	sliderLabel:SetPoint("TOPLEFT", 18, -216)
+	sliderLabel:SetPoint("TOPLEFT", 18, -242)
 	sliderLabel:SetText((K and K.UI and K.UI.Label(L["PT_SCALE"] or "Scale:"))
 		or (L["PT_SCALE"] or "Scale:"))
 
 	local slider = CreateFrame("Slider", "PTOptionsScale", f, "OptionsSliderTemplate")
-	slider:SetPoint("TOPLEFT", 22, -236)
+	slider:SetPoint("TOPLEFT", 22, -262)
 	slider:SetWidth(250)
 	slider:SetHeight(16)
 	slider:SetMinMaxValues(0.5, 2.0)
@@ -290,6 +312,7 @@ local function CreateOptionsPanel()
 		mirrorCB:SetChecked(PartyTargetsDB.mirror and true or false)
 		anchorCB:SetChecked(PartyTargetsDB.anchor and true or false)
 		lockCB:SetChecked(PartyTargetsDB.locked and true or false)
+		classCB:SetChecked(K and K.GetPartyTargetClassIcon and K.GetPartyTargetClassIcon() or false)
 		slider:SetValue((K and K.GetPartyTargetScale and K.GetPartyTargetScale()) or 1.0)
 		-- La cajita del valor la sincroniza UIKit desde el OnValueChanged
 		-- del propio slider, no hay que repintarla a mano.

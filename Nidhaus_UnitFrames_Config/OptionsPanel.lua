@@ -50,6 +50,8 @@ local tooltips = {
 	FocusSpellBarScale  = "TIP_FocusSpellBarScale",
 	UnitFrameCustomTexture = "TIP_UnitFrameCustomTexture",
 	ShowCurrentValueOnly = "TIP_ShowCurrentValueOnly",
+	BigStatusText       = "TIP_BigStatusText",
+	BigTextCustomSize   = "TIP_BigTextCustomSize",
 	SetPositions        = "TIP_SetPositions",
 	LockPositions       = "TIP_LockPositions",
 	PartyIndividualMove = "TIP_PartyIndividualMove",
@@ -703,6 +705,11 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 			-- ApplyCastBarPW les devuelve el aspecto de Blizzard en el acto.
 			if K.ApplyCastBarPW then K.ApplyCastBarPW(); end
 			if K._UpdateCastBarVisibility then K._UpdateCastBarVisibility(); end
+		elseif setting == "BigStatusText" or setting == "BigTextCustomSize" then
+			-- Texto grande: reacomoda nombre / numero / tamano en el acto y
+			-- abre o cierra las opciones que cuelgan de la casilla.
+			if K.ApplyBigStatusText then K.ApplyBigStatusText(); end
+			if K._RefreshBigTextBody then K._RefreshBigTextBody(); end
 		elseif setting == "ShowCurrentValueOnly" then
 			-- Excluyente con el texto abreviado: si se prende esta, la otra
 			-- se apaga sola (formatean el mismo texto y se pisaban).
@@ -1529,6 +1536,58 @@ local function PopulateTabs()
 	SyncStatusTextExclusive();
 	rY = rY - 6;
 
+	-- ── Texto grande (nombre arriba del marco) ──
+	-- Solo existe con el Custom Skin en Light, Dark o Compact: esos tres ya
+	-- son marcos gruesos, y lo unico que les falta es sacar el nombre de la
+	-- barra. Con Asuri o sin skin el bloque entero desaparece (lo guardado
+	-- se conserva y vuelve a valer al volver a uno de los tres).
+	--
+	--   [x] Big text (name above the frame)
+	--       [x] Custom text size
+	--           Health text [slider]   Mana text [slider]
+	local function BigThemeOK()
+		return C.UnitFrameCustomTexture == true and not C.AsuriFrames;
+	end
+	local bigWrap = K.UI.Collapsible(paneGen, xR, rY, 300, 156, BigThemeOK);
+	CreateCheckBox(bigWrap, L["CB_BIG_TEXT"] or "Big text (name above the frame)", "BigStatusText", 0, 0);
+
+	local bigSizeBody = K.UI.Collapsible(bigWrap, 22, -28, 278, 128, function()
+		return C.BigStatusText and true or false;
+	end);
+	CreateCheckBox(bigSizeBody, L["CB_BIG_TEXT_SIZE"] or "Custom text size", "BigTextCustomSize", 0, 0);
+
+	local bigSliderBody = K.UI.Collapsible(bigSizeBody, 0, -46, 278, 82, function()
+		return C.BigTextCustomSize and true or false;
+	end);
+	local bigHP = CreateSlider(bigSliderBody, L["SLIDER_BIG_TEXT_HP"] or "Health text",
+		"BigTextHealthSize", 8, 16, 1, 4, 0);
+	local bigMP = CreateSlider(bigSliderBody, L["SLIDER_BIG_TEXT_MP"] or "Mana text",
+		"BigTextManaSize", 8, 16, 1, 146, 0);
+	for _, s in ipairs({ bigHP, bigMP }) do
+		s:SetWidth(122);
+		-- CreateSlider ya guarda el valor; esto lo aplica en el momento.
+		s:HookScript("OnValueChanged", function()
+			if K.RefreshBigStatusFonts then K.RefreshBigStatusFonts(); end
+		end);
+	end
+
+	local function RefreshBigTextBody()
+		bigWrap:Refresh();
+		bigSizeBody:Refresh();
+		bigSliderBody:Refresh();
+	end
+	K._RefreshBigTextBody = RefreshBigTextBody;
+
+	-- Cambiar de tema (desplegable o Custom Skin) muestra u oculta el bloque.
+	-- Los dos caminos ya llaman a K._UpdateThemeVisibility.
+	local prevThemeVis = K._UpdateThemeVisibility;
+	K._UpdateThemeVisibility = function(...)
+		if prevThemeVis then prevThemeVis(...); end
+		RefreshBigTextBody();
+	end
+	RefreshBigTextBody();
+	rY = rY - 156;
+
 	-- El alto scrolleable es el de la columna mas larga
 	sideUI.SetContentHeight(1, math.min(gY, rY) - 40);
 
@@ -1778,11 +1837,12 @@ local function PopulateTabs()
 		-- Si Lorti tiene el minimapa prendido, el desplegable arranca
 		-- mostrando "Lorti UI": son la MISMA opcion en dos lugares y tienen
 		-- que decir lo mismo.
-		if C.LortiUI_Minimap == true and (C.MinimapBorderStyle or "Default") == "Default" then
-			C.MinimapBorderStyle = "Lorti";
-		end
+		-- La regla vive en MinimapStyle (K.SyncLortiMinimap), que la aplica
+		-- tambien al cargar y en cada cambio; aca solo se la pide antes de
+		-- dibujar el desplegable.
+		if K.SyncLortiMinimap then pcall(K.SyncLortiMinimap); end
 
-		CreateDropdown(paneMap, L["DD_MINIMAP_BORDER"] or "Border style",
+		local borderDD = CreateDropdown(paneMap, L["DD_MINIMAP_BORDER"] or "Border style",
 			"MinimapBorderStyle", opts, xL, mmY, function(value)
 				-- SINCRONIZADO CON LORTI UI.
 				--
@@ -1818,6 +1878,20 @@ local function PopulateTabs()
 		end
 		K._UpdateBorderNote = UpdateBorderNote;
 		UpdateBorderNote();
+
+		-- Para que la casilla "Minimap" de Lorti UI (pestana Addons) pueda
+		-- mover este desplegable: son la misma opcion.
+		K.RefreshMinimapBorderDropdown = function()
+			local dd = borderDD and borderDD.dropdown;
+			if not dd then return; end
+			local v = (K.GetMinimapBorderStyle and K.GetMinimapBorderStyle())
+				or C.MinimapBorderStyle or "Default";
+			local text = v;
+			for _, o in ipairs(opts) do if o.value == v then text = o.text; end end
+			UIDropDownMenu_SetSelectedValue(dd, v);
+			UIDropDownMenu_SetText(dd, text);
+			UpdateBorderNote();
+		end
 	end
 
 	mmY = mmY - 44;

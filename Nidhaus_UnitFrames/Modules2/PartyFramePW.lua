@@ -536,10 +536,16 @@ function StyleOne(i)
 	-- esos anclajes son suyos (los reparte el, guarda los de fabrica y
 	-- los devuelve al apagarse); moverlos desde aca seria el problema
 	-- de siempre, dos duenos del mismo numero peleandose.
-	if not (K.IsPartyBuffsActive and K.IsPartyBuffsActive()) then
-		DropAura(fn, "Buff1", orig[fn].buff1);
-		DropAura(fn, "Debuff1", orig[fn].debuff1);
+	-- Por tipo: PartyBuffs puede manejar solo los buffs o solo los debuffs.
+	local pbBuffs, pbDebuffs;
+	if K.PartyBuffsOwnsBuffs then
+		pbBuffs, pbDebuffs = K.PartyBuffsOwnsBuffs(), K.PartyBuffsOwnsDebuffs();
+	else
+		pbBuffs = K.IsPartyBuffsActive and K.IsPartyBuffsActive();
+		pbDebuffs = pbBuffs;
 	end
+	if not pbBuffs then DropAura(fn, "Buff1", orig[fn].buff1); end
+	if not pbDebuffs then DropAura(fn, "Debuff1", orig[fn].debuff1); end
 end
 
 function RestoreOne(i)

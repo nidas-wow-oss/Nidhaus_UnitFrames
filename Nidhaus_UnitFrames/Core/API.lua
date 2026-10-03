@@ -218,6 +218,40 @@ function K.ApplyUnitFrameTheme()
 	if K.RestyleBossFrames         then pcall(K.RestyleBossFrames);         end
 	if K.RefreshClassOutlines      then pcall(K.RefreshClassOutlines);      end
 	if K.UpdateTrinketBorderColors then pcall(K.UpdateTrinketBorderColors); end
+	-- El tamaño del texto grande depende del tema (solo Light/Dark/Compact).
+	if K.RefreshBigStatusFonts     then pcall(K.RefreshBigStatusFonts);     end
+	-- El skin del objetivo/foco reancla el texto de vida: que el abreviado
+	-- recapture la posicion buena (el del jugador ya lo pide solo).
+	if K.InvalidateAbbrevAnchors   then pcall(K.InvalidateAbbrevAnchors);   end
+end
+
+-- =========================================================
+-- TEXTO GRANDE  (Interface > General > Status Text > Big text)
+--
+-- Saca el nombre de adentro del marco y lo pone ARRIBA, como el modo de
+-- marcos gruesos de RougeUI. Asi la barra de vida queda libre y el numero
+-- puede ir centrado y mas grande (C.BigTextCustomSize + sliders).
+--
+-- Solo con el Custom Skin en Light, Dark o Compact: esos tres ya son
+-- marcos gruesos (barra de vida alta, nombre encima de la barra). Asuri
+-- tiene otro reparto y el marco de Blizzard tiene su lugar para el nombre.
+-- En el jugador tampoco con el marco de hielo del mago, que tapa al tema.
+--
+-- unit: "player" | "target" | "focus" (o nil = sin mirar el hielo).
+-- Vive aca, en Core, porque la consultan PlayerFrame, TargetFrame, el
+-- texto abreviado y el modulo de tamaño, que cargan en ese orden.
+-- =========================================================
+function K.BigStatusTextOn(unit)
+	if not C.BigStatusText then return false; end
+	if C.UnitFrameCustomTexture ~= true then return false; end
+	if C.AsuriFrames then return false; end
+	if unit == "player" and K.IcyPlayerFrameOn and K.IcyPlayerFrameOn() then return false; end
+	return true;
+end
+
+-- Tamaño propio de los numeros: solo con el texto grande puesto.
+function K.BigStatusSizeOn(unit)
+	return (C.BigTextCustomSize and K.BigStatusTextOn(unit)) and true or false;
 end
 
 -- =========================================================
