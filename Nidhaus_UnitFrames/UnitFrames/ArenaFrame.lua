@@ -6,26 +6,26 @@ local IsAddOnLoaded, LoadAddOn = IsAddOnLoaded, LoadAddOn;
 
 local MAX_ARENA_ENEMIES = MAX_ARENA_ENEMIES or 5;
 
--- LORTI UI TAMBIEN EN LOS ESTILOS PROPIOS.
---
--- Lorti oscurece la textura del marco de arena, pero estos estilos la
--- REEMPLAZAN por la suya y el tinte se perdia: en Compact 2 parecia que
--- Lorti no hacia nada. Se le pregunta el color cada vez que se pone la
--- textura; si Lorti esta apagado devuelve nil y queda el blanco normal.
+
+
+
+
+
+
 local function ApplyArenaTint(tex)
 	if not tex then return; end
 
-	-- SI LORTI ESTA APAGADO, NO SE TOCA NADA.
-	--
-	-- Aca estaba el error: cuando Lorti no tenia nada que decir, esto le
-	-- ponia blanco a la textura "por las dudas". Pero NUF nunca fue dueño
-	-- de ese color — el unico que lo escribe es Lorti, una sola vez, cuando
-	-- carga Blizzard_ArenaUI. Al reponer el blanco en cada aplicacion de
-	-- estilo le borrabamos el tinte, y dejaba de verse en TODOS los modos,
-	-- incluso en el de Blizzard, que ni siquiera pasa por el reemplazo de
-	-- textura.
-	--
-	-- Sin dueño no hay que reponer nada: se tiñe solo cuando corresponde.
+
+
+
+
+
+
+
+
+
+
+
 	if not K.ApplyLortiTint then return; end
 	if not (K.LortiTint and K.LortiTint("LortiUI_Arena")) then return; end
 	K.ApplyLortiTint(tex, "LortiUI_Arena");
@@ -38,55 +38,55 @@ local hookRegistered = false;
 
 local Path;
 
--- Tamaño del arte del marco de arena.
---
--- El recorte que se le hace a UI-TargetingFrame (TexCoord 0.09375..1.0
--- horizontal, 0..0.78125 vertical) toma una region de 232x100 pixeles
--- sobre una textura de 256x128, o sea una proporcion de 2.32.
---
--- Estaba dibujado a 124x48, que es 2.58: un 11% mas ancho de lo que
--- corresponde, y por eso el marco se veia estirado. Con 124x53 la
--- proporcion queda en 2.34, practicamente la original.
---
--- Para volver atras, poner 48 aca y listo: es el unico lugar.
--- Posicion de fabrica de la barra de casteo en modo Flat (ver el uso mas
--- abajo): salio de dejarla acomodada en el juego.
+
+
+
+
+
+
+
+
+
+
+
+
+
 local CASTBAR_FLAT_DEFAULT = { "CENTER", "CENTER", -106.1, 1.2 };
 
 local TEX_W, TEX_H = 124, 53;
-local TEX_X, TEX_Y = 0, 5;      -- donde se ancla el arte dentro del marco
+local TEX_X, TEX_Y = 0, 5;
 
--- Barras de vida y mana.
---
--- Al pasar el arte de 48 a 53 de alto, el marco crecio 5 pixeles hacia
--- abajo y las barras quedaron altas respecto del dibujo. Estos numeros
--- las reacomodan: BAR_Y las baja, y los altos se repartieron para que
--- las dos entren dentro del recuadro del arte.
-local BAR_X, BAR_Y = 4, -8;     -- esquina superior izquierda de la de vida
-local BAR_W        = 62;        -- ancho de las dos
-local BAR_HP_H     = 14;        -- alto de vida
-local BAR_MP_H     = 6;         -- alto de mana
 
--- La de mana se ancla EXPLICITAMENTE debajo de la de vida. Antes se le
--- daba solo el tamaño y la posicion la ponia Blizzard, asi que quedaba
--- pegada arriba y no habia numero que tocar. Este es negativo: baja.
+
+
+
+
+
+local BAR_X, BAR_Y = 4, -8;
+local BAR_W        = 62;
+local BAR_HP_H     = 14;
+local BAR_MP_H     = 6;
+
+
+
+
 local BAR_MP_GAP   = -1;
 
--- Retrato de clase: corrimiento respecto del borde derecho del marco.
--- Con el arte mas alto quedaba levantado respecto del hueco redondo.
+
+
 local PORT_X, PORT_Y = 0, -4;
 
 local function GetArenaTexturePath()
-	-- Compact 2: EXACTAMENTE la misma textura que usan el PlayerFrame en
-	-- modo Compact y el estilo Compact 2 del grupo, para que los tres
-	-- marcos se vean del mismo material.
-	--
-	-- Como las carpetas Light, Dark y pw comparten los mismos nombres de
-	-- archivo y el mismo dibujo, los TexCoord y el SetSize que usa el
-	-- estilo Custom valen igual: solo cambia de que carpeta sale.
-	--
-	-- Y aca NO hay que espejarla, a diferencia del marco de grupo: el de
-	-- arena ya lleva el retrato a la derecha, que es como esta dibujada.
+
+
+
+
+
+
+
+
+
+
 	if C.ArenaFrameStyle == "Compact2" then
 		return "Interface\\AddOns\\"..AddOnName.."\\Media\\pw\\UI-TargetingFrame";
 	end
@@ -104,7 +104,7 @@ local function ArenaFramesSettings()
 	if not ArenaEnemyFrame1 then return; end
 	if K.AfterCombat("ArenaFramesSettings", ArenaFramesSettings) then return; end
 
-	-- SetParent: previene que Blizzard reposicione el contenedor
+
 	ArenaEnemyFrames:SetParent(NidhausArenaEnemyFrames);
 
 	ArenaEnemyFrame1:ClearAllPoints();
@@ -192,17 +192,17 @@ local function CaptureOriginals(index)
 
 	local castBar = _G["ArenaEnemyFrame"..index.."CastingBar"];
 	if castBar then
-		-- LOS ANCLAJES TAMBIEN.
-		--
-		-- Antes esta foto guardaba solo ancho, alto y escala. Los puntos
-		-- los guardaba MirrorMode... pero solo cuando se prendia el modo
-		-- espejo. Si nunca lo habias usado, nadie tenia la posicion de
-		-- fabrica, y el boton Reset no podia devolver la barra a su lugar
-		-- porque no sabia cual era: se quedaba donde la habias arrastrado.
-		--
-		-- Esta captura corre desde ApplyArenaTextures, o sea al estilar los
-		-- marcos, mucho antes de que se pueda arrastrar nada. Es el momento
-		-- correcto para sacarla.
+
+
+
+
+
+
+
+
+
+
+
 		local pts = {};
 		for p = 1, (castBar:GetNumPoints() or 0) do pts[p] = { castBar:GetPoint(p) }; end
 
@@ -231,8 +231,8 @@ local function RestoreDefaultArenaTextures()
 		local orig = arenaOriginals[i];
 		if not arenaFrame or not orig then break; end
 
-		-- El tamaño del marco es protegido: en combate no se toca y, al
-		-- terminar, se rearma todo (ArenaFrames_OnLoad deja el estilo que va).
+
+
 		if orig.frameWidth and orig.frameHeight then
 			if not K.AfterCombat("ArenaFrames_OnLoad", function() if K.ArenaFrames_OnLoad then K.ArenaFrames_OnLoad(); end end) then
 				arenaFrame:SetSize(orig.frameWidth, orig.frameHeight);
@@ -248,8 +248,8 @@ local function RestoreDefaultArenaTextures()
 			end
 			tex:SetTexCoord(unpack(orig.tex.texCoords));
 			tex:SetSize(orig.tex.width, orig.tex.height);
-			-- Volver a la textura de fabrica no deberia perder el tinte de
-			-- Lorti: el lo aplico una vez al cargar y nadie mas lo repone.
+
+
 			ApplyArenaTint(tex);
 			tex:Show();
 		end
@@ -315,13 +315,13 @@ end
 
 local function ApplyArenaTextures()
 	if not ArenaEnemyFrame1 then return; end
-	-- SIEMPRE se recalcula, nunca se reusa el cacheado.
-	--
-	-- Antes alcanzaba con calcularlo una vez porque solo dependia de
-	-- darkFrames. Desde que Compact 2 usa la carpeta pw, la ruta depende
-	-- del ESTILO: con el cache, el primer estilo que elegias en la sesion
-	-- le quedaba pegado a todos los demas — por eso Custom te salia con
-	-- la textura de Compact 2.
+
+
+
+
+
+
+
 	Path = GetArenaTexturePath();
 
 	for i = 1, MAX_ARENA_ENEMIES do
@@ -330,9 +330,9 @@ local function ApplyArenaTextures()
 
 	local style = C.ArenaFrameStyle or "Blizzard";
 	local isFlat = (style == "Flat") or C.ArenaFlatMode;
-	-- Compact entra por la misma rama que Custom: comparten todo el
-	-- posicionamiento y solo se diferencian en el marco decorado, que se
-	-- esconde mas abajo.
+
+
+
 	local isCompact = (style == "Compact");
 	local isCustom = isCompact or (style == "Custom") or (style == "Compact2")
 		or (C.ArenaCustomTexture and not isFlat);
@@ -401,9 +401,9 @@ function K.ApplyArenaSpacing()
 	local spacing = C.ArenaFrameSpacing;
 	if type(spacing) ~= "number" then spacing = 0; end
 
-	-- Re-anclar frame 1 explícitamente al top del contenedor.
-	-- Sin esto, si Blizzard mueve ArenaEnemyFrame1 (centrado u otra cosa),
-	-- los frames 2 y 3 se posicionan desde ahí y el spacing expande desde el medio.
+
+
+
 	local frame1 = _G["ArenaEnemyFrame1"];
 	if frame1 then
 		local mover = _G["NUF_ArenaMover"];
@@ -416,7 +416,7 @@ function K.ApplyArenaSpacing()
 		end
 	end
 
-	-- Frames 2+ se posicionan hacia abajo desde el anterior
+
 	for i = 2, MAX_ARENA_ENEMIES do
 		local frame = _G["ArenaEnemyFrame"..i];
 		local prevFrame = _G["ArenaEnemyFrame"..(i-1)];
@@ -434,12 +434,12 @@ function K.ApplyArenaSpacing()
 end
 
 local function ArenaFrames_OnLoad()
-	-- EN COMBATE, SOLO EL ARTE.
-	--
-	-- Esto lo disparan los ganchos de Blizzard (un enemigo que aparece, se
-	-- esconde o se confirma), y eso pasa en plena pelea. Las texturas y
-	-- las barras se pueden tocar; mover, escalar o cambiar el padre de los
-	-- marcos no: eso queda para cuando termina el combate.
+
+
+
+
+
+
 	if InCombatLockdown() then
 		pcall(ApplyArenaTextures);
 		K.AfterCombat("ArenaFrames_OnLoad", ArenaFrames_OnLoad);
@@ -453,20 +453,20 @@ end
 
 K.ArenaFrames_OnLoad = ArenaFrames_OnLoad;
 
--- Forzar la escala correcta en el contenedor y frames individuales
+
 local function EnforceArenaScale()
 	if K.AfterCombat("EnforceArenaScale", EnforceArenaScale) then return; end
 	local scale = C.ArenaFrameScale;
 	if type(scale) ~= "number" or scale <= 0 or scale > 3 then return; end
-	-- Contenedor Blizzard
+
 	if ArenaEnemyFrames then
 		local curScale = ArenaEnemyFrames:GetScale();
 		if math.abs(curScale - scale) > 0.01 then
 			ArenaEnemyFrames:SetScale(scale);
 		end
 	end
-	-- Individual frames solo si están reparenteados FUERA de ArenaEnemyFrames
-	-- Si son hijos de ArenaEnemyFrames, la scale del contenedor ya cascadea.
+
+
 	local moverActive = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover and NidhausUnitFramesDB.ArenaMover.IsShown;
 	if moverActive then
 		for i = 1, 3 do
@@ -481,24 +481,24 @@ local function EnforceArenaScale()
 	end
 end
 
--- Hook OnShow de cada arena frame para verificar escala
+
 local scaleHooked = {};
 local function HookArenaFrameScale(index)
 	if scaleHooked[index] then return; end
 	local frame = _G["ArenaEnemyFrame"..index];
 	if not frame then return; end
 	frame:HookScript("OnShow", function()
-		-- FIX: Don't re-apply scale if mod is disabled
+
 		if not isInitialized then return; end
 		if C.ArenaFrameScale then
 			K.ApplyArenaScale(C.ArenaFrameScale);
 		end
-		-- Re-aplicar flat pet si corresponde
+
 		if K.IsFlatModeActive and K.IsFlatModeActive() and C.ArenaFlatPetStyle then
 			local petFrame = _G["ArenaEnemyFrame"..index.."PetFrame"];
 			if petFrame and petFrame:IsShown() then
 				K.ApplyFlatPetStyle(petFrame, index);
-				-- FIX: Restore saved position after style resets it
+
 				if K.RestorePetFramePositions then K.RestorePetFramePositions(); end
 			end
 		end
@@ -508,13 +508,13 @@ end
 
 K.StyleSingleArenaFrame = function(frame, index)
 	if not frame then return; end
-	-- SIEMPRE se recalcula, nunca se reusa el cacheado.
-	--
-	-- Antes alcanzaba con calcularlo una vez porque solo dependia de
-	-- darkFrames. Desde que Compact 2 usa la carpeta pw, la ruta depende
-	-- del ESTILO: con el cache, el primer estilo que elegias en la sesion
-	-- le quedaba pegado a todos los demas — por eso Custom te salia con
-	-- la textura de Compact 2.
+
+
+
+
+
+
+
 	Path = GetArenaTexturePath();
 
 	local style = C.ArenaFrameStyle or "Blizzard";
@@ -525,13 +525,13 @@ K.StyleSingleArenaFrame = function(frame, index)
 		return;
 	end
 
-	-- COMPACT: mismo armado que Custom pero SIN el marco decorado.
-	--
-	-- Es el equivalente en arena del estilo Compact del party (el de
-	-- pw_unitframes): barras limpias, nombre arriba y nada de arte
-	-- alrededor. Como el resto del bloque de Custom ya deja el nombre
-	-- sobre la barra de vida, alcanza con tratarlo como Custom y esconder
-	-- la textura, en vez de duplicar cuarenta lineas de posicionamiento.
+
+
+
+
+
+
+
 	local isCompact = (style == "Compact");
 	local isCustom  = isCompact or (style == "Custom") or (style == "Compact2")
 		or C.ArenaCustomTexture;
@@ -578,12 +578,12 @@ K.StyleSingleArenaFrame = function(frame, index)
 end
 
 function K.ApplyArenaScale(scale)
-	-- FIX: Don't apply custom scale if mod is disabled
+
 	if not isInitialized then return; end
 	if type(scale) ~= "number" or scale <= 0 or scale > 3 then return; end
 	if K.AfterCombat("ApplyArenaScale", function() K.ApplyArenaScale(scale); end) then return; end
 	
-	-- Contenedor Blizzard: siempre setear scale aquí
+
 	if ArenaEnemyFrames then
 		ArenaEnemyFrames:SetScale(scale);
 	end
@@ -595,10 +595,10 @@ function K.ApplyArenaScale(scale)
 		anchor:SetSize(180 * scale, height);
 	end
 	
-	-- Scale individual SOLO cuando el mover está activo Y los frames fueron
-	-- reparenteados FUERA de ArenaEnemyFrames. Si son hijos de ArenaEnemyFrames,
-	-- la scale del contenedor ya los afecta por herencia parent→child.
-	-- Setear ambos causaría effectiveScale = scale × scale (doble escala).
+
+
+
+
 	local moverActive = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover and NidhausUnitFramesDB.ArenaMover.IsShown;
 	if moverActive then
 		for i = 1, 3 do
@@ -613,7 +613,7 @@ function K.ApplyArenaScale(scale)
 		end
 	end
 	
-	-- Re-aplicar flat styles para que se ajusten al nuevo scale
+
 	if K.IsFlatModeActive and K.IsFlatModeActive() then
 		if K.UpdateFlatStyle then K.UpdateFlatStyle(); end
 	end
@@ -662,8 +662,8 @@ function K.UpdateFlatStyle()
 	if K.ApplyAllFlatStyles then K.ApplyAllFlatStyles(); end
 	K.ApplyArenaSpacing();
 	if K.ApplyMirrorMode then K.ApplyMirrorMode(); end
-	-- FIX: Restore saved pet positions AFTER flat styles re-applied them to defaults.
-	-- Without this, any slider change or config update resets pet frame positions.
+
+
 	if K.RestorePetFramePositions then K.RestorePetFramePositions(); end
 end
 
@@ -680,7 +680,7 @@ function K.ToggleArenaCastBar(enabled)
 				local width = C.ArenaCastBarWidth or 80;
 				castBar:SetScale(scale);
 				castBar:SetWidth(width);
-				-- Fix text overlap: reposition text elements
+
 				local text = _G["ArenaEnemyFrame"..i.."CastingBarText"];
 				if text then
 					text:ClearAllPoints();
@@ -721,7 +721,7 @@ function K.UpdateArenaCastBarWidth(width)
 		local castBar = _G["ArenaEnemyFrame"..i.."CastingBar"];
 		if castBar then
 			castBar:SetWidth(width);
-			-- Also fix text width to prevent overlap
+
 			local text = _G["ArenaEnemyFrame"..i.."CastingBarText"];
 			if text then
 				text:SetWidth(width - 10);
@@ -732,36 +732,36 @@ end
 local arenaMovementHooked = false;
 local castBarDragSetup = false;
 
--- ═══════════════════════════════════════════════════════════
--- CastBar dual position helper (mirror/normal)
--- Misma lógica que trinkets: guarda posición separada para
--- mirror mode ON y mirror mode OFF, con fallback a .global
--- ═══════════════════════════════════════════════════════════
+
+
+
+
+
 function K.GetSavedCastBarPos()
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.CastBarPositions;
 
-	-- Igual que el trinket: en modo Flat, si todavia no se movio nada, se
-	-- usa la posicion de fabrica pensada para ese modo.
+
+
 	local isFlatNow = (C.ArenaFrameStyle == "Flat") or (C.ArenaFlatMode == true);
 	if isFlatNow then
 		local fkey = K.GetArenaPositionKey and K.GetArenaPositionKey() or "Flat_normal";
 		if not (db and db[fkey]) then return CASTBAR_FLAT_DEFAULT; end
 	end
 	if not db then return nil; end
-	-- Try composite key first (style + mirror), fallback to legacy keys
+
 	if K.GetArenaPositionKey then
 		local compositeKey = K.GetArenaPositionKey();
 		if db[compositeKey] then return db[compositeKey]; end
 	end
-	-- Legacy fallback: mirror/normal keys
+
 	local key = C.ArenaMirrorMode and "mirror" or "normal";
 	return db[key] or db.global;
 end
 
--- ═══════════════════════════════════════════════════════════
--- CastBar drag: sArena-style OnMouseDown/OnMouseUp
--- Solo funciona en Flat mode con Shift+Ctrl+Click
--- ═══════════════════════════════════════════════════════════
+
+
+
+
 
 local function SetupCastBarDrag()
 	if castBarDragSetup then return; end
@@ -770,17 +770,17 @@ local function SetupCastBarDrag()
 		local castBar = _G["ArenaEnemyFrame"..i.."CastingBar"];
 		if castBar then
 			castBar:SetMovable(true);
-			castBar:EnableMouse(false); -- Se activa solo en test mode + Flat
+			castBar:EnableMouse(false);
 
 			castBar:HookScript("OnMouseDown", function(self, button)
 				if button ~= "LeftButton" then return; end
 				if InCombatLockdown() then return; end
-				-- Solo en Flat mode o test mode
+
 				local isFlat = K.IsFlatModeActive and K.IsFlatModeActive();
 				local isTestMode = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover
 					and NidhausUnitFramesDB.ArenaMover.IsShown;
 				if not (isFlat or isTestMode) then return; end
-				-- Shift+Alt (consistente con trinkets y overlay)
+
 				if IsShiftKeyDown() and IsAltKeyDown() and not self._isMoving then
 					self:StartMoving();
 					self:SetUserPlaced(false);
@@ -816,7 +816,7 @@ local function SetupCastBarDrag()
 				local posKey = K.GetArenaPositionKey and K.GetArenaPositionKey() or (C.ArenaMirrorMode and "mirror" or "normal");
 				NidhausUnitFramesDB.CastBarPositions[posKey] = {"CENTER", "CENTER", offsetX, offsetY};
 
-				-- Sync ALL cast bars via single source of truth
+
 				for j = 1, MAX_ARENA_ENEMIES do
 					if K.PositionArenaCastBar then
 						K.PositionArenaCastBar(j);
@@ -836,11 +836,11 @@ local function SetupCastBarDrag()
 	castBarDragSetup = true;
 end
 
--- La posicion de fabrica de la barra de casteo, para quien la necesite.
---
--- La usa K.PositionArenaCastBar (MirrorMode.lua) cuando no hay posicion
--- guardada ni foto propia del modo espejo. Es lo que hace que el boton
--- Reset devuelva la barra a su lugar aunque nunca hayas tocado el espejo.
+
+
+
+
+
 function K.GetArenaCastBarOriginalPoints(index)
 	local o = arenaOriginals[index];
 	if not o or not o.castBar then return nil; end
@@ -848,8 +848,8 @@ function K.GetArenaCastBarOriginalPoints(index)
 end
 
 function K.RestoreCastBarPositions()
-	-- FIX 4: Delegate to single source of truth in MirrorMode.lua
-	-- K.PositionArenaCastBar reads saved positions, mirror state, flat state
+
+
 	for i = 1, MAX_ARENA_ENEMIES do
 		if K.PositionArenaCastBar then
 			K.PositionArenaCastBar(i);
@@ -858,7 +858,7 @@ function K.RestoreCastBarPositions()
 end
 
 function K.SetCastBarMouseState(state)
-	-- Habilitar mouse en Flat mode o test mode
+
 	local isFlat = K.IsFlatModeActive and K.IsFlatModeActive();
 	local isTestMode = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover
 		and NidhausUnitFramesDB.ArenaMover.IsShown;
@@ -875,21 +875,21 @@ function K.SetCastBarMouseState(state)
 	end
 end
 
--- Reset COMPLETO de las barras de casteo de arena.
---
--- Antes esto solo borraba la tabla de posiciones guardadas. Como las
--- barras ya estaban ancladas donde las habias arrastrado, no se movia
--- nada hasta el proximo /reload: apretabas Reset y no pasaba nada.
---
--- Ahora hace las tres cosas que uno espera de un boton que dice Reset:
---
---   1. Borra las posiciones guardadas.
---   2. Devuelve escala y ancho a los valores de fabrica.
---   3. Vuelve a colocar las barras AHORA, sin recargar.
---
--- El tercer paso va por K.PositionArenaCastBar, que es el unico lugar
--- que sabe combinar posicion guardada, modo espejo y modo flat. Si se
--- reposicionara a mano aca habria dos calculos distintos para lo mismo.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function K.ResetCastBarPositions()
 	if NidhausUnitFramesDB then
 		NidhausUnitFramesDB.CastBarPositions = nil;
@@ -908,8 +908,8 @@ function K.ResetCastBarPositions()
 	if K.UpdateArenaCastBarScale then K.UpdateArenaCastBarScale(scale); end
 	if K.UpdateArenaCastBarWidth then K.UpdateArenaCastBarWidth(width); end
 
-	-- Sin las posiciones guardadas, esto las manda al lugar por defecto
-	-- del modo en el que estes.
+
+
 	if K.RestoreCastBarPositions then K.RestoreCastBarPositions(); end
 end
 
@@ -942,7 +942,7 @@ function K.SetupArenaCtrlShiftDrag()
 							if relativeTo and relativeTo.GetName then
 								relName = relativeTo:GetName() or "UIParent";
 							end
-							-- FIX: Formato con nombres, consistente con ArenaMover.SaveArenaMoverPosition
+
 							NidhausUnitFramesDB.positions["ArenaMover"] = {
 								point = point,
 								relativeTo = relName,
@@ -961,7 +961,7 @@ function K.SetupArenaCtrlShiftDrag()
 		end
 	end
 
-	-- Configurar drag para castbars
+
 	SetupCastBarDrag();
 
 	arenaMovementHooked = true;
@@ -973,8 +973,8 @@ local function CreateArenaAnchor()
 	NidhausArenaEnemyFrames = CreateFrame("Frame", "NidhausArenaEnemyFrames", UIParent);
 	local scale = C.ArenaFrameScale or 1.5;
 	if type(scale) ~= "number" or scale <= 0 or scale > 3 then scale = 1.5; end
-	-- FIX: Altura consistente con ArenaMover.CalcMoverHeight:
-	-- (60*3 + 20*2) * scale = 220*scale (antes era 200*scale, 20px corto)
+
+
 	local frameH = 60;
 	local count = 3;
 	local spacing = C.ArenaFrameSpacing or 0;
@@ -988,7 +988,7 @@ local function CreateArenaAnchor()
 	end
 
 	if savedPos then
-		-- FIX: Leer con nombres (nuevo formato de ArenaMover) o con índices (legacy)
+
 		local point = savedPos.point or savedPos[1];
 		local relName = savedPos.relativeTo or savedPos[2];
 		local relPoint = savedPos.relativePoint or savedPos[3];
@@ -1007,8 +1007,8 @@ local retryTimerFrame = nil;
 local retryTimerIndex = 0;
 
 local function ApplyWithRetries()
-	-- FIX RELOG: Más intentos y más tiempo para cubrir relogs en arena
-	-- Blizzard puede resetear arte/escala hasta 5-6 segundos después del relog
+
+
 	local delays = {0.05, 0.15, 0.3, 0.5, 1.0, 2.0, 3.0, 5.0};
 	retryTimerIndex = 0;
 	if not retryTimerFrame then
@@ -1016,7 +1016,7 @@ local function ApplyWithRetries()
 	end
 	local elapsed = 0;
 	retryTimerFrame:SetScript("OnUpdate", function(self, dt)
-		-- FIX: Stop retries if mod was disabled (prevents re-parenting after toggle off)
+
 		if not isInitialized then
 			self:SetScript("OnUpdate", nil);
 			return;
@@ -1044,13 +1044,13 @@ local function ApplyWithRetries()
 	end);
 end
 
--- Hooks diferidos de funciones de Blizzard_ArenaUI
--- (pueden no existir si Blizzard_ArenaUI aún no cargó)
+
+
 local blizzHooksRegistered = false;
 local function RegisterBlizzardArenaHooks()
 	if blizzHooksRegistered then return; end
 
-	-- ArenaEnemyFrame_UpdatePlayer: Blizzard llama esto cuando actualiza un frame
+
 	if ArenaEnemyFrame_UpdatePlayer then
 		hooksecurefunc("ArenaEnemyFrame_UpdatePlayer", function(self)
 			if not isInitialized or not self then return; end
@@ -1058,7 +1058,7 @@ local function RegisterBlizzardArenaHooks()
 		end);
 	end
 
-	-- ArenaEnemyFrame_Lock: Blizzard llama esto cuando confirma un oponente
+
 	if ArenaEnemyFrame_Lock then
 		hooksecurefunc("ArenaEnemyFrame_Lock", function(self)
 			if not isInitialized or not self then return; end
@@ -1066,7 +1066,7 @@ local function RegisterBlizzardArenaHooks()
 		end);
 	end
 
-	-- ArenaEnemyFrame_SetMysteryPlayer: Blizzard llama esto durante prep phase
+
 	if ArenaEnemyFrame_SetMysteryPlayer then
 		hooksecurefunc("ArenaEnemyFrame_SetMysteryPlayer", function(self)
 			if not isInitialized or not self then return; end
@@ -1074,7 +1074,7 @@ local function RegisterBlizzardArenaHooks()
 		end);
 	end
 
-	-- ArenaEnemyFrame_Unlock: Blizzard llama esto al resetear frames
+
 	if ArenaEnemyFrame_Unlock then
 		hooksecurefunc("ArenaEnemyFrame_Unlock", function(self)
 			if not isInitialized or not self then return; end
@@ -1082,13 +1082,13 @@ local function RegisterBlizzardArenaHooks()
 		end);
 	end
 
-	-- Solo marcar como registrado si las funciones existían
+
 	if ArenaEnemyFrame_UpdatePlayer or ArenaEnemyFrame_Lock then
 		blizzHooksRegistered = true;
 	end
 end
 
--- Hooks diferidos para contenedores (ArenaEnemyFrames, ArenaPrepFrames)
+
 K._hookArenaContainers = function()
 	if K._arenaContainersHooked then return; end
 	if ArenaEnemyFrames then
@@ -1114,17 +1114,17 @@ end
 local function RegisterArenaHook()
 	if hookRegistered then return; end
 
-	-- Hook Arena_LoadUI: cuando Blizzard carga la arena UI por primera vez
-	-- Este es el momento clave para registrar los hooks que dependen de Blizzard_ArenaUI
+
+
 	hooksecurefunc("Arena_LoadUI", function()
-		-- Ahora Blizzard_ArenaUI está cargado — registrar hooks de funciones
+
 		RegisterBlizzardArenaHooks();
 		K._hookArenaContainers();
 		ArenaFrames_OnLoad();
 		ApplyWithRetries();
 	end);
 
-	-- Intentar registrar hooks ahora (si Blizzard_ArenaUI ya está cargado)
+
 	if IsAddOnLoaded("Blizzard_ArenaUI") then
 		RegisterBlizzardArenaHooks();
 		K._hookArenaContainers();
@@ -1136,7 +1136,7 @@ end
 K.RegisterConfigEvent("CONFIG_LOADED", function()
 	if not C.ArenaFrameOn then return; end
 
-	-- Set Path now that config is loaded
+
 	Path = GetArenaTexturePath();
 
 	CreateArenaAnchor();
@@ -1159,18 +1159,18 @@ worldHandler:RegisterEvent("ARENA_OPPONENT_UPDATE");
 worldHandler:SetScript("OnEvent", function(self, event)
 	if not IsAddOnLoaded("Blizzard_ArenaUI") then return; end
 
-	-- ARENA_OPPONENT_UPDATE salta en plena pelea cada vez que un enemigo
-	-- aparece o se esconde. Todo lo de abajo mueve o escala marcos
-	-- protegidos: se hace UNA vez, al terminar el combate.
+
+
+
 	if InCombatLockdown() then
 		local handler, ev = self:GetScript("OnEvent"), event;
 		K.AfterCombat("ArenaWorldEvent", function() handler(self, ev); end);
 		return;
 	end
 
-	-- FIX: Verificar ArenaFrameOn ANTES de isInitialized
-	-- (cuando el mod está desactivado, isInitialized es false pero
-	-- igual necesitamos restaurar defaults al entrar a arena)
+
+
+
 	if not C.ArenaFrameOn then
 		RestoreDefaultArenaTextures();
 		if K.RemoveAllFlatStyles then K.RemoveAllFlatStyles(); end
@@ -1181,7 +1181,7 @@ worldHandler:SetScript("OnEvent", function(self, event)
 			ArenaEnemyFrames:SetPoint("RIGHT", UIParent, "RIGHT", -50, -110);
 			ArenaEnemyFrames:Show();
 		end
-		-- Reset individual frame scales
+
 		for i = 1, (MAX_ARENA_ENEMIES or 5) do
 			local frame = _G["ArenaEnemyFrame"..i];
 			if frame then frame:SetScale(1); end
@@ -1190,9 +1190,9 @@ worldHandler:SetScript("OnEvent", function(self, event)
 		return;
 	end
 
-	-- FIX RELOG: Si CONFIG_LOADED ya corrió pero isInitialized quedó en false
-	-- (puede pasar si Blizzard_ArenaUI no estaba cargado cuando CONFIG_LOADED disparó),
-	-- re-inicializar ahora que Blizzard_ArenaUI ya está disponible.
+
+
+
 	if not isInitialized then
 		Path = GetArenaTexturePath();
 		if not NidhausArenaEnemyFrames then CreateArenaAnchor(); end
@@ -1200,22 +1200,22 @@ worldHandler:SetScript("OnEvent", function(self, event)
 		isInitialized = true;
 	end
 
-	-- FIX /RELOAD: Registrar hooks de Blizzard y contenedores si aún no se hicieron
+
 	RegisterBlizzardArenaHooks();
 	if K._hookArenaContainers then K._hookArenaContainers(); end
 
-	-- Mostrar anchor si estaba oculto
+
 	if NidhausArenaEnemyFrames then NidhausArenaEnemyFrames:Show(); end
 	ApplyWithRetries();
 	if C.ArenaFrameScale then
 		K.ApplyArenaScale(C.ArenaFrameScale);
 	end
 
-	-- FIX RELOG: Enforcer periódico al entrar a arena.
-	-- Blizzard puede resetear parent/escala/arte múltiples veces tras un relog.
-	-- Correr cada 2s durante 15s para garantizar estabilidad.
+
+
+
 	if event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_LOGIN" then
-		-- Hookear contenedores y funciones Blizzard (por si aún no estaban)
+
 		RegisterBlizzardArenaHooks();
 		if K._hookArenaContainers then K._hookArenaContainers(); end
 
@@ -1231,12 +1231,12 @@ worldHandler:SetScript("OnEvent", function(self, event)
 				s._elapsed = 0;
 				s._remaining = s._remaining - 2;
 				if isInitialized and ArenaEnemyFrames and NidhausArenaEnemyFrames then
-					-- Re-parentear si Blizzard lo cambió
+
 					local curParent = ArenaEnemyFrames:GetParent();
 					if curParent ~= NidhausArenaEnemyFrames then
 						ArenaFrames_OnLoad();
 					end
-					-- Re-aplicar escala si cambió
+
 					if C.ArenaFrameScale then
 						local curScale = ArenaEnemyFrames:GetScale();
 						if math.abs(curScale - C.ArenaFrameScale) > 0.01 then
@@ -1252,9 +1252,9 @@ worldHandler:SetScript("OnEvent", function(self, event)
 	end
 end);
 
--- ═══════════════════════════════════════════════════════════
--- Enable/Disable Arena Frame Mod (para toggle en vivo desde OptionsPanel)
--- ═══════════════════════════════════════════════════════════
+
+
+
 
 function K.EnableArenaFrameMod()
 	if K.AfterCombat("ArenaFrameMod", K.EnableArenaFrameMod) then return; end
@@ -1268,11 +1268,11 @@ function K.EnableArenaFrameMod()
 
 	RegisterArenaHook();
 
-	-- Mark as initialized BEFORE calling functions that check isInitialized
+
 	isInitialized = true;
 
 	if IsAddOnLoaded("Blizzard_ArenaUI") then
-		-- FIX: Reset individual frame scales to 1 before applying container scale.
+
 		for i = 1, (MAX_ARENA_ENEMIES or 5) do
 			local frame = _G["ArenaEnemyFrame"..i];
 			if frame and frame:GetParent() == ArenaEnemyFrames then
@@ -1280,7 +1280,7 @@ function K.EnableArenaFrameMod()
 			end
 		end
 
-		-- Re-parentear ArenaEnemyFrames al anchor custom
+
 		ArenaFramesSettings();
 		ApplyWithRetries();
 		EnforceArenaScale();
@@ -1289,36 +1289,36 @@ end
 
 function K.DisableArenaFrameMod()
 	if K.AfterCombat("ArenaFrameMod", K.DisableArenaFrameMod) then return; end
-	-- FIX: Marcar como no inicializado SIEMPRE (antes retornaba si Blizzard_ArenaUI no estaba cargado)
-	-- Esto previene que el worldHandler re-aplique estilos al entrar a arena
+
+
 	isInitialized = false;
 
-	-- FIX: Cancel any pending retry timers (these would re-parent ArenaEnemyFrames
-	-- back to the hidden anchor after ~1 second, making frames disappear)
+
+
 	if retryTimerFrame then
 		retryTimerFrame:SetScript("OnUpdate", nil);
 	end
 
-	-- Si Blizzard_ArenaUI está cargado, restaurar visualmente
+
 	if IsAddOnLoaded("Blizzard_ArenaUI") then
-		-- Quitar estilos flat
+
 		if K.RemoveAllFlatStyles then K.RemoveAllFlatStyles(); end
 
-		-- Restaurar texturas originales de Blizzard
+
 		RestoreDefaultArenaTextures();
 
-		-- Restaurar escala del contenedor Blizzard a 1
+
 		if ArenaEnemyFrames then
 			ArenaEnemyFrames:SetScale(1);
-			-- Restaurar parent al UIParent
+
 			ArenaEnemyFrames:SetParent(UIParent);
-			-- FIX: Restaurar posición default de Blizzard
+
 			ArenaEnemyFrames:ClearAllPoints();
 			ArenaEnemyFrames:SetPoint("RIGHT", UIParent, "RIGHT", -50, -110);
 			ArenaEnemyFrames:Show();
 		end
 
-		-- FIX: Reset individual frame scales to 1 (may have been set incorrectly)
+
 		for i = 1, MAX_ARENA_ENEMIES do
 			local frame = _G["ArenaEnemyFrame"..i];
 			if frame then
@@ -1326,7 +1326,7 @@ function K.DisableArenaFrameMod()
 			end
 		end
 
-		-- Restaurar spacing a default de Blizzard (sin spacing extra)
+
 		for i = 2, MAX_ARENA_ENEMIES do
 			local frame = _G["ArenaEnemyFrame"..i];
 			local prevFrame = _G["ArenaEnemyFrame"..(i-1)];
@@ -1336,20 +1336,20 @@ function K.DisableArenaFrameMod()
 			end
 		end
 
-		-- Restaurar ArenaEnemyFrame1 al contenedor Blizzard
+
 		if ArenaEnemyFrame1 and ArenaEnemyFrames then
 			ArenaEnemyFrame1:ClearAllPoints();
 			ArenaEnemyFrame1:SetPoint("TOPLEFT", ArenaEnemyFrames, "TOPLEFT", 0, 0);
 		end
 
-		-- Restaurar mirror mode (texturas normales)
+
 		if K.ResetMirrorCastBars then K.ResetMirrorCastBars(); end
 
-		-- Let Blizzard recalculate positions
+
 		if UIParent_ManageFramePositions then pcall(UIParent_ManageFramePositions); end
 	end
 
-	-- Ocultar anchor custom (siempre, aunque no haya ArenaUI)
+
 	if NidhausArenaEnemyFrames then
 		NidhausArenaEnemyFrames:Hide();
 	end

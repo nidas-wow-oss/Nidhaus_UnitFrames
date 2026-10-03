@@ -2,8 +2,8 @@ local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
 local hooked = false;
--- FIX: Cachear estado en local para evitar DB lookup en cada frame de cada botón
--- (antes: K.IsModuleEnabled("ButtonRange") = acceso a NidhausUnitFramesDB 700+ veces/seg)
+
+
 local brEnabled = false;
 
 local function EnableButtonRange()
@@ -14,7 +14,7 @@ local function EnableButtonRange()
         if self.rangeTimer == TOOLTIP_UPDATE_TIME then
             local range = false;
             if IsActionInRange(self.action) == 0 then
-                -- FIX: getglobal() está deprecada, usar _G[]
+
                 local icon = _G[self:GetName().."Icon"];
                 local normalTex = _G[self:GetName().."NormalTexture"];
                 if icon then icon:SetVertexColor(1, 0, 0); end
@@ -34,7 +34,7 @@ K.RegisterModule("ButtonRange", {
     name = L["MOD_BUTTON_RANGE"] or "Button Range",
     desc = L["MOD_BUTTON_RANGE_DESC"] or "Colors out-of-range action buttons red.",
     default = false,
-    -- El checkbox vive en General > Barras, no repetirlo en la pestaña Modules
+
     hideFromModulesTab = true,
     onEnable = EnableButtonRange,
     onDisable = function() brEnabled = false; end,

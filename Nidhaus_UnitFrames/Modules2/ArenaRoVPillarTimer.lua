@@ -1,20 +1,20 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- ArenaRoVPillarTimer.lua
--- Temporizador de los pilares de la Arena Circulo de Valor.
--- Primer ciclo: 45s desde el inicio. Luego se repite cada 25s.
--- Mover: Alt + click izquierdo y arrastrar.
--- =========================================================
+
+
+
+
+
+
 
 local FIRST_CYCLE  = 45;
 local NEXT_CYCLE   = 25;
 local KEY          = "RoVPillars";
 
--- ---------------------------------------------------------
--- Helpers
--- ---------------------------------------------------------
+
+
+
 local function IsArenaStartMessage(msg)
 	if not msg or msg == "" then return false; end
 	return string.find(msg, "battle in the arena has begun")
@@ -31,11 +31,11 @@ local function IsRingOfValor()
 		or string.find(zone, "Valor") ~= nil;
 end
 
--- ---------------------------------------------------------
--- Frame
--- ---------------------------------------------------------
+
+
+
 local frame = CreateFrame("Frame", "NUF_RoVPillarTimer", UIParent);
--- Escala configurable desde el panel (registro central en ScaleAPI).
+
 if K.RegisterScalable then K.RegisterScalable("ArenaRoVPillarTimer", frame, 1.0); end
 frame:SetSize(40, 40);
 frame:Hide();
@@ -58,20 +58,20 @@ frame.text = frame:CreateFontString(nil, "OVERLAY", "NumberFontNormalHuge");
 frame.text:SetPoint("CENTER", frame, "CENTER", 0, 0);
 frame.text:SetTextHeight(18);
 
--- ---------------------------------------------------------
--- Posicion guardada / arrastre
--- ---------------------------------------------------------
+
+
+
 local function SavePosition()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.timerPos then NidhausUnitFramesDB.timerPos = {}; end
 	local point, _, relativePoint, x, y = frame:GetPoint();
-	-- SIN PUNTO NO SE GUARDA NADA.
-	--
-	-- Si el marco quedo sin anclaje (por ejemplo despues de un Reset del
-	-- Move Everything, que hace ClearAllPoints), GetPoint devuelve nil y
-	-- esto guardaba { point = nil, ... }, o sea UNA TABLA VACIA. Despues
-	-- RestorePosition la veia y llamaba a SetPoint con un punto nil:
-	-- ese era el error del timer.
+
+
+
+
+
+
+
 	if not point then
 		NidhausUnitFramesDB.timerPos[KEY] = nil;
 		return;
@@ -84,8 +84,8 @@ end
 local function RestorePosition()
 	local pos = NidhausUnitFramesDB and NidhausUnitFramesDB.timerPos and NidhausUnitFramesDB.timerPos[KEY];
 	frame:ClearAllPoints();
-	-- Se pide el PUNTO, no la tabla: una tabla vacia tambien es "verdadera"
-	-- en Lua, y con ella SetPoint reventaba.
+
+
 	if pos and pos.point then
 		frame:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y);
 	else
@@ -105,9 +105,9 @@ frame:SetScript("OnDragStop", function(self)
 	SavePosition();
 end);
 
--- ---------------------------------------------------------
--- Logica
--- ---------------------------------------------------------
+
+
+
 local endTime   = 0;
 local checkAcc  = 0;
 local testMode  = false;
@@ -127,7 +127,7 @@ local function StartCycle(duration)
 end
 
 local function OnUpdate(self, elapsed)
-	-- Salir si ya no estamos en arena (chequeo barato, 1x por segundo)
+
 	checkAcc = checkAcc + elapsed;
 	if checkAcc >= 1 then
 		checkAcc = 0;

@@ -1,36 +1,36 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- SeductionAlert.lua  (integrado a NUF, de NidhausTools)
--- Portado de la WeakAura "Seduction >>> Player".
---
--- Que hace: avisa cuando la succubus de un rival de arena empieza a
--- lanzarte Seduccion A TI, con icono en pantalla y un sonido.
---
--- Fiel al original:
---   * icono 64x64 anclado al centro de la pantalla en (0, 164.62)
---   * tres triggers unidos por "any": arenapet1, arenapet2 y arenapet3
---   * castType = "cast" y destUnit = "player": solo si el objetivo del
---     lanzamiento eres tu
---   * sonido al aparecer, sin barrido de cooldown, sin glow
---
--- Cambios inevitables:
---   * el sonido de la WA apuntaba a WeakAuras\Media\Sounds\Brass.mp3, que
---     no existe sin WeakAuras instalado. Se usa un sonido del cliente.
---   * la WA pintaba "%s" (cargas) en el icono; en un trigger de lanzamiento
---     no hay cargas, asi que no se pinta nada.
--- =========================================================
 
-local SPELL_NAME = GetSpellInfo(6358) or "Seduction";   -- 6358 = Seduction
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+local SPELL_NAME = GetSpellInfo(6358) or "Seduction";
 local ICON_SIZE  = 64;
 local UNITS      = { "arenapet1", "arenapet2", "arenapet3" };
 local SOUND      = "Sound\\Interface\\RaidWarning.wav";
 
 local DEFAULTS = {
     point = "CENTER",
-    x     = 0,                    -- xOffset de la WA
-    y     = 164.61526768373,      -- yOffset de la WA
+    x     = 0,
+    y     = 164.61526768373,
 };
 
 SeductionAlertDB = SeductionAlertDB or {};
@@ -43,7 +43,7 @@ local function ApplyDefaults()
 end
 ApplyDefaults();
 
--- ===== marco =====
+
 local frame = CreateFrame("Frame", "NUF_SeductionAlert", UIParent);
 frame:SetWidth(ICON_SIZE);
 frame:SetHeight(ICON_SIZE);
@@ -82,11 +82,11 @@ end
 ResolveIcon();
 
 local moving  = false;
-local playing = nil;   -- unidad cuyo lanzamiento estamos mostrando
+local playing = nil;
 
--- ===== deteccion =====
--- destUnit = "player" en la WA: el objetivo del lanzamiento debe ser el
--- jugador. Se comprueba con la unidad "<pet>target".
+
+
+
 local function IsCastingAtMe(unit)
     local name = UnitCastingInfo(unit);
     if name ~= SPELL_NAME then return false; end
@@ -114,7 +114,7 @@ local function Update()
     frame:Hide();
 end
 
--- ===== eventos =====
+
 local ev = CreateFrame("Frame");
 
 ev:SetScript("OnEvent", function(self, event, unit)
@@ -123,8 +123,8 @@ ev:SetScript("OnEvent", function(self, event, unit)
         frame:Hide();
         return;
     end
-    -- Los UNIT_SPELLCAST_* de arenapetN llegan con su propia unidad; se
-    -- reevalua todo igualmente por si el objetivo del lanzamiento cambio.
+
+
     Update();
 end);
 
@@ -139,7 +139,7 @@ dbLoader:SetScript("OnEvent", function(self, event, addon)
     self:UnregisterEvent("ADDON_LOADED");
 end);
 
--- ===== mover =====
+
 local function SetMoving(on)
     moving = on and true or false;
     if moving then
@@ -188,7 +188,7 @@ SlashCmdList["NUFSEDUCTION"] = function(msg)
     msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "");
     if msg == "reset" then
         K.ResetSeductionAlertPosition();
-        -- El aviso, solo cuando lo pediste escribiendo: el boton del panel no lo necesita.
+
         print("|cff4FC3F7NUF:|r " .. (L["SED_POS_RESET"] or "Seduction alert - position reset."));
     elseif msg == "test" then
         ResolveIcon();
@@ -201,7 +201,7 @@ SlashCmdList["NUFSEDUCTION"] = function(msg)
     end
 end
 
--- ===== integracion NUF =====
+
 local function SA_SetEnabled(on)
     if on then
         ev:RegisterEvent("UNIT_SPELLCAST_START");
@@ -225,7 +225,7 @@ K.RegisterModule("SeductionAlert", {
     desc    = L["MOD_SEDUCTION_DESC"]
         or "Warns with icon and sound when an enemy succubus starts casting Seduction on you in arena. /seduction to move it.",
     default = false,
-    hideFromModulesTab = true,   -- vive en la seccion PvP
+    hideFromModulesTab = true,
     configLabel = L["BTN_MODULE_MOVE"] or "Move",
     configFunc  = function() SetMoving(not moving); end,
     onEnable  = function() SA_SetEnabled(true); end,

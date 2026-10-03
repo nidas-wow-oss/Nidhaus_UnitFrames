@@ -1,14 +1,14 @@
--- Este archivo vive en Nidhaus_UnitFrames_Config, un addon aparte que se
--- carga SOLO cuando abris el panel (LoadOnDemand). Por eso no recibe el
--- namespace por "...", que es privado de cada addon: lo toma de la global
--- que publica el addon principal en Core/Init.lua.
+
+
+
+
 local ns = _G.NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- OptionsPanelFrames.lua
--- Tab 2: Frames — Localización Restaurada (Verde / Blanco)
--- =========================================================
+
+
+
+
 
 local tooltips = {
 	PlayerFrameScale        = "TIP_PlayerFrameScale",
@@ -77,8 +77,8 @@ local function FormatSliderValue(step, value)
 	end
 end
 
--- Registro de sliders de escala, para poder refrescarlos cuando el usuario
--- escala un frame con Ctrl + rueda desde el modo mover.
+
+
 local scaleSliders = {};
 
 function K.RefreshScaleSliders()
@@ -104,13 +104,13 @@ local function CreateSlider(parent, label, setting, minVal, maxVal, step, xOffse
 	slider:SetValue(C[setting] or minVal);
 	slider.setting = setting;
 
-	-- Topes minimo y maximo abajo, titulo propio arriba (UIKit).
+
 	K.UI.SliderEnds(slider, FormatSliderValue(step, minVal), FormatSliderValue(step, maxVal));
 
-	-- COMPACTO: titulo a la izquierda y valor pegado a la derecha, en la
-	-- misma linea. Antes cada slider gastaba ~60px de alto (titulo arriba,
-	-- valor abajo, min/max a los costados); asi baja a la mitad y entran
-	-- el doble de opciones sin scroll.
+
+
+
+
 	local title = slider:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 	title:SetPoint("BOTTOMLEFT", slider, "TOPLEFT", 0, 2);
 	title:SetText((K.UI and K.UI.Label(K.UI.Strip(label))) or label);
@@ -120,54 +120,54 @@ local function CreateSlider(parent, label, setting, minVal, maxVal, step, xOffse
 	slider.ValueText:SetText((K.UI and K.UI.Value(FormatSliderValue(step, C[setting] or minVal)))
 		or FormatSliderValue(step, C[setting] or minVal));
 
-	-- UIKit le cuelga a TODO slider del addon una cajita editable con el
-	-- valor, debajo. Sin esta marca quedaban los dos numeros: el de aca
-	-- arriba a la derecha y el de la cajita abajo. La marca le dice a
-	-- UIKit cual es "el nuestro" para que lo esconda.
-	--
-	-- Se sigue actualizando aunque este oculto: RefreshScaleSliders lo
-	-- lee, y si algun dia se saca la cajita vuelve a aparecer al dia.
+
+
+
+
+
+
+
 	slider._nufOwnValue = slider.ValueText;
 
 	AddTooltip(slider, setting);
 
-	-- FIX PERF: Apply visual changes immediately during drag, but only save
-	-- to DB (with CONFIG_CHANGED event) on mouse release. This eliminates
-	-- ~120-240 callback executions/sec while dragging sliders.
+
+
+
 	slider._lastValue = C[setting] or minVal;
 
 	slider:SetScript("OnValueChanged", function(self, value)
 		value = math.floor(value / step + 0.5) * step;
-		-- FIX: Guard against double-fire (SetValue inside OnValueChanged)
+
 		if self._lastValue == value then return; end
 		self._lastValue = value;
 		self:SetValue(value);
 		slider.ValueText:SetText((K.UI and K.UI.Value(FormatSliderValue(step, value))) or FormatSliderValue(step, value));
 
-		-- Apply visual effect immediately (no DB save, no CONFIG_CHANGED)
+
 		C[setting] = value;
 
-		-- ═══════════════════════════════════════════════════════════
-		-- UN SOLO DUEÑO DEL NUMERO
-		--
-		-- Si este frame se puede escalar con Ctrl + rueda en el modo
-		-- mover, la escala se guarda en globalPos y se aplica desde
-		-- ahi al entrar al juego. El slider tiene que escribir EN ESE
-		-- MISMO LUGAR, no llamar a SetScale por su cuenta.
-		--
-		-- Antes hacia lo segundo, y el resultado era: movias el
-		-- slider, se veia bien, relogueabas, y RestoreGlobalPositions
-		-- volvia a aplicar la escala vieja de globalPos. El marco
-		-- quedaba del tamaño de antes y el slider mostraba el numero
-		-- nuevo. Parecia que el slider no guardaba.
-		-- ═══════════════════════════════════════════════════════════
-		-- CON RED: si la lista de movibles no aplico NADA, se sigue de largo.
-		--
-		-- Antes esto era un if/elseif: bastaba con que GetMovablesForSetting
-		-- devolviera una lista -- aunque las claves de adentro ya no
-		-- existieran -- para que la cadena de abajo no corriera nunca. Una
-		-- entrada muerta en esa tabla dejaba el slider sin efecto en vivo y
-		-- no avisaba de nada. Paso con "Focus".
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		local aplicado = false;
 		local movables = K.GetMovablesForSetting and K.GetMovablesForSetting(setting);
 		if movables and K.SetGlobalFrameScale then
@@ -177,12 +177,12 @@ local function CreateSlider(parent, label, setting, minVal, maxVal, step, xOffse
 		end
 
 		if aplicado then
-			-- ya esta
+
 		elseif setting == "FocusScale" then
 			if K.ApplyFocusFrameScale then K.ApplyFocusFrameScale(value); end
 		elseif setting == "PartyFrameScale" then
-			-- Con el 3v3 puesto la escala del grupo es del modo: este slider
-			-- no manda (y ademas esta oculto).
+
+
 			if not (K.Is3v3Active and K.Is3v3Active()) and K.ApplyPartyFrameScale then
 				K.ApplyPartyFrameScale(value);
 			end
@@ -191,16 +191,16 @@ local function CreateSlider(parent, label, setting, minVal, maxVal, step, xOffse
 		elseif setting == "PartyMemberFrameSpacing" then
 			if K.ApplyPartyFrameSpacing then K.ApplyPartyFrameSpacing(); end
 		elseif setting == "BossFrameScale" then
-			-- Los marcos de jefe no estan en el modo mover, asi que este
-			-- slider es su unico dueño.
+
+
 			if K.ApplyBossFrameScale then K.ApplyBossFrameScale(value); end
 		elseif setting == "BossTargetFrameSpacing" then
 			if K.ApplyBossFrameSpacing then K.ApplyBossFrameSpacing(); end
 		end
 	end);
 
-	-- FIX PERF: Save to DB only when user releases the slider
-	-- This triggers CONFIG_CHANGED exactly ONCE instead of 30+ times per drag
+
+
 	slider:SetScript("OnMouseUp", function(self)
 		if K.SaveConfig then K.SaveConfig(setting, C[setting]); end
 	end);
@@ -212,31 +212,31 @@ local function CreateSlider(parent, label, setting, minVal, maxVal, step, xOffse
 end
 
 
--- =========================================================
--- Checkboxes de Party Features (se usan en Escalas y en Party)
--- =========================================================
--- NOTA: el checkbox "New Party" se fue de aca. El aspecto de los marcos
--- ahora se elige con el selector de 3 estilos (Default / New / Improved),
--- porque los dos addons retexturizan lo mismo y no pueden convivir.
+
+
+
+
+
+
 function K.BuildPartyFeatureCheckboxes(parent, x, y, onResize)
-	-- UNA FILA POR FUNCION, no dos columnas: con el boton al lado de cada
-	-- uno, en columna los botones "Open" se alinean solos.
-	--
-	--   [x] Party Buffs      [ Open ]
-	--       [ ] Castable Buffs            (solo con Party Buffs tildado)
-	--   [x] Party Debuffs    [ Open ]
-	--       [ ] Dispellable Debuffs       (solo con Party Debuffs tildado)
-	--   [x] Party Targets    [ Open ]
-	--   [x] Party Castbars   [ Open ]
-	--
-	-- Las sub-casillas se despliegan y las filas de abajo se corren: por eso
-	-- todo se ubica en Relayout, y onResize avisa el alto nuevo.
+
+
+
+
+
+
+
+
+
+
+
+
 	local ROW_H, SUB_H = 28, 24;
-	local BTN_X  = x + 150;   -- misma x para todos los botones
+	local BTN_X  = x + 150;
 	local rows, buttons = {}, {};
 
-	-- Boton "Open" al lado de un checkbox. Se apaga cuando la funcion esta
-	-- destildada: abrir las opciones de algo que no corre no sirve.
+
+
 	local function OpenButton(slashKey, isOn)
 		local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate");
 		b:SetSize(70, 20);
@@ -279,17 +279,17 @@ function K.BuildPartyFeatureCheckboxes(parent, x, y, onResize)
 		if onResize then onResize(y - cy); end
 	end
 
-	-- ── Party Buffs / Party Debuffs ──
-	-- Dos casillas sobre el mismo modulo (PartyBuffs): cada una dice si el
-	-- modulo maneja ese tipo. Apagada, ese tipo queda como Blizzard (debuffs:
-	-- los 4 de fabrica; buffs: ninguno). Con las dos apagadas el modulo se
-	-- apaga. Las dos abren la misma ventana (/pbuffs).
-	--
-	-- NO se registran con K.RegisterModuleCheckbox: eso las pondria las dos
-	-- en el estado del modulo (prendido = las dos tildadas).
-	--
-	-- Debajo de cada una, la opcion del juego que filtra ese tipo (Interface
-	-- > Buffs and Debuffs). No se guarda aparte: es la misma CVar.
+
+
+
+
+
+
+
+
+
+
+
 	local SyncPB;
 	if K.Modules and K.Modules["PartyBuffs"] and K.PartyBuffs_SetShown then
 		local pbCB = CreateFeatureCheckBox(parent, L["CB_PARTY_BUFFS_SHORT"] or "Party Buffs",
@@ -354,7 +354,7 @@ function K.BuildPartyFeatureCheckboxes(parent, x, y, onResize)
 		end);
 	end
 
-	-- ── Party Targets ──
+
 	local ptCB = CreateFeatureCheckBox(parent, L["CB_PARTY_TARGETS_SHORT"] or "Party Targets",
 		x, y, L["TIP_PartyTargets"], "PartyTargetsEnabled");
 	ptCB:SetChecked(C.PartyTargetsEnabled);
@@ -370,7 +370,7 @@ function K.BuildPartyFeatureCheckboxes(parent, x, y, onResize)
 	end);
 	AddRow(ptCB, ptBtn);
 
-	-- ── Party Castbars ──
+
 	local pcbCB = CreateFeatureCheckBox(parent, L["CB_PARTY_CASTBARS_SHORT"] or "Party Castbars",
 		x, y, L["TIP_PartyCastingBars"] or "", "PartyCastingBars");
 	pcbCB:SetChecked(C.PCB_Enabled == true);
@@ -387,9 +387,9 @@ function K.BuildPartyFeatureCheckboxes(parent, x, y, onResize)
 	end);
 	AddRow(pcbCB, pcbBtn);
 
-	-- Los checkbox tambien se tocan desde otras pestañas, desde Reset y desde
-	-- Interface (las opciones del juego), asi que al abrir el panel se repasa
-	-- todo y se reacomoda.
+
+
+
 	if parent.HookScript then
 		parent:HookScript("OnShow", function()
 			if SyncPB then SyncPB(); end
@@ -401,19 +401,19 @@ function K.BuildPartyFeatureCheckboxes(parent, x, y, onResize)
 	Relayout();
 end
 
--- =========================================================
--- EL MODO 3v3 CUELGA DE "USE CUSTOM POSITIONS"
---
--- El 3v3 reacomoda los marcos del grupo, y eso solo tiene sentido si el
--- addon es el que manda las posiciones. Con "Use Custom Positions"
--- apagado el checkbox se podia tildar igual y no pasaba nada: parecia
--- roto. Ahora se apaga y se atenua, como cualquier opcion que depende
--- de otra.
---
--- Los checkbox del 3v3 estan en DOS paneles (Interfaz y Move Everything)
--- y son el mismo setting, asi que se guardan todos en una lista y se
--- refrescan juntos.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
 K._3v3Checkboxes = K._3v3Checkboxes or {};
 
 function K.Register3v3Checkbox(cb)
@@ -433,11 +433,11 @@ function K.Update3v3Enabled()
 	end
 end
 
--- =========================================================
--- Checkbox "Use Custom Positions" reutilizable.
--- Se usa en Frames y, en espejo, en la pestaña Interfaz: es el
--- MISMO setting y se sincronizan solos via RegisterSettingCheckbox.
--- =========================================================
+
+
+
+
+
 function K.CreateCustomPosCheckbox(parent, x, y)
 	local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate");
 	cb:SetPoint("TOPLEFT", x, y);
@@ -458,15 +458,15 @@ function K.CreateCustomPosCheckbox(parent, x, y)
 	cb:SetScript("OnClick", function(self)
 		local v = self:GetChecked() == 1 or self:GetChecked() == true;
 		if K.SaveConfig then K.SaveConfig("SetPositions", v); end
-		-- Reaccion en cadena: el 3v3 se habilita o se apaga con esta.
+
 		if K.Update3v3Enabled then K.Update3v3Enabled(); end
 
 		if v then
-			-- Una sola fuente de verdad: si se usan las posiciones custom,
-			-- se descartan las guardadas por el modo mover para estos marcos.
+
+
 			local gp = NidhausUnitFramesDB and NidhausUnitFramesDB.globalPos;
-			-- "Party" ya no existe: desde que el grupo son cuatro movibles
-			-- (Party1..Party4) esta linea no borraba nada del grupo.
+
+
 			if gp then
 				gp.Player, gp.Target = nil, nil;
 				for i = 1, 4 do gp["Party" .. i] = nil; end
@@ -487,18 +487,18 @@ function K.CreateCustomPosCheckbox(parent, x, y)
 	return cb;
 end
 
--- =========================================================
--- LOS SLIDERS DEL 3v3 VIVEN EN DOS PESTAÑAS Y SE MUEVEN JUNTOS
---
--- Estan en Frames > Party (donde siempre) y ahora tambien en Frames >
--- General. Dos controles para el mismo numero son un peligro conocido --
--- esta escrito un poco mas abajo, al lado del slider del foco: "el que no
--- tocaste queda mostrando el valor viejo hasta reabrir el panel".
---
--- Por eso cada slider se anota aca por miembro, y al moverse uno se
--- actualizan los otros en el acto. El _last evita el ping-pong: el
--- hermano ya tiene el valor, su OnValueChanged sale en la primera linea.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
 K._3v3Sliders = K._3v3Sliders or { {}, {}, {}, {} };
 
 local function Sync3v3Siblings(i, value, from)
@@ -516,15 +516,15 @@ local function Sync3v3Siblings(i, value, from)
 	end
 end
 
--- Poner los sliders del 3v3 -- los de TODAS las pestañas -- en el valor
--- que tiene la configuracion. Lo usa el reset: cambia los numeros por
--- debajo y los sliders tienen que enterarse.
+
+
+
 function K.Refresh3v3Sliders()
 	for i = 1, 4 do
 		local v = C["Party3v3Scale" .. i] or (K.Get3v3Scale and K.Get3v3Scale(i)) or 1.0;
 		for _, sl in ipairs(K._3v3Sliders[i] or {}) do
-			-- _last primero: asi el OnValueChanged que dispara SetValue sale
-			-- en la primera linea y no vuelve a aplicar ni a guardar nada.
+
+
 			sl._last = v;
 			sl:SetValue(v);
 			local txt = string.format("%.2f", v);
@@ -533,8 +533,8 @@ function K.Refresh3v3Sliders()
 	end
 end
 
--- Cuatro sliders por miembro. cols = cuantos por fila (4 en Party, 2 en
--- General, que es la columna angosta). Devuelve el frame que los contiene.
+
+
 local function Build3v3MemberSliders(parent, cols, namePrefix)
 	local box = CreateFrame("Frame", nil, parent);
 	local rows = math.ceil(4 / cols);
@@ -583,10 +583,10 @@ local function Build3v3MemberSliders(parent, cols, namePrefix)
 	return box;
 end
 
--- El checkbox del 3v3, igual al de la pestaña Party. Espejo: los dos se
--- anotan en RegisterSettingCheckbox, asi que tildar uno tilda el otro, y
--- en Register3v3Checkbox, asi que los dos se apagan juntos cuando "Use
--- Custom Positions" esta destildado.
+
+
+
+
 local function Build3v3Checkbox(parent, globalName, onChange)
 	local cb = CreateFrame("CheckButton", globalName, parent, "UICheckButtonTemplate");
 	cb.text = cb:CreateFontString(nil, "ARTWORK", "GameFontHighlight");
@@ -612,7 +612,7 @@ local function Build3v3Checkbox(parent, globalName, onChange)
 		else
 			if K.Disable3v3PartyMode then K.Disable3v3PartyMode(); end
 		end
-		-- Las dos pestañas reacomodan lo que muestran.
+
 		if K.Update3v3SlidersVisibility then K.Update3v3SlidersVisibility(); end
 		if onChange then onChange(); end
 		if K.RefreshScaleSliders then K.RefreshScaleSliders(); end
@@ -621,13 +621,13 @@ local function Build3v3Checkbox(parent, globalName, onChange)
 	return cb;
 end
 
--- =========================================================
--- PopulateFramesTab
---
--- Lista lateral con 4 secciones. "Jugador, Objetivo y Foco" van
--- juntos a pedido del usuario: son los tres marcos que se acomodan
--- de una sentada y no tiene sentido separarlos.
--- =========================================================
+
+
+
+
+
+
+
 local function FHeader(parent, text, x, y)
 	local fs = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 	fs:SetPoint("TOPLEFT", x, y);
@@ -660,26 +660,26 @@ function K.PopulateFramesTab(panel)
 	local x        = 20;
 	local sliderH  = 46;
 
-	-- ══════════════════════════════════════════════════════
-	-- 1) JUGADOR, OBJETIVO Y FOCO
-	--
-	-- ARRIBA, DOS COLUMNAS PAREJAS: las dos cosas de escala.
-	--   izquierda -> Player / Target / Focus
-	--   derecha   -> el 3v3 y sus cuatro sliders
-	-- Miden casi lo mismo de alto y las filas quedan a la par (Party 1-2
-	-- a la altura de Target, Party 3-4 a la de Focus).
-	--
-	-- ABAJO, A LO ANCHO: posicion. Unlock y Reset lado a lado.
-	--
-	-- Antes el Reset estaba a la izquierda, bajo las escalas, y el Unlock
-	-- a la derecha, colgando de un hueco fijo de 74px debajo de la
-	-- descripcion: se media a ojo, no con el alto real del texto.
-	-- ══════════════════════════════════════════════════════
-	local xR = 300;
-	local y  = -14;    -- cursor de la columna izquierda
-	local ry = -14;    -- cursor de la columna derecha
 
-	-- ── Arriba a la izquierda: escalas ──
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	local xR = 300;
+	local y  = -14;
+	local ry = -14;
+
+
 	FHeader(paneMain, L["HEADER_SCALES"] or "Scale", x, y);
 
 	y = y - 30;
@@ -688,19 +688,19 @@ function K.PopulateFramesTab(panel)
 	CreateSlider(paneMain, L["SLIDER_TARGET_SCALE"], "TargetFrameScale", 0.5, 1.5, 0.05, x, y);
 	y = y - sliderH;
 	CreateSlider(paneMain, L["SLIDER_FOCUS_SCALE"], "FocusScale", 0.5, 1.5, 0.05, x, y);
-	-- "Focus Spellbar Scale" vive en Interface > Cast Bar (es una barra de
-	-- casteo, no un marco). El cartelito dice donde esta; un slider
-	-- duplicado seria peor: dos controles para el mismo numero.
+
+
+
 	y = y - sliderH + 6;
 	FNote(paneMain, L["NOTE_FOCUS_SPELLBAR"]
 		or "Focus cast bar scale lives in Interface > Cast Bar.", x, y, 220);
-	y = y - 26;   -- los dos renglones de la nota
+	y = y - 26;
 
-	-- ── Arriba a la derecha: el 3v3 ──
-	--
-	-- Espejo del de Interface > General y del de Frames > Party: el mismo
-	-- ajuste, tres lugares, un solo valor. Con "Use Custom Positions"
-	-- apagada se deshabilita solo (ver Register3v3Checkbox).
+
+
+
+
+
 	FHeader(paneMain, L["HEADER_3V3_SCALE"] or "Party 3v3 Scale", xR, ry);
 
 	ry = ry - 26;
@@ -712,7 +712,7 @@ function K.PopulateFramesTab(panel)
 	local gen3v3 = Build3v3Checkbox(paneMain, "NidhausFramesGen3v3CB", UpdateGen3v3);
 	gen3v3:SetPoint("TOPLEFT", xR, ry);
 
-	-- 2 x 2. Solo se ven con el 3v3 puesto, igual que en la pestaña Party.
+
 	ry = ry - 32;
 	genMini = Build3v3MemberSliders(paneMain, 2, "NidhausGen3v3Slider");
 	genMini:SetPoint("TOPLEFT", xR + 4, ry);
@@ -720,26 +720,26 @@ function K.PopulateFramesTab(panel)
 	if K.RegisterConfigEvent then K.RegisterConfigEvent("CONFIG_CHANGED", UpdateGen3v3); end
 	ry = ry - 108;
 
-	-- ── Linea fina entre las escalas y la posicion ──
+
 	local sy = math.min(y, ry) - 12;
 	if K.UI and K.UI.Separator then K.UI.Separator(paneMain, x, sy, 540); end
 
-	-- ── Abajo, a lo ancho: posicion ──
+
 	sy = sy - 14;
 	FHeader(paneMain, L["HEADER_MOVE_FRAMES"] or "Move Unit Frames", x, sy);
 
 	sy = sy - 22;
 	local moveDesc = FNote(paneMain, L["DESC_MOVE_FRAMES"] or "", x + 2, sy, 520);
 
-	-- LOS BOTONES CUELGAN DE LA DESCRIPCION, no de un numero fijo: ocupe
-	-- uno o dos renglones (ingles, español), quedan pegados abajo igual.
+
+
 	local unlockBtn = CreateFrame("Button", nil, paneMain, "UIPanelButtonTemplate");
 	unlockBtn:SetPoint("TOPLEFT", moveDesc, "BOTTOMLEFT", -2, -10);
 	unlockBtn:SetSize(210, 24);
 
-	-- Mismo criterio que el Move de la pestaña Pet: "Lock" solo si lo
-	-- destrabado son ESTOS marcos. Si esta destrabado otro alcance (Move
-	-- Everything, la mascota), el clic cambia a este en vez de trabar.
+
+
+
 	local function FramesMoveNow()
 		return K.IsGlobalUnlocked and K.IsGlobalUnlocked()
 			and (not K.GetGlobalUnlockScope or K.GetGlobalUnlockScope() == "frames");
@@ -762,16 +762,16 @@ function K.PopulateFramesTab(panel)
 	end);
 	unlockBtn:SetScript("OnShow", UnlockLabel);
 
-	-- EL UNICO RESET DE LA PESTAÑA: escala Y posicion de los marcos de
-	-- unidad, respetando el 3v3. Al lado del Unlock (las dos cosas de
-	-- posicion juntas) y alineado con la columna derecha de arriba.
+
+
+
 	local resetScalesBtn = CreateFrame("Button", nil, paneMain, "UIPanelButtonTemplate");
 	resetScalesBtn:SetPoint("TOPLEFT", unlockBtn, "TOPLEFT", xR - x, 0);
 	resetScalesBtn:SetSize(210, 24);
 	resetScalesBtn:SetText(L["BTN_RESET_FRAMES"] or "Reset Scales & Positions");
 	resetScalesBtn:SetScript("OnClick", function()
-		-- Lo hace ResetManager, que ya sabe borrar posiciones, escalas y
-		-- el guardado del modo mover -- y respeta el 3v3.
+
+
 		if K.ResetUnitFrames then
 			K.ResetUnitFrames();
 		elseif K.ResetPositionsAndScale then
@@ -779,28 +779,28 @@ function K.PopulateFramesTab(panel)
 		end
 	end);
 
-	-- Use Custom Positions, debajo del Unlock.
+
 	local customPosCB = K.CreateCustomPosCheckbox(paneMain, x, sy);
 	if customPosCB then
 		customPosCB:ClearAllPoints();
 		customPosCB:SetPoint("TOPLEFT", unlockBtn, "BOTTOMLEFT", 0, -6);
 	end
 
-	-- descripcion (2 renglones) + boton + checkbox + aire
+
 	side.SetContentHeight(1, sy - 130);
 
-	-- ══════════════════════════════════════════════════════
-	-- 2) PARTY
-	-- ══════════════════════════════════════════════════════
+
+
+
 	local py = -14;
 
-	-- Modo prueba, primero de todo: es lo que se aprieta ANTES de tocar
-	-- cualquier otra cosa de esta pestaña, porque sin grupo real no hay
-	-- marcos que mirar mientras elegis estilo, escala o posicion.
-	-- No depende del 3v3 ni de ningun estilo: sirve para todos.
-	-- Mismo recuadro que Move Everything en el pie del panel: fondo azul
-	-- oscuro, borde de un pixel en cuatro texturas y texto celeste. En
-	-- 3.3.5a los Button no aceptan SetBackdrop, de ahi las cuatro texturas.
+
+
+
+
+
+
+
 	local testBtn = CreateFrame("Button", nil, paneParty);
 	testBtn:SetPoint("TOPLEFT", x, py);
 	testBtn:SetSize(200, 24);
@@ -860,7 +860,7 @@ function K.PopulateFramesTab(panel)
 	end);
 	py = py - 34;
 
-	-- ── ESTILO DE LOS MARCOS (excluyente) ──
+
 	FHeader(paneParty, L["HEADER_PARTY_STYLE"] or "Frame Style", x, py);
 	py = py - 20;
 	FNote(paneParty, L["NOTE_PARTY_STYLE"]
@@ -871,14 +871,14 @@ function K.PopulateFramesTab(panel)
 	do
 		local styles = {
 			{ value = "Default",  text = L["PARTY_STYLE_DEFAULT"]  or "Blizzard" },
-			-- Big Blizzard va pegado a Blizzard: es el mismo marco de siempre
-			-- pero con el arte grande, asi que se leen como un par.
+
+
 			{ value = "PW",       text = L["PARTY_STYLE_PW"]       or "Big Blizzard" },
 			{ value = "New",      text = L["PARTY_STYLE_NEW"]      or "New Party" },
 			{ value = "Improved", text = L["PARTY_STYLE_IMPROVED"] or "Improved" },
 			{ value = "PW2",      text = L["PARTY_STYLE_PW2"]      or "Compact 2" },
 		};
-		-- Cuatro botones en el mismo ancho: 80 en vez de 100.
+
 		local btnW, btnH, gap = 66, 22, 4;
 		local styleButtons = {};
 
@@ -900,7 +900,7 @@ function K.PopulateFramesTab(panel)
 				end
 			end
 		end
-		-- El coordinador la llama cuando el estilo cambia desde otro lado
+
 		K.RefreshPartyStyleSelector = RefreshStyle;
 
 		for i, opt in ipairs(styles) do
@@ -922,7 +922,7 @@ function K.PopulateFramesTab(panel)
 			b:SetScript("OnClick", function(self)
 				if K.SetPartyFrameStyle then K.SetPartyFrameStyle(self.value); end
 				RefreshStyle();
-				-- Con el estilo Blizzard la seccion de fuente se esconde.
+
 				if K._UpdatePartyFontVisibility then K._UpdatePartyFontVisibility(); end
 			end);
 			b:SetScript("OnEnter", function(self)
@@ -938,19 +938,19 @@ function K.PopulateFramesTab(panel)
 		RefreshStyle();
 	end
 
-	-- ── Contorno del texto (idea tomada de KPack) ──
-	-- Solo cambia el FLAG de la fuente, no el tipo ni el tamaño: asi sirve
-	-- para los tres estilos sin romper los tamaños de cada uno.
-	-- Con el estilo Blizzard no hay nada que tocar acá: manda el default del
-	-- juego. Antes la seccion se ocultaba widget por widget, pero el hueco
-	-- quedaba igual porque todo lo de abajo estaba anclado a coordenadas
-	-- fijas. Ahora va en un cuerpo desplegable: cerrado mide 1px y lo que
-	-- sigue sube solo, porque se ancla AL CUERPO y no a un numero.
+
+
+
+
+
+
+
+
 	py = py - 44;
-	-- Alto del cuerpo: cabecera en 0, etiqueta y desplegable en -30, slider en
-	-- -66. El slider mide 16 y ademas UIKit le cuelga DEBAJO la cajita con el
-	-- valor (otros 17), asi que el contenido llega a -99. Con 92 la cajita se
-	-- salia del cuerpo y pisaba la casilla de abajo.
+
+
+
+
 	local fontBody = K.UI.Collapsible(paneParty, x, py, 440, 104, function()
 		local style = (K.GetPartyFrameStyle and K.GetPartyFrameStyle()) or "Default";
 		return style ~= "Default";
@@ -999,13 +999,13 @@ function K.PopulateFramesTab(panel)
 
 	end
 
-	-- Tamaño del texto de vida/mana del grupo. 0 = el de cada estilo.
+
 	do
 		local fsSlider = CreateFrame("Slider", "NidhausPartyFontSizeSlider", fontBody,
 			"OptionsSliderTemplate");
 		fsSlider:SetPoint("TOPLEFT", 8, -66);
 		fsSlider:SetWidth(200);
-		-- 0 = Auto; de ahi salta a 6, que es el minimo legible.
+
 		fsSlider:SetMinMaxValues(0, 20);
 		fsSlider:SetValueStep(1);
 		local start = tonumber(C.PartyFontSize) or 0;
@@ -1030,26 +1030,26 @@ function K.PopulateFramesTab(panel)
 
 	end
 
-	-- Los botones de estilo llaman a esto al cambiar de modo.
+
 	local function UpdatePartyFontVisibility()
 		fontBody:Refresh();
 	end
 	K._UpdatePartyFontVisibility = UpdatePartyFontVisibility;
 
-	-- Ocultar los numeros de vida/mana del grupo (portado de Zyrokof)
-	--
-	-- DE ACA PARA ABAJO TODO SE ANCLA AL ANTERIOR, no a un "py" fijo. Ese es
-	-- el unico motivo por el que la seccion de fuente puede cerrarse y lo de
-	-- abajo sube: si siguieran en coordenadas absolutas, quedaria el hueco.
+
+
+
+
+
 	local cbHide;
 	do
 		cbHide = CreateFrame("CheckButton", "NidhausPartyHideTextCB", paneParty,
 			"InterfaceOptionsCheckButtonTemplate");
-		-- Oculta los NUMEROS de vida y mana, o sea que es parte de "Text".
-		-- Va a la DERECHA del slider de tamaño, no debajo del bloque: los
-		-- dos ocupaban una fila entera cada uno y sobraba media pantalla a
-		-- la derecha. El parent sigue siendo paneParty, no fontBody, para
-		-- que no se esconda cuando el bloque de fuente se colapsa.
+
+
+
+
+
 		cbHide:SetPoint("TOPLEFT", fontBody, "TOPLEFT", 250, -62);
 		cbHide:SetHitRectInsets(0, 0, 0, 0);
 		local fs = _G["NidhausPartyHideTextCBText"];
@@ -1070,17 +1070,17 @@ function K.PopulateFramesTab(panel)
 		end);
 	end
 
-	-- Modulo: marco propio para la mascota del compa 1.
-	-- Va ARRIBA del checkbox de mostrar/ocultar mascotas: primero elegis
-	-- que marco usar, despues si se ve o no.
-	-- ── MASCOTAS ──
-	-- Antes las dos opciones de mascota flotaban sueltas entre el bloque de
-	-- texto y el de Mode, sin encabezado, asi que se leian como si fueran
-	-- parte de cualquiera de los dos.
+
+
+
+
+
+
+
 	local petSep = K.UI.Separator(paneParty, 0, 0, 440);
 	petSep:ClearAllPoints();
-	-- Colgaba de cbHide, que ahora esta arriba, al lado del slider. Cuelga
-	-- del bloque de fuente, que es lo que de verdad cierra esta seccion.
+
+
 	petSep:SetPoint("TOPLEFT", fontBody, "BOTTOMLEFT", -4, -10);
 
 	local petHeader = FHeader(paneParty, L["HEADER_PARTY_PETS"] or "Pets", 0, 0);
@@ -1110,24 +1110,24 @@ function K.PopulateFramesTab(panel)
 		end);
 	end
 
-	-- ── Mascotas de los compañeros ──
+
 	local cbPet;
 	do
 		cbPet = CreateFrame("CheckButton", "NidhausPartyPetCB", paneParty, "UICheckButtonTemplate");
-		-- Al lado del anterior, no debajo: son dos opciones cortas y la
-		-- columna de la derecha estaba vacia.
+
+
 		cbPet:SetPoint("LEFT", cbPPF, "LEFT", 230, 0);
 		cbPet.text = cbPet:CreateFontString(nil, "ARTWORK", "GameFontHighlight");
 		cbPet.text:SetPoint("LEFT", cbPet, "RIGHT", 4, 0);
-		-- Redactado en NEGATIVO, como sus vecinos ("Hide health / mana
-		-- numbers"). Tres opciones seguidas donde una dice "Show" y las
-		-- otras "Hide" hacen dudar cada vez que tildas.
-		--
-		-- El setting guardado sigue siendo PartyShowPetFrames, en positivo:
-		-- lo lee ApplyPartyPetFrames y esta en los perfiles de la gente.
-		-- Darlo vuelta habria roto todo eso por un texto. La inversion vive
-		-- solo en la presentacion, marcada con nufInverted para que el
-		-- refresco central tampoco se confunda.
+
+
+
+
+
+
+
+
+
 		cbPet.text:SetText(L["CB_PARTY_PETS_HIDE"] or "Hide party pet frames");
 		cbPet.nufInverted = true;
 		cbPet:SetChecked(C.PartyShowPetFrames == false);
@@ -1142,7 +1142,7 @@ function K.PopulateFramesTab(panel)
 		end);
 		cbPet:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 		cbPet:SetScript("OnClick", function(self)
-			-- Tildado = OCULTAR, o sea PartyShowPetFrames en false.
+
 			local hide = (self:GetChecked() == 1 or self:GetChecked() == true);
 			if K.SaveConfig then K.SaveConfig("PartyShowPetFrames", not hide); end
 			if K.ApplyPartyPetFrames then K.ApplyPartyPetFrames(); end
@@ -1151,8 +1151,8 @@ function K.PopulateFramesTab(panel)
 
 	local modeSep = K.UI.Separator(paneParty, 0, 0, 440);
 	modeSep:ClearAllPoints();
-	-- Cuelga del checkbox de la IZQUIERDA: cbPet ahora esta en la segunda
-	-- columna y anclarse a el corria el separador media pantalla.
+
+
 	modeSep:SetPoint("TOPLEFT", cbPPF, "BOTTOMLEFT", -4, -14);
 
 	local modeHeader = FHeader(paneParty, L["HEADER_PARTY_MODE"] or "Mode", 0, 0);
@@ -1174,7 +1174,7 @@ function K.PopulateFramesTab(panel)
 	end);
 	cb3v3:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 
-	-- ── Sliders chicos por miembro (solo con 3v3 activo) ──
+
 	local mini = CreateFrame("Frame", nil, paneParty);
 	mini:SetPoint("TOPLEFT", cb3v3, "BOTTOMLEFT", 0, -12);
 	mini:SetSize(460, 58);
@@ -1188,8 +1188,8 @@ function K.PopulateFramesTab(panel)
 		s.setting = "Party3v3Scale"..i;
 		s:SetValue(C["Party3v3Scale"..i] or 1.0);
 
-		-- Estos cuatro van en fila y miden 96 px: los topes no entran sin
-		-- pisarse entre si. Son los unicos del addon que quedan sin ellos.
+
+
 		K.UI.SliderEnds(s, "", "");
 
 		local t = s:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
@@ -1203,7 +1203,7 @@ function K.PopulateFramesTab(panel)
 			or string.format("%.2f", C["Party3v3Scale"..i] or 1.0));
 
 		s._last = C["Party3v3Scale"..i] or 1.0;
-		-- Anotado para que el espejo de Frames > General lo siga.
+
 		table.insert(K._3v3Sliders[i], s);
 		s:SetScript("OnValueChanged", function(self, value)
 			value = math.floor(value / 0.05 + 0.5) * 0.05;
@@ -1214,7 +1214,7 @@ function K.PopulateFramesTab(panel)
 			self.ValueText:SetText((K.UI and K.UI.Value(txt)) or txt);
 			C[self.setting] = value;
 			if K.Apply3v3MemberScale then K.Apply3v3MemberScale(i); end
-			-- Y el espejo de Frames > General se entera en el acto.
+
 			Sync3v3Siblings(i, value, self);
 		end);
 		s:SetScript("OnMouseUp", function(self)
@@ -1222,13 +1222,13 @@ function K.PopulateFramesTab(panel)
 		end);
 	end
 
-	-- ── Escala general (contenedor propio, para poder ocultarlo) ──
-	-- Con Party Mode 3v3 activo, Party Frame Scale y Spacing no hacen nada:
-	-- el modo 3v3 maneja la escala de cada miembro por su cuenta. Van en un
-	-- frame para poder mostrarlos u ocultarlos como bloque, al reves que los
-	-- mini-sliders por miembro.
-	-- Anclado al fondo de "mini": los dos grupos son excluyentes y cada uno
-	-- vale 1px de alto cuando esta cerrado, asi que lo de abajo sube solo.
+
+
+
+
+
+
+
 	local scaleGroup = CreateFrame("Frame", nil, paneParty);
 	scaleGroup:SetPoint("TOPLEFT", mini, "BOTTOMLEFT", 0, -10);
 	scaleGroup:SetWidth(440);
@@ -1241,8 +1241,8 @@ function K.PopulateFramesTab(panel)
 	local MINI_H  = 58;
 	local SCALE_H = sliderH * 2 + 40;
 
-	-- Ademas de mostrar/ocultar hay que COLAPSAR el alto: escondiendolo sin
-	-- mas, el grupo seguia ocupando su lugar y quedaba el hueco.
+
+
 	local function Update3v3Visibility()
 		if C.PartyMode3v3 then
 			mini:Show();       mini:SetHeight(MINI_H);
@@ -1271,24 +1271,24 @@ function K.PopulateFramesTab(panel)
 		if K.ScheduleGlobalPositionReapply then K.ScheduleGlobalPositionReapply(); end
 	end);
 
-	-- ── Extras del party ──
-	-- Anclado al grupo de escala para acompañar el colapso del modo 3v3.
+
+
 	local featBox = CreateFrame("Frame", nil, paneParty);
 	featBox:SetPoint("TOPLEFT", scaleGroup, "BOTTOMLEFT", 0, -20);
 	featBox:SetWidth(460);
-	-- Encabezado + CUATRO filas de 28 (Buffs y Debuffs van por separado).
-	-- Antes eran dos columnas y entraba en 90; ahora cada funcion tiene su
-	-- fila para que los botones "Open" queden alineados.
+
+
+
 	featBox:SetHeight(144);
 
 	FHeader(featBox, L["HEADER_PARTY_FEATURES"] or "Party Features", 0, 0);
 
-	-- El alto de esta seccion cambia (las sub-casillas de Party Buffs /
-	-- Debuffs se despliegan), y con el el alto del scroll de la pestaña.
-	local partyTailPy;   -- lo deja la cola de la seccion, mas abajo
+
+
+	local partyTailPy;
 	local function UpdatePartyHeight()
 		if not partyTailPy then return; end
-		-- El -810 de abajo se calculo con Party Features de 116 de alto.
+
 		side.SetContentHeight(2, -810 - (featBox:GetHeight() - 116) + partyTailPy - 30);
 	end
 	K.BuildPartyFeatureCheckboxes(featBox, 0, -26, function(rowsH)
@@ -1297,30 +1297,30 @@ function K.PopulateFramesTab(panel)
 	end);
 	py = py - 74 - SCALE_H - 138;
 
-	-- ── Cola de la seccion ──────────────────────────────────────
-	-- Va en su propio frame anclado a "Party Features", que a su vez cuelga
-	-- del grupo de escala. Antes usaba coordenadas fijas del pane, asi que
-	-- al colapsar el modo 3v3 (que cambia el alto en ~74px) todo esto
-	-- quedaba corrido o encimado. Adentro las coordenadas son locales.
+
+
+
+
+
 	local tailBox = CreateFrame("Frame", nil, paneParty);
 	tailBox:SetPoint("TOPLEFT", featBox, "BOTTOMLEFT", 0, -10);
 	tailBox:SetWidth(460);
 	tailBox:SetHeight(300);
 	py = 0;
 
-	-- Los tres sub-addons de party tienen su propia ventana de opciones.
-	-- Sin esto no habia forma de enterarse salvo leyendo el tooltip.
-	-- La nota ya no explica que cada uno tiene su ventana — eso ahora se ve
-	-- solo, con el boton al lado. Queda unicamente el comando, para quien
-	-- prefiera escribirlo.
+
+
+
+
+
 	FNote(tailBox, L["NOTE_PARTY_SUBADDONS"]
 		or "Commands: /pbuffs, /ptarget, /pcb",
 		2, py, 430);
 	py = py - 26;
 
-	-- ── Trinkets de party ──
-	-- Checkbox propio, independiente del rastreo de arena: se puede
-	-- querer ver el trinket del healer sin los marcos de arena tocados.
+
+
+
 	K.UI.Separator(tailBox, -4, py + 14, 440);
 	FHeader(tailBox, L["HEADER_PARTY_TRINKET"] or "Party Trinkets", 0, py);
 	py = py - 20;
@@ -1340,9 +1340,9 @@ function K.PopulateFramesTab(panel)
 	end);
 	if K.RegisterSettingCheckbox then K.RegisterSettingCheckbox("PartyTrinketsEnabled", ptCB); end
 
-	-- Sub-opciones desplegables: mover, resetear y tamaño solo tienen sentido
-	-- con los trinkets prendidos. Antes estaban siempre visibles y quedaban
-	-- botones que no hacian nada.
+
+
+
 	py = py - 30;
 	local ptBody = K.UI.Collapsible(tailBox, 0, py, 440, 96, function()
 		return C.PartyTrinketsEnabled == true;
@@ -1374,8 +1374,8 @@ function K.PopulateFramesTab(panel)
 		if K.ApplyPartyTrinketSettings then K.ApplyPartyTrinketSettings(); end
 	end);
 
-	-- Al apagar, salir del modo mover: si no, el boton queda diciendo "Done"
-	-- y los iconos arrastrables sueltos por ahi.
+
+
 	ptCB:HookScript("OnClick", function(self)
 		if not self:GetChecked() then
 			if K.SetPartyTrinketMoveMode then K.SetPartyTrinketMoveMode(false); end
@@ -1386,17 +1386,17 @@ function K.PopulateFramesTab(panel)
 
 	py = py - 110;
 
-	-- py es local a tailBox (arranca en 0), asi que hay que sumarle lo que
-	-- ocupa todo lo de arriba. Se toma el caso mas alto (3v3 apagado).
-	-- +90 sobre lo de antes: la seccion crecio con los dos encabezados
-	-- nuevos (Pets y su separador, el separador de Mode) y con el boton de
-	-- prueba, que paso de ir al lado del checkbox a su propio renglon.
+
+
+
+
+
 	partyTailPy = py;
 	UpdatePartyHeight();
 
-	-- ══════════════════════════════════════════════════════
-	-- 3) BUFFS Y DEBUFFS
-	-- ══════════════════════════════════════════════════════
+
+
+
 	local ay = -14;
 	FHeader(paneAuras, L["HEADER_AURAS"] or "Player Buffs and Debuffs", x, ay);
 
@@ -1419,14 +1419,14 @@ function K.PopulateFramesTab(panel)
 	auraReset:SetSize(75, 24);
 	auraReset:SetText(L["BTN_MOVE_RESET"] or "Reset");
 	auraReset:SetScript("OnClick", function()
-		-- Por ResetManager: ademas del ancla propia, repone posicion y
-		-- escala de los dos movibles (Buffs y Debuffs). Antes solo limpiaba
-		-- el ancla, y la escala puesta con Ctrl + rueda quedaba pegada.
+
+
+
 		if K.ResetAuras then K.ResetAuras();
 		elseif K.ResetAuraAnchor then K.ResetAuraAnchor(); end
 	end);
 
-	-- ── Iconos por fila (buffs del jugador) ──
+
 	ay = ay - 62;
 	do
 		local s = CreateFrame("Slider", nil, paneAuras, "OptionsSliderTemplate");
@@ -1460,14 +1460,14 @@ function K.PopulateFramesTab(panel)
 			x + 4, ay - 34, 215);
 	end
 
-	-- ── Escala de los bloques ──
-	-- Son DOS sliders porque los buffs y los debuffs se mueven por separado:
-	-- tiene sentido poder agrandar uno sin tocar el otro.
-	-- UNA DEBAJO DE LA OTRA.
-	--
-	-- Antes iban lado a lado (x+4 y x+240) y entre las dos median 440 px:
-	-- con la segunda columna arrancando en 250, la de debuffs se le metia
-	-- encima. En una columna de ~230 entran apiladas sin achicarlas.
+
+
+
+
+
+
+
+
 	ay = ay - 84;
 	if K.UI and K.UI.ScaleSlider then
 		K.UI.ScaleSlider(paneAuras, "PlayerBuffs",   x + 4, ay, 215,
@@ -1479,13 +1479,13 @@ function K.PopulateFramesTab(panel)
 
 	ay = ay - 60;
 
-	-- ══ COLUMNA DERECHA ══════════════════════════════════
-	--
-	-- Antes todo esto iba abajo, en una sola columna: la pestaña ocupaba
-	-- dos pantallas de scroll con media pantalla vacia a la derecha. Son
-	-- dos temas distintos — arriba DONDE se ubican TUS auras, aca COMO se
-	-- ven las del que estas mirando — asi que uno en cada columna se lee
-	-- mejor y entra todo de una. Mismo criterio que la pestaña Minimapa.
+
+
+
+
+
+
+
 	local ry = -14;
 	FHeader(paneAuras, L["HEADER_AURA_BORDERS"] or "Target and Focus Auras", xR, ry);
 
@@ -1502,7 +1502,7 @@ function K.PopulateFramesTab(panel)
 		xR + 16, ry, L["TIP_AuraBordersPurge"], "AuraBordersPurge");
 	abPurgeCB:SetChecked(C.AuraBordersPurge ~= false);
 
-	-- El resplandor no hace nada sin los bordes puestos: se apaga solo.
+
 	local function SyncAuraBorderRow()
 		local on = C.AuraBordersEnabled and true or false;
 		if on then abPurgeCB:Enable(); else abPurgeCB:Disable(); end
@@ -1525,9 +1525,9 @@ function K.PopulateFramesTab(panel)
 		if K.ApplyAuraBorders then K.ApplyAuraBorders(); end
 	end);
 
-	-- ── Quien lanzo el aura ──
-	-- No depende de los bordes custom: funciona con el tooltip de
-	-- cualquier icono de buff o debuff, sea de Blizzard o de NUF.
+
+
+
 	ry = ry - 46;
 	K.UI.Separator(paneAuras, xR, ry + 12, 215);
 
@@ -1548,12 +1548,12 @@ function K.PopulateFramesTab(panel)
 
 	ry = ry - 40;
 
-	-- Manda la columna mas larga: con la corta el scroll cortaba la otra.
+
 	side.SetContentHeight(3, math.min(ay, ry) - 30);
 
-	-- ══════════════════════════════════════════════════════
-	-- 4) BOSS (PvE)
-	-- ══════════════════════════════════════════════════════
+
+
+
 	local vy = -14;
 	FHeader(paneBoss, L["HEADER_BOSS"] or "Boss Frames (PvE)", x, vy);
 
@@ -1573,9 +1573,9 @@ function K.PopulateFramesTab(panel)
 
 	side.SetContentHeight(4, vy - 40);
 
-	-- ══════════════════════════════════════════════════════
-	-- 5) PET (mascota del jugador)
-	-- ══════════════════════════════════════════════════════
+
+
+
 	local pv = -14;
 	FHeader(panePet, L["HEADER_PET"] or "Pet Frame", x, pv);
 
@@ -1594,28 +1594,28 @@ function K.PopulateFramesTab(panel)
 	petResetBtn:SetSize(140, 22);
 	petResetBtn:SetText(L["BTN_RESET"] or "Reset");
 	petResetBtn:SetScript("OnClick", function()
-		-- SOLO LA MASCOTA.
-		--
-		-- Antes esto guardaba con SaveConfig, que avisa a TODO el addon
-		-- (CONFIG_CHANGED) y cada modulo re-aplica lo suyo. Con el 3v3
-		-- puesto eso terminaba reponiendo la escala del grupo desde un
-		-- guardado viejo y los marcos del grupo cambiaban de tamaño -- con
-		-- un boton que dice "mascota". Ahora se guarda en silencio y se
-		-- aplica solo el marco de la mascota.
-		--
-		-- PetFrame es un marco protegido: en combate no se le puede cambiar
-		-- ni la escala ni el lugar.
+
+
+
+
+
+
+
+
+
+
+
 		if InCombatLockdown() then
 			if UIErrorsFrame and ERR_NOT_IN_COMBAT then
 				UIErrorsFrame:AddMessage(ERR_NOT_IN_COMBAT, 1, 0.1, 0.1);
 			end
 			return;
 		end
-		-- PRIMERO LA POSICION, DESPUES LA ESCALA.
-		--
-		-- ResetGlobalPositions le devuelve al marco la escala que tenia al
-		-- entrar al juego (la tuya, no la de fabrica). Si la escala se ponia
-		-- antes, el reset de posicion la pisaba de nuevo con la vieja.
+
+
+
+
+
 		if K.ResetGlobalPositions then K.ResetGlobalPositions({ Pet = true }); end
 		local def = (K.GetConfigDefault and K.GetConfigDefault("PetFrameScale")) or 1.0;
 		C.PetFrameScale = def;
@@ -1623,10 +1623,10 @@ function K.PopulateFramesTab(panel)
 		if K.ApplyPetFrameScale then K.ApplyPetFrameScale(def); end
 		if K.RefreshScaleSliders then K.RefreshScaleSliders(); end
 	end);
-	-- ── MOVER SOLO LA MASCOTA ──
-	--
-	-- Mismo sistema que Move Everything, con alcance "pet": destraba un
-	-- solo recuadro. El mismo boton traba de nuevo.
+
+
+
+
 	local petMoveBtn = CreateFrame("Button", nil, panePet, "UIPanelButtonTemplate");
 	petMoveBtn:SetPoint("LEFT", petResetBtn, "RIGHT", 10, 0);
 	petMoveBtn:SetSize(140, 22);
@@ -1644,22 +1644,22 @@ function K.PopulateFramesTab(panel)
 	PetMoveLabel();
 	petMoveBtn:SetScript("OnClick", function()
 		if not K.SetGlobalUnlock then return; end
-		-- Si lo destrabado es OTRA cosa (Move Everything, Frames > General),
-		-- el primer clic no traba: cambia a "solo la mascota".
+
+
 		K.SetGlobalUnlock(not PetMovesNow(), "pet");
 		PetMoveLabel();
 	end);
-	-- Si lo cerras desde otro lado (Move Everything, /nufmove), que el
-	-- boton no quede diciendo "Lock".
+
+
 	petMoveBtn:SetScript("OnShow", PetMoveLabel);
 
 	pv = pv - 40;
 
-	-- ── BUFFS DE LA MASCOTA ──
-	--
-	-- El mismo modulo que en Addons, no una copia: el checkbox se anota en
-	-- RegisterModuleCheckbox, asi que prenderlo aca lo tilda alla y al
-	-- reves. Las opciones finas (bloquear, vista previa) siguen en Addons.
+
+
+
+
+
 	FHeader(panePet, L["MOD_PETBUFFS"] or "Pet Buffs", x, pv);
 	pv = pv - 26;
 	local petBuffsCB = CreateFeatureCheckBox(panePet,
@@ -1675,8 +1675,8 @@ function K.PopulateFramesTab(panel)
 
 	side.SetContentHeight(5, pv - 30);
 
-	-- Compatibilidad: OptionsPanel.lua ya no dibuja nada aca, pero dejamos
-	-- los campos por si algun modulo viejo los consulta.
+
+
 	panel.positionsPane   = paneMain;
 	panel.positionsStartY = 0;
 	panel.framesSubTabs   = nil;

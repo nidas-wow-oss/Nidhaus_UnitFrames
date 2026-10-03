@@ -7,21 +7,21 @@ local nomoreplay = function() end
 
 local classcolor = RAID_CLASS_COLORS[select(2, UnitClass("player"))]
 
--- FIX: Cache del estado de LortiUI para evitar DB lookups en cada ActionButton_Update
--- (antes se llamaba K.IsModuleEnabled("LortiUI") decenas de veces por segundo en combate)
+
+
 local lortiEnabled = false;
 
 local function UpdateLortiCache()
 	lortiEnabled = K.IsModuleEnabled and K.IsModuleEnabled("LortiUI") or false;
 end
 
--- Actualizar cache cuando cambia la config
+
 if K.RegisterConfigEvent then
 	K.RegisterConfigEvent("CONFIG_LOADED", UpdateLortiCache);
 	K.RegisterConfigEvent("CONFIG_CHANGED", UpdateLortiCache);
 end
 
--- También actualizar en PLAYER_LOGIN por si los módulos se inicializan después
+
 local lortiCacheFrame = CreateFrame("Frame");
 lortiCacheFrame:RegisterEvent("PLAYER_LOGIN");
 lortiCacheFrame:SetScript("OnEvent", function(self)
@@ -115,16 +115,16 @@ local function rActionButtonStyler_AB_style(self)
 		bo:Hide()
 		bo.Show = nomoreplay
 
-		-- LA FAMILIA PUEDE NO SER NUESTRA.
-		--
-		-- El addon Nidhaus Frame Borders tambien cambia la letra de estos
-		-- tres textos. Antes se los peleaban: ganaba el que corriera
-		-- ultimo, y como esto reaplica en cada actualizacion de boton, casi
-		-- siempre ganaba Lorti. Ahora Lorti pone TAMANO y POSICION, que es
-		-- lo suyo, y pregunta la familia.
-		--
-		-- Es una global porque el otro es un addon aparte. Si no esta
-		-- instalado, fam queda nil y todo sigue como siempre.
+
+
+
+
+
+
+
+
+
+
 		local fam = NidhausFrameBorders_ButtonFont
 			and NidhausFrameBorders_ButtonFont() or nil;
 
@@ -216,11 +216,11 @@ local function rActionButtonStyler_AB_stylepet()
 			bu.rABS_Styled = true
 		end
 
-		-- Style NormalTexture2 directly — do NOT use SetNormalTexture().
-		-- Blizzard resets NormalTexture2 every PetActionBar_Update.
-		-- Using SetNormalTexture creates a SECOND texture that fights with
-		-- NormalTexture2, causing visual corruption. Style the one Blizzard
-		-- owns so there's only one texture, no conflict.
+
+
+
+
+
 		local nt2 = _G[name.."NormalTexture2"]
 		if nt2 then
 			nt2:SetTexture(cfg.textures.normal)
@@ -254,7 +254,7 @@ local function rActionButtonStyler_AB_styleshapeshift()
 			bu.rABS_Styled = true
 		end
 
-		-- Style NormalTexture directly (same approach as pet bar)
+
 		local nt = _G[name.."NormalTexture"]
 		if nt then
 			nt:SetTexture(cfg.textures.normal)

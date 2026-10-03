@@ -4,7 +4,7 @@ local K, C, L = unpack(ns);
 function K.ApplyFramePositions()
 	local unpack = unpack;
 
-	-- Player Frame
+
 	if NidhausPlayerFrame then
 		NidhausPlayerFrame:ClearAllPoints();
 		if (not C.SetPositions) and C.PlayerFrame_BlizzardDefault then
@@ -12,12 +12,12 @@ function K.ApplyFramePositions()
 			local relFrame = _G[pos.relativeTo] or UIParent;
 			NidhausPlayerFrame:SetPoint(pos.point, relFrame, pos.relativePoint, pos.x, pos.y);
 		elseif C.SetPositions then
-			-- FIX: Prioridad a posiciones guardadas por drag
+
 			local saved = K.GetSavedPosition and K.GetSavedPosition("PlayerFrame");
 			if saved then
 				local relFrame = _G[saved.relativeTo] or UIParent;
 				NidhausPlayerFrame:SetPoint(saved.point, relFrame, saved.relativePoint, saved.x, saved.y);
-				-- Actualizar C[] para consistencia
+
 				C.PlayerFramePoint = {saved.point, relFrame, saved.relativePoint, saved.x, saved.y};
 			elseif C.PlayerFramePoint then
 				NidhausPlayerFrame:SetPoint(unpack(C.PlayerFramePoint));
@@ -27,7 +27,7 @@ function K.ApplyFramePositions()
 		end
 	end
 
-	-- Target Frame
+
 	if TargetFrame then
 		TargetFrame:ClearAllPoints();
 		if (not C.SetPositions) and C.TargetFrame_BlizzardDefault then
@@ -35,7 +35,7 @@ function K.ApplyFramePositions()
 			local relFrame = _G[pos.relativeTo] or UIParent;
 			TargetFrame:SetPoint(pos.point, relFrame, pos.relativePoint, pos.x, pos.y);
 		elseif C.SetPositions then
-			-- FIX: Prioridad a posiciones guardadas por drag
+
 			local saved = K.GetSavedPosition and K.GetSavedPosition("TargetFrame");
 			if saved then
 				local relFrame = _G[saved.relativeTo] or UIParent;
@@ -49,9 +49,9 @@ function K.ApplyFramePositions()
 		end
 	end
 
-	-- Boss / Party containers
+
 	if C.SetPositions then
-		-- FIX: Boss ahora usa K.GetSavedPosition (igual que Player, Target, Party)
+
 		if K.NidhausBossFrame then
 			K.NidhausBossFrame:ClearAllPoints();
 			local saved = K.GetSavedPosition and K.GetSavedPosition("BossMover");
@@ -65,7 +65,7 @@ function K.ApplyFramePositions()
 		end
 		if K.NidhausPartyFrame then
 			K.NidhausPartyFrame:ClearAllPoints();
-			-- FIX: Prioridad a posiciones guardadas por drag
+
 			local saved = K.GetSavedPosition and K.GetSavedPosition("PartyMemberFrame");
 			if saved then
 				local relFrame = _G[saved.relativeTo] or UIParent;

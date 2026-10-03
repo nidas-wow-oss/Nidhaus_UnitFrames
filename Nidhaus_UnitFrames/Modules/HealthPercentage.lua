@@ -23,8 +23,8 @@ local Core = CreateFrame("FRAME", "TargetFramePercent", TargetFrameTextureFrame)
 local isInitialized = false;
 local playerExecutePhase = 0;
 local frameCreated = false;
--- FIX: Cachear estado de execute phase para evitar GetBackdropColor() en cada tick de vida
--- (antes: select(1, Core:GetBackdropColor()) se llamaba en cada update de health bar)
+
+
 local isExecutePhase = false;
 
 local function CreateMainFrame()
@@ -57,7 +57,7 @@ local function SetupThreatIndicators()
 end
 
 local function GetPlayerExecutePhase()
-	-- FIX: Acceso directo por key en vez de iterar toda la tabla
+
 	playerExecutePhase = ExecutePhase[select(2, UnitClass("player"))] or 0;
 end
 

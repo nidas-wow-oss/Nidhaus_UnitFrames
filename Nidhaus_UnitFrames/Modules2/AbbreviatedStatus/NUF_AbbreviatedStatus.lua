@@ -1,25 +1,25 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- NUF_AbbreviatedStatus.lua  (reimplementacion propia)
--- Idea original: Abbreviated Status Text (RomanSpector).
---
--- QUE HACE: acorta el numero de vida/mana de los marcos de unidad
--- (12.3k en vez de 12345) y puede mostrar el porcentaje al lado.
---
--- POR QUE UN SOLO ARCHIVO: el addon suelto arrastraba toda la suite Ace3
--- (AceAddon/AceDB/AceConsole/CallbackHandler/LibStub), LibBetterBlizzOptions
--- y archivos de idioma, mas un panel en las Opciones de Interfaz de
--- Blizzard. Todo ese andamiaje era para guardar dos ajustes y dibujar su
--- menu. Dentro de NUF no hace falta: usamos la DB y el menu de NUF. Asi
--- que esta version reescribe la logica sin ninguna dependencia externa y
--- SIN registrar nada en las Opciones de Blizzard (por eso ya no aparece
--- ahi; solo se abre desde el panel de NUF).
--- =========================================================
 
--- Sufijos de abreviacion. Son globales de Blizzard (localizados); dejamos
--- un fallback por las dudas.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local CAP1 = FIRST_NUMBER_CAP_NO_SPACE  or "k";
 local CAP2 = SECOND_NUMBER_CAP_NO_SPACE or "m";
 local CAP3 = THIRD_NUMBER_CAP_NO_SPACE  or "b";
@@ -36,9 +36,9 @@ local DATA = {
 	{ breakpoint = 1000,           abbr = CAP1, sig = 100,           frac = 10 },
 };
 
--- ---------------------------------------------------------
--- DB (una sub-tabla de la propia de NUF: no necesita SavedVariable aparte)
--- ---------------------------------------------------------
+
+
+
 local function DB()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	local db = NidhausUnitFramesDB.AbbrevStatus;
@@ -49,48 +49,48 @@ local function DB()
 	return db;
 end
 
--- =========================================================
--- UNA POSICION POR TEMA VISUAL
---
--- El problema: los marcos de cada tema tienen las barras en distinto
--- lugar y de distinto tamaño. Un offset que centra el texto en el tema
--- Light lo deja corrido en Compact, y en el marco de grupo Compact 2 la
--- barra ni siquiera mide lo mismo que la de Blizzard.
---
--- Antes los 8 offsets vivian sueltos en la config de la unidad, o sea uno
--- solo para todos los temas: acomodabas el texto en uno y lo rompias en
--- los otros. Es el mismo problema que tenian los buffs de grupo.
---
--- Ahora cada unidad guarda un juego de offsets POR TEMA:
---
---     db.units.player.pos["uf:Light"]   = { hpNumX = ..., ... }
---     db.units.party.pos["party:PW2"]   = { ... }
---
--- Que tema manda depende de la unidad:
---
---     player / target / focus / pet  -> el desplegable "Visual Theme"
---     party                          -> el estilo de marco de grupo
---     arena                          -> el estilo de marco de arena
---
--- Y si el "Custom Skin" esta apagado, los marcos son los de Blizzard
--- pelados: ese es un tema mas, aparte de los otros.
--- =========================================================
--- "TEXTO GRANDE" (Status Text > Big text) es una ranura aparte.
---
--- En Light, Dark y Compact el nombre va arriba de la barra de vida, asi
--- que el texto se baja unos pixeles para no pisarlo. Con el texto grande
--- el nombre sale del marco y el texto va centrado: un offset que servia en
--- un modo queda corrido en el otro. Por eso cada uno guarda el suyo
--- ("uf:Light" y "uf:Light+Big"). Solo vale para jugador, objetivo y foco,
--- que son los marcos que mueve; la mascota sigue con la de siempre.
---
--- Las cadenas van escritas enteras, sin concatenar: esto corre en cada
--- refresco de barra (ver la nota de KeyCache mas abajo).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local BIG_UNITS = { player = true, target = true, focus = true };
 
 local function VisualTheme(unit)
 	if C.UnitFrameCustomTexture ~= true then return "Blizzard"; end
-	-- Mismo orden de prioridad que el desplegable en OptionsPanel.lua.
+
 	if C.AsuriFrames then return "Asuri"; end
 	local big = BIG_UNITS[unit] and K.BigStatusTextOn and K.BigStatusTextOn(unit);
 	if C.pwFrames    then return big and "Compact+Big" or "Compact"; end
@@ -98,16 +98,16 @@ local function VisualTheme(unit)
 	return big and "Light+Big" or "Light";
 end
 
--- SIN CONCATENAR EN CALIENTE.
---
--- ThemeKey se llama en cada refresco de barra de estado — jugador,
--- objetivo, grupo, arena Y todas las placas de nombre — o sea cientos de
--- veces por segundo en pelea. Armar la cadena ahi ("uf:" .. tema) creaba
--- un string nuevo cada vez y le daba trabajo al recolector de basura al
--- pedo.
---
--- Estas tablas memorizan la cadena la primera vez que se pide cada tema y
--- despues la devuelven hecha. Son cinco o seis valores en total.
+
+
+
+
+
+
+
+
+
+
 local function KeyCache(prefix)
 	return setmetatable({}, { __index = function(self, k)
 		local v = prefix .. tostring(k);
@@ -131,8 +131,8 @@ local function ThemeKey(unit)
 	return UF_KEYS[VisualTheme(unit)];
 end
 
--- Nombre lindo para mostrar arriba de los sliders, asi se ve que ranura
--- se esta editando.
+
+
 local function ThemeLabel(unit)
 	local k = ThemeKey(unit);
 	return (k:gsub("^uf:", ""):gsub("^party:", ""):gsub("^arena:", ""));
@@ -143,39 +143,39 @@ local POS_FIELDS = {
 	"mpNumX", "mpNumY", "mpPctX", "mpPctY",
 };
 
--- DEFAULTS POR TEMA.
---
--- Aca se hornean las posiciones que quedaron bien probadas en el juego.
--- Clave = la de ThemeKey; adentro, una entrada por unidad. Lo que no
--- figure arranca en cero, que es el centro natural de la barra.
--- El juego que quedo probado en el marco del jugador. Los marcos de
--- Asuri y de Compact ponen las barras en el mismo sitio en las tres
--- unidades (jugador, objetivo y foco), asi que el mismo offset les sirve
--- a las tres y no hay que acomodarlas una por una.
+
+
+
+
+
+
+
+
+
 local PLAYER_LIKE = {
 	hpNumX = -1, hpNumY = -6, hpPctX =  1, hpPctY = -6,
 	mpNumX = -3, mpNumY =  0, mpPctX =  2, mpPctY =  0,
 };
 
--- Con el texto grande el nombre ya no esta encima de la barra, asi que no
--- hay que bajar el texto: mismo reparto a los costados, centrado en alto.
+
+
 local PLAYER_BIG = {
 	hpNumX = -1, hpNumY = 0, hpPctX = 1, hpPctY = 0,
 	mpNumX = -3, mpNumY = 0, mpPctX = 2, mpPctY = 0,
 };
 
--- Marcos de Blizzard (Custom Skin apagado): el juego que quedo acomodado
--- en el marco del jugador (Velyda). Con numero y porcentaje a la vez, el
--- numero va pegado al borde derecho y el % al izquierdo; asi quedan un
--- poco despegados del borde. El objetivo y el foco tienen la barra del
--- mismo ancho y el texto se ancla a sus bordes, asi que les sirve igual.
+
+
+
+
+
 local BLIZZARD_LIKE = {
 	hpNumX = -1, hpNumY = 0, hpPctX = 5, hpPctY = 0,
 	mpNumX =  0, mpNumY = 0, mpPctX = 5, mpPctY = 0,
 };
 
--- Los cuatro temas de marcos custom comparten el mismo juego: las barras
--- estan en el mismo sitio en todos, lo que cambia es el arte de alrededor.
+
+
 local POS_DEFAULTS = {
 	["uf:Blizzard"] = {
 		player = BLIZZARD_LIKE, target = BLIZZARD_LIKE, focus = BLIZZARD_LIKE,
@@ -203,8 +203,8 @@ local POS_DEFAULTS = {
 	},
 };
 
--- Config por unidad. Por defecto viene TODO activado (numero y porcentaje,
--- vida y mana) y la unidad habilitada.
+
+
 local function UnitCfg(unit)
 	local db = DB();
 	if not db.units[unit] then
@@ -213,24 +213,24 @@ local function UnitCfg(unit)
 			hpNum = true, hpPct = true, mpNum = true, mpPct = true,
 		};
 	end
-	-- 'on' no existia en versiones viejas de la config: por defecto encendida.
+
 	if db.units[unit].on == nil then db.units[unit].on = true; end
 	return db.units[unit];
 end
 
--- Los offsets de la unidad para el tema que este activo.
---
--- La primera vez que se pide una ranura, se siembra con el default
--- horneado del tema (POS_DEFAULTS) y, si no hay, en cero.
+
+
+
+
 local function UnitPos(unit)
 	local cfg = UnitCfg(unit);
 	if not cfg.pos then cfg.pos = {}; end
 
-	-- MIGRACION DE LA CONFIG VIEJA.
-	--
-	-- Antes los offsets estaban sueltos en cfg. Se mudan UNA sola vez a la
-	-- ranura del tema activo, que es el que el usuario tenia puesto cuando
-	-- los acomodo. Asi nadie pierde lo que ya tenia ajustado.
+
+
+
+
+
 	if not cfg._posMigrated then
 		local old, any = {}, false;
 		for _, f in ipairs(POS_FIELDS) do
@@ -244,15 +244,15 @@ local function UnitPos(unit)
 	local key = ThemeKey(unit);
 	local slot = cfg.pos[key];
 
-	-- UNA RANURA VACIA CUENTA COMO "NUNCA TOCADA".
-	--
-	-- Si visitaste un tema antes de que ese tema tuviera default horneado,
-	-- te quedo la ranura creada y sin campos. Como existe, el default nuevo
-	-- no entraba nunca y el texto seguia en el centro de la barra.
-	--
-	-- Vacia solo puede significar eso — cualquier ajuste tuyo, aunque sea
-	-- un cero explicito, deja los ocho campos escritos — asi que se puede
-	-- sembrar sin pisarle nada a nadie.
+
+
+
+
+
+
+
+
+
 	if slot then
 		local empty = true;
 		for _ in pairs(slot) do empty = false; break; end
@@ -275,9 +275,9 @@ local VALID = {
 
 
 
--- ---------------------------------------------------------
--- Formateo del numero
--- ---------------------------------------------------------
+
+
+
 local function Abbrev(value, remainder, prefix)
 	remainder = remainder or 1;
 	prefix    = prefix or 3;
@@ -296,7 +296,7 @@ local function Abbrev(value, remainder, prefix)
 	return tostring(value);
 end
 
--- Solo para la etiqueta del slider "Abreviar desde".
+
 local function AbbrevThreshold(value)
 	for _, d in ipairs(DATA) do
 		if value >= d.breakpoint then
@@ -310,18 +310,18 @@ local function IsOn()
 	return K.IsModuleEnabled and K.IsModuleEnabled("AbbreviatedStatus");
 end
 
--- ---------------------------------------------------------
--- El hook: corre despues del texto normal de Blizzard
--- ---------------------------------------------------------
--- Guarda los anclajes ORIGINALES del texto de Blizzard (la primera vez, antes
--- de tocarlo). Cada barra tiene los suyos y NO son "centrados": por eso, al
--- apagar el modulo, recentrar a mano dejaba el texto corrido hacia arriba.
+
+
+
+
+
+
 local function CaptureOrigPoints(self, fs)
-	-- Se recaptura SIEMPRE que el texto este en su posicion natural (o sea,
-	-- mientras nosotros no lo hayamos movido). Es clave por el "Custom Skin":
-	-- con el skin activo NUF ancla el texto con su propio offset (CENTER 0,-5)
-	-- y ese es el punto bueno; si guardaramos solo el de Blizzard, al aplicar
-	-- la abreviacion el texto quedaba corrido hacia arriba.
+
+
+
+
+
 	if self._nufMoved then return; end
 	local pts = {};
 	for i = 1, (fs:GetNumPoints() or 0) do
@@ -331,38 +331,38 @@ local function CaptureOrigPoints(self, fs)
 	if #pts > 0 then self._nufOrigPts = pts; end
 end
 
--- Reancla el texto CENTRADO en la barra, mas el offset del panel.
---
--- Antes se usaba como base el anclaje que hubiera en ese momento. La idea
--- era respetar el ajuste del skin custom, pero el resultado era que el
--- texto terminaba en un lugar distinto segun estuviera el Custom Skin
--- prendido o apagado (el skin lo baja 5px, y ademas la barra cambia de
--- alto) — y al togglear se notaba el salto.
---
--- Ahora la base es siempre el centro de la barra: como el anclaje es
--- RELATIVO a la barra, sigue funcionando con la barra alta del skin y con
--- la baja de Blizzard, y queda en el mismo lugar en los dos casos.
+
+
+
+
+
+
+
+
+
+
+
 local function SetWithOffset(self, fs, dx, dy)
 	fs:ClearAllPoints();
 	fs:SetPoint("CENTER", self, "CENTER", dx, dy);
 end
 
--- Devuelve el texto exactamente a donde lo tenia Blizzard.
+
 local function RestoreOrigPoints(self, fs)
 	local pts = self._nufOrigPts;
 
-	-- SIN POSICION GUARDADA: centrar en la barra, que es donde la ponen
-	-- tanto Blizzard como el skin custom.
-	--
-	-- Antes esto hacia "return" y no tocaba nada, y ahi estaba el bug del
-	-- texto corrido: CaptureOrigPoints solo guarda si el texto TENIA
-	-- anclajes en ese instante (#pts > 0). Si justo no los tenia, quedaba
-	-- nil, y entonces al apagar el modulo no habia nada que restaurar: el
-	-- texto se quedaba donde lo habia dejado la abreviacion, corrido, y de
-	-- ahi no salia mas ni apagando la opcion.
-	--
-	-- Como el anclaje es RELATIVO a la barra, centrar sirve igual con la
-	-- barra alta del skin y con la baja de Blizzard.
+
+
+
+
+
+
+
+
+
+
+
+
 	if not pts or #pts == 0 then
 		fs:ClearAllPoints();
 		fs:SetPoint("CENTER", self, "CENTER", 0, 0);
@@ -381,8 +381,8 @@ local function ApplyBar(self)
 
 	CaptureOrigPoints(self, statusText);
 
-	-- Modulo apagado: dejamos el texto normal de Blizzard y escondemos lo
-	-- nuestro. Restauramos el anclaje ORIGINAL (no un centrado inventado).
+
+
 	if not IsOn() then
 		if self._nufPct then self._nufPct:Hide(); end
 		if self._nufMoved then
@@ -395,12 +395,12 @@ local function ApplyBar(self)
 	local unit = self.unit;
 	if not unit then return; end
 
-	-- CACHEADA EN LA BARRA, como _nufIsHealth de mas abajo.
-	--
-	-- gsub devuelve un string NUEVO cada vez que corre, y esto corre en
-	-- cada refresco de cada barra con texto del juego. La unidad de una
-	-- barra no cambia nunca ("party3" es siempre "party3"), asi que se
-	-- calcula una vez y queda guardada.
+
+
+
+
+
+
 	local ukey = self._nufUKey;
 	if ukey == nil or self._nufUKeyFor ~= unit then
 		ukey = string.gsub(unit, "%d", "");
@@ -409,7 +409,7 @@ local function ApplyBar(self)
 	end
 	if not VALID[ukey] then return; end
 
-	-- Unidad desactivada desde el menu: se deja tal cual la trae Blizzard.
+
 	local ucfg = UnitCfg(ukey);
 	if not ucfg.on then
 		if self._nufPct then self._nufPct:Hide(); end
@@ -420,7 +420,7 @@ local function ApplyBar(self)
 		return;
 	end
 
-	-- Vida o mana? (cacheado)
+
 	local isHealth = self._nufIsHealth;
 	if isHealth == nil then
 		local n = self:GetName();
@@ -436,14 +436,14 @@ local function ApplyBar(self)
 	local value = self:GetValue() or 0;
 	local _, vmax = self:GetMinMaxValues();
 
-	-- FontString propia para el porcentaje (creada la primera vez)
+
 	local pctFS = self._nufPct;
 	if wantPct and not pctFS then
 		pctFS = self:CreateFontString(nil, "OVERLAY", "TextStatusBarText");
 		self._nufPct = pctFS;
 	end
 
-	-- Numero abreviado
+
 	if wantNum then
 		if value > 0 then
 			statusText:SetText(Abbrev(value, db.remainder, db.prefix));
@@ -453,7 +453,7 @@ local function ApplyBar(self)
 		statusText:Hide();
 	end
 
-	-- Porcentaje
+
 	local pctShown = false;
 	if wantPct and pctFS then
 		if vmax and vmax > 0 and value > 0 then
@@ -467,9 +467,9 @@ local function ApplyBar(self)
 		pctFS:Hide();
 	end
 
-	-- Offsets configurables por texto (numero / porcentaje) segun la barra.
+
 	local numX, numY, pctX, pctY;
-	local pos = UnitPos(ukey);   -- ranura del tema visual activo
+	local pos = UnitPos(ukey);
 	if isHealth then
 		numX, numY = pos.hpNumX or 0, pos.hpNumY or 0;
 		pctX, pctY = pos.hpPctX or 0, pos.hpPctY or 0;
@@ -478,8 +478,8 @@ local function ApplyBar(self)
 		pctX, pctY = pos.mpPctX or 0, pos.mpPctY or 0;
 	end
 
-	-- Posicion: si se ven los dos, numero a la derecha y % a la izquierda;
-	-- si no, todo centrado. En ambos casos se suman los offsets del panel.
+
+
 	if wantNum and pctShown then
 		statusText:ClearAllPoints();
 		statusText:SetPoint("RIGHT", self, "RIGHT", numX, numY);
@@ -487,30 +487,30 @@ local function ApplyBar(self)
 		pctFS:SetPoint("LEFT", self, "LEFT", pctX, pctY);
 		self._nufMoved = true;
 	else
-		-- Un solo texto visible: se respeta el anclaje natural de la barra
-		-- (Blizzard o el del skin custom) y se le suma el offset del panel.
+
+
 		SetWithOffset(self, statusText, numX, numY);
 		if pctFS then
 			SetWithOffset(self, pctFS, pctX, pctY);
 		end
-		-- Marcamos como movido solo si el usuario puso algun offset; si no,
-		-- queda en su sitio natural y se puede seguir recapturando.
+
+
 		self._nufMoved = (numX ~= 0 or numY ~= 0 or pctX ~= 0 or pctY ~= 0);
 	end
 end
 
--- Envuelto en pcall: este hook corre en CADA actualizacion de barra de
--- estado del juego (jugador, objetivo, party, arena y TODAS las placas de
--- nombre). Si ApplyBar tirara un error, se repetiria cientos de veces por
--- segundo y podria congelar el cliente. Con pcall, un error puntual se
--- traga y no frena el juego.
+
+
+
+
+
 hooksecurefunc("TextStatusBar_UpdateTextString", function(self)
 	pcall(ApplyBar, self);
 end);
 
--- ---------------------------------------------------------
--- Refresco de todas las barras (al prender/apagar o al cambiar ajustes)
--- ---------------------------------------------------------
+
+
+
 local UNIT_BARS = {
 	"PlayerFrameHealthBar", "PlayerFrameManaBar",
 	"PetFrameHealthBar",    "PetFrameManaBar",
@@ -526,16 +526,16 @@ for i = 1, 5 do
 	table.insert(UNIT_BARS, "ArenaEnemyFrame" .. i .. "ManaBar");
 end
 
--- Estas barras cuelgan de marcos protegidos (PlayerFrame, TargetFrame y
--- sobre todo los ArenaEnemyFrame), y TextStatusBar_UpdateTextString hace
--- Show/Hide sobre la barra cuando la unidad no tiene mana. Llamada desde
--- codigo de addon, esa cadena queda "tainted" y el cliente la corta en
--- combate: es lo que llenaba el taint.log de
--- "ArenaEnemyFrame4ManaBar:Hide()" y sacaba el cartel amarillo.
--- El refresco no corre ninguna prisa (solo hace falta al tocar los
--- ajustes), asi que en combate se anota y se hace al salir. Mientras
--- tanto Blizzard igual repinta el texto por su cuenta, desde su propio
--- codigo, que si tiene permiso.
+
+
+
+
+
+
+
+
+
+
 local refreshPending = false;
 
 local function RefreshAllBars()
@@ -555,17 +555,17 @@ refreshWatcher:SetScript("OnEvent", function()
 	if refreshPending then RefreshAllBars(); end
 end);
 
--- La llama PlayerFrame al prender/apagar el "Custom Skin": ese skin reancla
--- los textos, asi que hay que olvidar la posicion guardada y volver a
--- capturarla, si no el texto queda con el anclaje del modo anterior.
+
+
+
 function K.InvalidateAbbrevAnchors()
 	for _, name in ipairs(UNIT_BARS) do
 		local bar = _G[name];
 		if bar then
-			-- PRIMERO devolver el texto a su lugar, MIENTRAS todavia tenemos
-			-- guardado cual era. Si se borra la posicion con el texto todavia
-			-- movido, la proxima captura toma la posicion CORRIDA como si
-			-- fuera la original — y el desplazamiento se vuelve permanente.
+
+
+
+
 			if bar._nufMoved and bar.TextString then
 				pcall(RestoreOrigPoints, bar, bar.TextString);
 			end
@@ -576,11 +576,11 @@ function K.InvalidateAbbrevAnchors()
 	RefreshAllBars();
 end
 
--- ---------------------------------------------------------
--- Menu propio (estilo NUF)
--- Arriba el formato (decimales + desde que numero abreviar); abajo una
--- grilla unidad x (vida nº, vida %, mana nº, mana %).
--- ---------------------------------------------------------
+
+
+
+
+
 local win;
 
 local UNITS = {
@@ -592,7 +592,7 @@ local UNITS = {
 	{ key = "arena",  label = ARENA  or "Arena"  },
 };
 
--- head = texto de la columna; field = campo en UnitCfg
+
 local COLS = {
 	{ field = "hpNum", head = "HP #" },
 	{ field = "hpPct", head = "HP %" },
@@ -601,7 +601,7 @@ local COLS = {
 };
 local COL_X = { 165, 230, 300, 365 };
 
--- Panel de POSICION (derecha): 8 sliders, en 2 columnas de 4.
+
 local OFF_LAYOUT = {
 	{ col = 1, row = 1, field = "hpNumX", label = "HP #  X" },
 	{ col = 1, row = 2, field = "hpNumY", label = "HP #  Y" },
@@ -629,11 +629,11 @@ local function RefreshWindow()
 	for _, cb in ipairs(win.cells) do
 		local cfg = UnitCfg(cb._unit);
 		cb:SetChecked(cfg[cb._field] and true or false);
-		-- Los maestros ademas habilitan/deshabilitan su fila
+
 		if cb._refreshRow then cb._refreshRow(); end
 	end
 
-	-- Sliders de posicion de la unidad seleccionada
+
 	if win.offSliders then
 		local cfg = UnitPos(win.selUnit or "player");
 		for i, s in ipairs(win.offSliders) do
@@ -658,7 +658,7 @@ end
 
 local function BuildWindow()
 	win = CreateFrame("Frame", "NUF_AbbrevStatusWindow", UIParent);
-	-- Cajita con el valor debajo de cada slider (UIKit).
+
 	if K.UI and K.UI.AutoRestyle then K.UI.AutoRestyle(win); end
 
 	win:SetSize(690, 430);
@@ -695,7 +695,7 @@ local function BuildWindow()
 	close:SetPoint("TOPRIGHT", -4, -4);
 	close:SetScript("OnClick", function() win:Hide(); end);
 
-	-- ── FORMATO ──
+
 	local fmtH = win:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 	fmtH:SetPoint("TOPLEFT", 20, -40);
 	fmtH:SetText((K.UI and K.UI.Header("Format")) or "|cffFFD100Format|r");
@@ -736,7 +736,7 @@ local function BuildWindow()
 
 	if K.UI and K.UI.Separator then K.UI.Separator(win, 16, -118, 408); end
 
-	-- ── GRILLA ──
+
 	local onHead = win:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
 	onHead:SetPoint("CENTER", win, "TOPLEFT", 30, -134);
 	onHead:SetText("|cffFFD100" .. (L["ABBREV_ON"] or "On") .. "|r");
@@ -750,8 +750,8 @@ local function BuildWindow()
 	win.cells = {};
 	local rowY = -152;
 	for _, u in ipairs(UNITS) do
-		-- Checkbox MAESTRO de la unidad: apagado, esa unidad queda con el
-		-- texto normal de Blizzard y sus 4 casillas se deshabilitan.
+
+
 		local master = CreateFrame("CheckButton", nil, win, "UICheckButtonTemplate");
 		master:SetSize(24, 24);
 		master:SetPoint("TOPLEFT", 18, rowY);
@@ -778,7 +778,7 @@ local function BuildWindow()
 			table.insert(rowCells, cb);
 		end
 
-		-- Habilita / deshabilita visualmente la fila segun el maestro
+
 		local function RefreshRow()
 			local on = UnitCfg(u.key).on;
 			for _, cb in ipairs(rowCells) do
@@ -800,7 +800,7 @@ local function BuildWindow()
 		rowY = rowY - 32;
 	end
 
-	-- ── PANEL DE POSICION (derecha) ──
+
 	win.selUnit = win.selUnit or "player";
 
 	local posH = win:CreateFontString(nil, "ARTWORK", "GameFontNormal");
@@ -814,16 +814,16 @@ local function BuildWindow()
 	posNote:SetText("|cff8EAEC9" .. (L["ABBREV_POS_NOTE"]
 		or "Move the health/mana texts of the selected unit.") .. "|r");
 
-	-- QUE RANURA SE ESTA EDITANDO.
-	--
-	-- Cada tema visual guarda su propia posicion, asi que sin este cartel
-	-- no habria forma de saber si lo que estas moviendo le corresponde al
-	-- tema que tenes puesto o a otro.
+
+
+
+
+
 	local themeFS = win:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
 	themeFS:SetPoint("TOPLEFT", 412, -92);
 	win.themeFS = themeFS;
 
-	-- Selector de unidad
+
 	local unitDD = CreateFrame("Frame", "NUF_AbbrevUnitDD", win, "UIDropDownMenuTemplate");
 	unitDD:SetPoint("TOPLEFT", 400, -74);
 	UIDropDownMenu_SetWidth(unitDD, 130);
@@ -844,7 +844,7 @@ local function BuildWindow()
 	UIDropDownMenu_SetSelectedValue(unitDD, win.selUnit);
 	win.unitDD = unitDD;
 
-	-- 8 sliders de offset
+
 	win.offSliders = {};
 	for i, o in ipairs(OFF_LAYOUT) do
 		local sName = "NUF_AbbrevOff" .. i;
@@ -878,11 +878,11 @@ local function BuildWindow()
 		RefreshWindow();
 	end);
 
-	-- Si cambias de tema con la ventana abierta (esta justo al lado, en el
-	-- panel de NUF), los sliders tienen que pasar a mostrar la ranura del
-	-- tema nuevo. Se compara la clave cada cuarto de segundo: es mas
-	-- barato que enganchar cada lugar del addon donde se cambia el estilo,
-	-- y no se puede olvidar ninguno.
+
+
+
+
+
 	win:SetScript("OnUpdate", function(self, elapsed)
 		self._t = (self._t or 0) + elapsed;
 		if self._t < 0.25 then return; end
@@ -892,7 +892,7 @@ local function BuildWindow()
 		end
 	end);
 
-	tinsert(UISpecialFrames, "NUF_AbbrevStatusWindow");  -- cerrar con ESC
+	tinsert(UISpecialFrames, "NUF_AbbrevStatusWindow");
 end
 
 function K.OpenAbbreviatedStatusMenu()
@@ -905,21 +905,21 @@ function K.OpenAbbreviatedStatusMenu()
 	end
 end
 
--- ---------------------------------------------------------
--- Registro del modulo (checkbox en Interface > General)
--- ---------------------------------------------------------
+
+
+
 K.RegisterModule("AbbreviatedStatus", {
 	name    = L["MOD_ABBREV_STATUS"] or "Abbreviated Status Text",
 	desc    = L["MOD_ABBREV_STATUS_DESC"]
 		or "Shortens the health/mana numbers on unit frames (12.3k instead of 12345).",
 	default = false,
-	hideFromModulesTab = true,  -- vive en Interface > General
+	hideFromModulesTab = true,
 	configLabel = L["BTN_MODULE_OPEN"] or "Open",
 	configFunc  = function() K.OpenAbbreviatedStatusMenu(); end,
 	onEnable = function()
-		-- Excluyente con "Vida completa (sin /max)": las dos reescriben el
-		-- MISMO TextString de las barras. Con las dos activas se pisaban y
-		-- los numeros quedaban corridos o a medio formatear.
+
+
+
 		if C.ShowCurrentValueOnly then
 			if K.SaveConfig then K.SaveConfig("ShowCurrentValueOnly", false); end
 			C.ShowCurrentValueOnly = false;
@@ -930,13 +930,13 @@ K.RegisterModule("AbbreviatedStatus", {
 	end,
 	onDisable = function()
 		RefreshAllBars();
-		-- La posicion "de fabrica" que se devuelve pudo haberse guardado con
-		-- otro tema u otro modo de texto (p. ej. antes de prender el texto
-		-- grande). Que el skin vuelva a poner el texto donde va AHORA.
+
+
+
 		if K.ApplyPlayerFrameSkin then pcall(K.ApplyPlayerFrameSkin); end
 		if K.ApplyTargetFrameSkin then pcall(K.ApplyTargetFrameSkin); end
-		-- El otro modo reescribe el texto: hay que pedirle que lo repinte,
-		-- si no quedan los numeros abreviados hasta el proximo cambio de vida.
+
+
 		if K.ApplyHealthTextFormat then K.ApplyHealthTextFormat(); end
 		if K._SyncStatusTextExclusive then K._SyncStatusTextExclusive(); end
 	end,
