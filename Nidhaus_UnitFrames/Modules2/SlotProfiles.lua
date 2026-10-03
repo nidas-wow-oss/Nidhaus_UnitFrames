@@ -1,63 +1,63 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- SlotProfiles.lua
---
--- Copiar barras de accion, macros y bindeos de un personaje a otro.
--- Portado del addon MySlot (tg123 / farmer1992@gmail.com, v3.2), que
--- funcionaba pero tenia la interfaz entera en chino y cuatro bugs reales.
---
--- SE MANTIENE EL FORMATO DE LA CADENA de MySlot a proposito, para que las
--- cadenas que ya tengas guardadas o las que te pasen sigan sirviendo. Eso
--- incluye el codec (huffman por nibbles + base64 propio) copiado tal cual.
---
--- QUE SE ARREGLO respecto del original:
---
---   1. Los bindeos no se guardaban. Hacia SetBinding() y nunca
---      SaveBindings(), asi que se perdian al desloguear.
---
---   2. El chequeo de combate no cortaba. Imprimia "no uses esto en
---      combate" y seguia adelante igual (le faltaba el return).
---
---   3. Todos los iconos de macro salian iguales. Armaba el mapa
---      textura->indice al cargar el archivo, cuando la lista de iconos
---      todavia no existe. Ahora se arma la primera vez que se usa.
---
---   4. loadstring() sobre el texto pegado. La cadena viene en base64, o
---      sea que no ves lo que trae, y se ejecutaba como codigo. Ahora hay
---      un parser estricto que solo entiende tablas y valores literales:
---      no puede ejecutar nada.
---
--- Y dos cambios de criterio:
---
---   - findMacro comparaba SOLO el cuerpo y hacia EditMacro sobre la
---     primera coincidencia, asi que podia pisar una macro ajena que
---     tuviera el mismo texto. Ahora exige que coincidan nombre Y cuerpo.
---
---   - Antes de importar o borrar se guarda un backup automatico,
---     recuperable con /nufslot backup.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local MAX_ACTION_SLOTS = 120;
-local KEYBIND_KEY      = 999;   -- indice reservado para los bindeos
+local KEYBIND_KEY      = 999;
 
 local function Print(msg)
 	DEFAULT_CHAT_FRAME:AddMessage("|cff4FC3F7[NUF]|r " .. tostring(msg or ""));
 end
 
--- =========================================================
--- 1. CODEC
---
--- Copia literal del humbase64.lua de MySlot: cuenta la frecuencia de cada
--- nibble, les asigna codigos huffman de largo creciente y empaqueta el
--- resultado en base64 con alfabeto propio (usa - y _ en vez de + y /).
--- Los primeros 16 caracteres de la cadena son la tabla de frecuencias.
---
--- No se toca la logica porque de eso depende poder leer las cadenas
--- viejas. Lo unico que cambio: en el original las variables n, a y b del
--- encoder eran GLOBALES (se filtraban al _G). Aca son locales.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
 local Codec = {};
 do
 	local b64chars = {
@@ -71,9 +71,9 @@ do
 		[56]='4',[57]='5',[58]='6',[59]='7',[60]='8',[61]='9',[62]='-',[63]='_',
 	};
 
-	-- Tabla inversa: caracter -> sus 6 bits. Se arma desde b64chars para no
-	-- repetir 64 constantes escritas a mano (en el original estaban las dos
-	-- listas duplicadas, con el riesgo de que se desincronizaran).
+
+
+
 	local b64bytes = {};
 	for value, chr in pairs(b64chars) do
 		local bits = "";
@@ -137,8 +137,8 @@ do
 		end
 	end
 
-	-- Los codigos huffman son todos "1"*k .. "0" .. bit, asi que se leen
-	-- contando unos hasta el primer cero y tomando un bit mas.
+
+
 	local function NextNibble(read, map)
 		local code = "";
 		while read() == "1" do code = code .. "1"; end
@@ -147,7 +147,7 @@ do
 	end
 
 	function Codec.dec(data)
-		-- 16 caracteres = solo la tabla de frecuencias, carga vacia.
+
 		if string.len(data) < 16 then return nil; end
 
 		local map = {};
@@ -158,7 +158,7 @@ do
 		local bits = {};
 		for i = 17, string.len(data) do
 			local chunk = b64bytes[string.sub(data, i, i)];
-			if not chunk then return nil; end   -- caracter invalido
+			if not chunk then return nil; end
 			bits[#bits + 1] = chunk;
 		end
 
@@ -179,23 +179,23 @@ do
 	end
 end
 
--- =========================================================
--- 2. PARSER
---
--- Reemplaza al loadstring del original. Entiende un subconjunto de la
--- sintaxis de tablas de Lua — el que usa este formato y nada mas:
---
---     tabla   := '{' campo* '}'
---     campo   := '[' valor ']' '=' valor (',' | ';')?
---     valor   := cadena | numero | nil | true | false | tabla
---
--- No hay llamadas a funciones, ni operadores, ni nombres: no hay forma de
--- que una cadena pegada ejecute nada. Si algo no encaja, devuelve nil y el
--- motivo con la posicion, en vez de romper.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local Parser = {};
 do
-	local MAX_DEPTH = 12;   -- corta tablas anidadas hasta el infinito
+	local MAX_DEPTH = 12;
 
 	local function SkipSpace(s, i)
 		local _, stop = string.find(s, "^[ \t\r\n]*", i);
@@ -237,8 +237,8 @@ do
 		end
 	end
 
-	-- Cadena larga [[...]] / [=[...]=]. Como en Lua, si el primer caracter
-	-- del contenido es un salto de linea, se descarta.
+
+
 	local function ReadLongString(s, i)
 		local level = string.match(s, "^%[(=*)%[", i);
 		if not level then return nil, i, "no es cadena larga"; end
@@ -260,7 +260,7 @@ do
 		if depth > MAX_DEPTH then return nil, i, "demasiada anidacion"; end
 
 		local out = {};
-		i = SkipSpace(s, i + 1);   -- saltar '{'
+		i = SkipSpace(s, i + 1);
 
 		while true do
 			local chr = string.sub(s, i, i);
@@ -291,8 +291,8 @@ do
 		end
 	end
 
-	-- Devuelve valor, posicionSiguiente, error.
-	-- Ojo: nil es un valor valido, por eso el error va aparte.
+
+
 	function ReadValue(s, i, depth)
 		depth = depth or 0;
 		i = SkipSpace(s, i);
@@ -329,7 +329,7 @@ do
 			string.sub(s, i, i + 12) .. "'";
 	end
 
-	-- Entrada: el cuerpo sin las llaves exteriores, como lo guarda MySlot.
+
 	function Parser.Parse(body)
 		if type(body) ~= "string" then return nil, "entrada vacia"; end
 
@@ -337,9 +337,9 @@ do
 		local out, stop, err = ReadTable(text, 1, 0);
 		if out == nil then return nil, err or "formato invalido"; end
 
-		-- Y que no sobre nada despues de la llave de cierre. Sin esto, una
-		-- entrada como "} basura {" se leia como una tabla vacia valida en
-		-- vez de rechazarse.
+
+
+
 		stop = SkipSpace(text, stop);
 		if stop <= string.len(text) then
 			return nil, "sobra texto despues de la tabla";
@@ -349,20 +349,20 @@ do
 	end
 end
 
--- =========================================================
--- 3. SERIALIZAR
--- =========================================================
 
--- Elige el nivel de corchetes largos que no choque con el contenido, para
--- que una macro con "]]" adentro no rompa la cadena. El MySlot original
--- concatenaba "[[" .. body .. "]]" a lo bruto y en ese caso se rompia.
+
+
+
+
+
+
 local function LongBracket(body)
 	local level = "";
 	while string.find(body, "]" .. level .. "]", 1, true) do
 		level = level .. "=";
 	end
-	-- El salto inicial se descarta al leer, asi que agregarlo preserva
-	-- cuerpos que empiezan con linea en blanco.
+
+
 	return "[" .. level .. "[\n" .. body .. "]" .. level .. "]";
 end
 
@@ -374,12 +374,12 @@ local function QuoteString(s)
 	return '"' .. s .. '"';
 end
 
--- Una casilla como texto: {["a"]="S",["b"]=...,}
---
--- La usan las barras de Blizzard Y las de nExtraBars, asi las dos escriben
--- exactamente el mismo formato. "s" (spellID), "n" (nombre de la mascota o
--- montura) y "v" (su hechizo) son agregados nuestros: MySlot ignora las
--- claves que no conoce.
+
+
+
+
+
+
 local function EntryString(data)
 	local value;
 	if type(data.b) == "table" then
@@ -403,16 +403,16 @@ local function EntryString(data)
 	return string.format('{["a"]="%s",["b"]=%s%s,}', data.a, value, extra);
 end
 
--- =========================================================
--- 4. LEER EL ESTADO ACTUAL
--- =========================================================
 
--- Mapa textura -> indice de icono de macro.
--- BUG ORIGINAL: MySlot armaba esto en la linea 4 del archivo, al cargar,
--- cuando GetNumMacroIcons() todavia devuelve 0. El mapa quedaba vacio y
--- CreateMacro recibia siempre 1, o sea que todas las macros importadas
--- salian con el mismo icono. Aca se arma la primera vez que hace falta,
--- que siempre es despues del login.
+
+
+
+
+
+
+
+
+
 local macroIconMap;
 local function GetMacroIconMap()
 	if macroIconMap then return macroIconMap; end
@@ -422,8 +422,8 @@ local function GetMacroIconMap()
 		local tex = GetMacroIconInfo(i);
 		if tex then
 			if not macroIconMap[tex] then macroIconMap[tex] = i; end
-			-- Tambien en mayusculas: GetMacroInfo y GetMacroIconInfo no
-			-- siempre devuelven la ruta con la misma capitalizacion.
+
+
 			local up = string.upper(tex);
 			if not macroIconMap[up] then macroIconMap[up] = i; end
 		end
@@ -437,24 +437,24 @@ local function IconIndexFor(texture)
 	return map[texture] or map[string.upper(texture)] or 1;
 end
 
--- Nombre "Hechizo(Rango N)" a partir de lo que devuelve GetActionInfo.
---
--- OJO, ACA HAY UNA AMBIGUEDAD REAL: el segundo valor de GetActionInfo para
--- un hechizo puede interpretarse como indice del libro de hechizos o como
--- spellID, y la respuesta cambia entre versiones del cliente. MySlot asumia
--- lo primero (GetSpellName con BOOKTYPE_SPELL).
---
--- En vez de elegir a ciegas, se prueban las dos y se desempata comparando
--- el icono contra el que realmente muestra la casilla. Si una coincide,
--- esa es. Asi no depende de que yo acierte cual es.
+
+
+
+
+
+
+
+
+
+
 local function SpellStringFor(slot, id)
 	local wantTex = GetActionTexture(slot);
 
-	-- Candidata A: indice del libro de hechizos.
+
 	local nameA, rankA = GetSpellName(id, BOOKTYPE_SPELL);
 	local texA = nameA and GetSpellTexture(id, BOOKTYPE_SPELL) or nil;
 
-	-- Candidata B: spellID global.
+
 	local nameB, rankB, texB = GetSpellInfo(id);
 
 	local name, rank, isSpellId;
@@ -475,7 +475,7 @@ local function SpellStringFor(slot, id)
 	return name, isSpellId and id or nil;
 end
 
--- Devuelve una tabla describiendo la casilla, o nil si esta vacia.
+
 local function ReadSlot(slot)
 	local kind, id, subType = GetActionInfo(slot);
 	if not kind then return nil; end
@@ -483,9 +483,9 @@ local function ReadSlot(slot)
 	if kind == "spell" then
 		local text, spellId = SpellStringFor(slot, id);
 		if not text then return nil; end
-		-- "s" es un agregado nuestro: el spellID, cuando lo sabemos con
-		-- certeza. MySlot ignora las claves que no conoce, asi que la
-		-- cadena le sigue sirviendo.
+
+
+
 		return { a = "S", b = text, s = spellId };
 	end
 
@@ -497,8 +497,8 @@ local function ReadSlot(slot)
 		local name, texture, body = GetMacroInfo(id);
 		if not name or not body then return nil; end
 		local icon = IconIndexFor(texture);
-		-- Las macros con #show usan icono dinamico: el indice 1 es el
-		-- signo de pregunta, que es justo lo que corresponde.
+
+
 		if string.find(body, "#show") == 1 then icon = 1; end
 		return {
 			a = "M",
@@ -525,25 +525,25 @@ local function ReadBindings()
 	return out;
 end
 
--- =========================================================
--- 4b. nExtraBars
---
--- Las dos barras extra NO son casillas de accion de Blizzard (1-120):
--- son botones propios que guardan lo suyo en NEB_DB, que es POR
--- PERSONAJE. Por eso Copy / Export / Import no las veian: se copiaban las
--- barras de Blizzard y las de nExtraBars quedaban como estaban.
---
--- Ahora van en la misma cadena, en el indice 1000 (como el 999 de los
--- bindeos): el contenido de los 24 botones, los DOS talentos (nExtraBars
--- guarda uno por spec), y que barras estan prendidas, cuantos botones y
--- si estan bloqueadas.
---
--- Los bindeos no necesitan nada: son "CLICK NEB_Bar...:LeftButton", salen
--- de GetBinding como cualquier otro y ya viajaban en el 999.
---
--- Cadenas viejas, o de un personaje sin nExtraBars: no traen el 1000 y
--- las barras extra no se tocan.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local NEB_KEY = 1000;
 
 local NEB_CONFIG_KEYS = {
@@ -558,15 +558,15 @@ for _, side in ipairs({ "Left", "Right" }) do
 	for i = 1, 12 do NEB_BUTTONS[#NEB_BUTTONS + 1] = "NEB_Bar" .. side .. "Button" .. i; end
 end
 
--- Se lee lo GUARDADO (NEB_DB.Settings) y no los botones: nExtraBars los
--- carga recien en PLAYER_ENTERING_WORLD, despues del guardado automatico
--- del login, y a esa altura los botones todavia estan vacios.
+
+
+
 local function NEBSettings()
 	if type(NEB_DB) ~= "table" or type(NEB_DB.Settings) ~= "table" then return nil; end
 	return NEB_DB.Settings;
 end
 
--- Para APLICAR si hacen falta los botones vivos.
+
 local function NEBLive()
 	return type(NEB_ABT_SetCommand) == "function" and _G["NEB_BarLeftButton1"] ~= nil;
 end
@@ -583,7 +583,7 @@ local function NEBSpellId(fullName)
 	return link and tonumber(string.match(link, "spell:(%d+)")) or nil;
 end
 
--- Un boton de nExtraBars, un talento, al mismo formato que una casilla.
+
 local function ReadNEBSet(st, name, s)
 	local pre   = name .. "Set" .. s;
 	local kind  = st[pre .. "ActualType"];
@@ -593,8 +593,8 @@ local function ReadNEBSet(st, name, s)
 
 	if kind == "spell" then
 		if type(value) ~= "string" or value == "" then return nil; end
-		-- nExtraBars guarda "Nombre(Rango 3)", y "Nombre()" si no tiene
-		-- rango. Lo segundo no lo entiende FindSpellBookSlot: se saca.
+
+
 		local text = string.gsub(value, "%(%)$", "");
 		return { a = "S", b = text, s = NEBSpellId(value) };
 
@@ -604,7 +604,7 @@ local function ReadNEBSet(st, name, s)
 		if type(value) == "string" and value ~= "" then return { a = "I", b = value }; end
 
 	elseif kind == "macro" then
-		-- Por NOMBRE: el numero de macro cambia cuando se crean o borran otras.
+
 		local idx = (type(nm) == "string" and nm ~= "") and GetMacroIndexByName(nm) or 0;
 		if not idx or idx == 0 then return nil; end
 		local mname, tex, body = GetMacroInfo(idx);
@@ -614,7 +614,7 @@ local function ReadNEBSet(st, name, s)
 		return { a = "M", b = { b = mname, c = icon, d = body, e = (idx > 36) and 1 or nil } };
 
 	elseif kind == "MOUNT" or kind == "CRITTER" then
-		-- El numero de montura no sirve en otro personaje; el nombre si.
+
 		if type(nm) ~= "string" or nm == "" then return nil; end
 		return { a = "C", b = { b = kind, c = tonumber(id) or 0 }, n = nm, v = value };
 	end
@@ -653,9 +653,9 @@ local function NEBSectionString()
 		NEB_KEY, table.concat(parts), table.concat(cfg));
 end
 
--- =========================================================
--- 5. EXPORTAR
--- =========================================================
+
+
+
 function K.SlotExport()
 	local parts = {};
 
@@ -666,7 +666,7 @@ function K.SlotExport()
 		end
 	end
 
-	-- nExtraBars (seccion 4b). Sin el addon no se agrega nada.
+
 	local neb = NEBSectionString();
 	if neb then parts[#parts + 1] = neb; end
 
@@ -680,9 +680,9 @@ function K.SlotExport()
 		"@ NUF Slot Profile - " .. date(),
 		"@ " .. (UnitName("player") or "?") .. " - " .. (GetRealmName() or "?"),
 		"@ " .. (UnitClass("player") or "?") .. " nivel " .. (UnitLevel("player") or 0),
-		-- Nombre INTERNO de la clase ("PALADIN"), que no cambia con el idioma.
-		-- Lo usa el filtro del desplegable. Las lineas @ las descarta el
-		-- importador, asi que agregarla no rompe ninguna cadena, vieja ni nueva.
+
+
+
 		"@ CLASS " .. (select(2, UnitClass("player")) or "?"),
 		"@ Formato compatible con MySlot.",
 		"@ --------------------",
@@ -692,13 +692,13 @@ function K.SlotExport()
 	return table.concat(header, "\n") .. Codec.enc(table.concat(parts));
 end
 
--- =========================================================
--- 6. APLICAR
--- =========================================================
 
--- Indice del libro de hechizos a partir del nombre guardado.
--- Se busca por nombre porque es lo unico portable entre personajes: los
--- indices no coinciden y el spellID solo sirve si el hechizo es el mismo.
+
+
+
+
+
+
 local function FindSpellBookSlot(text, spellId)
 	if not text then return nil; end
 
@@ -712,13 +712,13 @@ local function FindSpellBookSlot(text, spellId)
 		if not name then break; end
 		if name == wanted then
 			if not wantedRank or rank == wantedRank then return i; end
-			fallback = fallback or i;   -- mismo hechizo, otro rango
+			fallback = fallback or i;
 		end
 		i = i + 1;
 	end
 
-	-- Si el nombre no aparecio (por ejemplo, cadena exportada en otro
-	-- idioma) probamos recuperarlo desde el spellID que guardamos.
+
+
 	if not fallback and spellId then
 		local byId = GetSpellInfo(spellId);
 		if byId and byId ~= wanted then
@@ -729,10 +729,10 @@ local function FindSpellBookSlot(text, spellId)
 	return fallback;
 end
 
--- BUG ORIGINAL: findMacro comparaba solo el CUERPO y le hacia EditMacro a
--- la primera coincidencia. Dos macros distintas con el mismo texto (algo
--- comun: varias "/cast X" con nombres distintos) hacian que se pisara la
--- equivocada. Ahora tienen que coincidir nombre y cuerpo.
+
+
+
+
 local function FindMacro(info)
 	for i = 1, 54 do
 		local name, _, body = GetMacroInfo(i);
@@ -755,8 +755,8 @@ local function EnsureMacro(info)
 		return nil;
 	end
 
-	-- Se llama igual que en MySlot (cinco argumentos) a proposito: es la
-	-- forma que esta probada en este cliente.
+
+
 	return CreateMacro(info.b, info.c, info.d, info.e, 1);
 end
 
@@ -771,7 +771,7 @@ local function PlaceOnSlot(slot, entry)
 
 	if entry.a == "S" then
 		local book = FindSpellBookSlot(entry.b, entry.s);
-		if not book then return; end          -- no lo tiene: dejar como esta
+		if not book then return; end
 		PickupSpell(book, BOOKTYPE_SPELL);
 
 	elseif entry.a == "I" then
@@ -790,7 +790,7 @@ local function PlaceOnSlot(slot, entry)
 		return;
 	end
 
-	-- Si el pickup no puso nada en el cursor, no pisamos la casilla.
+
 	if not CursorHasSpell() and not CursorHasItem() and not GetCursorInfo() then
 		ClearCursor();
 		return;
@@ -800,20 +800,20 @@ local function PlaceOnSlot(slot, entry)
 	ClearCursor();
 end
 
--- =========================================================
--- 6b. APLICAR EN nExtraBars
--- =========================================================
 
--- Lo que nExtraBars necesita para un boton, a partir de la casilla
--- guardada. nil si este personaje no lo tiene (hechizo sin aprender,
--- montura que no tiene): en ese caso el boton se deja como esta, igual
--- que hace PlaceOnSlot con las barras de Blizzard.
+
+
+
+
+
+
+
 local function NEBResolve(entry)
 	if entry.a == "S" then
 		local book = FindSpellBookSlot(entry.b, entry.s);
 		if not book then return nil; end
-		-- Llamada suelta, no "book and GetSpellName(...)": un "and" se queda
-		-- solo con el PRIMER valor y el rango se perdia ("Nombre()").
+
+
 		local nm, rank = GetSpellName(book, BOOKTYPE_SPELL);
 		if not nm then return nil; end
 		return "spell", nm .. "(" .. (rank or "") .. ")", "spell", nm, "";
@@ -821,8 +821,8 @@ local function NEBResolve(entry)
 	elseif entry.a == "I" then
 		local id = tonumber(entry.b);
 		local itemName, link = GetItemInfo(id or entry.b);
-		-- Sin cache todavia: "item:ID" lo entienden igual todas las
-		-- funciones de objetos que usa el boton.
+
+
 		local value = itemName or (id and ("item:" .. id)) or entry.b;
 		return "item", value, "item", link or "", id or "";
 
@@ -847,8 +847,8 @@ local function NEBResolve(entry)
 end
 
 local function NEBSet(btn, s, command, value, actualType, name, id)
-	-- Un boton que nunca se uso no tiene "type" todavia, y NEB_ABT_SetCommand
-	-- hace SetAttribute(tipoAnterior, ""): con nil daria error.
+
+
 	if s == GetActiveTalentGroup() and btn:GetAttribute("type") == nil then
 		btn:SetAttribute("type", "none");
 	end
@@ -873,14 +873,14 @@ local function NEBImport(sec)
 						placed = placed + 1;
 					end
 				elseif NEBHas(btn, s) then
-					-- Vacio en el original: vacio aca tambien.
+
 					NEBSet(btn, s, "none", "", "", "", "");
 				end
 			end
 		end
 	end
 
-	-- Que barras estan prendidas, cuantos botones, bloqueo.
+
 	if type(sec.c) == "table" and type(NEB_Config) == "table" then
 		local changed = false;
 		for key, kind in pairs(NEB_CONFIG_KEYS) do
@@ -890,16 +890,16 @@ local function NEBImport(sec)
 				if NEB_Config[key] ~= v then NEB_Config[key] = v; changed = true; end
 			end
 		end
-		-- NEB_ApplyConfig es de nExtraBars 2.2.3. Con una version anterior
-		-- el cambio queda guardado y se ve despues del /reload.
+
+
 		if changed and type(NEB_ApplyConfig) == "function" then pcall(NEB_ApplyConfig); end
 	end
 
 	return placed;
 end
 
--- Clear Bars: el talento ACTIVO, igual que las barras de Blizzard (que son
--- las del spec que tenes puesto).
+
+
 local function NEBWipeActive()
 	if not NEBLive() then return 0; end
 	local s, n = GetActiveTalentGroup(), 0;
@@ -913,9 +913,9 @@ local function NEBWipeActive()
 	return n;
 end
 
--- =========================================================
--- 7. BACKUP
--- =========================================================
+
+
+
 local function DB()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.SlotProfiles then
@@ -933,12 +933,12 @@ function K.SlotHasBackup()
 	return DB().SlotBackup ~= nil;
 end
 
--- =========================================================
--- 8. IMPORTAR
--- =========================================================
+
+
+
 function K.SlotImport(text)
-	-- BUG ORIGINAL: esto imprimia el aviso y seguia igual, le faltaba el
-	-- return. Colocar acciones en combate esta bloqueado por el cliente.
+
+
 	if InCombatLockdown() then
 		return false, L["SLOT_ERR_COMBAT"] or "Can't do this in combat.";
 	end
@@ -947,7 +947,7 @@ function K.SlotImport(text)
 		return false, L["SLOT_ERR_EMPTY"] or "Paste a string first.";
 	end
 
-	-- Sacar las lineas de cabecera (@) y todo el espacio en blanco.
+
 	local body = string.gsub(text, "@[^\n]*\n?", "");
 	body = string.gsub(body, "[ \t\r\n]", "");
 	if body == "" then
@@ -975,8 +975,8 @@ function K.SlotImport(text)
 		end
 	end
 
-	-- nExtraBars, despues de las barras: las macros que comparten ya
-	-- estan creadas y no se duplican.
+
+
 	placed = placed + NEBImport(profile[NEB_KEY]);
 
 	local bound = 0;
@@ -987,17 +987,17 @@ function K.SlotImport(text)
 				if SetBinding(key, command) then bound = bound + 1; end
 			end
 		end
-		-- BUG ORIGINAL: faltaba esta linea, asi que los bindeos se aplicaban
-		-- pero no se guardaban y se perdian al desloguear.
+
+
 		SaveBindings(GetCurrentBindingSet());
 	end
 
 	return true, placed, bound;
 end
 
--- =========================================================
--- 9. BORRADOS
--- =========================================================
+
+
+
 function K.SlotWipeBars()
 	if InCombatLockdown() then
 		return false, L["SLOT_ERR_COMBAT"] or "Can't do this in combat.";
@@ -1020,8 +1020,8 @@ function K.SlotWipeMacros()
 		return false, L["SLOT_ERR_COMBAT"] or "Can't do this in combat.";
 	end
 	SaveBackup();
-	-- De atras para adelante: al borrar una macro se corren los indices de
-	-- las siguientes, asi que hacia adelante se saltearia una si o si.
+
+
 	local n = 0;
 	for i = 54, 1, -1 do
 		if GetMacroInfo(i) then
@@ -1034,8 +1034,8 @@ end
 
 function K.SlotResetBindings()
 	SaveBackup();
-	-- Se cargan los bindeos POR DEFECTO en vez de dejarlos vacios: sin
-	-- bindeos el personaje no puede ni caminar.
+
+
 	LoadBindings(DEFAULT_BINDINGS);
 	SaveBindings(GetCurrentBindingSet());
 	return true;
@@ -1049,13 +1049,13 @@ function K.SlotRestoreBackup()
 	return K.SlotImport(backup);
 end
 
--- =========================================================
--- 10. PERFILES POR PERSONAJE
--- Se guardan en NidhausUnitFramesDB, que es de CUENTA, asi que otro
--- personaje los ve. Detalle importante: las SavedVariables recien se
--- escriben a disco al DESLOGUEAR, no con /reload. Para pasar de un
--- personaje a otro hay que salir del juego en el medio.
--- =========================================================
+
+
+
+
+
+
+
 local function CharKey()
 	return (UnitName("player") or "?") .. " - " .. (GetRealmName() or "?");
 end
@@ -1067,25 +1067,25 @@ function K.SlotSaveCurrentChar()
 	return true, CharKey();
 end
 
--- ---------------------------------------------------------
--- FILTRO POR CLASE
---
--- Las barras de un paladin no le sirven a un mago: los hechizos no existen
--- y la mitad de los huecos quedarian vacios. Asi que el desplegable
--- muestra solo personajes de TU clase.
---
--- DE DONDE SALE LA CLASE, SIN MIGRAR NADA. No hizo falta guardar un campo
--- nuevo: la cadena exportada ya traia la clase en la cabecera desde
--- siempre ("@ Paladin nivel 80"). Desde ahora se agrega ademas el nombre
--- interno ("@ CLASS PALADIN"), que no depende del idioma del cliente, y el
--- nombre traducido queda de respaldo para todo lo ya guardado. Por eso el
--- filtro funciona con los personajes que ya estaban en la lista.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function ClassTokenOf(data)
 	if type(data) ~= "string" then return nil; end
 	local token = string.match(data, "@ CLASS (%u+)");
 	if token then return token; end
-	-- Respaldo: nombre traducido, comparado contra el del propio jugador.
+
 	local shown = string.match(data, "@ ([^\n]-) nivel %d");
 	if shown and shown ~= "" then return "LOC:" .. shown; end
 	return nil;
@@ -1097,8 +1097,8 @@ function K.SlotGetCharNames()
 	local mineLoc = loc and ("LOC:" .. loc) or nil;
 	for key, data in pairs(DB().SlotProfiles) do
 		local c = ClassTokenOf(data);
-		-- Si no se pudo leer la clase se muestra igual: es peor esconderle a
-		-- alguien un personaje que el sabe que guardo, que mostrarle uno de mas.
+
+
 		if (not c) or c == mine or (mineLoc and c == mineLoc) then
 			names[#names + 1] = key;
 		else
@@ -1119,15 +1119,15 @@ function K.SlotCopyFromChar(key)
 	return K.SlotImport(data);
 end
 
--- Guardar el estado del personaje al entrar, para que aparezca en la lista.
+
 local init = CreateFrame("Frame");
 init:RegisterEvent("PLAYER_LOGIN");
--- Y OTRA VEZ AL SALIR (tambien corre con /reload).
---
--- Solo con el del login, lo que armabas durante la sesion no llegaba a la
--- lista: salias, entrabas con el otro personaje, apretabas Copy y te
--- traia las barras como estaban al ENTRAR. Las SavedVariables se
--- escriben despues de PLAYER_LOGOUT, asi que guardar aca alcanza.
+
+
+
+
+
+
 init:RegisterEvent("PLAYER_LOGOUT");
 init:SetScript("OnEvent", function(self, event)
 	if event == "PLAYER_LOGOUT" then
@@ -1135,17 +1135,17 @@ init:SetScript("OnEvent", function(self, event)
 		return;
 	end
 	self:UnregisterEvent("PLAYER_LOGIN");
-	-- Un frame de espera: al momento del login las barras todavia pueden
-	-- no estar pobladas.
+
+
 	self:SetScript("OnUpdate", function(s)
 		s:SetScript("OnUpdate", nil);
 		pcall(K.SlotSaveCurrentChar);
 	end);
 end);
 
--- =========================================================
--- 11. SLASH
--- =========================================================
+
+
+
 SLASH_NUFSLOT1 = "/nufslot";
 SlashCmdList["NUFSLOT"] = function(msg)
 	msg = string.lower(msg or "");

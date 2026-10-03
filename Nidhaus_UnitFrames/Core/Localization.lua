@@ -1,23 +1,23 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- Localization.lua - Sistema de localización EN/ES
---
--- Detecta el idioma del cliente WoW con GetLocale()
--- esES / esMX = Español, todo lo demás = English
+
+
+
+
 
 local locale = GetLocale();
 local isSpanish = (locale == "esES" or locale == "esMX");
 
--- ============================================================
--- ENGLISH (default)
--- ============================================================
 
--- Tags reutilizables
+
+
+
+
 local INSTANT = "|cffFFD100\226\156\147 Applies instantly|r";
 local RELOAD  = "|cffFFAA00\226\154\160 Requires /reload|r";
 
--- === TOOLTIPS ===
+
 L["TIP_classColor"]              = "Colors health bars by class.";
 L["TIP_statusbarBackdrop"]       = "Adds dark background to bars.\n\n"..RELOAD;
 L["TIP_HealthPercentage"]        = "Shows health % on target.";
@@ -58,7 +58,7 @@ L["TIP_PartyCastableBuffs"]      = "Shows only the buffs you can cast.\nSame opt
 L["CB_PARTY_DISPEL_DEBUFFS"]     = "Dispellable Debuffs";
 L["TIP_PartyDispelDebuffs"]      = "Shows only the debuffs you can dispel.\nSame option as Interface > Buffs and Debuffs > Dispellable Debuffs: checking it here checks it there too.";
 
--- FLAT STYLE TOOLTIPS
+
 L["TIP_ArenaFlatWidth"]          = "Total width of the flat arena frame.";
 L["TIP_ArenaFlatHealthBarHeight"] = "Height of the health bar in flat mode.";
 L["TIP_ArenaFlatPowerBarHeight"] = "Height of the power bar in flat mode.";
@@ -67,25 +67,25 @@ L["TIP_ArenaFlatPowerFontSize"]  = "Font size for power bar text. Set to 0 to hi
 L["TIP_ArenaFlatMirrored"]       = "Mirror flat frames: portrait on left, bars on right.";
 L["TIP_ArenaFlatStatusText"]     = "Force health/mana text to always show in flat mode.\nIf disabled, respects Interface > Status Text settings.";
 
--- CAST BAR TOOLTIPS
+
 L["TIP_ArenaCastBarEnable"]      = "Enable custom cast bar scaling and width.\nDisable to use Blizzard default size.";
 L["TIP_ArenaCastBarScale"]       = "Cast bar scale.";
 L["TIP_ArenaCastBarWidth"]       = "Cast bar width.";
 
--- === OPTIONS PANEL ===
+
 L["PANEL_TITLE"]                 = "Nidhaus UnitFrames";
 L["PANEL_VERSION"]               = "|cffFFAA00v4.0|r";
 L["PANEL_SUBTITLE"]              = "Unit Frame Customization & Arena Tools";
 L["PANEL_SIZE_RESET"]            = "Options window restored to 820x620 and centered.";
 
--- Tabs
+
 L["TAB_GENERAL"]                 = "Interface";
 L["TAB_FRAMES"]                  = "Frames";
 L["TAB_ARENA"]                   = "Arena";
 L["TAB_ARENA_BOSS"]              = "Arena/Boss";
 L["TAB_MODULES"]                 = "Modules";
 
--- ── Pestañas y secciones nuevas (rediseño estilo TidyPlates) ──
+
 L["CB_BLOCK_DUELS"]              = "Decline Duels";
 L["TIP_BlockDuels"]              = "Automatically declines any duel request and closes the popup. Useful in cities and outside arena gates.";
 L["DUEL_BLOCKED"]                = "Duel from %s declined.";
@@ -448,7 +448,7 @@ L["TIP_MageMirror"]              = "30 second duration bar for Mirror Image.";
 L["TAB_EXTRA"]                   = "Profiles";
 L["TAB_ABOUT"]                   = "About";
 
--- Tab 1 - General
+
 L["HEADER_GENERAL"]              = "|cffFFD100General Settings|r";
 L["DESC_GENERAL"]                = "Basic visual options and frame positioning";
 L["CB_CLASS_COLOR"]              = "Class Color Health Bars";
@@ -473,7 +473,7 @@ L["THEME_DARK"]                  = "Current theme: |cff888888Dark|r";
 L["THEME_LIGHT"]                 = "Current theme: |cffEEEEEELight|r";
 L["THEME_HINT"]                  = "To change theme: Edit |cffFFD100Config/Settings.lua|r (C[\"darkFrames\"]) and /reload";
 
--- Tab 2 - Frames
+
 L["HEADER_FRAMES"]               = "|cffFFD100Frame Settings|r";
 L["DESC_FRAMES"]                 = "Adjust scale and spacing for player/target/party frames";
 L["SLIDER_PLAYER_SCALE"]         = "Player Frame Scale";
@@ -488,7 +488,7 @@ L["CB_PARTY_TARGETS"]            = "Party Targets";
 L["SLIDER_PARTY_SCALE"]          = "Party Frame Scale";
 L["SLIDER_PARTY_SPACING"]        = "Party Member Spacing";
 
--- Missing keys for Frames/General panels
+
 L["CB_NEW_PARTY_FRAME"]          = "New Party Frame";
 L["SLIDER_BOSS_SCALE"]           = "Boss Frame Scale";
 L["SLIDER_ACTIONBAR_SCALE"]      = "Action Bar Scale";
@@ -496,7 +496,7 @@ L["CB_MINIBAR"]                  = "MiniBar";
 L["CB_HIDE_GRYPHONS"]            = "Hide Gryphons";
 L["CB_BAGPACK"]                  = "BagPack Background";
 
--- Tab 3 - Arena
+
 L["HEADER_ARENA_BOSS"]           = "|cffFFD100Arena & Boss Settings|r";
 L["DESC_ARENA_BOSS"]             = "PvP and PvE encounter frame settings";
 L["HEADER_BOSS"]                 = "|cffFFD100Boss Frames|r";
@@ -522,7 +522,7 @@ L["CB_MIRROR_MODE"]              = "Arena Mirror Mode";
 L["CB_TRINKET_TRACK"]            = "Arena Trinket Tracking";
 L["CB_TRINKET_VOICE"]            = "Arena Trinket Voice Alerts";
 
--- Flat Style UI
+
 L["CB_FLAT_MIRRORED"]            = "Flat Mirrored";
 L["SLIDER_FLAT_WIDTH"]           = "Flat Width";
 L["SLIDER_FLAT_HB_HEIGHT"]      = "Health Bar Height";
@@ -530,19 +530,19 @@ L["SLIDER_FLAT_PB_HEIGHT"]      = "Power Bar Height";
 L["SLIDER_FLAT_HB_FONT"]        = "Health Font Size";
 L["SLIDER_FLAT_PB_FONT"]        = "Power Font Size";
 
--- Cast Bar UI
+
 L["HEADER_CASTBAR"]              = "|cffFFD100Cast Bar|r";
 L["CB_CASTBAR_ENABLE"]           = "Custom Cast Bar";
 L["SLIDER_CASTBAR_SCALE"]       = "Cast Bar Scale";
 L["SLIDER_CASTBAR_WIDTH"]       = "Cast Bar Width";
 
--- Pet Frame
+
 L["CB_PET_FRAME_SHOW"]           = "Show pets in Test mode";
 L["CB_FLAT_PET_STYLE"]          = "Flat Pet Style";
 L["CB_FLAT_STATUS_TEXT"]        = "Force Status Text";
 L["LABEL_PET_STYLE"]            = "Pet Frame Style (Flat only)";
 
--- Visual Theme
+
 L["LABEL_THEME"]                 = "Visual Theme";
 L["THEME_OPT_LIGHT"]            = "Light";
 L["THEME_OPT_DARK"]             = "Dark";
@@ -550,7 +550,7 @@ L["THEME_CHANGED"]              = "|cffFFD100NUF:|r Theme changed. |cffFFAA00/re
 L["CB_UNITFRAME_CUSTOM_TEX"]    = "Custom Skin (Player/Target/Focus)";
 L["TIP_UnitFrameCustomTexture"] = "Use custom .blp textures on Player, Target and Focus frames (border, PVP icon, bar sizes, status icon).\nDisable to restore the default Blizzard frames.\n\n"..INSTANT;
 
--- Flat Style labels (sArena style)
+
 L["SLIDER_FLAT_WIDTH_FULL"]      = "Frame Width";
 L["SLIDER_FLAT_HB_HEIGHT_FULL"]  = "Health Bar Height";
 L["SLIDER_FLAT_PB_HEIGHT_FULL"]  = "Power Bar Height";
@@ -558,7 +558,7 @@ L["SLIDER_FLAT_HB_FONT_FULL"]   = "Health Font Size";
 L["SLIDER_FLAT_PB_FONT_FULL"]   = "Power Font Size";
 L["CB_FLAT_MIRRORED_FULL"]      = "Mirrored Frames";
 
--- Tab 4 - Modules
+
 L["HEADER_MODULES"]              = "|cffFFD100Modules|r";
 L["DESC_MODULES"]                = "Enable or disable extra modules. Add .lua files in Modules2/";
 L["MODULES_NONE"]                = "|cffAAAAAA(No modules registered)|r";
@@ -576,7 +576,7 @@ L["MODULES_HOWTO"]               = "|cffFFFF00How to add modules:|r\n\n"..
 	"   |cff00FFFFModules2/ModuleName.lua|r\n\n"..
 	"4. Do |cffFFAA00/reload|r and the checkbox will appear here automatically.";
 
--- Bottom buttons
+
 L["BTN_RELOAD"]                  = "Reload UI";
 L["BTN_RESET"]                   = "Reset Defaults";
 L["BTN_CLOSE"]                   = "Close";
@@ -585,7 +585,7 @@ L["RESET_CONFIRM"]               = "Reset EVERYTHING to defaults?\n\nOptions, mo
 L["RESET_BTN_YES"]               = "Reset";
 L["RESET_BTN_NO"]                = "Cancel";
 
--- === COMMANDS ===
+
 L["CMD_HEADER"]                  = "|cffFF0000NUF|r: Slash commands:";
 L["CMD_HELP"]                    = "  |cff00FFFFhelp|r - Show this help";
 L["CMD_OPTIONS"]                 = "  |cff00FFFFoptions|r - Open options panel";
@@ -594,7 +594,7 @@ L["CMD_ARENA"]                   = "  |cff00FFFFarena|r - Show/Hide ArenaFrames 
 L["CMD_MODULES"]                 = "  |cff00FFFFmodules|r - List registered modules";
 L["CMD_RESET"]                   = "  |cff00FFFFreset|r - Reset all settings";
 
--- === MODULE MANAGER ===
+
 L["MM_REGISTER_ERROR"]           = "|cffFF0000NUF:|r RegisterModule: missing id or info";
 L["MM_ERROR_ENABLING"]           = "|cffFF0000NUF:|r Error enabling ";
 L["MM_ERROR_DISABLING"]          = "|cffFF0000NUF:|r Error disabling ";
@@ -603,7 +603,7 @@ L["MM_LIST_HEADER"]              = "|cffFFFF00NUF Modules:|r";
 L["MM_LIST_EMPTY"]               = "  (No modules registered)";
 L["MM_LIST_HINT"]                = "  Add .lua files in Modules2/ and register them with K.RegisterModule()";
 
--- === CONFIG MANAGER ===
+
 L["CFG_HEADER"]                  = "|cffFFFF00NUF Configuration|r";
 L["CFG_NOT_LOADED"]              = "|cffFF0000ERROR: Configuration not loaded yet!|r";
 L["CFG_FORMAT"]                  = "|cffFFFF00Format: [OK/ERR] Key: DB_value (type) | C_value (type)|r";
@@ -613,20 +613,20 @@ L["CFG_ALL_SYNC"]                = "|cffFFD100All values synchronized!|r";
 L["CFG_OUT_OF_SYNC"]             = "|cffFF0000WARNING: Some values out of sync!|r";
 L["CFG_RESET_OK"]                = "|cffFFD100NUF ConfigManager:|r Configuration reset to defaults!";
 
--- Textos que estaban escritos a mano dentro de los modulos.
--- Los tres primeros estaban fijos EN ESPANOL, o sea rotos al reves: un
--- cliente en ingles los veia en castellano.
+
+
+
 L["PETTARGET_PREFIX"]            = "Target: ";
 L["PETTARGET_NONE"]              = "Target: None";
 L["DRAG_LABEL"]                  = "DRAG";
 
--- === Ventanas propias de los modulos ===
--- Estos textos estaban escritos a mano dentro de cada modulo y por eso no
--- se traducian a ningun idioma.
+
+
+
 L["BTN_SAVE"]                    = "Save";
 L["BTN_RESET_SHORT"]             = "Reset";
 
--- Arena Points Calculator
+
 L["APC_TITLE"]                   = "Arena Points Calculator";
 L["APC_MY_POINTS"]               = "My Points This Week";
 L["APC_NO_TEAMS"]                = "You are not in any arena team.";
@@ -645,7 +645,7 @@ L["APC_BTN_TIP_DRAG"]            = "Alt + drag to move it";
 L["APC_BTN_RESET_DONE"]          = "Button position reset.";
 L["TT_SOLO_QUEUE"]               = "Solo Queue";
 
--- Party Targets
+
 L["PT_HIDE_NAME"]                = "Hide target name";
 L["PT_CLASS_ICON"]               = "Class icon in portrait";
 L["PT_CLASS_ICON_TIP"]           = "Shows the class icon instead of the face (players only; NPCs keep their face).";
@@ -660,13 +660,13 @@ L["PT_LOCK"]                     = "Lock Frames";
 L["PT_LOCK_HINT"]                = "Shift+Alt+drag always overrides lock";
 L["PT_SCALE"]                    = "Scale:";
 
--- Party Buffs
+
 L["PB_TITLE"]                    = "Party Buffs";
 L["PB_SCALEMAX"]                 = "Scale / Max";
 L["PB_SCALE_ICONS"]              = "Scale icons:";
 L["PB_MAX_ICONS"]                = "Max icons:";
 
--- NiceDamage
+
 L["ND_TITLE"]                    = "Font Selector";
 L["ND_FONT"]                     = "Font";
 L["ND_TIP_D"]                    = "Enemy Damage";
@@ -677,12 +677,12 @@ L["ND_LEG_D"]                    = "= Enemy Damage (requires reopening WoW)";
 L["ND_LEG_H"]                    = "= Heals / Auras / Self Text (instant)";
 L["ND_OPEN"]                     = "Open Font Selector";
 
--- Gargoyle Tracker
+
 L["GT_DUR"]                      = "Dur";
 L["GT_HP"]                       = "HP";
 L["GT_CAST"]                     = "Cast";
 
--- Varios
+
 L["SW_NO_SHIELD"]                = "no shield";
 L["LBL_STYLE"]                   = "Style:";
 L["SPECICONS_HINT"]              = "Round icon on Blizzard/Custom, rectangular on Flat style.";
@@ -693,7 +693,7 @@ L["BOSS_DRAG"]                   = "BOSS FRAMES [drag]";
 L["HP_NA"]                       = "N/A";
 L["HP_DEAD"]                     = "Dead";
 
--- Paneles de Config
+
 L["PANEL_STYLE"]                 = "Style";
 L["TIP_PANEL_THEME"]             = "Switch panel theme";
 L["ARENA_PET_STYLE"]             = "Pet Style";
@@ -707,7 +707,7 @@ L["SLIDER_BUFF_SCALE"]           = "Buff scale";
 L["SLIDER_DEBUFF_SCALE"]         = "Debuff scale";
 L["BARS_RELOADING"]              = "Action bar mode changed \226\128\148 reloading UI...";
 
--- Claves que se usaban en el codigo pero nunca se habian definido.
+
 L["BTN_RESET_CASTBAR"]           = "Reset";
 L["BTN_RESET_PET_POS"]           = "Reset position";
 L["CB_ARENA_COUNTDOWN"]          = "Arena Countdown";
@@ -716,11 +716,11 @@ L["MOD_MELEESWING"]              = "Melee Swing Timer";
 L["MOD_MELEESWING_DESC"]         = "Shows the time left until your next melee swing.";
 L["TIP_HideChatButton"]          = "Hides the chat menu button.";
 
--- Tab 5 - Extra Options
+
 L["HEADER_EXTRA"]                = "|cffFFD100Extra Options|r";
 L["DESC_EXTRA"]                  = "Additional settings and experimental features";
 
--- Profiles
+
 L["HEADER_PROFILES"]             = "|cffFFD100Profiles|r";
 L["DESC_PROFILES"]               = "Export your config to share or backup, import to restore.";
 L["BTN_EXPORT"]                  = "Export Profile";
@@ -736,8 +736,8 @@ L["PROFILE_COPYING"]             = "Copying profile from";
 L["TIP_EXPORT"]                  = "Generates a text string with all your settings.\nCopy it and save it somewhere safe.";
 L["TIP_IMPORT"]                  = "Paste a profile string to restore settings.\nThis will overwrite your current config and reload UI.";
 
--- Character Setup (barras / macros / bindeos) - NADA que ver con los
--- perfiles de arriba, que son la config del addon.
+
+
 L["HEADER_SLOTS"]                = "|cffFFD100Character Setup|r";
 L["DESC_SLOTS"]                  = "Action bars, macros and keybinds. This is your character, not the addon settings.";
 L["SLOT_COPY_FROM"]              = "Copy bars & macros from:";
@@ -783,7 +783,7 @@ L["PROFILE_IMPORT_EMPTY"]        = "Paste a profile string first!";
 L["PROFILE_IMPORT_ERROR"]        = "Import error: ";
 L["PROFILE_IMPORT_SUCCESS"]      = "Profile imported! Reloading...";
 
--- Utility
+
 L["HEADER_UTILITY"]              = "|cffFFD100Utility|r";
 L["CB_AUTO_SELL"]                = "Auto Sell Gray Items";
 L["TIP_AutoSellGray"]            = "Automatically sells all gray (junk) items when you open a vendor.";
@@ -792,7 +792,7 @@ L["TIP_AutoRepair"]              = "Automatically repairs all items when you ope
 L["CB_ERROR_HIDE"]               = "Hide Errors in Combat";
 L["TIP_ErrorHideInCombat"]       = "Hides red error messages during combat.\nShows them again when combat ends.";
 
--- Arena Timers
+
 L["HEADER_ARENA_TIMERS"]         = "|cffFFD100Arena Timers|r";
 L["CB_DALARAN_PIPE"]             = "Dalaran Waterfall Timer";
 L["TIP_ArenaDalaranPipeTimer"]   = "Shows a 10 second icon timer when the Dalaran Arena waterfall is about to push players off the pipe.";
@@ -803,14 +803,14 @@ L["TIP_ArenaEndTimer"]           = "Shows how much time is left before the arena
 L["ARENA_END_PREFIX"]            = "Arena: ";
 L["TIMERS_TEST_HINT"]            = "Arena timers test mode toggled. Hold Alt and drag to move them.";
 
--- Action Bar Text
+
 L["HEADER_BAR_TEXT"]             = "|cffFFD100Action Bar Text|r";
 L["CB_HIDE_KEYBIND"]             = "Hide Keybind Text";
 L["TIP_HideKeybindText"]         = "Hides the keybind text on action bar buttons.";
 L["CB_HIDE_MACRO"]               = "Hide Macro Names";
 L["TIP_HideMacroText"]           = "Hides the macro name text on action bar buttons.";
 
--- Frames subtabs
+
 L["BTN_RESET_SCALES"]            = "Reset All Scales";
 L["BTN_RESET_FRAMES"]            = "Reset Scales & Positions";
 L["BTN_RESET_POSITIONS"]         = "Reset Positions";
@@ -823,7 +823,7 @@ L["HEADER_PVE"]                  = "PvE";
 L["DESC_PVE"]                    = "Boss frames and raid encounter settings.";
 L["PARTY_3V3_NOTE"]              = "Party Mode 3v3 and individual movement are in the Positions tab.";
 
--- Mover todo
+
 L["MOVE_RESET_DONE"]             = "Every frame is back to its default position.";
 L["MOVE_HELP_ALL"]               = "unlock everything";
 L["MOVE_HELP_FRAMES"]            = "only the unit frames";
@@ -856,7 +856,7 @@ L["MOVE_OFF"]                    = "Move mode OFF - positions saved.";
 L["MOVE_RESET"]                  = "Positions and scales are back to their defaults.";
 L["MOVE_COMBAT_BLOCK"]           = "Action bars cannot be moved during combat.";
 
--- Minimapa
+
 L["MOD_MINIMAP_TOGGLE"]          = "Minimap Icon Toggle";
 L["MOD_MINIMAP_TOGGLE_DESC"]     = "Button on the minimap corner that hides or shows the addon icons.";
 L["MINIMAP_TOGGLE_TITLE"]        = "Minimap Icons";
@@ -868,7 +868,7 @@ L["BTN_MODULE_MOVE"]             = "Move";
 L["BTN_MODULE_LOCK"]             = "Lock";
 L["BTN_MODULE_TOGGLE"]           = "Toggle";
 
--- Nuevos modulos
+
 L["MOD_ARROWCOUNT"]              = "Arrow / Bullet Count";
 L["MOD_DUNGEONROLES"]            = "Dungeon Finder Roles";
 L["MOD_DUNGEONROLES_DESC"]       = "While queued for a dungeon, shows tank, healer and 3 dps icons and lights up the roles already filled. Alt + drag to move.";
@@ -915,7 +915,7 @@ L["MOD_CLASSOUTLINE_DESC"]       = "Adds a class colored ring around the player,
 L["SLIDER_OUTLINE_SIZE"]         = "Ring size";
 L["SWING_USE_GLOBAL"]            = "Move Everything is on: drag the blue box from there.";
 
--- Barras
+
 L["SUBTAB_GEN_UI"]               = "Interface";
 L["SUBTAB_GEN_BARS"]             = "Action Bars";
 L["CB_HIDE_BAR_TEXTURES"]        = "Hide Action Bar Textures";
@@ -923,7 +923,7 @@ L["TIP_HideBarTextures"]         = "Hides the decorative textures of the main ac
 L["CB_BUTTON_RANGE"]             = "Button Range";
 L["TIP_ButtonRange"]             = "Tints action buttons red when the target is out of range.";
 
--- Subtabs
+
 L["SUBTAB_ARENA_FRAMES"]         = "Frames";
 L["SUBTAB_ARENA_TIMERS"]         = "Timers";
 L["SUBTAB_ARENA_MODULES"]        = "Options";
@@ -934,7 +934,7 @@ L["CB_ARENA_TOT"]                = "Enable Target of Target";
 L["TIP_ArenaToT"]                = "Shows the current target of each arena enemy.";
 L["TIMERS_MOVE_NOTE"]            = "Use /nuftimers to show the timers and Alt + drag to move them.";
 
--- Unit Name Color
+
 L["HEADER_NAME_COLOR"]           = "|cffFFD100Name Color|r";
 L["NAME_COLOR_DEFAULT"]          = "Default";
 L["NAME_COLOR_WHITE"]            = "White";
@@ -952,7 +952,7 @@ L["NAME_BORDER_OUTLINE"]         = "Outline";
 L["NAME_BORDER_THICK"]           = "Thick Outline";
 L["NAME_BORDER_SHADOW"]          = "Like health / mana text";
 
--- Chat
+
 L["HEADER_CHAT"]                 = "|cffFFD100Chat|r";
 L["CB_CHAT_COPY"]                = "Copy Chat Text";
 L["TIP_ChatCopyEnabled"]         = "Double click a chat tab to open a copyable view of the chat history.\nUse Ctrl+A / Ctrl+C, Escape to close.\nAlso available with /nufcopy.";
@@ -961,13 +961,13 @@ L["TIP_ChatClickableURLs"]       = "Turns URLs written in chat into clickable li
 L["CHATCOPY_DISABLED"]           = "Chat copy is disabled in the options.";
 L["URL_POPUP_TEXT"]              = "Copy the link (Ctrl+C):";
 
--- Module collapse
+
 L["MODULE_EXPAND"]               = "Click to expand options";
 L["MODULE_COLLAPSE"]             = "Click to collapse options";
 L["COLLAPSE_ICON_EXPAND"]        = "[>]";
 L["COLLAPSE_ICON_COLLAPSE"]      = "[v]";
 
--- Tab 6 - About
+
 L["HEADER_ABOUT"]                = "|cffFFD100About|r";
 L["ABOUT_ADDON_NAME"]            = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["ABOUT_DESCRIPTION"]           = "A PVP-focused UI addon for WoW WotLK 3.3.5a.\nCustom arena frames, trinket tracking, mirror mode,\nclass-colored health bars, and optimized frame positioning\ndesigned for competitive arena gameplay.";
@@ -984,7 +984,7 @@ L["ABOUT_CONTACT_LABEL"]         = "|cffFFAA00Discord:|r";
 L["ABOUT_CONTACT_LINK"]          = "https://discord.gg/p3sqeram";
 L["ABOUT_COPY_HINT"]             = "|cffAAAAAA(Click to select, Ctrl+C to copy)|r";
 
--- === MINIMAP BUTTON ===
+
 L["MINIMAP_TITLE"]               = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["MINIMAP_LEFT_CLICK"]          = "|cffFFFFFFLeft Click:|r Open Options";
 L["MINIMAP_RIGHT_CLICK"]         = "|cffFFFFFFRight Click:|r Toggle Arena Mover";
@@ -993,7 +993,7 @@ L["MINIMAP_SHIFT_CLICK"]         = "|cffFFFFFFShift + Click:|r Reload UI";
 L["MINIMAP_DRAG"]                = "|cffFFFFFFDrag:|r Move icon";
 
 
--- === UNIFY ACTION BARS MODULE ===
+
 L["MOD_UAB_NAME"]          = "Unify Action Bars";
 L["MOD_UAB_DESC"]          = "Repositions and cleans up default action bar elements.";
 L["MOD_UAB_DISABLED"]      = "|cffFFD100NUF:|r Unify Action Bars disabled.";
@@ -1001,15 +1001,15 @@ L["HEADER_ACTIONBARS"]     = "|cffFFD100Action Bars|r";
 L["CB_UNIFY_ACTIONBARS"]   = "Unify Action Bars";
 L["TIP_UnifyActionBars"]   = "Repositions and cleans up default action bar UI elements:\nbags, micro menu, pet bar, stance bar and paging buttons.";
 
--- ============================================================
--- ESPAÑOL (override si el cliente es esES o esMX)
--- ============================================================
 
--- === LISTA DE COMANDOS (/nuf help) ===
--- Faltaban ENTERAS: el codigo las pedia con L["..."] or "ingles", asi
--- que la lista salia en ingles en los dos idiomas y nadie lo notaba,
--- porque el texto de respaldo estaba ahi mismo. Definidas aca, la
--- version en espa�ol de mas abajo ya tiene que traducir.
+
+
+
+
+
+
+
+
 L["CMDLIST_GENERAL"] = "General";
 L["CMDLIST_NUF"] = "Open the options panel";
 L["CMDLIST_NUF_HELP"] = "This list";
@@ -1066,7 +1066,7 @@ L["KKBORDER_STYLE"] = "Border art:";
 L["MOD_KKBORDER"] = "Kkthnx Border";
 L["MOD_KKBORDER_DESC"] = "Thin border and outer shadow around bars, micro menu, bags, frames and auras. Art from KkthnxUI (MIT). Stacks with Lorti UI: Lorti tints, this outlines.";
 
--- === ARENA: OJO / DR / DOTS ===
+
 L["CB_SHADOW_SIGHT"]             = "Shadow Sight timer (eye icon)";
 L["TIP_ShadowSightTimer"]        = "Shows the Shadow Sight eye icon with a countdown until the eye spawns in the arena (90 s after the gates open).\n\nTest it with /script K_TestShadowSight()";
 L["HEADER_ARENA_TRACKING"]       = "Enemy tracking";
@@ -1149,11 +1149,11 @@ L["TIP_ArenaPetFrameShow"]       = "Only for Test mode: shows a pet frame under 
 
 if isSpanish then
 
--- Tags
+
 local INSTANTE = "|cffFFD100\226\156\147 Aplica al instante|r";
 local RECARGA  = "|cffFFAA00\226\154\160 Requiere /reload|r";
 
--- === TOOLTIPS ===
+
 L["TIP_classColor"]              = "Colorea la barra de vida según la clase.";
 L["TIP_statusbarBackdrop"]       = "Agrega fondo oscuro a las barras.\n\n"..RECARGA;
 L["TIP_HealthPercentage"]        = "Muestra el porcentaje de vida en el objetivo.";
@@ -1194,7 +1194,7 @@ L["TIP_PartyCastableBuffs"]      = "Muestra solo los buffs que vos pod\195\169s 
 L["CB_PARTY_DISPEL_DEBUFFS"]     = "Dispellable Debuffs (solo los que pod\195\169s sacar)";
 L["TIP_PartyDispelDebuffs"]      = "Muestra solo los debuffs que vos pod\195\169s dispelear.\nEs la misma opci\195\179n que Interface > Buffs and Debuffs > Dispellable Debuffs: si la tild\195\161s ac\195\161, se tilda all\195\161 tambi\195\169n.";
 
--- FLAT STYLE TOOLTIPS
+
 L["TIP_ArenaFlatWidth"]          = "Ancho total del arena frame en modo Flat.";
 L["TIP_ArenaFlatHealthBarHeight"] = "Altura de la barra de vida en modo Flat.";
 L["TIP_ArenaFlatPowerBarHeight"] = "Altura de la barra de poder en modo Flat.";
@@ -1203,25 +1203,25 @@ L["TIP_ArenaFlatPowerFontSize"]  = "Tamaño de fuente de poder. 0 para ocultar."
 L["TIP_ArenaFlatMirrored"]       = "Espejea los frames Flat: portrait izquierda, barras derecha.";
 L["TIP_ArenaFlatStatusText"]     = "Fuerza que el texto de vida/maná se muestre siempre en modo flat.\nSi está desactivado, respeta la config de Interface > Status Text.";
 
--- CAST BAR TOOLTIPS
+
 L["TIP_ArenaCastBarEnable"]      = "Activa escala y ancho custom de la castbar.\nDesactivar usa el tamaño default de Blizzard.";
 L["TIP_ArenaCastBarScale"]       = "Escala de la castbar.";
 L["TIP_ArenaCastBarWidth"]       = "Ancho de la castbar.";
 
--- === OPTIONS PANEL ===
+
 L["PANEL_TITLE"]                 = "Nidhaus UnitFrames";
 L["PANEL_VERSION"]               = "|cffFFAA00v4.0|r";
 L["PANEL_SUBTITLE"]              = "Personalización de Unit Frames & Herramientas de Arena";
 L["PANEL_SIZE_RESET"]            = "Ventana de opciones restaurada a 820x620 y centrada.";
 
--- Tabs
+
 L["TAB_GENERAL"]                 = "Interfaz";
 L["TAB_FRAMES"]                  = "Frames";
 L["TAB_ARENA"]                   = "Arena";
 L["TAB_ARENA_BOSS"]              = "Arena/Boss";
 L["TAB_MODULES"]                 = "Módulos";
 
--- ── Pestañas y secciones nuevas (rediseño estilo TidyPlates) ──
+
 L["CB_BLOCK_DUELS"]              = "Rechazar duelos";
 L["TIP_BlockDuels"]              = "Rechaza autom\195\161ticamente cualquier desaf\195\173o a duelo y cierra el cartel. \195\154til en ciudades y afuera de las puertas de arena.";
 L["DUEL_BLOCKED"]                = "Duelo de %s rechazado.";
@@ -1584,7 +1584,7 @@ L["TIP_MageMirror"]              = "Barra de 30 segundos para Im\195\161genes Es
 L["TAB_EXTRA"]                   = "Perfiles";
 L["TAB_ABOUT"]                   = "About";
 
--- Tab 1 - General
+
 L["HEADER_GENERAL"]              = "|cffFFD100Configuración General|r";
 L["DESC_GENERAL"]                = "Opciones visuales básicas y posicionamiento de frames";
 L["CB_CLASS_COLOR"]              = "Barras de vida por clase";
@@ -1609,7 +1609,7 @@ L["THEME_DARK"]                  = "Tema actual: |cff888888Oscuro|r";
 L["THEME_LIGHT"]                 = "Tema actual: |cffEEEEEEClaro|r";
 L["THEME_HINT"]                  = "Para cambiar tema: Editá |cffFFD100Config/Settings.lua|r (C[\"darkFrames\"]) y /reload";
 
--- Tab 2 - Frames
+
 L["HEADER_FRAMES"]               = "|cffFFD100Configuración de Frames|r";
 L["DESC_FRAMES"]                 = "Ajustá escala y espaciado para player/target/party";
 L["SLIDER_PLAYER_SCALE"]         = "Escala Player Frame";
@@ -1624,7 +1624,7 @@ L["CB_PARTY_TARGETS"]            = "Party Targets";
 L["SLIDER_PARTY_SCALE"]          = "Escala Party Frame";
 L["SLIDER_PARTY_SPACING"]        = "Espaciado Party";
 
--- Missing keys for Frames/General panels
+
 L["CB_NEW_PARTY_FRAME"]          = "Nuevo Party Frame";
 L["SLIDER_BOSS_SCALE"]           = "Escala Boss Frame";
 L["SLIDER_ACTIONBAR_SCALE"]      = "Escala Barra de Acción";
@@ -1632,7 +1632,7 @@ L["CB_MINIBAR"]                  = "MiniBar";
 L["CB_HIDE_GRYPHONS"]            = "Ocultar Grifos";
 L["CB_BAGPACK"]                  = "Fondo de Mochila";
 
--- Tab 3 - Arena
+
 L["HEADER_ARENA_BOSS"]           = "|cffFFD100Arena & Boss|r";
 L["DESC_ARENA_BOSS"]             = "Configuración de frames PvP y PvE";
 L["HEADER_BOSS"]                 = "|cffFFD100Boss Frames|r";
@@ -1658,7 +1658,7 @@ L["CB_MIRROR_MODE"]              = "Modo Espejo Arena";
 L["CB_TRINKET_TRACK"]            = "Rastreo Trinkets Arena";
 L["CB_TRINKET_VOICE"]            = "Alerta de Voz Trinkets";
 
--- Flat Style UI
+
 L["CB_FLAT_MIRRORED"]            = "Flat Espejado";
 L["SLIDER_FLAT_WIDTH"]           = "Ancho Flat";
 L["SLIDER_FLAT_HB_HEIGHT"]      = "Altura Barra Vida";
@@ -1666,19 +1666,19 @@ L["SLIDER_FLAT_PB_HEIGHT"]      = "Altura Barra Poder";
 L["SLIDER_FLAT_HB_FONT"]        = "Fuente Vida";
 L["SLIDER_FLAT_PB_FONT"]        = "Fuente Poder";
 
--- Cast Bar UI
+
 L["HEADER_CASTBAR"]              = "|cffFFD100Barra de Casteo|r";
 L["CB_CASTBAR_ENABLE"]           = "Cast Bar Custom";
 L["SLIDER_CASTBAR_SCALE"]       = "Escala Cast Bar";
 L["SLIDER_CASTBAR_WIDTH"]       = "Ancho Cast Bar";
 
--- Pet Frame
+
 L["CB_PET_FRAME_SHOW"]           = "Mostrar mascotas en el Test";
 L["CB_FLAT_PET_STYLE"]          = "Estilo Flat para Pet";
 L["CB_FLAT_STATUS_TEXT"]        = "Forzar Texto de Vida";
 L["LABEL_PET_STYLE"]            = "Estilo Pet Frame (solo Flat)";
 
--- Visual Theme
+
 L["LABEL_THEME"]                 = "Tema Visual";
 L["THEME_OPT_LIGHT"]            = "Claro";
 L["THEME_OPT_DARK"]             = "Oscuro";
@@ -1686,7 +1686,7 @@ L["THEME_CHANGED"]              = "|cffFFD100NUF:|r Tema cambiado. |cffFFAA00/re
 L["CB_UNITFRAME_CUSTOM_TEX"]    = "Skin Personalizado (Player/Target/Focus)";
 L["TIP_UnitFrameCustomTexture"] = "Usa texturas .blp custom en Player, Target y Focus (marco, ícono PVP, tamaño de barras, ícono de status).\nDesactivar restaura los frames predeterminados de Blizzard.\n\n"..INSTANTE;
 
--- Flat Style labels (sArena style)
+
 L["SLIDER_FLAT_WIDTH_FULL"]      = "Ancho del marco";
 L["SLIDER_FLAT_HB_HEIGHT_FULL"]  = "Altura barra de vida";
 L["SLIDER_FLAT_PB_HEIGHT_FULL"]  = "Altura barra de poder";
@@ -1694,7 +1694,7 @@ L["SLIDER_FLAT_HB_FONT_FULL"]   = "Fuente de vida";
 L["SLIDER_FLAT_PB_FONT_FULL"]   = "Fuente de poder";
 L["CB_FLAT_MIRRORED_FULL"]      = "Frames Espejados";
 
--- Tab 4 - Modules
+
 L["HEADER_MODULES"]              = "|cffFFD100Módulos|r";
 L["DESC_MODULES"]                = "Activá o desactivá módulos extra. Agregá archivos .lua en Modules2/";
 L["MODULES_NONE"]                = "|cffAAAAAA(No hay módulos registrados)|r";
@@ -1712,7 +1712,7 @@ L["MODULES_HOWTO"]               = "|cffFFFF00Cómo agregar módulos:|r\n\n"..
 	"   |cff00FFFFModules2/NombreModulo.lua|r\n\n"..
 	"4. Hacé |cffFFAA00/reload|r y el checkbox aparece acá automáticamente.";
 
--- Bottom buttons
+
 L["BTN_RELOAD"]                  = "Recargar UI";
 L["BTN_RESET"]                   = "Resetear";
 L["BTN_CLOSE"]                   = "Cerrar";
@@ -1721,7 +1721,7 @@ L["RESET_CONFIRM"]               = "¿Resetear TODO a los valores de fábrica?\n
 L["RESET_BTN_YES"]               = "Resetear";
 L["RESET_BTN_NO"]                = "Cancelar";
 
--- === COMMANDS ===
+
 L["CMD_HEADER"]                  = "|cffFF0000NUF|r: Comandos:";
 L["CMD_HELP"]                    = "  |cff00FFFFhelp|r - Mostrar ayuda";
 L["CMD_OPTIONS"]                 = "  |cff00FFFFoptions|r - Abrir panel de opciones";
@@ -1730,7 +1730,7 @@ L["CMD_ARENA"]                   = "  |cff00FFFFarena|r - Mostrar/Ocultar mover 
 L["CMD_MODULES"]                 = "  |cff00FFFFmodules|r - Listar módulos registrados";
 L["CMD_RESET"]                   = "  |cff00FFFFreset|r - Resetear configuración";
 
--- === MODULE MANAGER ===
+
 L["MM_REGISTER_ERROR"]           = "|cffFF0000NUF:|r RegisterModule: falta id o info";
 L["MM_ERROR_ENABLING"]           = "|cffFF0000NUF:|r Error activando ";
 L["MM_ERROR_DISABLING"]          = "|cffFF0000NUF:|r Error desactivando ";
@@ -1739,7 +1739,7 @@ L["MM_LIST_HEADER"]              = "|cffFFFF00NUF Módulos:|r";
 L["MM_LIST_EMPTY"]               = "  (No hay módulos registrados)";
 L["MM_LIST_HINT"]                = "  Agregá archivos .lua en Modules2/ y registralos con K.RegisterModule()";
 
--- === CONFIG MANAGER ===
+
 L["CFG_HEADER"]                  = "|cffFFFF00Configuración NUF|r";
 L["CFG_NOT_LOADED"]              = "|cffFF0000ERROR: ¡La configuración todavía no cargó!|r";
 L["CFG_FORMAT"]                  = "|cffFFFF00Formato: [OK/ERR] Clave: valor_DB (tipo) | valor_C (tipo)|r";
@@ -1753,11 +1753,11 @@ L["PETTARGET_PREFIX"]            = "Objetivo: ";
 L["PETTARGET_NONE"]              = "Objetivo: Ninguno";
 L["DRAG_LABEL"]                  = "ARRASTRAR";
 
--- === Ventanas propias de los modulos ===
+
 L["BTN_SAVE"]                    = "Guardar";
 L["BTN_RESET_SHORT"]             = "Resetear";
 
--- Arena Points Calculator
+
 L["APC_TITLE"]                   = "Calculadora de Puntos de Arena";
 L["APC_MY_POINTS"]               = "Mis Puntos Esta Semana";
 L["APC_NO_TEAMS"]                = "No estás en ningún equipo de arena.";
@@ -1776,7 +1776,7 @@ L["APC_BTN_TIP_DRAG"]            = "Alt + arrastrar para moverlo";
 L["APC_BTN_RESET_DONE"]          = "Posición del botón restablecida.";
 L["TT_SOLO_QUEUE"]               = "Solo Queue";
 
--- Party Targets
+
 L["PT_HIDE_NAME"]                = "Ocultar el nombre del objetivo";
 L["PT_CLASS_ICON"]               = "Icono de clase en el retrato";
 L["PT_CLASS_ICON_TIP"]           = "Muestra el icono de la clase en vez de la cara (solo jugadores; los NPC siguen con su cara).";
@@ -1791,13 +1791,13 @@ L["PT_LOCK"]                     = "Bloquear Frames";
 L["PT_LOCK_HINT"]                = "Shift+Alt+arrastrar siempre ignora el bloqueo";
 L["PT_SCALE"]                    = "Escala:";
 
--- Party Buffs
+
 L["PB_TITLE"]                    = "Party Buffs";
 L["PB_SCALEMAX"]                 = "Escala / Máx";
 L["PB_SCALE_ICONS"]              = "Escala de iconos:";
 L["PB_MAX_ICONS"]                = "Máx. iconos:";
 
--- NiceDamage
+
 L["ND_TITLE"]                    = "Selector de Fuente";
 L["ND_FONT"]                     = "Fuente";
 L["ND_TIP_D"]                    = "Daño Enemigo";
@@ -1808,12 +1808,12 @@ L["ND_LEG_D"]                    = "= Daño Enemigo (requiere reabrir el WoW)";
 L["ND_LEG_H"]                    = "= Sanaciones / Auras / Texto Propio (al instante)";
 L["ND_OPEN"]                     = "Abrir Selector de Fuente";
 
--- Gargoyle Tracker
+
 L["GT_DUR"]                      = "Dur";
 L["GT_HP"]                       = "PS";
 L["GT_CAST"]                     = "Casteo";
 
--- Varios
+
 L["SW_NO_SHIELD"]                = "sin escudo";
 L["LBL_STYLE"]                   = "Estilo:";
 L["SPECICONS_HINT"]              = "Icono redondo en Blizzard/Custom, rectangular en estilo Flat.";
@@ -1824,7 +1824,7 @@ L["BOSS_DRAG"]                   = "FRAMES DE BOSS [arrastrar]";
 L["HP_NA"]                       = "N/D";
 L["HP_DEAD"]                     = "Muerto";
 
--- Paneles de Config
+
 L["PANEL_STYLE"]                 = "Estilo";
 L["TIP_PANEL_THEME"]             = "Cambiar el tema del panel";
 L["ARENA_PET_STYLE"]             = "Estilo de Mascota";
@@ -1838,7 +1838,7 @@ L["SLIDER_BUFF_SCALE"]           = "Escala de buffs";
 L["SLIDER_DEBUFF_SCALE"]         = "Escala de debuffs";
 L["BARS_RELOADING"]              = "Cambiaste el modo de barras \226\128\148 recargando la interfaz...";
 
--- Claves que se usaban en el codigo pero nunca se habian definido.
+
 L["BTN_RESET_CASTBAR"]           = "Resetear";
 L["BTN_RESET_PET_POS"]           = "Resetear posici\195\179n";
 L["CB_ARENA_COUNTDOWN"]          = "Cuenta regresiva de Arena";
@@ -1847,11 +1847,11 @@ L["MOD_MELEESWING"]              = "Timer de Golpe Melee";
 L["MOD_MELEESWING_DESC"]         = "Muestra el tiempo que falta para tu próximo golpe cuerpo a cuerpo.";
 L["TIP_HideChatButton"]          = "Oculta el botón del menú del chat.";
 
--- Tab 5 - Extra Options
+
 L["HEADER_EXTRA"]                = "|cffFFD100Opciones Extra|r";
 L["DESC_EXTRA"]                  = "Configuraciones adicionales y funciones experimentales";
 
--- Profiles
+
 L["HEADER_PROFILES"]             = "|cffFFD100Perfiles|r";
 L["DESC_PROFILES"]               = "Exportá tu config para compartir o backup, importá para restaurar.";
 L["BTN_EXPORT"]                  = "Exportar Perfil";
@@ -1867,8 +1867,8 @@ L["PROFILE_COPYING"]             = "Copiando perfil de";
 L["TIP_EXPORT"]                  = "Genera un texto con toda tu configuración.\nCopialo y guardalo en un lugar seguro.";
 L["TIP_IMPORT"]                  = "Pegá un texto de perfil para restaurar configuración.\nEsto va a sobreescribir tu config actual y recargar la UI.";
 
--- Character Setup (barras / macros / bindeos) - NADA que ver con los
--- perfiles de arriba, que son la config del addon.
+
+
 L["HEADER_SLOTS"]                = "|cffFFD100Personaje|r";
 L["DESC_SLOTS"]                  = "Barras, macros y bindeos. Esto es tu personaje, no la config del addon.";
 L["SLOT_COPY_FROM"]              = "Copiar barras y macros de:";
@@ -1914,7 +1914,7 @@ L["PROFILE_IMPORT_EMPTY"]        = "\194\161Pegá un texto de perfil primero!";
 L["PROFILE_IMPORT_ERROR"]        = "Error al importar: ";
 L["PROFILE_IMPORT_SUCCESS"]      = "\194\161Perfil importado! Recargando...";
 
--- Utility
+
 L["HEADER_UTILITY"]              = "|cffFFD100Utilidades|r";
 L["CB_AUTO_SELL"]                = "Vender Grises Automático";
 L["TIP_AutoSellGray"]            = "Vende automáticamente todos los items grises al abrir un vendor.";
@@ -1923,7 +1923,7 @@ L["TIP_AutoRepair"]              = "Repara automáticamente al abrir un vendor.\
 L["CB_ERROR_HIDE"]               = "Ocultar Errores en Combate";
 L["TIP_ErrorHideInCombat"]       = "Oculta los mensajes de error rojos durante combate.\nLos muestra de nuevo al salir de combate.";
 
--- Timers de Arena
+
 L["HEADER_ARENA_TIMERS"]         = "|cffFFD100Timers de Arena|r";
 L["CB_DALARAN_PIPE"]             = "Timer de la Cascada de Dalaran";
 L["TIP_ArenaDalaranPipeTimer"]   = "Muestra un icono con cuenta regresiva de 10s antes de que la cascada de la Arena de Dalaran tire a los jugadores de la tuber\195\173a.";
@@ -1934,14 +1934,14 @@ L["TIP_ArenaEndTimer"]           = "Muestra cu\195\161nto falta para que la aren
 L["ARENA_END_PREFIX"]            = "Arena: ";
 L["TIMERS_TEST_HINT"]            = "Modo test de timers activado/desactivado. Manten\195\169 Alt y arrastr\195\161 para moverlos.";
 
--- Texto de Barras de Acci\195\179n
+
 L["HEADER_BAR_TEXT"]             = "|cffFFD100Texto de Barras|r";
 L["CB_HIDE_KEYBIND"]             = "Ocultar Texto de Bindeos";
 L["TIP_HideKeybindText"]         = "Oculta el texto de las teclas en los botones de las barras de acci\195\179n.";
 L["CB_HIDE_MACRO"]               = "Ocultar Nombres de Macros";
 L["TIP_HideMacroText"]           = "Oculta el nombre de las macros en los botones de las barras de acci\195\179n.";
 
--- Subpesta\195\177as de Frames
+
 L["BTN_RESET_SCALES"]            = "Restablecer todas las escalas";
 L["BTN_RESET_FRAMES"]            = "Reiniciar escalas y posiciones";
 L["BTN_RESET_POSITIONS"]         = "Restablecer posiciones";
@@ -1954,7 +1954,7 @@ L["HEADER_PVE"]                  = "PvE";
 L["DESC_PVE"]                    = "Marcos de boss y opciones de bandas.";
 L["PARTY_3V3_NOTE"]              = "El modo 3v3 y el movimiento individual est\195\161n en la subpesta\195\177a Posiciones.";
 
--- Mover todo
+
 L["MOVE_RESET_DONE"]             = "Todos los marcos volvieron a su posici\195\179n por defecto.";
 L["MOVE_HELP_ALL"]               = "desbloquear todo";
 L["MOVE_HELP_FRAMES"]            = "solo los marcos de unidad";
@@ -1987,7 +1987,7 @@ L["MOVE_OFF"]                    = "Modo mover DESACTIVADO - posiciones guardada
 L["MOVE_RESET"]                  = "Posiciones y escalas de vuelta a las de f\195\161brica.";
 L["MOVE_COMBAT_BLOCK"]           = "Las barras de acci\195\179n no se pueden mover en combate.";
 
--- Minimapa
+
 L["MOD_MINIMAP_TOGGLE"]          = "Ocultar Iconos del Minimapa";
 L["MOD_MINIMAP_TOGGLE_DESC"]     = "Boton en la esquina del minimapa que oculta o muestra los iconos de addon.";
 L["MINIMAP_TOGGLE_TITLE"]        = "Iconos del Minimapa";
@@ -1999,7 +1999,7 @@ L["BTN_MODULE_MOVE"]             = "Mover";
 L["BTN_MODULE_LOCK"]             = "Bloquear";
 L["BTN_MODULE_TOGGLE"]           = "Alternar";
 
--- Modulos nuevos
+
 L["MOD_ARROWCOUNT"]              = "Contador de Flechas / Balas";
 L["MOD_DUNGEONROLES"]            = "Roles del buscador de mazmorras";
 L["MOD_DUNGEONROLES_DESC"]       = "Mientras estas en la cola, muestra tanque, sanador y 3 dps, y enciende los puestos que ya estan cubiertos. Alt + arrastrar para moverlo.";
@@ -2046,7 +2046,7 @@ L["MOD_CLASSOUTLINE_DESC"]       = "Agrega un anillo del color de la clase alred
 L["SLIDER_OUTLINE_SIZE"]         = "Tama\195\177o del anillo";
 L["SWING_USE_GLOBAL"]            = "Mover todo esta activo: arrastr\195\161 la caja azul desde ahi.";
 
--- Barras
+
 L["SUBTAB_GEN_UI"]               = "Interfaz";
 L["SUBTAB_GEN_BARS"]             = "Barras";
 L["CB_HIDE_BAR_TEXTURES"]        = "Ocultar Texturas de las Barras";
@@ -2054,7 +2054,7 @@ L["TIP_HideBarTextures"]         = "Oculta las texturas decorativas de la barra 
 L["CB_BUTTON_RANGE"]             = "Button Range";
 L["TIP_ButtonRange"]             = "Pinta de rojo los botones cuando el objetivo est\195\161 fuera de alcance.";
 
--- Subpesta\195\177as
+
 L["SUBTAB_ARENA_FRAMES"]         = "Frames";
 L["SUBTAB_ARENA_TIMERS"]         = "Tiempos";
 L["SUBTAB_ARENA_MODULES"]        = "Opciones";
@@ -2065,7 +2065,7 @@ L["CB_ARENA_TOT"]                = "Activar Target of Target";
 L["TIP_ArenaToT"]                = "Muestra el objetivo actual de cada enemigo en arena.";
 L["TIMERS_MOVE_NOTE"]            = "Us\195\161 /nuftimers para mostrar los timers y Alt + arrastrar para moverlos.";
 
--- Color de Nombres
+
 L["HEADER_NAME_COLOR"]           = "|cffFFD100Color de Nombres|r";
 L["NAME_COLOR_DEFAULT"]          = "Default";
 L["NAME_COLOR_WHITE"]            = "Blanco";
@@ -2083,7 +2083,7 @@ L["NAME_BORDER_THICK"]           = "Contorno grueso";
 L["NAME_BORDER_SHADOW"]          = "Como el texto de vida/man\195\161";
 L["TIP_UnitNameColorMode"]       = "Color de los nombres en los marcos de Player, Target, Focus, Party y Arena.\n\nDefault: colores de Blizzard\nBlanco: todos los nombres en blanco\nClase: nombres con el color de la clase\n\nVolver a Default puede requerir /reload.";
 
--- Chat
+
 L["HEADER_CHAT"]                 = "|cffFFD100Chat|r";
 L["CB_CHAT_COPY"]                = "Copiar Texto del Chat";
 L["TIP_ChatCopyEnabled"]         = "Doble click en la pesta\195\177a del chat abre una vista copiable del historial.\nUs\195\161 Ctrl+A / Ctrl+C, Escape para cerrar.\nTambi\195\169n con /nufcopy.";
@@ -2092,13 +2092,13 @@ L["TIP_ChatClickableURLs"]       = "Convierte las URLs escritas en el chat en li
 L["CHATCOPY_DISABLED"]           = "La copia del chat est\195\161 desactivada en las opciones.";
 L["URL_POPUP_TEXT"]              = "Copi\195\161 el link (Ctrl+C):";
 
--- Module collapse
+
 L["MODULE_EXPAND"]               = "Click para expandir opciones";
 L["MODULE_COLLAPSE"]             = "Click para colapsar opciones";
 L["COLLAPSE_ICON_EXPAND"]        = "[>]";
 L["COLLAPSE_ICON_COLLAPSE"]      = "[v]";
 
--- Tab 6 - About
+
 L["HEADER_ABOUT"]                = "|cffFFD100Acerca de|r";
 L["ABOUT_ADDON_NAME"]            = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["ABOUT_DESCRIPTION"]           = "Un addon de interfaz enfocado en PVP para WoW WotLK 3.3.5a.\nArena frames custom, tracking de trinkets, modo espejo,\nbarras de vida por clase, y posicionamiento optimizado\ndiseñado para arena competitivo.";
@@ -2115,7 +2115,7 @@ L["ABOUT_CONTACT_LABEL"]         = "|cffFFAA00Discord:|r";
 L["ABOUT_CONTACT_LINK"]          = "https://discord.gg/p3sqeram";
 L["ABOUT_COPY_HINT"]             = "|cffAAAAAA(Click para seleccionar, Ctrl+C para copiar)|r";
 
--- === MINIMAP BUTTON ===
+
 L["MINIMAP_TITLE"]               = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["MINIMAP_LEFT_CLICK"]          = "|cffFFFFFFClick Izquierdo:|r Abrir Opciones";
 L["MINIMAP_RIGHT_CLICK"]         = "|cffFFFFFFClick Derecho:|r Toggle Arena Mover";
@@ -2123,7 +2123,7 @@ L["MINIMAP_CTRL_CLICK"]          = "|cffFFFFFFCtrl + Click:|r Mover todo";
 L["MINIMAP_SHIFT_CLICK"]         = "|cffFFFFFFShift + Click:|r Recargar UI";
 L["MINIMAP_DRAG"]                = "|cffFFFFFFArrastrar:|r Mover icono";
 
--- === UNIFY ACTION BARS MODULE ===
+
 L["MOD_UAB_NAME"]          = "Unificar Barras de Acción";
 L["MOD_UAB_DESC"]          = "Reposiciona y limpia los elementos de la barra de acción.";
 L["MOD_UAB_DISABLED"]      = "|cffFFD100NUF:|r Unify Action Bars desactivado.";
@@ -2132,7 +2132,7 @@ L["CB_UNIFY_ACTIONBARS"]   = "Unificar Barras de Acción";
 L["TIP_UnifyActionBars"]   = "Reposiciona y limpia los elementos de la barra de acción:\nbolsas, micro menú, barra de mascota, posturas y botones de paginado.";
 
 
--- === LISTA DE COMANDOS (/nuf help) ===
+
 L["CMDLIST_GENERAL"] = "General";
 L["CMDLIST_NUF"] = "Abrir el panel de opciones";
 L["CMDLIST_NUF_HELP"] = "Esta lista";
@@ -2189,7 +2189,7 @@ L["KKBORDER_STYLE"] = "Arte del borde:";
 L["MOD_KKBORDER"] = "Borde Kkthnx";
 L["MOD_KKBORDER_DESC"] = "Borde fino y sombra exterior alrededor de barras, micromen\195\186, bolsas, marcos y auras. Arte de KkthnxUI (MIT). Convive con Lorti UI: Lorti ti\195\177e, este delinea.";
 
--- === ARENA: OJO / DR / DOTS ===
+
 L["CB_SHADOW_SIGHT"]             = "Timer de la Vista Sombr\195\173a (icono del ojo)";
 L["TIP_ShadowSightTimer"]        = "Muestra el icono del ojo (Vista Sombr\195\173a) con la cuenta hasta que aparece en la arena (90 s despu\195\169s de abrirse las puertas).\n\nProbalo con /script K_TestShadowSight()";
 L["HEADER_ARENA_TRACKING"]       = "Seguimiento de enemigos";
@@ -2270,4 +2270,4 @@ L["HEADER_ARENA_PETS"]           = "Mascotas";
 L["PET_STYLE_FLAT_ONLY"]         = "El estilo de mascota solo se aplica con el estilo de arena Flat.";
 L["TIP_ArenaPetFrameShow"]       = "Solo para el modo Test: muestra una mascota debajo de cada marco de prueba para verla y moverla (Shift+Alt+arrastrar). En una arena de verdad las mascotas aparecen solas.";
 
-end -- isSpanish
+end

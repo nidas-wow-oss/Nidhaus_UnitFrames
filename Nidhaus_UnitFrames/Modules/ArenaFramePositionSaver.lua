@@ -44,16 +44,16 @@ K.SaveArenaPositionToDB = function() SaveAnchorToDB(); end
 K.ForceRestoreArenaPosition = function() end
 K.UpdateArenaScale = function(scale)
 	if type(scale) ~= "number" or scale <= 0 or scale > 3 then return; end
-	-- FIX: No interferir durante test mode — ArenaMover controla la escala
+
 	if K._testModeActive then return; end
-	-- ArenaMover la llama en cada ARENA_OPPONENT_UPDATE, tambien en combate.
+
 	if K.AfterCombat("UpdateArenaScale", function() K.UpdateArenaScale(scale); end) then return; end
-	-- Escalar el container de Blizzard.
-	-- En arena real: ArenaEnemyFrames es hijo de NidhausArenaEnemyFrames, y los
-	-- ArenaEnemyFrame1-5 son hijos de ArenaEnemyFrames. Escalar ArenaEnemyFrames
-	-- cascadea automáticamente a todos sus hijos (herencia parent→child).
-	-- NOTA: NidhausArenaEnemyFrames es solo un anchor posicional y NO debe ser escalado,
-	-- porque escalar ambos causaría efectiveScale = scale × scale (doble escala).
+
+
+
+
+
+
 	if ArenaEnemyFrames then
 		ArenaEnemyFrames:SetScale(scale);
 	end
@@ -61,7 +61,7 @@ end
 K.UpdateArenaPosition = function(point, relName, relPoint, x, y)
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.positions then NidhausUnitFramesDB.positions = {}; end
-	-- FIX: Formato con nombres, consistente con ArenaMover y FrameDragger
+
 	NidhausUnitFramesDB.positions["NidhausArenaAnchor"] = {
 		point = point,
 		relativeTo = relName,

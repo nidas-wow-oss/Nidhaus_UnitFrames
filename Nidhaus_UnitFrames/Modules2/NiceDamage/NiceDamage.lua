@@ -1,19 +1,19 @@
--- ============================================================
---  NiceDamage - Module for Nidhaus UnitFrames
---  v3.1 - Integrated as NUF Module (Modules2)
---         Dual Font Selector: Damage + Heals/Auras
--- ============================================================
+
+
+
+
+
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
 local ADDON_PATH   = "Interface\\AddOns\\" .. AddOnName .. "\\Modules2\\NiceDamage\\";
 local DEFAULT_FONT = "Fonts\\FRIZQT__.TTF";
 
--- flags: bandera de SetFont. Vacio es sin contorno, "OUTLINE" con contorno
--- fino. Solo pesa en la fuente de curaciones y auras (CombatTextFont, que
--- es un objeto de fuente de verdad). El numero de da�o flotante sale de la
--- global DAMAGE_TEXT_FONT, que es una RUTA pelada: el cliente le pone el
--- contorno el solo y no hay donde elegirlo.
+
+
+
+
+
 local fontList = {
 	{ name = "Default WoW",       file = nil               },
 	{ name = "Pepsi",             file = "font.ttf"        },
@@ -28,12 +28,12 @@ local fontList = {
 	{ name = "Prototype Outline", file = "Prototype.ttf",  flags = "OUTLINE" },
 };
 
--- Estado
+
 local dmgFontIndex  = 2;
 local healFontIndex = 1;
 local moduleActive  = false;
 
--- ── Helpers ──────────────────────────────────────────────────
+
 local function GetFontPath(index)
 	local data = fontList[index];
 	if data and data.file then
@@ -42,17 +42,17 @@ local function GetFontPath(index)
 	return DEFAULT_FONT;
 end
 
--- Sin bandera propia se respeta la que ya traia el objeto de fuente, para
--- no cambiarle el contorno a nadie que no lo haya pedido.
+
+
 local function GetFontFlags(index, fallback)
 	local data = fontList[index];
 	if data and data.flags ~= nil then return data.flags; end
 	return fallback;
 end
 
--- La lista se publica por si otro archivo del addon la necesita. Este
--- archivo siempre se carga: que el modulo este apagado apaga su
--- comportamiento, no su archivo.
+
+
+
 K.NUF_Fonts     = fontList;
 K.NUF_FontPath  = GetFontPath;
 K.NUF_FontFlags = GetFontFlags;
@@ -67,10 +67,10 @@ local function SafeSetFont(fontObj, path, size, flags)
 	return true;
 end
 
--- ── Font validation ──────────────────────────────────────────
--- WoW caches DAMAGE_TEXT_FONT at startup. If the path points to a
--- missing/invalid file, floating damage text becomes INVISIBLE.
--- We validate by attempting SetFont on a hidden test FontString.
+
+
+
+
 local _testFontString;
 local function IsFontValid(path)
 	if not path or path == DEFAULT_FONT then return true; end
@@ -83,8 +83,8 @@ local function IsFontValid(path)
 	return ok;
 end
 
--- ── SavedVariables ───────────────────────────────────────────
--- (Must be defined BEFORE ApplyDamageFont which references SaveChoice)
+
+
 local function SaveChoice()
 	NiceDamageDB = NiceDamageDB or {};
 	NiceDamageDB.dmgFont  = dmgFontIndex;
@@ -105,16 +105,16 @@ local function LoadChoice()
 	if healFontIndex < 1 or healFontIndex > #fontList then healFontIndex = 1; end
 end
 
--- ── Aplicar fuentes ──────────────────────────────────────────
+
 local function ApplyDamageFont()
 	local path = GetFontPath(dmgFontIndex);
-	-- FIX: Validate font before setting global. If invalid, fall back to default
-	-- and reset index to prevent permanent invisible damage text.
+
+
 	if IsFontValid(path) then
 		DAMAGE_TEXT_FONT = path;
 	else
 		DAMAGE_TEXT_FONT = DEFAULT_FONT;
-		dmgFontIndex = 1; -- reset to Default WoW
+		dmgFontIndex = 1;
 		SaveChoice();
 	end
 end
@@ -133,7 +133,7 @@ local function ApplyAll()
 	ApplyHealFont();
 end
 
--- ── Menu ─────────────────────────────────────────────────────
+
 local menuFrame;
 local ROW_HEIGHT = 28;
 local BTN_SIZE   = 22;
@@ -205,8 +205,8 @@ local function BuildMenu()
 		label:SetWidth(PANEL_W - 80);
 		label:SetJustifyH("LEFT");
 		if fontData.file then
-			-- La muestra se dibuja con la bandera de la entrada, asi la
-			-- version con contorno se distingue de la que no lo tiene.
+
+
 			local ok = label:SetFont(ADDON_PATH .. fontData.file, 13,
 				fontData.flags or "");
 			if not ok then label:SetFontObject(GameFontNormal); end
@@ -214,7 +214,7 @@ local function BuildMenu()
 		label:SetText(fontData.name);
 		row.label = label;
 
-		-- Boton [D]
+
 		local btnD = CreateFrame("Button", nil, menuFrame);
 		btnD:SetWidth(BTN_SIZE); btnD:SetHeight(BTN_SIZE);
 		btnD:SetPoint("TOPRIGHT", menuFrame, "TOPRIGHT", -34, rowY - 2);
@@ -237,7 +237,7 @@ local function BuildMenu()
 		end);
 		btnD:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 
-		-- Boton [H]
+
 		local btnH = CreateFrame("Button", nil, menuFrame);
 		btnH:SetWidth(BTN_SIZE); btnH:SetHeight(BTN_SIZE);
 		btnH:SetPoint("TOPRIGHT", menuFrame, "TOPRIGHT", -10, rowY - 2);
@@ -330,10 +330,10 @@ local function ToggleMenu()
 	end
 end
 
--- Export para acceso desde slash command
+
 K.ToggleNiceDamageMenu = ToggleMenu;
 
--- ── createUI: botón "Open Font Selector" en tab Modules ─────
+
 local function NiceDamage_CreateUI(parent, yOffset, mainCheck)
 	local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate");
 	btn:SetPoint("TOPLEFT", 36, yOffset - 4);
@@ -342,10 +342,10 @@ local function NiceDamage_CreateUI(parent, yOffset, mainCheck)
 	btn:SetScript("OnClick", function()
 		ToggleMenu();
 	end);
-	return 30; -- height used
+	return 30;
 end
 
--- ── Enable / Disable ─────────────────────────────────────────
+
 local function NiceDamage_Enable()
 	moduleActive = true;
 	LoadChoice();
@@ -362,7 +362,7 @@ local function NiceDamage_Disable()
 	end
 end
 
--- ── Register Module ──────────────────────────────────────────
+
 K.RegisterModule("NiceDamage", {
 	name      = "NiceDamage",
 	desc      = "Dual font selector: one font for damage, another for heals/auras. /nd to open.",
@@ -372,18 +372,18 @@ K.RegisterModule("NiceDamage", {
 	createUI  = NiceDamage_CreateUI,
 });
 
--- ── Eventos ──────────────────────────────────────────────────
--- FIX: Set DAMAGE_TEXT_FONT as early as possible (ADDON_LOADED).
--- WoW reads this global to create font objects — if we wait until
--- PLAYER_LOGIN (when modules init), it may be too late and damage
--- text won't render until client restart.
--- PLAYER_ENTERING_WORLD: re-apply heal font on zone changes.
+
+
+
+
+
+
 local eventFrame = CreateFrame("Frame");
 eventFrame:RegisterEvent("ADDON_LOADED");
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
 	if event == "ADDON_LOADED" and arg1 == AddOnName then
-		-- Load saved choice and set DAMAGE_TEXT_FONT immediately
+
 		LoadChoice();
 		local path = GetFontPath(dmgFontIndex);
 		if IsFontValid(path) then
@@ -397,7 +397,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
 	end
 end);
 
--- ── Slash commands ───────────────────────────────────────────
+
 SLASH_NICEDAMAGE1 = "/nicedamage";
 SLASH_NICEDAMAGE2 = "/nd";
 SlashCmdList["NICEDAMAGE"] = function(msg)

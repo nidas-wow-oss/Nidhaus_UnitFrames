@@ -1,22 +1,22 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- SideBarHover.lua
--- Muestra las barras LATERALES (MultiBarLeft / MultiBarRight) solo
--- cuando el mouse esta encima. El resto del tiempo quedan invisibles.
---
--- Idea tomada del modulo ActionBars de KPack ("Hover Mode").
---
--- NOTA: se usa MouseIsOver en un ticker y no OnEnter/OnLeave porque los
--- botones hijos se comen esos eventos del contenedor: con OnEnter la barra
--- parpadearia al pasar de un boton a otro.
---
--- El alpha 0 NO bloquea los clicks: los botones siguen funcionando aunque
--- no se vean (igual que en el addon original).
---
--- Rendimiento: el ticker SOLO corre con la opcion activada, y a 10 Hz.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local BARS = { "MultiBarLeft", "MultiBarRight" };
 
@@ -44,18 +44,18 @@ ticker:SetScript("OnUpdate", function(self, elapsed)
 	end
 end);
 
--- Prende / apaga el modo hover.
+
 function K.ApplySideBarHover()
 	if C.SideBarsHover then
 		acc = 0;
 		ticker:Show();
 	else
 		ticker:Hide();
-		SetBarsAlpha(1);   -- al apagar, siempre visibles otra vez
+		SetBarsAlpha(1);
 	end
 end
 
--- Al entrar al mundo aplicamos el estado guardado.
+
 local ev = CreateFrame("Frame");
 ev:RegisterEvent("PLAYER_ENTERING_WORLD");
 ev:SetScript("OnEvent", function()

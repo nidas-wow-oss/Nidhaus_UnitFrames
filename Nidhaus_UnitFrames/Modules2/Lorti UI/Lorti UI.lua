@@ -1,6 +1,6 @@
 local AddOnName, ns = ...
 local K = ns[1]
-local L = ns[3]   -- tabla de traducciones
+local L = ns[3]
 
 local cfg = CreateFrame("Frame")
 local kill = function() end
@@ -12,21 +12,21 @@ local function SubOpt(key)
 	return C[key]
 end
 
--- =============================================
--- EL TINTE, PARA QUE LO USEN LOS ESTILOS DE NUF
---
--- Lorti oscurece los marcos con SetVertexColor sobre la textura que trae
--- Blizzard. Pero los estilos Compact del grupo y de arena REEMPLAZAN esa
--- textura y le ponen su propio color (blanco neutro), asi que le pisaban
--- el tinte y Lorti parecia no aplicarse en esos modos.
---
--- En vez de que cada estilo copie los numeros, los pide aca. Si Lorti esta
--- apagado — el modulo o esa parte suya — devuelve nil y el estilo usa su
--- color de siempre.
---
---   grupo  0.05  (casi negro, es el valor de Lorti)
---   arena  0.10  (un punto mas claro, tambien de Lorti)
--- =============================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function K.LortiTint(key)
 	if K.IsModuleEnabled and not K.IsModuleEnabled("LortiUI") then return nil; end
 	if not SubOpt(key) then return nil; end
@@ -34,24 +34,24 @@ function K.LortiTint(key)
 	return 0.05, 0.05, 0.05;
 end
 
--- =============================================
--- TEÑIR UNA TEXTURA
---
--- Un solo camino: el mismo SetVertexColor que Lorti le aplica al arte de
--- Blizzard. Devuelve true si tiño y false si Lorti esta apagado, para que
--- el llamador sepa si tiene que reponer el blanco.
---
--- NOTA PARA EL FUTURO: hubo un intento de desaturar la textura antes de
--- oscurecerla, partiendo de que multiplicar un arte "de color" daba un
--- tono raro. Medi las texturas y NO ES ASI: Light promedia R93 G89 B70,
--- Dark R28 G27 B21 y las de pw R111 G106 B87 — grises calidos, sin nada
--- de verde. Multiplicarlas por 0.05 da negro, no otro color.
---
--- Ademas SetDesaturated devuelve nil cuando la textura no lo soporta, y
--- dar eso por bueno terminaba ACLARANDO el marco en vez de oscurecerlo:
--- fue lo que rompio el grupo. Si algun dia vuelve a hacer falta, tiene
--- que mirarse ese valor de retorno.
--- =============================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function K.ApplyLortiTint(tex, key)
 	if not tex then return false; end
 	local r, g, b = K.LortiTint(key);
@@ -63,19 +63,19 @@ function K.ApplyLortiTint(tex, key)
 	return true;
 end
 
--- Compatibilidad WoW 3.3.5: Show/Hide en cualquier objeto de UI
+
 local function SafeShow(obj) if obj and obj.Show then obj:Show() end end
 local function SafeHide(obj) if obj and obj.Hide then obj:Hide() end end
 
--- =============================================
--- PLAYER / TARGET / FOCUS
--- =============================================
+
+
+
 
 local function ApplyDarkPlayerTargetFocusTextures()
-	-- El marco de hielo del mago queda afuera. Es un skin propio, con su
-	-- paleta; oscurecerlo lo apaga y deja de ser de hielo. PlayerFrame.lua
-	-- ya se encarga de devolverle el blanco en cada reaplicacion, asi que
-	-- destildar Icy repone el tinte sin necesidad de /reload.
+
+
+
+
 	local skipPlayer = K.IcyPlayerFrameOn and K.IcyPlayerFrameOn();
 
 	for _, v in pairs({
@@ -118,9 +118,9 @@ local function InitPlayerTargetFocus()
 	end
 end
 
--- =============================================
--- PARTY
--- =============================================
+
+
+
 
 local function ApplyDarkPartyTextures()
 	for _, v in pairs({
@@ -142,24 +142,24 @@ local function InitParty()
 	ApplyDarkPartyTextures()
 end
 
--- =============================================
--- ARENA
--- =============================================
+
+
+
 
 local function ApplyDarkArenaTextures()
 	for i = 1, 5 do
 		local tex = _G["ArenaEnemyFrame"..i.."Texture"]
 		if tex then tex:SetVertexColor(0.1, 0.1, 0.1) end
 
-		-- LAS MASCOTAS TAMBIEN.
-		--
-		-- Lorti solo oscurecia el marco del enemigo y se olvidaba del de su
-		-- mascota, que es un marco chico aparte con su propia textura. En
-		-- arena quedaba el jugador oscuro y al lado su felguard o su gargola
-		-- con el marco dorado de Blizzard, cantando.
-		--
-		-- En el grupo si las contemplaba (mira ApplyDarkPartyTextures), asi
-		-- que era un olvido y no una decision.
+
+
+
+
+
+
+
+
+
 		local petTex = _G["ArenaEnemyFrame"..i.."PetFrameTexture"]
 		if petTex then petTex:SetVertexColor(0.1, 0.1, 0.1) end
 	end
@@ -182,9 +182,9 @@ local function InitArena()
 	end
 end
 
--- =============================================
--- ACTION BARS
--- =============================================
+
+
+
 
 local function InitActionBars()
 	if not SubOpt("LortiUI_ActionBars") then return end
@@ -204,23 +204,23 @@ local function InitActionBars()
 	end
 end
 
--- =============================================
--- MINIMAP
--- =============================================
+
+
+
 
 local function InitMinimap()
 	if not SubOpt("LortiUI_Minimap") then return end
 	local ok, err = pcall(function()
-		-- EL BORDE YA NO SE PINTA ACA.
-		--
-		-- Lo dibuja MinimapStyle como el estilo "Lorti UI" del desplegable
-		-- de borde (redondo y cuadrado, en caliente y reversible). Esta
-		-- casilla es el espejo de ese estilo: ver K.SyncLortiMinimap.
-		--
-		-- Tampoco se fuerzan a mostrar los botones de zoom y el del mapa
-		-- del mundo: los decide Interface > Minimap > Decorations, y
-		-- forzarlos aca les ganaba a "Hide Zoom Buttons" / "Hide World Map"
-		-- segun quien corriera ultimo.
+
+
+
+
+
+
+
+
+
+
 		if MiniMapTracking then
 			MiniMapTracking:Show()
 			MiniMapTracking.Show = kill
@@ -249,9 +249,9 @@ local function InitMinimap()
 	end
 end
 
--- =============================================
--- MAIN INIT
--- =============================================
+
+
+
 
 local function Init()
 	if initialized then return end
@@ -272,9 +272,9 @@ local function Init()
 	end
 end
 
--- =============================================
--- Config
--- =============================================
+
+
+
 cfg.textures = {
 	normal         = "Interface\\AddOns\\Nidhaus_UnitFrames\\Modules2\\Lorti UI\\media\\gloss",
 	flash          = "Interface\\AddOns\\Nidhaus_UnitFrames\\Modules2\\Lorti UI\\media\\flash",
@@ -304,21 +304,21 @@ cfg.cooldown  = { spacing=0 }
 cfg.font      = "Fonts\\FRIZQT__.TTF"
 ns.cfg = cfg
 
--- =============================================
--- SUB-OPTION UI (inyectada en el tab Modules)
--- API: createUI(container, yOffset, parentCheckbox) -> subUIHeight
--- =============================================
+
+
+
+
 local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 	local C = ns[2]
 
-	-- Wrapper frame para todas las sub-opciones (se muestra/oculta como grupo)
+
 	local wrapper = CreateFrame("Frame", nil, container)
 	wrapper:SetPoint("TOPLEFT", 0, yOffset)
 	wrapper:SetWidth(container:GetWidth() or 540)
 
 	local localY = 0
 
-	-- Separador visual
+
 	local sep = wrapper:CreateTexture(nil, "ARTWORK")
 	sep:SetHeight(1)
 	sep:SetPoint("TOPLEFT", 36, localY + 4)
@@ -357,14 +357,14 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 			lbl:SetFontObject("GameFontHighlight")
 		end
 
-		-- Si la sub-opción nunca fue tocada (nil), inicializar como true
+
 		if C[opt.key] == nil then
 			C[opt.key] = true
 			if NidhausUnitFramesDB then NidhausUnitFramesDB[opt.key] = true end
 		end
 		cb:SetChecked(C[opt.key] ~= false)
 
-		-- El minimapa se aplica en el momento: sin el cartel de /reload.
+
 		local tipText = opt.live and opt.tip or (opt.tip .. "\n\n|cffFFAA00⚠ Requires /reload|r")
 		cb:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -376,11 +376,11 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		cb:SetScript("OnClick", function(self)
 			local checked = self:GetChecked() == 1 or self:GetChecked() == true
 			K.SaveConfig(opt.key, checked)
-			-- ESPEJO DEL BORDE DEL MINIMAPA.
-			--
-			-- Antes solo guardaba la casilla: el desplegable de borde no se
-			-- enteraba y no cambiaba nada hasta un /reload. Ahora tildar pone
-			-- el borde "Lorti UI" y destildar vuelve a "Default", en el acto.
+
+
+
+
+
 			if opt.key == "LortiUI_Minimap" then
 				local cur = (K.GetMinimapBorderStyle and K.GetMinimapBorderStyle()) or C.MinimapBorderStyle
 				if checked then
@@ -400,21 +400,21 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 	local subUIHeight = math.abs(localY)
 	wrapper:SetHeight(subUIHeight)
 
-	-- RE-SINCRONIZAR LAS CASILLAS CON C.
-	--
-	-- LortiUI_Minimap tiene DOS duenos: esta casilla y el desplegable de
-	-- borde del minimapa (Interface > Minimap > Border style = "Lorti").
-	-- Cuando lo cambiabas desde el desplegable, el valor en C si cambiaba,
-	-- pero el tilde de aca se quedaba con el estado viejo hasta cerrar y
-	-- reabrir el panel: parecia que no se habia guardado.
-	--
-	-- El panel ya llamaba a K.RefreshLortiSubOptions para esto, solo que
-	-- la funcion no estaba definida en ningun archivo. Al estar la llamada
-	-- dentro de un "if K.X then" no daba error, simplemente no pasaba nada.
-	--
-	-- Se define aca adentro a proposito: necesita ver subOptions y
-	-- subCheckboxes, que son locales de esta funcion. C es el unico dueno
-	-- del valor; esto solo vuelve a leerlo.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	function K.RefreshLortiSubOptions()
 		for i = 1, #subOptions do
 			local cb = subCheckboxes[i]
@@ -422,20 +422,20 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		end
 	end
 
-	-- Mostrar/ocultar según estado del módulo
+
 	local function SetSubsVisible(show)
 		if show then
 			wrapper:Show()
-			-- Al activar, asegurar que todos los checkboxes estén checkeados por default
+
 			for _, cb in ipairs(subCheckboxes) do
 				if cb:GetChecked() == nil or cb:GetChecked() == false then
-					-- Si nunca fue tocado, activar por default
+
 				end
 			end
 		else
 			wrapper:Hide()
 		end
-		-- Ajustar altura del contenedor y re-calcular scroll
+
 		local ct = K._moduleContainers and K._moduleContainers["LortiUI"]
 		if ct then
 			if show then
@@ -447,7 +447,7 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		end
 	end
 
-	-- Hook del checkbox padre
+
 	if parentCheckbox then
 		local origClick = parentCheckbox:GetScript("OnClick")
 		parentCheckbox:SetScript("OnClick", function(self)
@@ -457,7 +457,7 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		end)
 	end
 
-	-- Estado inicial
+
 	if K.IsModuleEnabled("LortiUI") then
 		wrapper:Show()
 	else
@@ -467,9 +467,9 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 	return subUIHeight
 end
 
--- =============================================
--- REGISTRO
--- =============================================
+
+
+
 K.RegisterModule("LortiUI", {
 	name     = "Lorti UI",
 	desc     = "Darkens frame textures and styles action bars. Requires /reload to apply changes.",

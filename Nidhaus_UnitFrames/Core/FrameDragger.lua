@@ -1,25 +1,25 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- FrameDragger.lua
---
--- Permite arrastrar frames cuando:
---   SetPositions = true  AND  LockPositions = false
---
--- Modos de Party:
---   PartyIndividualMove = false → mueve todo el grupo junto
---   PartyIndividualMove = true  → mueve cada party frame por separado
---
--- Controles:
---   Shift + Alt + Click Izquierdo = Arrastrar frame
---   La posición se guarda automáticamente al soltar
+
+
+
+
+
+
+
+
+
+
+
+
 
 local isInitialized = false;
 local dragOverlays = {};
 local draggers = {};
 local isShowingOverlays = false;
 
--- POSITION SAVING / LOADING
+
 
 local function EnsurePositionsTable()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
@@ -55,23 +55,23 @@ function K.ClearSavedPosition(key)
 	end
 end
 
--- RESET POSITIONS & SCALE
+
 
 function K.ResetPositionsAndScale()
 	EnsurePositionsTable();
 
-	-- Clear ALL saved positions
+
 	NidhausUnitFramesDB.positions = {};
 
-	-- FIX: Setear valores directamente en vez de llamar SaveConfig 7 veces
-	-- (cada SaveConfig dispara CONFIG_CHANGED → callbacks se ejecutan 7 veces)
-	-- LOS NUMEROS SALEN DE ConfigManager, NO DE ACA.
-	--
-	-- Esta tabla era la segunda de tres copias de los valores de fabrica, y
-	-- las tres estaban desincronizadas (a esta le faltaban PetFrameScale y
-	-- las dos separaciones). Ahora es solo la LISTA de que se resetea; el
-	-- valor lo da GetConfigDefault, que lee el unico lugar donde estan
-	-- definidos de verdad.
+
+
+
+
+
+
+
+
+
 	local scaleKeys = {
 		"PlayerFrameScale", "TargetFrameScale",
 		"FocusScale", "FocusSpellBarScale",
@@ -89,9 +89,9 @@ function K.ResetPositionsAndScale()
 		end
 	end
 
-	-- Aplicar las escalas que se acaban de poner, no numeros escritos a
-	-- mano: aca decia 1.0 y 1.2 fijos, una segunda copia de los valores de
-	-- fabrica que se desincroniza sola si cambian los de ConfigManager.
+
+
+
 	if NidhausPlayerFrame then NidhausPlayerFrame:SetScale(C.PlayerFrameScale or 1.0); end
 	if TargetFrame then TargetFrame:SetScale(C.TargetFrameScale or 1.0); end
 	if FocusFrame then FocusFrame:SetScale(C.FocusScale or 1.0); end
@@ -101,18 +101,18 @@ function K.ResetPositionsAndScale()
 		if pf then pf:SetScale(C.PartyFrameScale or 1.0); end
 	end
 
-	-- Posiciones de fabrica: de Settings.lua, la unica copia. Se copian
-	-- las tablas para que mover un marco despues no modifique el original.
+
+
 	for key, pt in pairs(K.DEFAULT_FRAME_POINTS or {}) do
 		C[key] = { unpack(pt) };
 	end
 
-	-- FIX: Si PartyMode3v3 está activo, re-aplicar 3v3 en vez de reparentar al container
-	-- (la pregunta va por K.Is3v3Active: sin SetPositions, ver Partymode3v3.lua)
+
+
 	if K.Is3v3Active and K.Is3v3Active() and K.Apply3v3PartyMode then
 		K.Apply3v3PartyMode();
 	else
-		-- Re-anchor party frames to the container (undo individual move)
+
 		if K.NidhausPartyFrame then
 			for i = 1, MAX_PARTY_MEMBERS do
 				local pf = _G["PartyMemberFrame"..i];
@@ -134,8 +134,8 @@ function K.ResetPositionsAndScale()
 		end
 	end
 
-	-- Force re-position ALL frames using the reset C[] values
-	-- Player frame
+
+
 	if NidhausPlayerFrame and C.SetPositions then
 		NidhausPlayerFrame:ClearAllPoints();
 		NidhausPlayerFrame:SetPoint(unpack(C.PlayerFramePoint));
@@ -146,7 +146,7 @@ function K.ResetPositionsAndScale()
 		NidhausPlayerFrame:SetPoint(pos.point, relFrame, pos.relativePoint, pos.x, pos.y);
 	end
 
-	-- Target frame
+
 	if TargetFrame then
 		TargetFrame:ClearAllPoints();
 		if C.SetPositions then
@@ -158,7 +158,7 @@ function K.ResetPositionsAndScale()
 		end
 	end
 
-	-- Party container (skip if 3v3 is active, since 3v3 parents frames to UIParent directly)
+
 	if not (K.Is3v3Active and K.Is3v3Active()) then
 		if K.NidhausPartyFrame and C.SetPositions and C.PartyMemberFramePoint then
 			K.NidhausPartyFrame:ClearAllPoints();
@@ -166,46 +166,46 @@ function K.ResetPositionsAndScale()
 		end
 	end
 
-	-- Boss container
+
 	if K.NidhausBossFrame and C.SetPositions and C.BossTargetFramePoint then
 		K.NidhausBossFrame:ClearAllPoints();
 		K.NidhausBossFrame:SetPoint(unpack(C.BossTargetFramePoint));
 	end
 
-	-- Arena anchor
+
 	local arenaAnchor = _G["NidhausArenaEnemyFrames"];
 	if arenaAnchor and C.ArenaFramePoint then
 		arenaAnchor:ClearAllPoints();
 		arenaAnchor:SetPoint(unpack(C.ArenaFramePoint));
 	end
 
-	-- Reset arena mover position too
+
 	if NidhausUnitFramesDB.ArenaMover then
 		NidhausUnitFramesDB.ArenaMover = { IsShown = false };
 	end
 
-	-- Reset castbar and trinket saved positions
+
 	NidhausUnitFramesDB.CastBarPositions = nil;
 	NidhausUnitFramesDB.TrinketPositions = nil;
-	-- y las filas de DR y DoT (vuelven a su lugar automatico)
+
 	NidhausUnitFramesDB.ArenaDRPositions = nil;
 	if K.RefreshArenaDRLayout then K.RefreshArenaDRLayout(); end
 	NidhausUnitFramesDB.ArenaDoTPositions = nil;
 	if K.RefreshArenaDoTLayout then K.RefreshArenaDoTLayout(); end
 
-	-- Hide arena mover if shown
+
 	if K.ForceHideArenaMover then
 		K.ForceHideArenaMover();
 	end
 
-	-- NOTA: No se necesita disparar CONFIG_CHANGED aquí porque esta función
-	-- ya aplica todos los cambios de escala y posición directamente arriba.
-	-- (Antes cada SaveConfig disparaba CONFIG_CHANGED 7 veces innecesariamente)
 
-	-- Sin cartel: el reset se ve solo.
+
+
+
+
 end
 
--- DRAG OVERLAY
+
 
 local function CreateDragOverlay(frame, key, displayName, customWidth, customHeight)
 	local overlay = CreateFrame("Frame", "NidhausDragOverlay_"..key, frame);
@@ -239,7 +239,7 @@ local function CreateDragOverlay(frame, key, displayName, customWidth, customHei
 	return overlay;
 end
 
--- MAKE FRAME DRAGGABLE
+
 
 local function MakeFrameDraggable(frame, key, displayName, customWidth, customHeight)
 	if not frame then return; end
@@ -271,14 +271,14 @@ local function MakeFrameDraggable(frame, key, displayName, customWidth, customHe
 	dragger:SetScript("OnDragStart", function(self)
 		if not C.SetPositions or C.LockPositions then return; end
 		if IsShiftKeyDown() and IsAltKeyDown() then
-			-- Para party frames individuales, re-anclar a UIParent antes de mover
+
 			if self.isPartyIndividual then
 				local pf = self.targetFrame;
-				-- FIX: Solo re-parentar si aún no es hijo de UIParent (en 3v3 ya lo es)
+
 				if pf:GetParent() ~= UIParent then
 					pf:SetParent(UIParent);
 				end
-				-- Obtener posición actual en pantalla para no saltar
+
 				local scale = pf:GetEffectiveScale();
 				local left, bottom = pf:GetLeft(), pf:GetBottom();
 				if left and bottom then
@@ -293,7 +293,7 @@ local function MakeFrameDraggable(frame, key, displayName, customWidth, customHe
 		end
 	end);
 
-	-- Función compartida para detener el drag
+
 	local function StopDragging(self)
 		if not self.isDragging then return; end
 		self.targetFrame:StopMovingOrSizing();
@@ -312,19 +312,19 @@ local function MakeFrameDraggable(frame, key, displayName, customWidth, customHe
 
 	dragger:SetScript("OnDragStop", function(self) StopDragging(self); end);
 
-	-- Fallback: OnMouseUp también detiene el drag (fix party individual bug)
+
 	dragger:SetScript("OnMouseUp", function(self, button)
 		if button == "LeftButton" then StopDragging(self); end
 	end);
 
 	dragger:SetScript("OnClick", function(self, button)
-		-- Passthrough
+
 	end);
 
 	return dragger;
 end
 
--- ENABLE / DISABLE DRAG MODE
+
 
 local function EnableDragMode()
 	local individualMode = C.PartyIndividualMove;
@@ -333,7 +333,7 @@ local function EnableDragMode()
 		local isPartyGroup = (key == "PartyMemberFrame");
 		local isPartyIndiv = key:find("^PartyMemberFrame%d$");
 
-		-- Mostrar según el modo
+
 		local shouldShow = true;
 		if isPartyGroup and individualMode then shouldShow = false; end
 		if isPartyIndiv and not individualMode then shouldShow = false; end
@@ -368,8 +368,8 @@ local function DisableDragMode()
 	end
 end
 
--- FIX: Usar MODIFIER_STATE_CHANGED en vez de OnUpdate cada frame
--- (antes corría ~60-144 veces/segundo constantemente)
+
+
 local pollFrame = CreateFrame("Frame");
 pollFrame:RegisterEvent("MODIFIER_STATE_CHANGED");
 
@@ -385,15 +385,15 @@ pollFrame:SetScript("OnEvent", function(self, event, key, state)
 
 	local shiftAlt = IsShiftKeyDown() and IsAltKeyDown();
 
-	-- CON "MOVE EVERYTHING" ENCENDIDO, Shift+Alt NO HACE NADA.
-	--
-	-- Son DOS sistemas de arrastre distintos. Si se encienden a la vez,
-	-- apretar Shift+Alt en medio de un arrastre de barras prendia este de
-	-- golpe, y al soltarlo guardaba posiciones por los dos lados y
-	-- disparaba un reacomodo: la barra de auras se iba de un salto hacia
-	-- abajo, de vuelta a la pila.
-	--
-	-- Mientras el otro modo manda, este se queda quieto.
+
+
+
+
+
+
+
+
+
 	if K.IsGlobalUnlocked and K.IsGlobalUnlocked() then
 		shiftAlt = false;
 	end
@@ -401,7 +401,7 @@ pollFrame:SetScript("OnEvent", function(self, event, key, state)
 		EnableDragMode();
 		isShowingOverlays = true;
 	elseif not shiftAlt and isShowingOverlays then
-		-- Force-stop any stuck drag first
+
 		for _, dragger in pairs(draggers) do
 			if dragger.isDragging then
 				dragger.targetFrame:StopMovingOrSizing();
@@ -416,14 +416,14 @@ pollFrame:SetScript("OnEvent", function(self, event, key, state)
 	end
 end);
 
--- APPLY INDIVIDUAL PARTY POSITIONS (from saved)
 
--- Los party frames son PROTEGIDOS: SetPoint, SetParent, ClearAllPoints y
--- SetScale sobre ellos estan vedados en combate. Estas dos funciones se
--- llaman al entrar al mundo, y si zonas a una arena que ya arranco (o te
--- pegan en la puerta) el cliente corta cada llamada y los marcos quedan
--- donde Blizzard los dejo, no donde vos los pusiste. Eso no es ruido: es
--- la UI descolocada toda la pelea. Se postergan al fin del combate.
+
+
+
+
+
+
+
 local posPending, groupPending = false, false;
 
 local posWatcher = CreateFrame("Frame");
@@ -449,10 +449,10 @@ function K.ApplyIndividualPartyPositions()
 		if pf then
 			local key = "PartyMemberFrame"..i;
 
-			-- FIX: Si 3v3 está activo, cargar posición guardada si existe.
-			-- Si no hay posición guardada, dejar el frame donde 3v3 lo puso
-			-- (ya está parented a UIParent con la escala correcta).
-			-- NO limpiar posiciones — eso borraba posiciones arrastradas.
+
+
+
+
 			if K.Is3v3Active and K.Is3v3Active() then
 				local saved = K.GetSavedPosition(key);
 				if saved then
@@ -461,13 +461,13 @@ function K.ApplyIndividualPartyPositions()
 					local relFrame = _G[saved.relativeTo] or UIParent;
 					pf:SetPoint(saved.point, relFrame, saved.relativePoint, saved.x, saved.y);
 				end
-				-- If no saved position: frame is already at 3v3 position, don't touch
+
 			else
-				-- Modo normal (sin 3v3): comportamiento original
+
 				local saved = K.GetSavedPosition(key);
 
 				if not saved then
-					-- No hay posición guardada → capturar posición actual en pantalla
+
 					local scale = pf:GetEffectiveScale();
 					local left, top = pf:GetLeft(), pf:GetTop();
 					if left and top then
@@ -490,12 +490,12 @@ function K.ApplyIndividualPartyPositions()
 	end
 end
 
--- Restaurar party frames al contenedor grupal
+
 function K.RestorePartyToGroup()
 	if InCombatLockdown() then groupPending = true; return; end
 	groupPending = false;
 
-	-- FIX: Si 3v3 está activo, restaurar a posiciones 3v3 en vez del container
+
 	if K.Is3v3Active and K.Is3v3Active() and K.Apply3v3PartyMode then
 		K.Apply3v3PartyMode();
 		return;
@@ -503,7 +503,7 @@ function K.RestorePartyToGroup()
 
 	if not K.NidhausPartyFrame then return; end
 
-	-- FIX #6: Asegurar posición del container antes de reparentar
+
 	local containerSaved = K.GetSavedPosition("PartyMemberFrame");
 	if containerSaved then
 		K.NidhausPartyFrame:ClearAllPoints();
@@ -532,30 +532,30 @@ function K.RestorePartyToGroup()
 	end
 end
 
--- INITIALIZATION
+
 
 local function InitFrameDragger()
 	if isInitialized then return; end
 
-	-- PlayerFrame
+
 	local playerFrame = _G["NidhausPlayerFrame"];
 	if playerFrame then
 		draggers["PlayerFrame"] = MakeFrameDraggable(playerFrame, "PlayerFrame", "Player");
 	end
 
-	-- TargetFrame
+
 	if TargetFrame then
 		draggers["TargetFrame"] = MakeFrameDraggable(TargetFrame, "TargetFrame", "Target");
 	end
 
-	-- PartyFrame grupo (contenedor)
+
 	if K.NidhausPartyFrame then
 		draggers["PartyMemberFrame"] = MakeFrameDraggable(
 			K.NidhausPartyFrame, "PartyMemberFrame", "Party (All)", 130, 400
 		);
 	end
 
-	-- PartyFrames individuales
+
 	for i = 1, MAX_PARTY_MEMBERS do
 		local pf = _G["PartyMemberFrame"..i];
 		if pf then
@@ -566,7 +566,7 @@ local function InitFrameDragger()
 		end
 	end
 
-	-- Si hay posiciones individuales guardadas, aplicarlas
+
 	if C.PartyIndividualMove then
 		K.ApplyIndividualPartyPositions();
 	end
@@ -583,7 +583,7 @@ function K.RegisterPartyDragger()
 	end
 end
 
--- Inicializar después de que todos los frames estén creados
+
 K.RegisterConfigEvent("CONFIG_LOADED", function()
 	local delayFrame = CreateFrame("Frame");
 	delayFrame:SetScript("OnUpdate", function(self)

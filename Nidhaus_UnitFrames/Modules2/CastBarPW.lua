@@ -1,71 +1,71 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- CastBarPW.lua  -  barra de casteo estilo pw_unitframes
---
--- Port de pw_unitframes/modules/elements/castbar.lua para las tres
--- barras que maneja Blizzard: jugador, objetivo y foco.
---
--- Lo que trae pw y no tiene la barra de Blizzard:
---
---   1. Borde, destello y escudo propios (las tres .blp de pw).
---   2. EL ICONO DEL HECHIZO. Blizzard lo crea pero lo deja oculto;
---      pw lo muestra, lo recorta al 8-92% para sacarle el marco
---      feo, y le dibuja un borde encima.
---   3. En la barra del JUGADOR el icono no va al costado: va
---      flotando ARRIBA del centro de la barra, y el borde y el
---      destello suben para acompanarlo.
---   4. Fuente propia (PTSans-Bold) para el nombre del hechizo.
---
--- Numeros, tal cual salen de pw:
---
---     icono jugador          30 x 30
---     icono objetivo/foco    22 x 22
---     recorte                .08 .92 .08 .92
---     borde del icono        3 px hacia afuera, color .2 gris
---     tinte del borde        .22 gris  (config.global.framecolors)
---     escala                 1.2
---     borde y destello       TOP  0, 26   (solo jugador)
---     icono                  CENTER sobre el TOP de la barra, 0, 24
---     nombre del hechizo     CENTER 0, 1
---
--- =========================================================
--- LA FOTO ORIGINAL SE SACA UNA SOLA VEZ
---
--- Igual que en PartyFramePW, SquareStyle y BarBaseline. Si se
--- recapturara al re-aplicar, la segunda vez guardariamos como
--- "original" lo que pusimos nosotros y apagar el checkbox dejaria
--- la barra a medio camino. Es el error que mas veces aparecio en
--- este addon, asi que va explicito.
--- =========================================================
--- CONVIVENCIA CON LO QUE YA HABIA
---
---   * Modules/CastingBarTimer.lua reposiciona el NOMBRE del hechizo
---     para dejarle lugar al contador "(1.5s)". Si lo centraramos
---     encima quedarian los dos textos pisados, asi que despues de
---     estilar volvemos a llamar a K.ToggleCastingTimers y que el
---     contador reacomode lo suyo.
---
---   * Lorti UI tambien tiñe los bordes de estas tres barras (a .05).
---     Los dos escriben el mismo VertexColor: gana el ultimo. Como
---     nosotros re-aplicamos en cada casteo, con los dos prendidos
---     manda este modulo.
---
---   * LA ESCALA TIENE UN DUEÑO POR BARRA, y este modulo respeta los
---     que ya existian:
---         jugador   -> Move Everything (globalPos.CastBar.scale,
---                      Ctrl + rueda). El slider de aca escribe ahi
---                      via K.SetGlobalFrameScale, no con SetScale.
---         foco      -> C.FocusSpellBarScale, que ya tiene su propio
---                      slider en Frames. NO se toca desde aca.
---         objetivo  -> no tenia dueño, asi que lo toma este modulo.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local MEDIA = "Interface\\AddOns\\" .. AddOnName .. "\\Media\\pw\\";
 
--- Las .blp van SIN extension, las .tga CON extension. Poner ".blp"
--- hace que la ruta no resuelva y la textura salga como un manchon.
+
+
 local TEX_BORDER = MEDIA .. "UI-CastingBar-Border-Small";
 local TEX_FLASH  = MEDIA .. "UI-CastingBar-Flash-Small";
 local TEX_SHIELD = MEDIA .. "UI-CastingBar-Small-Shield";
@@ -73,48 +73,48 @@ local TEX_ICONBD = MEDIA .. "Border.tga";
 local FONT_PATH  = MEDIA .. "PTSans-Bold.ttf";
 
 local TEXCOORD    = { 0.08, 0.92, 0.08, 0.92 };
-local BORDER_TINT = { 0.22, 0.22, 0.22, 1 };   -- config.global.framecolors
-local ICON_TINT   = { 0.20, 0.20, 0.20, 1 };   -- config.global.castbar_icon_color
+local BORDER_TINT = { 0.22, 0.22, 0.22, 1 };
+local ICON_TINT   = { 0.20, 0.20, 0.20, 1 };
 
--- Tamaños de pw. El slider mueve el del jugador; los otros dos van
--- en proporcion para que el conjunto se vea parejo.
+
+
 local ICON_PLAYER = 30;
 local ICON_OTHER  = 22;
 
 local BARS = { "CastingBarFrame", "TargetFrameSpellBar", "FocusFrameSpellBar" };
 
--- ---------------------------------------------------------
--- Que barras toca el modulo
---
--- Antes eran las tres o ninguna. Ahora objetivo y foco tienen cada una su
--- checkbox en el panel, asi se puede dejar el estilo custom solo en la
--- propia (que es la que se mira todo el tiempo) y que las otras dos sigan
--- con el aspecto de Blizzard.
---
--- La del jugador no lleva checkbox: es la razon de ser del modulo, si no
--- la queres apagas "Custom Cast Bar" y listo.
---
--- El ~= false es a proposito: si la clave todavia no existe en la config
--- de alguien que ya tenia el addon, cuenta como encendida y no le cambia
--- el aspecto de golpe al actualizar.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function BarAllowed(barName)
 	if barName == "TargetFrameSpellBar" then return C.CastBarPWTarget ~= false; end
 	if barName == "FocusFrameSpellBar"  then return C.CastBarPWFocus  ~= false; end
 	return true;
 end
 
-local orig    = {};      -- [nombre de la barra] = foto de fabrica
+local orig    = {};
 local applied = false;
-local castFont;          -- objeto de fuente, creado una sola vez
+local castFont;
 
--- Escala que tenia la barra del JUGADOR antes de que este modulo se la
--- tomara prestada. Ver DEVOLVER LA ESCALA, mas abajo.
+
+
 local playerScaleBefore;
 
--- ---------------------------------------------------------
--- Utilidades de foto / restauracion
--- ---------------------------------------------------------
+
+
+
 local function SnapPoints(region)
 	if not region then return nil; end
 	local n = region:GetNumPoints() or 0;
@@ -138,13 +138,13 @@ local function Sub(barName, suffix)
 	return _G[barName .. suffix];
 end
 
--- ---------------------------------------------------------
--- Fuente
---
--- CreateFont es global y permanente: se crea una vez y se
--- reutiliza. Si el .ttf no estuviera, SetFont devuelve false y
--- dejamos la fuente sin tocar en vez de romper el texto.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
 local function CastFont()
 	if castFont then return castFont; end
 	local f = CreateFont("NUF_pwCastFont");
@@ -159,9 +159,9 @@ local function CastFont()
 	return f;
 end
 
--- ---------------------------------------------------------
--- Foto de fabrica
--- ---------------------------------------------------------
+
+
+
 local function Capture(barName)
 	if orig[barName] then return; end
 	local bar = _G[barName];
@@ -211,14 +211,14 @@ local function Capture(barName)
 	orig[barName] = snap;
 end
 
--- ---------------------------------------------------------
--- Borde del icono
---
--- pw lo crea colgando de la BARRA (no del icono) para que quede en
--- la capa de arriba. Lo creamos una sola vez y despues solo lo
--- mostramos u ocultamos: crear texturas en cada casteo seria basura
--- que nunca se libera.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
+
 local function IconBorder(bar, icon)
 	if bar.nufCastIconBorder then return bar.nufCastIconBorder; end
 	local t = bar:CreateTexture(nil, "OVERLAY");
@@ -230,9 +230,9 @@ local function IconBorder(bar, icon)
 	return t;
 end
 
--- ---------------------------------------------------------
--- Aplicar a una barra
--- ---------------------------------------------------------
+
+
+
 local function StyleOne(barName)
 	local bar = _G[barName];
 	if not bar then return; end
@@ -241,7 +241,7 @@ local function StyleOne(barName)
 
 	local isPlayer = (barName == "CastingBarFrame");
 
-	-- ── Borde, destello y escudo ──
+
 	local border = Sub(barName, "Border");
 	if border then
 		border:SetTexture(TEX_BORDER);
@@ -251,16 +251,16 @@ local function StyleOne(barName)
 			border:SetVertexColor(unpack(BORDER_TINT));
 		end
 
-		-- UN SOLO DUE�O POR TEXTURA.
-		--
-		-- Si el addon Nidhaus Frame Borders esta dibujando su filo fino
-		-- alrededor de esta barra, es el quien esconde el marco de
-		-- Blizzard. Sin esta consulta la peleabamos: aca se retextura y se
-		-- le sube el alfa, alla se esconde, y quedaba prendiendose y
-		-- apagandose segun cual corriera ultimo.
-		--
-		-- Es una global y no una funcion nuestra porque el otro es un addon
-		-- aparte; si no esta instalado, esto no hace nada.
+
+
+
+
+
+
+
+
+
+
 		if NidhausFrameBorders_HidesRegion
 			and NidhausFrameBorders_HidesRegion(border) then
 			border:Hide();
@@ -270,9 +270,9 @@ local function StyleOne(barName)
 	local flash = Sub(barName, "Flash");
 	if flash then
 		flash:SetTexture(TEX_FLASH);
-		-- Mismo trato que el borde: si lo tapa el otro addon, es suyo. Y se
-		-- lo deja SIN TEXTURA, no escondido: el OnUpdate de la barra lo
-		-- vuelve a mostrar en cada cuadro del fogonazo.
+
+
+
 		if NidhausFrameBorders_HidesRegion
 			and NidhausFrameBorders_HidesRegion(flash) then
 			flash:SetTexture(nil);
@@ -282,14 +282,14 @@ local function StyleOne(barName)
 	local shield = Sub(barName, "BorderShield");
 	if shield then shield:SetTexture(TEX_SHIELD); end
 
-	-- ── Nombre del hechizo ──
+
 	local text = Sub(barName, "Text");
 	if text then
 		local f = CastFont();
 		if f then text:SetFontObject(f); end
 	end
 
-	-- ── Icono del hechizo ──
+
 	local icon = Sub(barName, "Icon");
 	if icon then
 		if C.CastBarPWIcon == false then
@@ -298,8 +298,8 @@ local function StyleOne(barName)
 		else
 			local base = C.CastBarPWIconSize;
 			if type(base) ~= "number" then base = ICON_PLAYER; end
-			-- El del objetivo y el del foco van proporcionalmente mas
-			-- chicos, igual que en pw (30 contra 22).
+
+
 			local size = isPlayer and base or (base * ICON_OTHER / ICON_PLAYER);
 
 			icon:Show();
@@ -311,12 +311,12 @@ local function StyleOne(barName)
 		end
 	end
 
-	-- ── Lo que solo vale para la barra del jugador ──
-	--
-	-- Es la unica de las tres que es ancha y esta suelta en el medio
-	-- de la pantalla: pw le sube el marco y le pone el icono flotando
-	-- arriba del centro. En objetivo y foco el icono se queda donde
-	-- lo dejo Blizzard, pegado al costado.
+
+
+
+
+
+
 	if isPlayer then
 		if border then border:SetPoint("TOP", 0, 26); end
 		if flash  then flash:SetPoint("TOP", 0, 26);  end
@@ -331,9 +331,9 @@ local function StyleOne(barName)
 	end
 end
 
--- ---------------------------------------------------------
--- Restaurar una barra
--- ---------------------------------------------------------
+
+
+
 local function RestoreOne(barName)
 	local snap = orig[barName];
 	if not snap then return; end
@@ -372,46 +372,46 @@ local function RestoreOne(barName)
 			pcall(icon.SetTexCoord, icon, unpack(snap.icon.coord));
 		end
 		RestorePoints(icon, snap.icon.points);
-		-- Blizzard lo deja oculto en las tres barras. Volver a Hide es
-		-- lo que hace que apagar el checkbox se note de verdad.
+
+
 		if snap.icon.shown then icon:Show(); else icon:Hide(); end
 	end
 
 	if bar.nufCastIconBorder then bar.nufCastIconBorder:Hide(); end
 
-	-- Solo la del objetivo la puso este modulo, asi que solo esa la
-	-- devuelve. La del jugador es de Move Everything y la del foco es
-	-- de C.FocusSpellBarScale.
+
+
+
 	if barName == "TargetFrameSpellBar" then
 		pcall(bar.SetScale, bar, snap.scale or 1);
 	end
 end
 
--- ---------------------------------------------------------
--- Escala
---
--- Un solo dueño por valor:
---   jugador          -> Move Everything (globalPos.CastBar.scale)
---   objetivo y foco  -> este modulo
--- ---------------------------------------------------------
--- DEVOLVER LA ESCALA AL APAGAR
---
--- Aca estaba el bug: el modulo ESCRIBIA la escala de la barra del jugador
--- en un store que no es suyo (globalPos.CastBar, de Move Everything) y no
--- la devolvia nunca. Al destildar "Custom Cast Bar" volvia el arte de
--- Blizzard pero la barra se quedaba a 1.2, que es el numero de pw: barra
--- de Blizzard con tama�o de pw. Eso es el "se bugea el tama�o".
---
--- Quien toma prestado devuelve. Se guarda el valor que habia ANTES de la
--- primera aplicacion y se repone al apagar, por K.SetGlobalFrameScale para
--- que el frame, globalPos y el slider queden diciendo lo mismo. Escribir
--- SetScale a mano dejaria globalPos con 1.2 y el proximo login la volveria
--- a agrandar sola.
---
--- El caso raro: si el modulo ya venia encendido del login, lo que hay
--- guardado ES nuestro propio valor de la sesion pasada, no el del usuario.
--- No hay forma de distinguirlos, asi que en ese caso se devuelve 1, que es
--- el tama�o con el que Blizzard la dibuja.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function CapturePlayerScale(target)
 	if playerScaleBefore ~= nil then return; end
 	local v;
@@ -428,7 +428,7 @@ end
 
 local function ReleasePlayerScale()
 	local v = playerScaleBefore;
-	playerScaleBefore = nil;          -- la proxima vez se vuelve a medir
+	playerScaleBefore = nil;
 	if type(v) ~= "number" then return; end
 	if K.SetGlobalFrameScale and K.SetGlobalFrameScale("CastBar", v) then
 		return;
@@ -437,17 +437,17 @@ local function ReleasePlayerScale()
 	if bar then pcall(bar.SetScale, bar, v); end
 end
 
--- LA POSICION TAMBIEN ES DE MOVE EVERYTHING
---
--- CastingBarFrame es un frame "managed": Blizzard lo reacomoda solo cada
--- vez que cambia algo alrededor (UIParent_ManageFramePositions). Move
--- Everything lo saca de esa lista y le clava la posicion del usuario.
---
--- Prender o apagar el estilo custom cambia el alto util de la barra (el
--- icono flotante, el marco subido 26px), y eso alcanza para que Blizzard
--- la reacomode y la posicion del usuario se pierda hasta el /reload. Por
--- eso, en los dos sentidos del toggle, se le pide a Move Everything que
--- reponga LO SUYO. Un solo due�o, y el toggle no le compite.
+
+
+
+
+
+
+
+
+
+
+
 local function ReapplyPlayerPosition()
 	if K.RestoreGlobalPosition then
 		pcall(K.RestoreGlobalPosition, "CastBar");
@@ -458,9 +458,9 @@ function K.ApplyCastBarPWScale(value)
 	if type(value) ~= "number" then value = C.CastBarPWScale; end
 	if type(value) ~= "number" then return; end
 
-	-- Todo por _G, igual que en el resto del archivo. Da lo mismo en el
-	-- juego, pero mezclar las dos formas hace que un cambio en un lado
-	-- no se note en el otro.
+
+
+
 	local player = _G["CastingBarFrame"];
 	if K.SetGlobalFrameScale then
 		K.SetGlobalFrameScale("CastBar", value);
@@ -468,12 +468,12 @@ function K.ApplyCastBarPWScale(value)
 		pcall(player.SetScale, player, value);
 	end
 
-	-- El foco queda afuera a proposito: su escala es C.FocusSpellBarScale
-	-- y tiene slider propio en Frames. Pisarla desde aca haria que ese
-	-- slider dejara de funcionar sin que se entienda por que.
+
+
+
 	if not applied then return; end
-	-- Con el checkbox de objetivo apagado, su escala tampoco se toca: la
-	-- barra queda entera como la de Blizzard.
+
+
 	if not BarAllowed("TargetFrameSpellBar") then return; end
 	local target = _G["TargetFrameSpellBar"];
 	if target then
@@ -481,26 +481,26 @@ function K.ApplyCastBarPWScale(value)
 	end
 end
 
--- ---------------------------------------------------------
--- API publica
--- ---------------------------------------------------------
+
+
+
 function K.EnableCastBarPW()
 	applied = true;
-	-- Se recorren siempre las tres: las permitidas se estilizan y las que
-	-- el usuario acaba de destildar se devuelven a como venian. Si solo se
-	-- estilizara lo permitido, al destildar objetivo o foco la barra
-	-- quedaba con el estilo puesto hasta el proximo /reload.
+
+
+
+
 	for _, name in ipairs(BARS) do
 		if BarAllowed(name) then StyleOne(name); else RestoreOne(name); end
 	end
 
-	-- ANTES de escribirle la nuestra, no despues.
+
 	CapturePlayerScale(C.CastBarPWScale);
 	K.ApplyCastBarPWScale(C.CastBarPWScale);
 	ReapplyPlayerPosition();
 
-	-- Que el contador de segundos vuelva a acomodar el nombre del
-	-- hechizo: recien le centramos el texto encima.
+
+
 	if C.CastingTimers and K.ToggleCastingTimers then
 		K.ToggleCastingTimers(true);
 	end
@@ -531,15 +531,15 @@ function K.ApplyCastBarPW()
 	end
 end
 
--- ---------------------------------------------------------
--- Re-aplicar
---
--- Blizzard oculta y vuelve a mostrar estas barras en cada casteo, y
--- de paso le devuelve al icono su tamaño y su recorte. Enganchamos
--- el OnShow de cada barra en vez de una funcion global: son tres
--- HookScript sobre frames propios de Blizzard, sin riesgo de taint
--- y sin costo cuando el modulo esta apagado (la primera linea sale).
--- ---------------------------------------------------------
+
+
+
+
+
+
+
+
+
 local function HookBars()
 	for _, name in ipairs(BARS) do
 		local bar = _G[name];
@@ -553,25 +553,25 @@ local function HookBars()
 	end
 end
 
--- ---------------------------------------------------------
--- Arranque
---
--- FocusFrameSpellBar existe desde el inicio en 3.3.5a, pero por si
--- algun otro addon lo crea tarde reintentamos enganchar en cada
--- CONFIG_CHANGED: HookBars es idempotente.
--- ---------------------------------------------------------
--- ---------------------------------------------------------
--- ANOTARSE EN EL REARMADO
---
--- Rearmar la interfaz (alternar MiniBar/Unify, apretar reset) vuelve a
--- cero y aplica de nuevo. Su paso 2 repone globalPos, o sea la posicion y
--- la escala que el usuario le dio a esta barra con Move Everything. Lo que
--- NO repone es el ESTILO, porque el estilo no vive en ningun store: sin
--- esta linea, despues de un rearmado la barra se quedaba con el arte de
--- Blizzard hasta el casteo siguiente.
---
--- Anotarse es una linea. Olvidarse ya no se puede.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 if K.LayoutRegisterStore then
 	K.LayoutRegisterStore("CastBarPW", function()
 		K.ApplyCastBarPW();

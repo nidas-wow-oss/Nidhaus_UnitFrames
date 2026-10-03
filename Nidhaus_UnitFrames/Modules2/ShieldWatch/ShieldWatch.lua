@@ -1,41 +1,41 @@
 local AddOnName, ns = ...;
 local K, C, L_NUF = unpack(ns);
 
--- =========================================================
--- ShieldWatch.lua  (integrado a NUF)
--- Fuente: ShieldWatch 1.0
---
--- QUE HACE: barra con el porcentaje / absorcion restante de los
--- escudos magicos (Palabra de poder: escudo, Egida divina, Barrera de
--- hielo, Escudo de mana, barreras de fuego/escarcha/sombras, Escudo
--- sagrado, Sacrificio). Avisa cuando queda poco tiempo o poco absorbido.
---
--- CAMBIOS respecto del addon suelto:
---   * Se prende y apaga desde Addons > HUD. Con el modulo apagado no
---     registra COMBAT_LOG_EVENT_UNFILTERED, que es el evento caro.
---   * Sus opciones guardadas viven en la DB de NUF, no en una
---     SavedVariable propia (NUF no puede declarar la del addon suelto).
---   * El boton "Abrir" del panel y /shieldwatch options siguen llevando
---     a su ventana de opciones propia.
---
--- OJO con la tabla L de aca abajo: es la del ADDON, no la de NUF.
--- Por eso arriba renombre la de NUF a L_NUF, si no una pisaba a la otra.
--- =========================================================
 
--- ============================================================================
--- ShieldWatch - Versión 1.0 con soporte para Español
--- ============================================================================
 
--- La SavedVariable original (Shieldwatch_Options) no se puede declarar
--- desde NUF, asi que se apunta a un sub-tabla de la DB del addon.
---
--- LOS VALORES POR DEFECTO SE COMPLETAN ACA, no en PLAYER_ENTERING_WORLD
--- como antes. El panel de opciones se dibuja cuando el usuario abre la
--- pestana, que puede ser antes o despues de ese evento: si los defaults
--- llegaran tarde, los controles arrancarian leyendo nil.
--- Declarada aca arriba a proposito: el comando /shieldwatch scale la usa
--- mucho antes de donde se define. Un local declarado despues no lo ve el
--- codigo escrito antes, se compila como acceso a global y lee nil.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local SW_RefreshScale
 
 local SW_DEFAULTS = {
@@ -59,7 +59,7 @@ local function SW_DB()
     return db
 end
 
--- VARIABLES GLOBALES
+
 local swModuleEnabled = false
 local shieldwatch_debugmsgs = false
 local shieldwatch_MyGUID = 0
@@ -74,21 +74,21 @@ local shieldwatch_enabled = true
 local shieldwatch_timewarn = false
 local shieldwatch_donetalentcheck = false
 
--- VERSIÓN DEL ADDON
+
 local ADDON_VERSION = 1.0
 
--- Detectar idioma del cliente
+
 local mylocale = GetLocale()
 
--- ============================================================================
--- LOCALIZACIÓN DE TEXTOS
--- ============================================================================
 
-local L = {} -- Tabla de localización
 
--- Configurar textos según idioma
+
+
+local L = {}
+
+
 if mylocale == "esES" or mylocale == "esMX" then
-    -- ESPAÑOL
+
     L.PWS = 'Palabra de poder: escudo'
     L.DA = 'Égida divina'
     L.IB = 'Barrera de hielo'
@@ -122,13 +122,13 @@ if mylocale == "esES" or mylocale == "esMX" then
     L.OPTSMALL = "Pequeño"
     L.OPTBIG = "Grande"
     
-    -- Patrones para tooltips en español
+
     L.TIPREAD = {
         [1] = { line = "4", pattern = "[aA]bsorbe%a* (%d+) p.- de daño" },
         [2] = { line = "3", pattern = "Absorbe de %d+ a (%d+) p.- de daño" }
     }
 else
-    -- INGLÉS (por defecto)
+
     L.PWS = 'Power Word: Shield'
     L.DA = 'Divine Aegis'
     L.IB = 'Ice Barrier'
@@ -162,36 +162,36 @@ else
     L.OPTSMALL = "Small"
     L.OPTBIG = "Big"
     
-    -- Patrones para tooltips en inglés
+
     L.TIPREAD = {
         [1] = { line = "4", pattern = "[aA]bsorb%a* (%d+) [^d]?%a*%s?damage" },
         [2] = { line = "3", pattern = "Absorbs %d+ to (%d+) damage" }
     }
 end
 
--- ============================================================================
--- TABLA DE HECHIZOS
--- ============================================================================
+
+
+
 
 local SPELLS = {
-    -- Priest
+
     [L.PWS] = {tip=1, bonus=2, slot=5, icon='Spell_Holy_PowerWordShield', r=.7, g=.7, b=.3, tb={[1]=0,[2]=0,[3]=0}},
     [L.DA] = {slot=3, icon='Spell_Holy_DevineAegis', r=.7, g=.7, b=.6, tb={[4]=0}},
-    -- Mage
+
     [L.IB] = {tip=1, bonus=5, slot=2, icon='Spell_Ice_Lament', r=0, g=.75, b=.75, gb=0},
     [L.MANA_SHIELD] = {tip=1, bonus=7, slot=6, icon='Spell_Shadow_DetectLesserInvisibility', r=.9, g=0, b=.9},
     [L.FIRE_WARD] = {tip=1, bonus=3, slot=4, school=4, icon='Spell_Fire_FireArmor', r=.9, g=0, b=0},
     [L.FROST_WARD] = {tip=1, bonus=5, slot=4, school=16, icon='Spell_Frost_FrostWard', r=.5, g=.5, b=1},
-    -- Warlock
+
     [L.SACRIFICE] = {tip=1, slot=2, icon='Spell_Shadow_SacrificialShield', r=.5, g=.5, b=0},
     [L.SHADOW_WARD] = {tip=1, bonus=6, slot=4, school=32, icon='Spell_Shadow_AntiShadow', r=.6, g=0, b=.6},
-    -- Paladin
+
     [L.SACRED_SHIELD] = {tip=1, bonus=2, slot=1, icon='Ability_Paladin_BlessedMending', r=.8, g=.8, b=.2},
-    -- Herbalist
+
     [L.FEL_BLOSSOM] = {tip=2, slot=3, icon='INV_Misc_Herb_Felblossom', r=0, g=.5, b=0}
 }
 
--- Configuración de talentos
+
 local TALENT_CHECKS = {
     {tab=1, pos=2, name='Twin Disciplines', rankboost=0.01, spell=L.PWS},
     {tab=1, pos=9, name='Improved Power Word: Shield', rankboost=0.05, spell=L.PWS},
@@ -199,9 +199,9 @@ local TALENT_CHECKS = {
     {tab=1, pos=24, name='Divine Aegis', rankboost=0.1, spell=L.DA}
 }
 
--- ============================================================================
--- FUNCIONES DE UTILIDAD
--- ============================================================================
+
+
+
 
 local function Print(msg)
     DEFAULT_CHAT_FRAME:AddMessage("shieldwatch " .. msg, 0.7, 0.7, 1.0)
@@ -213,16 +213,16 @@ local function Debug(msg)
     end
 end
 
--- ============================================================================
--- FUNCIONES DE OPCIONES
--- ============================================================================
 
--- Rango del slider de escala. Es el mismo que ya aceptaba el comando
--- /shieldwatch scale, para que las dos vias coincidan.
+
+
+
+
+
 local SCALE_MIN, SCALE_MAX, SCALE_STEP = 0.3, 3.0, 0.05
 
--- Redondea al paso del slider. Sin esto GetValue devuelve cosas como
--- 1.2000000476837 y el numero de abajo queda ilegible.
+
+
 local function SW_RoundScale(v)
     v = tonumber(v) or 1
     v = floor(v / SCALE_STEP + 0.5) * SCALE_STEP
@@ -235,16 +235,16 @@ local function SW_FormatScale(v)
     return string.format("%.2f", v)
 end
 
--- LAS OPCIONES VIVEN EN EL PANEL DE NUF.
---
--- Antes eran un marco propio de 250 lineas de XML colgado del panel de
--- Interface de Blizzard: el unico modulo del addon que quedaba afuera de
--- /nufconfig. Y era justo el codigo que tildaba el cliente, asi que
--- mudarlo no es solo prolijidad, saca de encima la superficie donde
--- aparecio el bug.
---
--- Ahora son sub-opciones de la fila ShieldWatch en Addons, como Lorti UI.
--- Ver CreateShieldWatchSubUI mas abajo.
+
+
+
+
+
+
+
+
+
+
 local function SW_OpenPanel()
     if K.ToggleOptionsPanel then K.ToggleOptionsPanel() end
 end
@@ -295,13 +295,13 @@ function shieldwatch_InitDropDown()
     UIDropDownMenu_AddButton(info)
 end
 
--- ============================================================================
--- FUNCIONES PRINCIPALES
--- ============================================================================
+
+
+
 
 function shieldwatch_OnLoad(self)
-    -- Los eventos los engancha el modulo al prenderse (SW_SetEnabled).
-    -- Antes se registraba aca y corria aunque el usuario no lo quisiera.
+
+
     SLASH_shieldwatch1 = "/shieldwatch"
     SLASH_shieldwatch2 = "/swh"
     SlashCmdList["shieldwatch"] = function(msg)
@@ -315,9 +315,9 @@ function shieldwatch_OnLoad(self)
             if not scale or scale < SCALE_MIN or scale > SCALE_MAX then
                 Print(L.BADSCALE)
             else
-                -- Mismo redondeo que el slider: si no, escribir 1.234 por
-                -- comando dejaba un valor que el slider no puede representar
-                -- y al abrir las opciones saltaba solo al paso mas cercano.
+
+
+
                 scale = SW_RoundScale(scale)
                 shieldwatch_Frame:SetScale(scale)
                 shieldwatch_Options["scale"] = scale
@@ -364,9 +364,9 @@ function shieldwatch_checktalents()
     end
     
     if shieldwatch_myclass == "MAGE" then
-        -- SPELLS se indexa por NOMBRE localizado del hechizo. Si el nombre
-        -- no resuelve (cliente en otro idioma), SPELLS[L.IB] es nil y esto
-        -- reventaba. Mejor saltear el ajuste que romper.
+
+
+
         local ib = SPELLS[L.IB]
         if ib then
             ib.gb = 1
@@ -502,14 +502,14 @@ function shieldwatch_shieldup(spellid, spelldata, caster_GUID)
     end
 end
 
--- NUF: barra suave. En vez de saltar de golpe al nuevo %, guardamos un
--- valor objetivo y cada frame acercamos el valor visible. Da la sensacion
--- de que el escudo baja en tiempo real. Solo corre mientras el frame esta
--- visible (con escudo activo), asi que no cuesta nada en reposo.
+
+
+
+
 function shieldwatch_SetBarTarget(pct)
     local bar = shieldwatch_Bar
     bar._target = pct
-    if bar._current == nil then   -- primer valor tras un reset: sin animacion
+    if bar._current == nil then
         bar._current = pct
         bar:SetValue(pct)
     end
@@ -522,7 +522,7 @@ function shieldwatch_ResetBar()
 end
 
 function shieldwatch_onupdate(self, elapsed)
-    -- Deslizamiento del valor visible hacia el objetivo (cada frame).
+
     local bar = shieldwatch_Bar
     if not bar then return end
     if bar._current ~= nil and bar._target ~= nil and bar._current ~= bar._target then
@@ -537,18 +537,18 @@ function shieldwatch_onupdate(self, elapsed)
 
     shieldwatch_elapsed = shieldwatch_elapsed + elapsed
     if shieldwatch_elapsed > .25 then
-        -- ================= LA GUARDA QUE FALTABA =================
-        -- Aca antes se hacia directo:
-        --     shieldstore[shieldwatch_slotdisplayed].pendingdestroy
-        -- Con slotdisplayed en nil (o con la casilla ya vaciada) eso es
-        -- shieldstore[nil] -> nil, e indexar nil tira error. Como esto es
-        -- un OnUpdate, el error salia UNA VEZ POR FRAME: unos 60 por
-        -- segundo. Con la ventana de errores abriendose sin parar el
-        -- cliente parece colgado, y por eso el modulo quedo fuera del load.
-        --
-        -- El frame arranca oculto y OnUpdate no corre oculto, pero apenas
-        -- aparecia un escudo se mostraba y ya no se volvia a ocultar en
-        -- todos los caminos posibles.
+
+
+
+
+
+
+
+
+
+
+
+
         local slot = shieldwatch_slotdisplayed
         local data = slot and shieldstore[slot]
         if not data or not shieldwatch_Options then
@@ -629,8 +629,8 @@ function shieldwatch_shielddmg(amount, school)
 end
 
 function shieldwatch_update(slot)
-    -- Misma historia: se llama desde el OnUpdate, desde shieldup/shielddown
-    -- y desde su propia recursion, y la casilla puede estar vacia.
+
+
     if not slot or not shieldstore[slot] then
         shieldwatch_slotdisplayed = nil
         if shieldwatch_Frame then shieldwatch_Frame:Hide() end
@@ -677,14 +677,14 @@ end
 
 function shieldwatch_onevent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15)
     if event == 'COMBAT_LOG_EVENT_UNFILTERED' then
-        -- EL DESCARTE VA PRIMERO Y ES EL MAS BARATO.
-        --
-        -- Este evento salta cientos de veces por segundo en banda, y casi
-        -- ninguno es nuestro. Antes la primera condicion evaluada era
-        -- shieldwatch_Options["mdchannel"] ~= "OFF": una indexacion de tabla
-        -- global mas una comparacion de cadenas, en TODOS los eventos.
-        -- Ahora primero se compara el GUID, que es una sola comparacion, y
-        -- lo ajeno se va sin tocar la tabla.
+
+
+
+
+
+
+
+
         if arg6 ~= shieldwatch_MyGUID and arg3 ~= shieldwatch_MyGUID then
             return
         end
@@ -715,15 +715,15 @@ function shieldwatch_onevent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, ar
         end
         return
     elseif event == 'PLAYER_ENTERING_WORLD' then
-        -- Los valores por defecto ya los completa SW_DB(); aca solo se
-        -- toma la referencia y se anota la version.
+
+
         shieldwatch_Options = SW_DB()
         shieldwatch_Options["version"] = ADDON_VERSION
 
         shieldwatch_Frame:SetScale(tonumber(shieldwatch_Options["scale"]))
         
-        -- Sin aviso de arranque en el chat: el modulo se prende desde el
-        -- panel, el usuario ya sabe que lo activo.
+
+
         shieldwatch_MyGUID = UnitGUID("player")
         self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
         self:RegisterEvent("PLAYER_LEVEL_UP")
@@ -769,18 +769,18 @@ function shieldwatch_onevent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, ar
     end
 end
 
--- =========================================================
--- Registro del modulo en NUF
--- Vive en: Addons > HUD
--- =========================================================
+
+
+
+
 local function SW_SetEnabled(state)
     swModuleEnabled = state and true or false
     if not shieldwatch_Frame then return end
 
     if swModuleEnabled then
-        -- Si se prende a mitad de sesion, PLAYER_ENTERING_WORLD ya paso y
-        -- no va a volver a dispararse: hay que correr la inicializacion a
-        -- mano o shieldwatch_Options queda nil y revienta al primer escudo.
+
+
+
         if not shieldwatch_Options then
             shieldwatch_onevent(shieldwatch_Frame, "PLAYER_ENTERING_WORLD")
         end
@@ -790,21 +790,21 @@ local function SW_SetEnabled(state)
         shieldwatch_Frame:RegisterEvent("PLAYER_TALENT_UPDATE")
         shieldwatch_enabled = true
     else
-        -- COMBAT_LOG_EVENT_UNFILTERED dispara cientos de veces por segundo
-        -- en raid: con el modulo apagado no hay que dejarlo registrado.
+
+
         shieldwatch_Frame:UnregisterAllEvents()
         shieldwatch_enabled = false
         shieldwatch_Frame:Hide()
     end
 end
 
--- ---------------------------------------------------------
--- Sub-opciones en la pestana Addons
---
--- Mismo formato que Lorti UI: se despliegan debajo de la fila del modulo.
--- Los valores no viven en C sino en la sub-tabla propia (SW_DB), asi que
--- se guardan a mano en vez de con K.SaveConfig.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
 local function CreateShieldWatchSubUI(container, yOffset, parentCheckbox)
     local wrapper = CreateFrame("Frame", nil, container)
     wrapper:SetPoint("TOPLEFT", 0, yOffset)
@@ -919,7 +919,7 @@ local function CreateShieldWatchSubUI(container, yOffset, parentCheckbox)
             if shieldwatch_Frame then shieldwatch_Frame:SetScale(v) end
         end)
 
-    -- Para que /shieldwatch scale mueva tambien el slider.
+
     SW_RefreshScale = function(v)
         if scaleSlider then scaleSlider:SetValue(v) end
     end

@@ -1,26 +1,26 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- ArenaDalaranPipeTimer.lua
--- Temporizador de la cascada de la Arena de Dalaran (Warmane).
---
--- CICLO REAL (verificado contra la WeakAura de Warmane):
---   ciclo total = 70s, contado desde "The Arena battle has begun!"
---     0s  - 30s  -> fase A (30s)  : cuenta 30 -> 0
---     30s - 70s  -> fase B (40s)  : cuenta 40 -> 0
---   y vuelve a empezar. Se repite toda la arena.
---
--- Mover: Alt + click izquierdo y arrastrar.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
 
 local CYCLE_TOTAL = 70;
 local PHASE_A     = 30;
 local KEY         = "DalaranPipe";
 
--- ---------------------------------------------------------
--- Helpers
--- ---------------------------------------------------------
+
+
+
 local function IsArenaStartMessage(msg)
 	if not msg or msg == "" then return false; end
 	return string.find(msg, "battle in the arena has begun")
@@ -36,11 +36,11 @@ local function IsDalaranArena()
 	return string.find(zone, "Dalaran") ~= nil;
 end
 
--- ---------------------------------------------------------
--- Frame
--- ---------------------------------------------------------
+
+
+
 local frame = CreateFrame("Frame", "NUF_DalaranPipeTimer", UIParent);
--- Escala configurable desde el panel (registro central en ScaleAPI).
+
 if K.RegisterScalable then K.RegisterScalable("ArenaDalaranPipeTimer", frame, 1.0); end
 frame:SetSize(120, 42);
 frame:Hide();
@@ -54,20 +54,20 @@ frame.text = frame:CreateFontString(nil, "OVERLAY", "NumberFontNormalHuge");
 frame.text:SetPoint("TOP", frame.label, "BOTTOM", 0, -2);
 frame.text:SetTextHeight(24);
 
--- ---------------------------------------------------------
--- Posicion guardada / arrastre
--- ---------------------------------------------------------
+
+
+
 local function SavePosition()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.timerPos then NidhausUnitFramesDB.timerPos = {}; end
 	local point, _, relativePoint, x, y = frame:GetPoint();
-	-- SIN PUNTO NO SE GUARDA NADA.
-	--
-	-- Si el marco quedo sin anclaje (por ejemplo despues de un Reset del
-	-- Move Everything, que hace ClearAllPoints), GetPoint devuelve nil y
-	-- esto guardaba { point = nil, ... }, o sea UNA TABLA VACIA. Despues
-	-- RestorePosition la veia y llamaba a SetPoint con un punto nil:
-	-- ese era el error del timer.
+
+
+
+
+
+
+
 	if not point then
 		NidhausUnitFramesDB.timerPos[KEY] = nil;
 		return;
@@ -80,8 +80,8 @@ end
 local function RestorePosition()
 	local pos = NidhausUnitFramesDB and NidhausUnitFramesDB.timerPos and NidhausUnitFramesDB.timerPos[KEY];
 	frame:ClearAllPoints();
-	-- Se pide el PUNTO, no la tabla: una tabla vacia tambien es "verdadera"
-	-- en Lua, y con ella SetPoint reventaba.
+
+
 	if pos and pos.point then
 		frame:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y);
 	else
@@ -101,9 +101,9 @@ frame:SetScript("OnDragStop", function(self)
 	SavePosition();
 end);
 
--- ---------------------------------------------------------
--- Logica del ciclo
--- ---------------------------------------------------------
+
+
+
 local startTime = nil;
 local testMode  = false;
 local checkAcc  = 0;
@@ -120,7 +120,7 @@ end
 local function OnUpdate(self, elapsed)
 	if not startTime then Stop(); return; end
 
-	-- Salir si ya no estamos en arena (chequeo barato, 1x por segundo)
+
 	checkAcc = checkAcc + elapsed;
 	if checkAcc >= 1 then
 		checkAcc = 0;
@@ -140,7 +140,7 @@ local function OnUpdate(self, elapsed)
 
 	self.text:SetText(string.format("%d", math.floor(remaining)));
 
-	-- Amarillo mientras falta, rojo en los ultimos 5 segundos
+
 	if remaining <= 5 then
 		self.text:SetTextColor(1, 0.25, 0.25);
 		self.label:SetTextColor(1, 0.25, 0.25);

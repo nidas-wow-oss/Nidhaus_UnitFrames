@@ -1,14 +1,14 @@
--- Este archivo vive en Nidhaus_UnitFrames_Config, un addon aparte que se
--- carga SOLO cuando abris el panel (LoadOnDemand). Por eso no recibe el
--- namespace por "...", que es privado de cada addon: lo toma de la global
--- que publica el addon principal en Core/Init.lua.
+
+
+
+
 local ns = _G.NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- OptionsPanelExtra.lua
--- Tab 5: Profiles (Export/Import + Save/Load slots) + Extra Options
--- =========================================================
+
+
+
+
 
 local checkboxCount = 0;
 
@@ -56,11 +56,11 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset, tool
 	return cb;
 end
 
--- =========================================================
--- CreateModeSelector
--- Fila compacta de botones tipo "pill" para settings de texto.
--- Ocupa 24px de alto (vs ~50 de un dropdown).
--- =========================================================
+
+
+
+
+
 local function CreateModeSelector(parent, setting, options, xOffset, yOffset, tooltipText, onChange)
 	local btnW, btnH, gap = 76, 22, 4;
 	local buttons = {};
@@ -125,14 +125,14 @@ local function CreateModeSelector(parent, setting, options, xOffset, yOffset, to
 	return container;
 end
 
--- =========================================================
--- Import/Export Popup Frame
--- =========================================================
--- Hay DOS ventanas independientes, y tienen que seguir siendolo:
---   "Profile" -> configuracion del addon (K.ExportProfile)
---   "Slot"    -> barras, macros y bindeos del personaje (K.SlotExport)
--- Son cosas distintas y mezclarlas seria confuso, asi que cada una tiene su
--- propio frame cacheado por clave.
+
+
+
+
+
+
+
+
 local ioFrames = {};
 
 local function CreateImportExportFrame(key)
@@ -190,7 +190,7 @@ local function CreateImportExportFrame(key)
 	editBox:SetScript("OnEscapePressed", function(self) self:ClearFocus(); end);
 	scrollFrame:SetScrollChild(editBox);
 
-	-- FIX: Set minimum height so entire scroll area is clickable
+
 	local function UpdateEditBoxHeight()
 		local scrollH = scrollFrame:GetHeight() or 200;
 		local textH = editBox:GetHeight() or 0;
@@ -199,7 +199,7 @@ local function CreateImportExportFrame(key)
 	editBox:SetScript("OnTextChanged", function(self, userInput) UpdateEditBoxHeight(); end);
 	editBox:SetScript("OnShow", function(self) UpdateEditBoxHeight(); end);
 
-	-- FIX: Click on background area focuses editbox
+
 	scrollBG:EnableMouse(true);
 	scrollBG:SetScript("OnMouseDown", function() editBox:SetFocus(); end);
 
@@ -276,15 +276,15 @@ end
 
 
 
--- =========================================================
--- CHARACTER SETUP (barras / macros / bindeos)
---
--- OJO: esto NO son los perfiles de arriba. Los perfiles guardan la
--- configuracion del ADDON. Esto guarda lo del PERSONAJE: que hechizo hay en
--- cada casilla, las macros y las teclas. Son dos sistemas separados a
--- proposito, con su propio almacenamiento y su propia ventana.
--- =========================================================
-local slotStatus;   -- fontstring de feedback, se asigna al armar el panel
+
+
+
+
+
+
+
+
+local slotStatus;
 
 local function SlotSay(text, isError)
 	if not slotStatus then return; end
@@ -348,8 +348,8 @@ end
 
 K.OpenSlotProfiles = ShowSlotExport;
 
--- Los tres borrados, cada uno con su confirmacion. Todos hacen backup
--- automatico antes, asi que Deshacer siempre tiene a que volver.
+
+
 StaticPopupDialogs["NUF_SLOT_WIPEBARS"] = {
 	text = "%s", button1 = ACCEPT or "Accept", button2 = CANCEL or "Cancel",
 	timeout = 0, whileDead = 1, hideOnEscape = 1, preferredIndex = 3,
@@ -379,8 +379,8 @@ StaticPopupDialogs["NUF_SLOT_RESETBINDS"] = {
 	end,
 };
 
--- Cuenta lo que se va a perder, para que la confirmacion diga un numero
--- concreto en vez de un "todo" abstracto.
+
+
 local function CountSlots()
 	local n = 0;
 	for i = 1, 120 do if GetActionInfo(i) then n = n + 1; end end
@@ -392,15 +392,15 @@ local function CountMacros()
 	return (g or 0) + (c or 0);
 end
 
--- =========================================================
--- CHARACTER PROFILE SYSTEM
--- Cada personaje auto-guarda su config al login bajo
--- "Nombre - Reino [tipo]". El dropdown lista todos los
--- personajes que alguna vez usaron el addon.
--- =========================================================
 
--- La clave y el guardado viven ahora en el addon principal (ConfigManager),
--- que esta cargado siempre: aca el PLAYER_LOGIN nunca llegaba a correr.
+
+
+
+
+
+
+
+
 local function GetCurrentCharKey()
 	if K.GetCharProfileKey then return K.GetCharProfileKey(); end
 	return (UnitName("player") or "Unknown") .. " - " .. (GetRealmName() or "Unknown");
@@ -412,7 +412,7 @@ local function GetCharProfiles()
 	return NidhausUnitFramesDB.CharProfiles;
 end
 
--- Copia la config de otro personaje al actual (requiere ReloadUI)
+
 local function CopyCharProfile(key)
 	local profiles = GetCharProfiles();
 	if not profiles[key] then return false, "Profile not found"; end
@@ -430,41 +430,41 @@ local function GetCharProfileNames()
 	return names;
 end
 
--- =========================================================
--- EL DROPDOWN QUE "A VECES NO MOSTRABA TODO"
---
--- No faltaban perfiles: faltaba LUGAR PARA DIBUJARLOS. Los menus de
--- UIDropDownMenu en 3.3.5a no tienen barra de scroll. Se dibujan hacia
--- abajo desde el control, y lo que se pasa del borde de la pantalla queda
--- fuera, sin forma de llegar. Con cuatro personajes no se nota; pasando la
--- docena, los ultimos de la lista (que esta ordenada alfabeticamente)
--- simplemente no estan.
---
--- Por eso, cuando la lista se pone larga se agrupa por REINO: un submenu
--- por reino, cada nivel corto, y siempre entra.
---
--- ---------------------------------------------------------
--- LO QUE NO SE PUEDE ARREGLAR, Y CONVIENE QUE ESTE ESCRITO
---
--- Los perfiles viven en NidhausUnitFramesDB, que es una SavedVariable de
--- CUENTA:  WTF\Account\<TU CUENTA>\SavedVariables\
---
--- Cada cuenta de WoW tiene su propio archivo y el juego no le da a ningun
--- addon forma de leer el de otra: no hay acceso a disco desde Lua. Asi que
--- los personajes de OTRA cuenta no aparecen aca, y no hay codigo que los
--- pueda hacer aparecer.
---
--- El camino que si existe es el Export/Import por texto, que esta al lado
--- justamente para eso: se exporta en la cuenta A, se pega en la B.
---
--- Y el otro motivo real por el que un personaje puede faltar: las
--- SavedVariables se escriben a disco al SALIR DEL JUEGO, no con /reload.
--- Un personaje que entro por primera vez y todavia no deslogueo no esta
--- en el archivo.
--- =========================================================
-local GROUP_FROM = 12;     -- a partir de cuantos personajes se agrupa
 
--- "Iorlyn - Lordaeron [PvP only]"  ->  "Lordaeron [PvP only]"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+local GROUP_FROM = 12;
+
+
 local function RealmOf(key)
 	return string.match(key, "^.- %- (.+)$") or (L["PROFILE_OTHER_REALM"] or "Other");
 end
@@ -483,14 +483,14 @@ local function GroupByRealm(names)
 	return realms, order;
 end
 
--- Dibuja la lista de personajes. Lo usan LOS DOS dropdowns del panel
--- (perfiles del addon y setup del personaje): son el mismo problema, y
--- tener una sola copia evita que arreglar uno deje el otro como estaba.
---
---   names      lista ya ordenada
---   current    clave del personaje actual  (se pinta en dorado)
---   picked     clave elegida ahora mismo   (para el tilde)
---   onPick     function(key)  que hacer al elegir
+
+
+
+
+
+
+
+
 local function AddCharButtons(names, current, picked, onPick, level, menuList, emptyText)
 	level = level or 1;
 
@@ -504,8 +504,8 @@ local function AddCharButtons(names, current, picked, onPick, level, menuList, e
 	end
 
 	local realms, order = GroupByRealm(names);
-	-- Agrupar uno solo no agrupa nada: seria un submenu con todo adentro y
-	-- un click de mas para llegar a lo mismo.
+
+
 	local grouped = (#names > GROUP_FROM) and (#order > 1);
 
 	if grouped and level == 1 then
@@ -542,29 +542,29 @@ local function AddCharButtons(names, current, picked, onPick, level, menuList, e
 	end
 end
 
--- =========================================================
--- PopulateExtraTab
--- =========================================================
+
+
+
 function K.PopulateExtraTab(panel)
-	-- Declarada aca arriba a proposito: el OnShow del panel se arma antes
-	-- que la seccion Character Setup, y sin esto la referencia caeria en una
-	-- global inexistente en vez de en esta local.
+
+
+
 	local RefreshSlotDropdown;
 
-	-- ══════════════════════════════════════════════════════════
-	-- SECTION 1: PROFILES
-	-- Layout igual a DebuffFilter:
-	--   Fila 1: [titulo]  [descripcion]
-	--   Fila 2: "Copy profile from:"
-	--   Fila 3: [dropdown_____________] [Copy] [Export Profile] [Import Profile]
-	-- ══════════════════════════════════════════════════════════
 
-	-- Caja con fondo oscuro y borde azul
+
+
+
+
+
+
+
+
 	local profileBox = CreateFrame("Frame", nil, panel);
 	profileBox:SetPoint("TOPLEFT", 10, -10);
 	profileBox:SetPoint("TOPRIGHT", -10, -10);
 	profileBox:SetHeight(96);
-	-- Borde fino tipo tooltip, igual que el resto de los recuadros del panel
+
 	profileBox:SetBackdrop({
 		bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
 		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -576,7 +576,7 @@ function K.PopulateExtraTab(panel)
 
 
 
-	-- FILA 1: titulo + descripcion
+
 	local profileTitle = profileBox:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge");
 	profileTitle:SetPoint("TOPLEFT", 16, -18);
 	profileTitle:SetText(L["HEADER_PROFILES"] or "|cff4FC3F7Profiles|r");
@@ -585,16 +585,16 @@ function K.PopulateExtraTab(panel)
 	profileSub:SetPoint("LEFT", profileTitle, "RIGHT", 12, -1);
 	profileSub:SetText("|cff8EAEC9" .. (L["DESC_PROFILES"] or "Export your config to share or backup, import to restore.") .. "|r");
 
-	-- FILA 2: label "Copy profile from:"
+
 	local copyLabel = profileBox:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 	copyLabel:SetPoint("TOPLEFT", 16, -44);
 	copyLabel:SetText(L["PROFILE_COPY_FROM"] or "Copy profile from:");
 
-	-- POR QUE NO ESTA MI PERSONAJE DE LA OTRA CUENTA.
-	--
-	-- Es la pregunta que se hace cualquiera al abrir esto, y la respuesta
-	-- no se puede deducir mirando el dropdown. Dicha aca al lado, se
-	-- entiende en el acto y no parece un bug del addon.
+
+
+
+
+
 	local profileNote = profileBox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 	profileNote:SetPoint("LEFT", copyLabel, "RIGHT", 10, 0);
 	profileNote:SetPoint("RIGHT", profileBox, "RIGHT", -16, 0);
@@ -602,15 +602,15 @@ function K.PopulateExtraTab(panel)
 	profileNote:SetText("|cff8A8A8A" .. (L["PROFILE_NOTE_ACCOUNT"]
 		or "Only characters from this WoW account. For another account, use Export / Import.") .. "|r");
 
-	-- Status de feedback (mismo nivel que el label, lado derecho)
+
 	local profileStatus = profileBox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 	profileStatus:SetPoint("BOTTOMRIGHT", profileBox, "BOTTOMRIGHT", -16, 10);
 	profileStatus:SetText("");
 
 	local selectedProfile = nil;
 
-	-- FILA 3: [dropdown] [Copy] [Export Profile] [Import Profile]
-	-- Anclados desde la DERECHA para garantizar que siempre entren ambos idiomas
+
+
 	local importBtn = CreateFrame("Button", nil, profileBox, "UIPanelButtonTemplate");
 	importBtn:SetPoint("BOTTOMRIGHT", profileBox, "BOTTOMRIGHT", -14, 10);
 	importBtn:SetSize(120, 24);
@@ -646,24 +646,24 @@ function K.PopulateExtraTab(panel)
 		end
 	end);
 
-	-- Dropdown — ocupa el espacio restante desde el borde izquierdo hasta el botón Copy
-	-- UIDropDownMenu tiene 32px extra de padding propio, compensar con ancho lógico
+
+
 	local copyDD = CreateFrame("Frame", "NidhausProfileCopyDD", profileBox, "UIDropDownMenuTemplate");
 	copyDD:SetPoint("BOTTOMLEFT", profileBox, "BOTTOMLEFT", 6, 4);
-	-- El ancho se calcula para llegar hasta el botón Copy sin solaparse
-	-- Anclar el borde derecho del frame del DD al borde izquierdo del copyBtn
+
+
 	copyDD:SetPoint("RIGHT", copyBtn, "LEFT", 18, 0);
 
 	local function RefreshDropdown()
-		-- Calcular ancho real disponible para el dropdown
+
 		local ddWidth = copyBtn:GetLeft() and (copyBtn:GetLeft() - profileBox:GetLeft() - 40) or 240;
 		if ddWidth < 120 then ddWidth = 120; end
-		UIDropDownMenu_SetWidth(copyDD, ddWidth - 32); -- compensar padding interno
+		UIDropDownMenu_SetWidth(copyDD, ddWidth - 32);
 
 		local names = GetCharProfileNames();
 		local currentKey = GetCurrentCharKey();
-		-- El tercer parametro (menuList) es el que trae el reino cuando se
-		-- abre un submenu. Sin recibirlo, el nivel 2 no sabria que dibujar.
+
+
 		UIDropDownMenu_Initialize(copyDD, function(self, level, menuList)
 			AddCharButtons(names, currentKey, selectedProfile, function(key)
 				selectedProfile = key;
@@ -673,7 +673,7 @@ function K.PopulateExtraTab(panel)
 		UIDropDownMenu_SetText(copyDD, selectedProfile or "");
 	end
 
-	-- Actualizar al abrir el panel
+
 	panel:SetScript("OnShow", function()
 		K.SaveCurrentCharProfile();
 		RefreshDropdown();
@@ -681,15 +681,15 @@ function K.PopulateExtraTab(panel)
 		RefreshSlotDropdown();
 	end);
 
-	-- Primer refresh (al crear el panel por primera vez)
+
 	RefreshDropdown();
 
-	-- ══════════════════════════════════════════════════════════
-	-- SECTION 2: CHARACTER SETUP
-	-- Barras, macros y bindeos. Va en una caja aparte y con otro color de
-	-- borde porque NO es lo mismo que los perfiles de arriba: aquellos son
-	-- la config del addon, esto es el personaje.
-	-- ══════════════════════════════════════════════════════════
+
+
+
+
+
+
 	local slotBox = CreateFrame("Frame", nil, panel);
 	slotBox:SetPoint("TOPLEFT", profileBox, "BOTTOMLEFT", 0, -14);
 	slotBox:SetPoint("TOPRIGHT", profileBox, "BOTTOMRIGHT", 0, -14);
@@ -718,18 +718,18 @@ function K.PopulateExtraTab(panel)
 	slotStatus:SetWidth(540);
 	slotStatus:SetJustifyH("LEFT");
 
-	-- POR QUE NO ESTAN TODOS MIS PERSONAJES.
-	--
-	-- Dos motivos y ninguno se deduce mirando el desplegable, asi que van
-	-- dichos aca al lado: se filtran los de otra clase, y los de otra cuenta
-	-- de WoW el addon directamente no puede verlos.
+
+
+
+
+
 	local slotNote = slotBox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 	slotNote:SetPoint("LEFT", slotStatus, "RIGHT", 12, 0);
 	slotNote:SetPoint("RIGHT", slotBox, "RIGHT", -16, 0);
 	slotNote:SetJustifyH("LEFT");
 	slotNote:SetText("");
 
-	-- FILA 1: [dropdown de personajes] [Copiar] [Exportar] [Importar]
+
 	local slotImportBtn = CreateFrame("Button", nil, slotBox, "UIPanelButtonTemplate");
 	slotImportBtn:SetPoint("TOPRIGHT", slotBox, "TOPRIGHT", -14, -66);
 	slotImportBtn:SetSize(110, 24);
@@ -793,7 +793,7 @@ function K.PopulateExtraTab(panel)
 		UIDropDownMenu_SetText(slotDD, selectedSlotChar or "");
 	end
 
-	-- FILA 2: los borrados + deshacer
+
 	local undoBtn = CreateFrame("Button", nil, slotBox, "UIPanelButtonTemplate");
 	undoBtn:SetPoint("BOTTOMRIGHT", slotBox, "BOTTOMRIGHT", -14, 12);
 	undoBtn:SetSize(90, 24);
@@ -833,10 +833,10 @@ function K.PopulateExtraTab(panel)
 
 	RefreshSlotDropdown();
 
-	-- ══════════════════════════════════════════════════════════
-	-- NOTA: las "Extra Options" (auto reparar, vender basura, chat)
-	-- se mudaron a Interface > General Settings y Interface > Chat.
-	-- ══════════════════════════════════════════════════════════
+
+
+
+
 	local movedNote = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
 	movedNote:SetPoint("TOPLEFT", slotBox, "BOTTOMLEFT", 6, -14);
 	movedNote:SetWidth(560);

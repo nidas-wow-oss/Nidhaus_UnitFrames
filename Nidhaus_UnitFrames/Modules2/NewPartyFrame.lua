@@ -1,7 +1,7 @@
--- NewPartyFrame — Módulo integrado en Nidhaus_UnitFrames
--- Reemplaza las texturas del PartyMemberFrame con un estilo custom
--- Texturas: Media/Light/UI-PartyFrame2.blp, UI-PartyFrame2-Flash.blp, UI-Vehicles-PartyFrame2.blp
---           Media/Dark/UI-PartyFrame2.blp, UI-PartyFrame2-Flash.blp, UI-Vehicles-PartyFrame2.blp
+
+
+
+
 
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
@@ -15,18 +15,18 @@ local timerFrame;
 local pollRemaining = 0;
 local elapsed = 0;
 
--- Estado original de cada frame (capturado UNA vez antes de modificar)
+
 local originals = {};
 
--- Font original (se captura UNA vez)
+
 local origFont, origFontSize, origFontFlags;
 
 local function CaptureOriginalFont(nameStr)
 	if origFont then return; end
 	local f, s, fl = nameStr:GetFont();
-	-- PartyFrame.lua guarda el tamaño de fabrica ANTES de aplicar el slider
-	-- del panel. Si existe, se usa ese: capturar el actual podia congelar
-	-- para siempre un tamaño ya modificado por el usuario.
+
+
+
 	if nameStr._nufBaseSize then
 		f = nameStr._nufBaseFont or f;
 		s = nameStr._nufBaseSize;
@@ -36,7 +36,7 @@ local function CaptureOriginalFont(nameStr)
 	end
 end
 
--- Helpers para capturar puntos y tamaño
+
 local function SavePoints(element)
 	if not element then return nil; end
 	local pts = {};
@@ -54,9 +54,9 @@ local function RestorePoints(element, pts)
 	end
 end
 
-------------------------------------------------------------------------
--- Capturar estado original de un PartyMemberFrame (una sola vez)
-------------------------------------------------------------------------
+
+
+
 local function CaptureOriginals(id)
 	if originals[id] then return; end
 
@@ -133,7 +133,7 @@ local function CaptureOriginals(id)
 		o.bgW, o.bgH = bg:GetWidth(), bg:GetHeight();
 	end
 
-	-- FIX VEHICLE: Capturar VehicleTexture (Blizzard la MUESTRA en vez de Texture al entrar a vehículo)
+
 	local vehTex = _G[fn.."VehicleTexture"];
 	if vehTex then
 		o.vehTexPath = vehTex:GetTexture();
@@ -157,9 +157,9 @@ local function CaptureOriginals(id)
 	originals[id] = o;
 end
 
-------------------------------------------------------------------------
--- Restaurar un PartyMemberFrame a su estado original
-------------------------------------------------------------------------
+
+
+
 local function RestorePartyMemberFrame(id)
 	local o = originals[id];
 	if not o then return; end
@@ -232,7 +232,7 @@ local function RestorePartyMemberFrame(id)
 		bg:SetSize(o.bgW, o.bgH);
 	end
 
-	-- FIX VEHICLE: Restaurar VehicleTexture a estado original
+
 	local vehTex = _G[fn.."VehicleTexture"];
 	if vehTex and o.vehTexPath then
 		vehTex:SetTexture(o.vehTexPath);
@@ -261,7 +261,7 @@ local function RestoreAllFrames()
 	end
 end
 
--- Obtener path de texturas según tema (Dark / Light)
+
 local function GetTexturePath()
 	if C.darkFrames then
 		return "Interface\\Addons\\"..AddOnName.."\\Media\\Dark\\";
@@ -270,9 +270,9 @@ local function GetTexturePath()
 	end
 end
 
-------------------------------------------------------------------------
--- Estilo completo — detecta vehiculo y ajusta layout
-------------------------------------------------------------------------
+
+
+
 local function StylePartyMemberFrame(id)
 	if not isEnabled then return; end
 
@@ -281,7 +281,7 @@ local function StylePartyMemberFrame(id)
 	if not frame then return; end
 	if not frame:IsShown() then return; end
 
-	-- Capturar estado original ANTES de modificar (una sola vez)
+
 	CaptureOriginals(id);
 
 	local name       = _G[fn.."Name"];
@@ -294,7 +294,7 @@ local function StylePartyMemberFrame(id)
 	local healthText = _G[fn.."HealthBarText"];
 	local manaText   = _G[fn.."ManaBarText"];
 
-	-- Detectar si está en vehiculo/torreta (múltiples checks para robustez en WotLK)
+
 	local unit = "party"..id;
 	local inVehicle = false;
 	if UnitHasVehicleUI and UnitHasVehicleUI(unit) then
@@ -304,7 +304,7 @@ local function StylePartyMemberFrame(id)
 	elseif UnitUsingVehicle and UnitUsingVehicle(unit) then
 		inVehicle = true;
 	end
-	-- FIX: Fallback — si Blizzard ya cambió la textura a vehicle art, asumir vehículo
+
 	if not inVehicle and frame.state and frame.state == "vehicle" then
 		inVehicle = true;
 	end
@@ -317,18 +317,18 @@ local function StylePartyMemberFrame(id)
 
 	local Path = GetTexturePath();
 
-	-- FIX VEHICLE BUG: Blizzard usa DOS texturas diferentes:
-	--   PartyMemberFrame{i}Texture       → modo normal (player art)
-	--   PartyMemberFrame{i}VehicleTexture → modo vehículo (vehicle art)
-	-- Cuando entra en vehículo, Blizzard ESCONDE Texture y MUESTRA VehicleTexture.
-	-- Si solo estilizamos Texture (que está oculta), el frame se ve roto.
-	-- Solución (patrón KPack): estilizar AMBAS texturas según el modo.
+
+
+
+
+
+
 	local vehTex = _G[fn.."VehicleTexture"];
 
-	-- TEXTURA BASE (122 x 61)
+
 	if texture then
 		if inVehicle then
-			-- En vehículo: Blizzard oculta esta textura, pero la seteamos por si acaso
+
 			texture:SetTexture(Path.."UI-Vehicles-PartyFrame2");
 		else
 			texture:SetTexture(Path.."UI-PartyFrame2");
@@ -339,7 +339,7 @@ local function StylePartyMemberFrame(id)
 		texture:SetDrawLayer("BORDER");
 	end
 
-	-- FIX VEHICLE: Estilizar VehicleTexture (la que Blizzard realmente MUESTRA en vehículo)
+
 	if vehTex then
 		if inVehicle then
 			vehTex:SetTexture(Path.."UI-Vehicles-PartyFrame2");
@@ -347,10 +347,10 @@ local function StylePartyMemberFrame(id)
 			vehTex:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 10);
 			vehTex:SetSize(122, 61);
 		end
-		-- Cuando no está en vehículo, Blizzard ya la oculta → no tocar
+
 	end
 
-	-- FLASH
+
 	if flash then
 		flash:SetTexture(Path.."UI-PartyFrame2-Flash");
 		flash:ClearAllPoints();
@@ -358,7 +358,7 @@ local function StylePartyMemberFrame(id)
 		flash:SetSize(122, 61);
 	end
 
-	-- RETRATO — la textura de vehiculo tiene un circulo mas grande
+
 	if portrait then
 		portrait:ClearAllPoints();
 		if inVehicle then
@@ -372,24 +372,24 @@ local function StylePartyMemberFrame(id)
 		end
 	end
 
-	-- Offset de barras según modo normal/vehiculo
+
 	local barLeft = inVehicle and 48 or 44;
 	local barWidth = inVehicle and 63 or 67;
 
-	-- NOMBRE
+
 	if name then
 		CaptureOriginalFont(name);
 		if origFont then
 			name:ClearAllPoints();
 			name:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", barLeft + 2, -14);
-			-- math.max: si el tamaño capturado llega a ser 1, el "-1" daba 0
-			-- y SetFont revienta ("invalid fontHeight: 0"). Pasaba al arrastrar
-			-- el slider de tamaño del party hasta el minimo.
+
+
+
 			name:SetFont(origFont, math.max(6, (origFontSize or 10) - 1), origFontFlags);
 		end
 	end
 
-	-- VIDA (67 x 22)
+
 	if health then
 		health:ClearAllPoints();
 		health:SetPoint("TOPLEFT", frame, "TOPLEFT", barLeft, -4);
@@ -397,14 +397,14 @@ local function StylePartyMemberFrame(id)
 		health:SetHeight(22);
 	end
 
-	-- Texto de vida centrado en la barra — forzar OVERLAY para que quede encima de la textura
+
 	if healthText then
 		healthText:ClearAllPoints();
 		healthText:SetPoint("CENTER", health, "CENTER", 0, -6);
 		healthText:SetDrawLayer("OVERLAY");
 	end
 
-	-- MANA (67 x 9) — anclada al bottom de health
+
 	if mana then
 		mana:ClearAllPoints();
 		mana:SetPoint("TOPLEFT", health, "BOTTOMLEFT", 0, -1);
@@ -412,7 +412,7 @@ local function StylePartyMemberFrame(id)
 		mana:SetHeight(9);
 	end
 
-	-- Texto de mana centrado — visible y encima de la textura
+
 	if manaText then
 		manaText:SetAlpha(1);
 		manaText:ClearAllPoints();
@@ -420,24 +420,24 @@ local function StylePartyMemberFrame(id)
 		manaText:SetDrawLayer("OVERLAY");
 	end
 
-	-- STATUSBAR TEXTURE (usar la misma del player/target si está configurada)
+
 	if C.statusbarOn and C.statusbarTexture then
 		if health then health:SetStatusBarTexture(C.statusbarTexture); end
 		if mana then mana:SetStatusBarTexture(C.statusbarTexture); end
 	end
 
-	-- BG BARRAS
+
 	if bg then
 		bg:ClearAllPoints();
 		bg:SetPoint("TOPLEFT", frame, "TOPLEFT", barLeft - 1, -3);
 		bg:SetSize(barWidth + 2, 34);
 	end
 
-	-- PET FRAME — Solo mover si PartyBuffs está activo (necesita más espacio)
-	-- Si PartyBuffs está OFF, restaurar posición original (controla espaciado entre frames)
+
+
 	local pet = _G[fn.."PetFrame"];
-	-- El marco de mascota es protegido y esto corre en cada actualizacion
-	-- de vida o retrato, tambien en combate: ahi se deja para el final.
+
+
 	if pet and K.AfterCombat("NewPartyPet", function()
 		for i = 1, 4 do StylePartyMemberFrame(i); end
 	end) then
@@ -448,7 +448,7 @@ local function StylePartyMemberFrame(id)
 			pet:ClearAllPoints();
 			pet:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 23, 5);
 		else
-			-- Restaurar posición original si fue movido
+
 			local o = originals[id];
 			if o and o.petPoints then
 				RestorePoints(pet, o.petPoints);
@@ -456,9 +456,9 @@ local function StylePartyMemberFrame(id)
 		end
 	end
 
-	-- DEBUFFS por defecto (solo si PartyBuffs NO controla la posición).
-	-- Se pregunta por los DEBUFFS: PartyBuffs puede estar prendido manejando
-	-- solo los buffs, y ahi los debuffs de fabrica siguen siendo de aca.
+
+
+
 	local pbOwnsDebuffs;
 	if K.PartyBuffsOwnsDebuffs then
 		pbOwnsDebuffs = K.PartyBuffsOwnsDebuffs();
@@ -485,9 +485,9 @@ local function StylePartyMemberFrame(id)
 	end
 end
 
-------------------------------------------------------------------------
--- Actualizar todos
-------------------------------------------------------------------------
+
+
+
 local function UpdateAllFrames()
 	if not isEnabled then return; end
 	for i = 1, 4 do
@@ -495,13 +495,13 @@ local function UpdateAllFrames()
 	end
 end
 
--- Exportar funciones para uso externo (PartyBuffs las necesita)
+
 K.StyleNewPartyFrame = StylePartyMemberFrame;
 K.UpdateNewPartyFrames = UpdateAllFrames;
 
-------------------------------------------------------------------------
--- Polling con OnUpdate (WotLK no tiene C_Timer)
-------------------------------------------------------------------------
+
+
+
 local function StartPolling(duration)
 	if not timerFrame then
 		timerFrame = CreateFrame("Frame");
@@ -522,9 +522,9 @@ local function StartPolling(duration)
 	timerFrame:Show();
 end
 
-------------------------------------------------------------------------
--- Hooks en funciones de Blizzard (una sola vez)
-------------------------------------------------------------------------
+
+
+
 local function RegisterHooks()
 	if hooksRegistered then return; end
 
@@ -546,8 +546,8 @@ local function RegisterHooks()
 		end);
 	end
 
-	-- Hooks de vehículo — Blizzard llama estas funciones para cambiar arte
-	-- Hookear DESPUÉS para sobreescribir con nuestro estilo
+
+
 	if PartyMemberFrame_ToVehicleArt then
 		hooksecurefunc("PartyMemberFrame_ToVehicleArt", function(self)
 			if not isEnabled or not self then return; end
@@ -556,7 +556,7 @@ local function RegisterHooks()
 				local id = tonumber(n:match("PartyMemberFrame(%d+)$"));
 				if id then
 					StylePartyMemberFrame(id);
-					-- Polling corto: Blizzard a veces re-aplica después
+
 					StartPolling(1);
 				end
 			end
@@ -588,8 +588,8 @@ local function RegisterHooks()
 		end);
 	end
 
-	-- Hook UnitFrameHealthBar_Update: Blizzard llama esto al actualizar
-	-- la barra de vida (incluyendo vehículos) y resetea la statusbar texture
+
+
 	if UnitFrameHealthBar_Update then
 		hooksecurefunc("UnitFrameHealthBar_Update", function(self)
 			if not isEnabled or not self then return; end
@@ -604,7 +604,7 @@ local function RegisterHooks()
 		end);
 	end
 
-	-- Hook UnitFrameManaBar_Update: lo mismo para la barra de mana
+
 	if UnitFrameManaBar_Update then
 		hooksecurefunc("UnitFrameManaBar_Update", function(self)
 			if not isEnabled or not self then return; end
@@ -631,16 +631,16 @@ local function RegisterHooks()
 	hooksRegistered = true;
 end
 
-------------------------------------------------------------------------
--- Público: consultar si NewPartyFrame está activo
-------------------------------------------------------------------------
+
+
+
 function K.IsNewPartyFrameActive()
 	return isEnabled;
 end
 
-------------------------------------------------------------------------
--- Enable / Disable
-------------------------------------------------------------------------
+
+
+
 local eventFrame;
 
 local function NPF_Enable()
@@ -657,10 +657,10 @@ local function NPF_Enable()
 				local unit = ...;
 				for i = 1, 4 do
 					if unit == "party"..i then
-						-- Estilizar inmediatamente
+
 						StylePartyMemberFrame(i);
-						-- Polling agresivo: Blizzard puede resetear el arte
-						-- varias veces durante la transición de vehículo
+
+
 						StartPolling(3);
 						break;
 					end
@@ -672,8 +672,8 @@ local function NPF_Enable()
 		end);
 	end
 
-	-- FIX: Registrar eventos seguros primero. GROUP_ROSTER_UPDATE puede no existir
-	-- en WotLK 3.3.0 stock y si falla, corta la ejecución de las líneas siguientes.
+
+
 	eventFrame:RegisterEvent("PARTY_MEMBERS_CHANGED");
 	eventFrame:RegisterEvent("PARTY_MEMBER_ENABLE");
 	eventFrame:RegisterEvent("PARTY_MEMBER_DISABLE");
@@ -685,7 +685,7 @@ local function NPF_Enable()
 	UpdateAllFrames();
 	StartPolling(3);
 
-	-- Notificar a PartyBuffs para re-anclar debajo del nuevo frame
+
 	if K.PartyBuffs_ReanchorAll then K.PartyBuffs_ReanchorAll(); end
 end
 
@@ -701,10 +701,10 @@ local function NPF_Disable()
 		timerFrame:Hide();
 	end
 
-	-- Restaurar todos los frames a su estado original
+
 	RestoreAllFrames();
 
-	-- Forzar que Blizzard re-aplique su layout (vehiculo, arte, etc)
+
 	for i = 1, 4 do
 		local frame = _G["PartyMemberFrame"..i];
 		if frame and frame:IsShown() then
@@ -717,17 +717,17 @@ local function NPF_Disable()
 		end
 	end
 
-	-- Notificar a PartyBuffs para volver a posición normal
+
 	if K.PartyBuffs_ReanchorAll then K.PartyBuffs_ReanchorAll(); end
 end
 
-------------------------------------------------------------------------
--- Exports para el checkbox en OptionsPanel (Frames tab)
-------------------------------------------------------------------------
+
+
+
 K.EnableNewPartyFrame = NPF_Enable;
 K.DisableNewPartyFrame = NPF_Disable;
 
--- Auto-enable al cargar config si estaba activo
+
 K.RegisterConfigEvent("CONFIG_LOADED", function()
 	if C.NewPartyFrame then
 		NPF_Enable();

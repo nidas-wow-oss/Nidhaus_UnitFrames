@@ -1,37 +1,37 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- HunterPetBuffs.lua
--- Fila de iconos bajo el marco de la mascota con los buffs que
--- mas importa vigilar como cazador:
---
---   Aliviar mascota (Mend Pet, 48990)  -> HoT sobre la mascota
---   Agazaparse      (Cower, 1742)      -> buff de la mascota
---   Aguante         (Last Stand, 53479 / 53478)
---
--- Fuente: la seccion de buffs de mascota del addon NHP. De ese addon
--- se aisla SOLO esta parte; los cooldowns de hechizos y los iconos de
--- trampas quedaron afuera a proposito.
---
--- POR QUE SE COMPARA POR NOMBRE Y NO POR ID:
--- Aliviar mascota tiene un ID distinto por cada rango. Resolviendo el
--- ID a nombre una vez al cargar y comparando nombres, funciona con
--- cualquier rango sin tener que listarlos todos. Es lo que hacia NHP
--- y esta bien.
---
--- CAMBIOS respecto de NHP:
---   * Se prende y apaga desde Interface > Cazador. Apagado no registra
---     UNIT_AURA, que es un evento muy ruidoso.
---   * La fila se puede MOVER y la posicion se guarda. En NHP estaba
---     clavada bajo PetFrame.
---   * Tamaño de icono configurable (NHP lo tenia fijo en 40).
---   * Aguante se busca en la mascota Y en el jugador. NHP solo miraba
---     al jugador, pero es la mascota la que lleva el buff: en la
---     practica el icono podia no aparecer nunca.
---   * Sin prints de error al cargar. Si un hechizo no existe en el
---     servidor, simplemente no se crea su icono.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local _, playerClass = UnitClass("player");
 local IS_HUNTER = (playerClass == "HUNTER");
@@ -39,8 +39,8 @@ local IS_HUNTER = (playerClass == "HUNTER");
 local DEFAULT_ICON_SIZE = 32;
 local ICON_GAP          = 5;
 
--- Cada entrada: id principal y, si hace falta, un alternativo por si el
--- servidor no tiene el aura registrada con ese ID.
+
+
 local BUFFS = {
 	{ key = "MendPet",   id = 48990, unit = "pet"  },
 	{ key = "Cower",     id = 1742,  unit = "pet"  },
@@ -50,9 +50,9 @@ local BUFFS = {
 local enabled = false;
 local frame, icons = nil, {};
 
--- ---------------------------------------------------------
--- DB
--- ---------------------------------------------------------
+
+
+
 local function DB()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.HunterPetBuffs then
@@ -65,9 +65,9 @@ local function IsLocked()
 	return C.PetBuffsLocked == true;
 end
 
--- ---------------------------------------------------------
--- Resolver nombres e iconos una sola vez
--- ---------------------------------------------------------
+
+
+
 local function ResolveSpells()
 	for _, b in ipairs(BUFFS) do
 		local name, _, icon = GetSpellInfo(b.id);
@@ -84,9 +84,9 @@ local function ResolveSpells()
 	end
 end
 
--- ---------------------------------------------------------
--- Construccion
--- ---------------------------------------------------------
+
+
+
 local function CreateIcon(parent, size)
 	local btn = CreateFrame("Frame", nil, parent);
 	btn:SetSize(size, size);
@@ -132,7 +132,7 @@ local function Build()
 	frame:EnableMouse(false);
 	frame:SetClampedToScreen(true);
 
-	-- Fondo tenue, solo visible en modo mover
+
 	frame.moveBG = frame:CreateTexture(nil, "BACKGROUND");
 	frame.moveBG:SetAllPoints();
 	frame.moveBG:SetTexture(0, 0.7, 1, 0.25);
@@ -168,7 +168,7 @@ local function RestorePosition()
 	if db.point then
 		frame:SetPoint(db.point, UIParent, db.relativePoint, db.x, db.y);
 	elseif PetFrame then
-		-- Por defecto, donde lo ponia NHP: debajo del marco de la mascota
+
 		frame:SetPoint("TOPLEFT", PetFrame, "BOTTOMLEFT", 0, -5);
 	else
 		frame:SetPoint("CENTER", UIParent, "CENTER", 0, -120);
@@ -181,9 +181,9 @@ function K.ResetPetBuffsPosition()
 	RestorePosition();
 end
 
--- ---------------------------------------------------------
--- Busqueda del aura
--- ---------------------------------------------------------
+
+
+
 local function FindBuff(unit, b)
 	if not UnitExists(unit) then return nil; end
 	for i = 1, 40 do
@@ -208,8 +208,8 @@ local function Update()
 			local count, duration, expirationTime;
 
 			if b.unit == "both" then
-				-- El buff lo lleva la mascota, pero se mira tambien al
-				-- jugador por si el servidor lo aplica del otro lado.
+
+
 				count, duration, expirationTime = FindBuff("pet", b);
 				if not count then
 					count, duration, expirationTime = FindBuff("player", b);
@@ -237,9 +237,9 @@ end
 
 K.UpdatePetBuffs = Update;
 
--- ---------------------------------------------------------
--- Modo mover
--- ---------------------------------------------------------
+
+
+
 function K.SetPetBuffsPreview(state)
 	if not IS_HUNTER then return; end
 	Build();
@@ -280,9 +280,9 @@ function K.ApplyPetBuffsLayout()
 	if preview then K.SetPetBuffsPreview(true); end
 end
 
--- ---------------------------------------------------------
--- Eventos (solo con el modulo activo)
--- ---------------------------------------------------------
+
+
+
 local events = CreateFrame("Frame");
 events:SetScript("OnEvent", function(self, event, unit)
 	if event == "PLAYER_ENTERING_WORLD" then
@@ -290,14 +290,14 @@ events:SetScript("OnEvent", function(self, event, unit)
 		Update();
 		return;
 	end
-	-- UNIT_AURA dispara para cada unidad en rango: descartar rapido
+
 	if event == "UNIT_AURA" and unit ~= "pet" and unit ~= "player" then return; end
 	Update();
 end);
 
--- ---------------------------------------------------------
--- Registro del modulo (solo cazador)
--- ---------------------------------------------------------
+
+
+
 if IS_HUNTER then
 	K.RegisterModule("HunterPetBuffs", {
 		name    = L["MOD_PETBUFFS"] or "Pet Buffs",

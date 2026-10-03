@@ -1,64 +1,64 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- PartyTargets - estilo Square
---
--- Segundo aspecto para los marcos de objetivo del grupo, inspirado en el
--- de pw_unitframes: en vez de la barrita horizontal estilo Target-of-Target
--- de Blizzard, un cuadradito vertical con el retrato al medio.
---
---     Classic (96x46)            Square (34x54)
---     +----------------+              Nombre
---     |(o) ====== 85%  |             +------+
---     |    ------      |             |  o   |
---     +----------------+             +------+
---          Nombre                     ======
---                                     ------
---
--- POR QUE ESTA EN UN ARCHIVO APARTE
---
--- Frames.lua son 875 lineas que ya manejan eventos, arrastre, anclado,
--- escala y menu contextual. Nada de eso cambia entre los dos estilos: lo
--- unico distinto es DONDE va cada pieza. Meter el segundo layout ahi
--- adentro habria mezclado dos cosas que no tienen por que tocarse.
---
--- Aca no se crea ningun frame nuevo: se reubican las piezas que el
--- FrameTemplate.xml ya define ($parentPortrait, $parentHealthBar,
--- $parentManaBar, $parentName, $parentTexture).
---
--- LA FOTO ORIGINAL SE SACA UNA SOLA VEZ
---
--- Es la parte delicada. Si se recapturara al cambiar de estilo, la segunda
--- vez estariamos guardando como "Classic" las medidas del Square, y volver
--- atras dejaria el marco roto. Ya nos paso con las barras de accion, con
--- los movers de PartyBuffs y con los botones del minimapa: una sola foto,
--- sacada antes de tocar nada.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local FRAMES     = 4;
 local FRAME_NAME = "PartyTargetFrame";
 
--- Medidas del estilo Square: LAS DE pw, COPIADAS TAL CUAL.
---
--- Vengo de tres intentos deduciendo el layout mirando capturas, y los tres
--- salieron mal. Estas salen de leer styleconfig.square en
--- pw_unitframes/modules/partytarget.lua:
---
---   siz = {w=70, h=75}
---   tex = {w=64, h=64, y=-2}   <- marco cuadrado, TEXTURA propia
---   por = {w=32, h=32, y=9}    <- centrado DENTRO del marco
---   hpb = {w=30, h=10, y=-10}  <- tambien DENTRO del marco
---   mpb = {w=30, h=10}         <- pegada abajo de la de vida
---   nam = {y=46}
---
--- Y el punto que no habia entendido: el marco SI es una caja que contiene
--- todo. Lo que me confundia es que su textura tiene el centro transparente
--- y solo dibuja el contorno grueso, asi que a simple vista parece rodear
--- solo el retrato. Sin esa textura, un borde liso del mismo tamaño se veia
--- como un rectangulo vacio, y por eso lo fui achicando cada vez mas.
---
--- La textura esta copiada en Textures\\TargetOfTargetSquare.tga.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local SQ = {
 	frame    = { w = 70, h = 75 },
 	border   = { w = 64, h = 64, y = -2 },
@@ -70,44 +70,44 @@ local SQ = {
 
 local TEXPATH      = "Interface\\AddOns\\Nidhaus_UnitFrames\\Textures\\";
 local SQUARE_TEX   = TEXPATH .. "TargetOfTargetSquare.tga";
-local BAR_TEX      = TEXPATH .. "beige.tga";              -- media.statusbar de pw
--- El atlas de clases: el del JUEGO, no el de pw.
---
--- Fui y volvi con esto, asi que queda escrito. pw tiene DOS caminos:
---
---   elements/portraits.lua  ->  hook de UnitFramePortrait_Update, usa la
---                               textura propia UI-Classes-Circles
---   modules/partytarget.lua ->  PartyTarget_UpdatePortrait, usa squareicn
---
--- Los party target de pw NO pasan por el primero: son frames que pw crea a
--- mano y a los que llama SetPortraitTexture + PartyTarget_UpdatePortrait
--- directamente. Nunca tocan UnitFramePortrait_Update, asi que el hook no
--- corre para ellos. El que se ve es squareicn:
---
---   Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes
---
--- Que ademas es coherente con el estilo: iconos CUADRADOS para un marco
--- cuadrado. UI-Classes-Circles son redondos y por eso desentonaban.
---
--- (Sin extension: en WoW los .blp se nombran sin ella, el cargador se la
--- agrega solo. Poniendosela a mano el archivo no resuelve.)
+local BAR_TEX      = TEXPATH .. "beige.tga";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local CLASS_ATLAS  = "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes";
 
--- Textura SIN teñir.
---
--- pw le pone SetVertexColor(.22,.22,.22) desde config.global.framecolors,
--- que es su tema general de marcos. SetVertexColor MULTIPLICA los colores,
--- asi que 0.22 deja la imagen al 22% de su brillo: el marco original es
--- claro y quedaba hundido en gris oscuro.
---
--- 1,1,1,1 es el neutro: la textura tal cual la dibujaron.
+
+
+
+
+
+
+
+
 local FRAME_COLOR  = { 1, 1, 1, 1 };
 
-local orig = {};   -- [frameName] = foto de las medidas de fabrica
+local orig = {};
 
--- ---------------------------------------------------------
--- Piezas del marco
--- ---------------------------------------------------------
+
+
+
 local function Parts(f)
 	local n = f:GetName();
 	return _G[n .. "Portrait"],
@@ -117,7 +117,7 @@ local function Parts(f)
 	       _G[n .. "Texture"];
 end
 
--- Guarda punto, tamaño y (para el retrato) las coordenadas de textura.
+
 local function Snap(region)
 	if not region then return nil; end
 	local point, relTo, relPoint, x, y = region:GetPoint(1);
@@ -126,14 +126,14 @@ local function Snap(region)
 		x = x or 0, y = y or 0,
 		w = region:GetWidth(), h = region:GetHeight(),
 		shown = region:IsShown(),
-		-- La fuente entra en la foto porque Square la cambia a 9 OUTLINE.
-		-- Sin esto, volver a Classic dejaba el nombre con la letra del
-		-- otro estilo: un cambio que no se deshacia.
+
+
+
 		font = region.GetFont and { region:GetFont() } or nil,
 	};
 end
 
--- keepShown: no tocar si se ve o no (lo decide otro; ver el nombre abajo).
+
 local function Restore(region, s, keepShown)
 	if not region or not s then return; end
 	region:ClearAllPoints();
@@ -152,7 +152,7 @@ end
 
 local function Capture(f)
 	local name = f:GetName();
-	if orig[name] then return; end          -- ya esta sacada
+	if orig[name] then return; end
 
 	local por, hp, mp, nm, tex = Parts(f);
 	orig[name] = {
@@ -165,20 +165,20 @@ local function Capture(f)
 	};
 end
 
--- ---------------------------------------------------------
--- El marco cuadrado
---
--- Se reusa $parentTexture, que es el mismo TextureRegion que en Classic
--- lleva el marco dorado de Blizzard. Solo se le cambia la imagen y el
--- tamaño: no hace falta crear nada.
--- ---------------------------------------------------------
 
--- Fondo de las barras.
---
--- Sin esto las barras PARECIAN mas angostas que el retrato, y no lo eran:
--- una StatusBar solo dibuja la parte llena, asi que a media vida veias
--- media barra flotando y el resto transparente. El original tiene un fondo
--- oscuro detras, que es lo que hace leer el ancho completo.
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function GetBarBG(bar)
 	if bar.nufSquareBG then return bar.nufSquareBG; end
 	local t = bar:CreateTexture(nil, "BACKGROUND");
@@ -188,34 +188,34 @@ local function GetBarBG(bar)
 	return t;
 end
 
--- SIN texto de vida.
---
--- Lo habia agregado por leer mal un comentario tuyo. pw no muestra numeros
--- en el marco de objetivo del grupo, y es coherente: el marco es un icono
--- de un vistazo, no un panel de datos. La barra ya dice cuanta vida queda.
---
--- ---------------------------------------------------------
--- Retrato = icono de CLASE
---
--- ME EQUIVOQUE DE ATLAS. Habia usado el del juego
--- (Glues\\CharacterCreate\\UI-CharacterCreate-Classes) porque es el que
--- nombra partytarget.lua. Pero ese nunca llega a verse: el que manda es el
--- hook de elements/portraits.lua, que corre despues y, con prettyportraits
--- activo, pisa la textura con la propia de pw — UI-Classes-Circles.blp.
---
--- Los dos atlas comparten la misma grilla, asi que CLASS_ICON_TCOORDS sirve
--- para ambos; lo unico que cambia es el dibujo.
---
--- Los que no son jugadores no tienen clase: se quedan con su cara.
--- ---------------------------------------------------------
-local FACE_COORDS = { 0.08, 0.92, 0.08, 0.92 };   -- recorte normal de retrato
--- Classic tiene el retrato REDONDO: ahi van los iconos de clase redondos
--- (misma grilla que el atlas de arriba, asi que CLASS_ICON_TCOORDS sirve).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+local FACE_COORDS = { 0.08, 0.92, 0.08, 0.92 };
+
+
 local CIRCLE_ATLAS = "Interface\\TargetingFrame\\UI-Classes-Circles";
 
--- Icono de clase en el retrato: casilla "Class icon in portrait" de las
--- opciones (PartyTargetsDB.classIcon). Sin valor guardado queda lo de
--- siempre: Square con icono, Classic con la cara.
+
+
+
 local function WantClassIcon()
 	local v = PartyTargetsDB and PartyTargetsDB.classIcon;
 	if v == nil then return K.GetPartyTargetStyle() == "Square"; end
@@ -238,14 +238,14 @@ local function ApplyClassPortrait(f)
 		end
 	end
 
-	-- Sin clase (bichos, mascotas, o el objetivo todavia sin resolver):
-	-- la cara.
-	--
-	-- OJO: hay que reponer la TEXTURA, no solo el recorte. Aca estaba el
-	-- bug de la mancha amarilla: si el retrato venia con el atlas de clases
-	-- puesto y solo se le cambiaban las coordenadas, quedaba ese atlas
-	-- recortado con 0.08-0.92, o sea un pedazo enorme de una grilla de 4x4
-	-- estirado sobre 32 px.
+
+
+
+
+
+
+
+
 	if UnitExists(unit) then
 		SetPortraitTexture(por, unit);
 	else
@@ -254,7 +254,7 @@ local function ApplyClassPortrait(f)
 	por:SetTexCoord(unpack(FACE_COORDS));
 end
 
--- La cara del objetivo (casilla apagada).
+
 local function ApplyFacePortrait(f)
 	local por = _G[f:GetName() .. "Portrait"];
 	if not por then return; end
@@ -267,36 +267,36 @@ local function ApplyFacePortrait(f)
 	por:SetTexCoord(unpack(FACE_COORDS));
 end
 
--- Icono o cara, segun la casilla. El retrato no es protegido: se puede
--- cambiar tambien en combate.
+
+
 local function UpdatePortrait(f)
 	if WantClassIcon() then ApplyClassPortrait(f); else ApplyFacePortrait(f); end
 end
 
--- ---------------------------------------------------------
--- Aplicar / quitar
--- ---------------------------------------------------------
+
+
+
 local function ApplySquare(f)
 	local por, hp, mp, nm, tex = Parts(f);
 	if not (por and hp and mp and tex) then return; end
 
 	f:SetSize(SQ.frame.w, SQ.frame.h);
 
-	-- El marco: misma region que en Classic lleva el arte dorado, con otra
-	-- imagen y otro tamaño. Gris oscuro, como en pw.
+
+
 	tex:SetTexture(SQUARE_TEX);
 	tex:SetTexCoord(0, 1, 0, 1);
 	tex:ClearAllPoints();
 	tex:SetSize(SQ.border.w, SQ.border.h);
 	tex:SetPoint("CENTER", f, "CENTER", 0, SQ.border.y);
-	-- El tinte de Lorti manda sobre el color propio; si esta apagado,
-	-- ApplyLortiTint repone el blanco y vale el de siempre.
+
+
 	if not (K.ApplyLortiTint and K.ApplyLortiTint(tex, "LortiUI_PartyTargets")) then
 		tex:SetVertexColor(unpack(FRAME_COLOR));
 	end
 	tex:Show();
 
-	-- Retrato y barras van DENTRO del marco, posicionados respecto de el.
+
 	por:ClearAllPoints();
 	por:SetSize(SQ.portrait.size, SQ.portrait.size);
 	por:SetPoint("CENTER", tex, "CENTER", 0, SQ.portrait.y);
@@ -309,30 +309,30 @@ local function ApplySquare(f)
 	mp:SetSize(SQ.mana.w, SQ.mana.h);
 	mp:SetPoint("TOPLEFT", hp, "BOTTOMLEFT", 0, 0);
 
-	-- Textura de las barras: la de pw. La del XML es la de Blizzard, con su
-	-- degrade y su brillo; al lado del marco gris desentonaba.
+
+
 	hp:SetStatusBarTexture(BAR_TEX);
 	mp:SetStatusBarTexture(BAR_TEX);
 
 	GetBarBG(hp):Show();
 	GetBarBG(mp):Show();
 
-	-- Si el nombre esta oculto por opcion, no hay nada que reposicionar.
-	-- Se chequea aca ademas de en StyleNameText porque este layout corre en
-	-- UNIT_TARGET, y un Show() nuestro le ganaria al Hide() del otro.
+
+
+
 	if nm and PartyTargetsDB and PartyTargetsDB.hideName then
 		nm:Hide();
 	elseif nm then
 		nm:Show();
-		-- Anclado al MARCO, no a la barra de vida.
-		--
-		-- Antes colgaba de la barra con +46 de offset, que son los numeros
-		-- de pw. Pero la barra esta descentrada dentro del marco, asi que
-		-- el nombre heredaba ese corrimiento y ademas quedaba altisimo.
-		-- Colgarlo del cuadrado lo deja centrado y pegado, sin cuentas.
-		--
-		-- El FontString vive dentro de un sub-frame del XML anclado a la
-		-- izquierda: sin ClearAllPoints se queda ahi.
+
+
+
+
+
+
+
+
+
 		nm:ClearAllPoints();
 		nm:SetWidth(SQ.name.w);
 		nm:SetHeight(10);
@@ -357,17 +357,17 @@ local function ApplyClassic(f)
 	Restore(por, s.portrait);
 	Restore(hp,  s.health);
 	Restore(mp,  s.mana);
-	-- EL NOMBRE NO SE MUESTRA SEGUN LA FOTO.
-	--
-	-- Restore le devolvia el "visible" de fabrica, y esto corre en cada
-	-- cambio de objetivo, de grupo y al salir de combate: los mismos
-	-- eventos en que Frames.lua lo esconde por "Hide target name". El orden
-	-- entre los dos no esta garantizado, asi que la opcion andaba a veces
-	-- si y a veces no (y al salir de combate el nombre volvia siempre).
-	-- Ademas, si la foto se sacaba con el nombre ya oculto, destildar la
-	-- opcion no lo traia de vuelta.
-	--
-	-- Ahora manda solo la opcion, igual que en Square.
+
+
+
+
+
+
+
+
+
+
+
 	Restore(nm,  s.name, true);
 	if nm then
 		if PartyTargetsDB and PartyTargetsDB.hideName then nm:Hide(); else nm:Show(); end
@@ -375,45 +375,45 @@ local function ApplyClassic(f)
 	Restore(tex, s.texture);
 	if nm then nm:SetJustifyH("LEFT"); end
 
-	-- La imagen del marco tambien vuelve: Restore repone punto y tamaño,
-	-- pero no la textura ni el tinte.
+
+
 	if tex then
 		tex:SetTexture("Interface\\TargetingFrame\\UI-TargetofTargetFrame");
 		if not (K.ApplyLortiTint and K.ApplyLortiTint(tex, "LortiUI_PartyTargets")) then
 			tex:SetVertexColor(1, 1, 1);
 		end
 	end
-	-- Y la textura de las barras, que Restore no toca.
+
 	if hp then hp:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar"); end
 	if mp then mp:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar"); end
-	-- En Classic el marco dorado de Blizzard ya hace de fondo: dejar el
-	-- nuestro puesto le metia un rectangulo negro detras de las barras.
+
+
 	if hp and hp.nufSquareBG then hp.nufSquareBG:Hide(); end
 	if mp and mp.nufSquareBG then mp.nufSquareBG:Hide(); end
 
-	-- El recorte vuelve al de retrato. La TEXTURA no hace falta reponerla:
-	-- SetPortraitTexture la reescribe en la proxima actualizacion del
-	-- objetivo, que ocurre enseguida.
+
+
+
 	if por then por:SetTexCoord(unpack(FACE_COORDS)); end
-	-- Con la casilla del icono de clase, tambien en Classic.
+
 	if por and WantClassIcon() then ApplyClassPortrait(f); end
 end
 
--- ---------------------------------------------------------
--- API
--- ---------------------------------------------------------
+
+
+
 function K.GetPartyTargetStyle()
 	local v = PartyTargetsDB and PartyTargetsDB.style;
 	return (v == "Square") and "Square" or "Classic";
 end
 
--- PartyTargetFrame1..4 heredan SecureUnitButtonTemplate: son marcos
--- PROTEGIDOS, y SetSize sobre uno de ellos esta vedado en combate. Como el
--- estilo se reaplica con UNIT_TARGET, que en pelea salta cada vez que un
--- companero cambia de objetivo, esto disparaba el cartel amarillo
--- "Interface action failed because of an AddOn" una y otra vez. En combate
--- se anota y listo; al salir se aplica de una sola pasada, que es cuando
--- se puede y cuando ademas se nota menos.
+
+
+
+
+
+
+
 local stylePending = false;
 
 function K.ApplyPartyTargetStyle()
@@ -425,15 +425,15 @@ function K.ApplyPartyTargetStyle()
 	for i = 1, FRAMES do
 		local f = _G[FRAME_NAME .. i];
 		if f then
-			-- La foto SIEMPRE primero, incluso al pedir Square: si no,
-			-- nunca tendriamos con que volver a Classic.
+
+
 			Capture(f);
 			if square then ApplySquare(f) else ApplyClassic(f) end
 		end
 	end
 end
 
--- Casilla "Class icon in portrait" (opciones de Party Targets).
+
 function K.GetPartyTargetClassIcon()
 	return WantClassIcon();
 end
@@ -451,19 +451,19 @@ function K.SetPartyTargetStyle(style)
 	if not PartyTargetsDB then PartyTargetsDB = {}; end
 	PartyTargetsDB.style = (style == "Square") and "Square" or "Classic";
 	K.ApplyPartyTargetStyle();
-	-- Cada estilo recuerda su propia escala: al cambiar hay que aplicar la
-	-- del nuevo, y avisarle al panel para que el slider muestre esa.
+
+
 	if K.ApplyPartyTargetScale then K.ApplyPartyTargetScale(); end
 	if K.RefreshPartyTargetScaleSlider then K.RefreshPartyTargetScaleSlider(); end
 end
 
--- ---------------------------------------------------------
--- Reaplicar
---
--- Blizzard reposiciona el retrato y las barras en cada actualizacion del
--- miembro del grupo, asi que aplicar una sola vez al entrar no alcanza:
--- se pierde en cuanto alguien cambia de objetivo.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
 local events = CreateFrame("Frame");
 events:RegisterEvent("PLAYER_ENTERING_WORLD");
 events:RegisterEvent("PARTY_MEMBERS_CHANGED");
@@ -471,46 +471,46 @@ events:RegisterEvent("UNIT_TARGET");
 events:RegisterEvent("PLAYER_REGEN_ENABLED");
 events:SetScript("OnEvent", function(_, event)
 	if event == "PLAYER_REGEN_ENABLED" then
-		-- Salio de combate: si quedo algo pendiente, ahora si.
+
 		if stylePending then K.ApplyPartyTargetStyle(); end
 		return;
 	end
 
-	-- CLASSIC TAMBIEN SE REAPLICA.
-	--
-	-- Aca habia un "if K.GetPartyTargetStyle() ~= 'Square' then return end"
-	-- que dejaba a Classic sin reaplicarse NUNCA. Y el tinte de Lorti para
-	-- estos marcos vive adentro de ApplyClassic, asi que en Classic -- que
-	-- es el estilo por defecto -- el marco del objetivo del companero se
-	-- quedaba con el dorado de Blizzard y la casilla "Party targets" de
-	-- Lorti parecia no hacer nada.
-	--
-	-- No era la casilla: era que nadie llamaba a ApplyPartyTargetStyle en
-	-- Classic. Al entrar al mundo no corria, y el unico momento en que
-	-- Classic se pintaba era justo al cambiar de estilo desde el panel --
-	-- y se perdia en el siguiente repintado de Blizzard.
-	--
-	-- El costo es el mismo que ya paga Square en estos mismos eventos, y
-	-- Capture() esta protegida contra sacar la foto dos veces, asi que
-	-- reaplicar Classic no puede "congelar" un estado ya modificado.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	K.ApplyPartyTargetStyle();
 end);
 
--- El icono de clase hay que reponerlo CADA VEZ que Blizzard repinta el
--- retrato.
---
--- UnitFrame_OnEvent llama a UnitFramePortrait_Update, que hace
--- SetPortraitTexture y pisa el atlas de clases con la cara del personaje.
--- Aplicarlo solo en UNIT_TARGET no alcanzaba: el orden en que corren dos
--- manejadores del mismo evento no esta garantizado, asi que a veces
--- ganabamos y a veces perdiamos, y el icono aparecia o no segun el dia.
---
--- Engancharse a la funcion que lo pisa saca el azar del medio: corremos
--- siempre despues.
+
+
+
+
+
+
+
+
+
+
+
 if type(UnitFramePortrait_Update) == "function" then
 	hooksecurefunc("UnitFramePortrait_Update", function(self)
-		-- Antes: solo en Square. Ahora manda la casilla del icono de clase
-		-- (que sin tocarla sigue siendo "Square si, Classic no").
+
+
 		if not self or not WantClassIcon() then return; end
 		local n = self.GetName and self:GetName();
 		if n and string.find(n, "^PartyTargetFrame%d") then

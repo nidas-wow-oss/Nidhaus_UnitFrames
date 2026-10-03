@@ -5,23 +5,23 @@ local _G, unpack = _G, unpack;
 local flatOriginals = {};
 local flatBackgrounds = {};
 
--- ---------------------------------------------------------
--- TEXTO FORZADO EN LAS BARRAS DE ARENA
---
--- Antes esto se hacia pisando el Hide del FontString
--- (hbTS.Hide = function() end). Funcionaba, pero escribirle un campo a un
--- objeto que cuelga de un marco protegido lo deja TAINTED para toda la
--- sesion; despues el propio codigo de Blizzard, al pasar por
--- TextStatusBar_UpdateTextString, se comia el corte del cliente. Eran 320
--- "ArenaEnemyFrameNManaBar:Hide()" bloqueados en una sola arena, y el
--- cartel amarillo con ellos.
---
--- Ahora no se bloquea nada: se deja que Blizzard oculte el texto y se lo
--- vuelve a mostrar DESPUES, desde un hooksecurefunc. Un FontString no es
--- un marco protegido, asi que mostrarlo no se bloquea nunca. Y la marca
--- vive en una tabla nuestra, con el FontString de clave, sin escribirle
--- nada encima.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local forcedTexts = {};
 
 hooksecurefunc("TextStatusBar_UpdateTextString", function(bar)
@@ -29,7 +29,7 @@ hooksecurefunc("TextStatusBar_UpdateTextString", function(bar)
 	if ts and forcedTexts[ts] then ts:Show(); end
 end);
 
--- Compatibilidad con Cataclysm: definir MAX_ARENA_ENEMIES si no existe
+
 local MAX_ARENA_ENEMIES = MAX_ARENA_ENEMIES or 5;
 
 local function CaptureFlatOriginals(arenaFrame, index)
@@ -40,7 +40,7 @@ local function CaptureFlatOriginals(arenaFrame, index)
 	orig.portraitTexture = arenaFrame.classPortrait:GetTexture();
 	orig.portraitW = arenaFrame.classPortrait:GetWidth();
 	orig.portraitH = arenaFrame.classPortrait:GetHeight();
-	orig.portraitTexCoord = {arenaFrame.classPortrait:GetTexCoord()};  -- NUEVO: Guardar texcoords
+	orig.portraitTexCoord = {arenaFrame.classPortrait:GetTexCoord()};
 	orig.portraitPoints = {};
 	for p = 1, arenaFrame.classPortrait:GetNumPoints() do
 		orig.portraitPoints[p] = {arenaFrame.classPortrait:GetPoint(p)};
@@ -103,15 +103,15 @@ function K.ApplyFlatStyle(arenaFrame, index)
 	if not arenaFrame then return; end
 	CaptureFlatOriginals(arenaFrame, index);
 
-	-- FIX: Fallbacks sincronizados con ConfigManager defaults (antes: 150, 18, 12, 12)
+
 	local width = C.ArenaFlatWidth or 120;
 	local healthH = C.ArenaFlatHealthBarHeight or 20;
 	local powerH = C.ArenaFlatPowerBarHeight or 8;
 	local healthFont = C.ArenaFlatHealthFontSize or 9;
 	local powerFont = C.ArenaFlatPowerFontSize or 9;
-	-- ArenaFlatMirrored: controla qué lado va el portrait (izquierda/derecha de las barras).
-	-- ArenaMirrorMode: también debe invertir el portrait para que sea consistente con
-	-- la inversión de trinket/castbar.
+
+
+
 	local mirrored = C.ArenaFlatMirrored or C.ArenaMirrorMode;
 	local barTex = C.ArenaFlatBarTexture;
 	local maxHeight = healthH + powerH;
@@ -122,13 +122,13 @@ function K.ApplyFlatStyle(arenaFrame, index)
 	local blizzBG = _G["ArenaEnemyFrame"..index.."Background"];
 	if blizzBG then blizzBG:Hide(); end
 
-	-- El marco de arena es protegido: en combate el tamaño no se puede
-	-- cambiar. El resto del estilo si; el tamaño, al terminar la pelea.
+
+
 	if not K.AfterCombat("FlatSize" .. tostring(index), function() K.ApplyFlatStyle(arenaFrame, index); end) then
 		arenaFrame:SetSize(width, maxHeight + 20);
 	end
 
-	-- Contenedor de portrait por encima de las barras (z-order fix)
+
 	if not arenaFrame._flatPortraitContainer then
 		local pc = CreateFrame("Frame", nil, arenaFrame);
 		pc:SetFrameLevel(arenaFrame:GetFrameLevel() + 10);
@@ -153,7 +153,7 @@ function K.ApplyFlatStyle(arenaFrame, index)
 
 	local textureToUse = barTex;
 	if not textureToUse or textureToUse == "" then
-		-- FIX: Usar textura propia del addon en vez de depender de sArena
+
 		textureToUse = C.statusbarTexture or "Interface\\TargetingFrame\\UI-StatusBar";
 	end
 	if textureToUse and textureToUse ~= "" then
@@ -189,11 +189,11 @@ function K.ApplyFlatStyle(arenaFrame, index)
 	arenaFrame.manabar.TextString:ClearAllPoints();
 	arenaFrame.manabar.TextString:SetPoint("CENTER", arenaFrame.manabar);
 
-	-- FIX: Override Hide() del TextString para evitar parpadeo.
-	-- Blizzard llama TextStatusBar_UpdateTextString() en cada update de HP/mana,
-	-- que oculta el TextString según el checkbox de Interface > Status Text.
-	-- Si ArenaFlatStatusText está activo, bloqueamos ese Hide.
-	-- Si está inactivo, respetamos el checkbox de Interface.
+
+
+
+
+
 	local forceText = C.ArenaFlatStatusText;
 
 	local hbTS = arenaFrame.healthbar.TextString;
@@ -206,10 +206,10 @@ function K.ApplyFlatStyle(arenaFrame, index)
 			hbTS:Show();
 		else
 			forcedTexts[hbTS] = nil;
-			-- FIX: NO llamar :Show() aquí. Si lo hacemos, Blizzard lo oculta
-			-- en el siguiente tick via TextStatusBar_UpdateTextString() y se
-			-- produce un parpadeo visible (Show→Hide→Show→Hide cada frame).
-			-- Dejar que Blizzard decida según Interface > Status Text > Party.
+
+
+
+
 		end
 	else
 		forcedTexts[hbTS] = nil;
@@ -223,28 +223,28 @@ function K.ApplyFlatStyle(arenaFrame, index)
 			mbTS:Show();
 		else
 			forcedTexts[mbTS] = nil;
-			-- FIX: Mismo fix que healthbar — no forzar Show().
+
 		end
 	else
 		forcedTexts[mbTS] = nil;
 		mbTS:Hide();
 	end
 
-	-- ═══════════════════════════════════════════════════════════
-	-- FIX: Posicionar cast bar y trinket según ArenaMirrorMode
-	-- Esto DEBE estar dentro de ApplyFlatStyle porque es la única
-	-- función que corre siempre al re-aplicar el estilo flat.
-	-- MirrorMode.lua intentaba hacerlo por separado pero algo lo sobreescribía.
-	-- ═══════════════════════════════════════════════════════════
+
+
+
+
+
+
 	local castBar = _G["ArenaEnemyFrame"..index.."CastingBar"];
 	if castBar then
 		castBar:ClearAllPoints();
-		-- Posición guardada para el modo actual tiene prioridad
+
 		local savedCB = K.GetSavedCastBarPos and K.GetSavedCastBarPos();
 		if savedCB then
 			castBar:SetPoint(savedCB[1], arenaFrame, savedCB[2], savedCB[3], savedCB[4]);
 		elseif C.ArenaMirrorMode then
-			-- Mirror ON default: cast bar DERECHA (opuesto al trinket)
+
 			castBar:SetPoint("BOTTOMLEFT", arenaFrame, "BOTTOMRIGHT", 8, 6);
 			local icon = _G["ArenaEnemyFrame"..index.."CastingBarIcon"];
 			if icon then
@@ -252,7 +252,7 @@ function K.ApplyFlatStyle(arenaFrame, index)
 				icon:SetPoint("LEFT", castBar, "RIGHT", 2, 0);
 			end
 		else
-			-- Mirror OFF default: cast bar IZQUIERDA (opuesto al trinket)
+
 			castBar:SetPoint("BOTTOMRIGHT", arenaFrame, "BOTTOMLEFT", -8, 6);
 			local icon = _G["ArenaEnemyFrame"..index.."CastingBarIcon"];
 			if icon then
@@ -262,9 +262,9 @@ function K.ApplyFlatStyle(arenaFrame, index)
 		end
 	end
 
-	-- Trinket: ArenaMirrorMode SIEMPRE gana sobre savedPos.
-	-- savedPos solo se respeta cuando mirror mode está OFF (el usuario la arrastró manualmente).
-	-- Usar _G primero (más fiable que ns.ArenaFrame_Trinkets.frames que puede ser nil en test mode).
+
+
+
 	local trinketBorder = _G["NidhausArenaTrinketBorder"..index];
 	if not trinketBorder then
 		local trinketCore = ns and ns.ArenaFrame_Trinkets;
@@ -274,15 +274,15 @@ function K.ApplyFlatStyle(arenaFrame, index)
 	end
 	if trinketBorder then
 		trinketBorder:ClearAllPoints();
-		-- Posición guardada para el modo actual tiene prioridad
+
 		local savedPos = K.GetSavedTrinketPos and K.GetSavedTrinketPos();
 		if savedPos then
 			trinketBorder:SetPoint(savedPos[1], arenaFrame, savedPos[2], savedPos[3], savedPos[4]);
 		elseif C.ArenaMirrorMode then
-			-- Mirror ON default: trinket IZQUIERDA
+
 			trinketBorder:SetPoint("BOTTOMRIGHT", arenaFrame, "BOTTOMLEFT", -8, 0);
 		else
-			-- Mirror OFF default: trinket DERECHA
+
 			trinketBorder:SetPoint("BOTTOMLEFT", arenaFrame, "BOTTOMRIGHT", 8, 0);
 		end
 	end
@@ -300,7 +300,7 @@ function K.RemoveFlatStyle(index)
 	local orig = flatOriginals[index];
 	if not arenaFrame or not orig then return; end
 
-	-- Restaurar portrait al frame original
+
 	if arenaFrame._flatPortraitContainer then
 		arenaFrame._flatPortraitContainer:Hide();
 	end
@@ -316,7 +316,7 @@ function K.RemoveFlatStyle(index)
 	arenaFrame.classPortrait:SetSize(orig.portraitW, orig.portraitH);
 	arenaFrame.classPortrait:SetTexture(orig.portraitTexture or "Interface\\TargetingFrame\\UI-Classes-Circles");
 	if orig.portraitTexCoord and #orig.portraitTexCoord == 8 then
-		arenaFrame.classPortrait:SetTexCoord(unpack(orig.portraitTexCoord));  -- NUEVO: Restaurar texcoords
+		arenaFrame.classPortrait:SetTexCoord(unpack(orig.portraitTexCoord));
 	end
 
 	arenaFrame.healthbar:ClearAllPoints();
@@ -339,7 +339,7 @@ function K.RemoveFlatStyle(index)
 	if orig.hbFont[1] then arenaFrame.healthbar.TextString:SetFont(unpack(orig.hbFont)); end
 	if orig.mbFont[1] then arenaFrame.manabar.TextString:SetFont(unpack(orig.mbFont)); end
 
-	-- Se suelta el texto forzado: vuelve a mandar el ajuste de Blizzard.
+
 	forcedTexts[arenaFrame.healthbar.TextString] = nil;
 	forcedTexts[arenaFrame.manabar.TextString]   = nil;
 
@@ -349,8 +349,8 @@ function K.RemoveFlatStyle(index)
 	if orig.hbStatusBar then arenaFrame.healthbar:SetStatusBarTexture(orig.hbStatusBar); end
 	if orig.mbStatusBar then arenaFrame.manabar:SetStatusBarTexture(orig.mbStatusBar); end
 
-	-- FIX: NO borrar flatOriginals[index] — se capturan una sola vez y se reutilizan
-	-- (antes, al alternar Flat→Custom→Flat, se re-capturaban originals "contaminados")
+
+
 end
 
 function K.ApplyAllFlatStyles()
@@ -358,7 +358,7 @@ function K.ApplyAllFlatStyles()
 		local f = _G["ArenaEnemyFrame"..i];
 		if f then K.ApplyFlatStyle(f, i); end
 	end
-	-- Also apply flat pet styles if enabled
+
 	if C.ArenaFlatPetStyle then
 		K.ApplyFlatPetFrames();
 	end
@@ -369,16 +369,16 @@ function K.RemoveAllFlatStyles()
 	K.RemoveAllFlatPetStyles();
 end
 
--- Local helper (also defined globally in ArenaFrame.lua)
+
 local function IsFlatModeActive()
 	local style = C.ArenaFrameStyle or "Blizzard";
 	return (style == "Flat") or (C.ArenaFlatMode == true);
 end
 
 function K.ResetFlatDefaults()
-	-- FIX: Defaults sincronizados con ConfigManager.lua
-	-- Antes: Width=150, HealthBarHeight=18, HealthFont=12, PowerFont=12
-	-- ConfigManager: Width=120, HealthBarHeight=20, HealthFont=9, PowerFont=9
+
+
+
 	local defaults = {
 		ArenaFlatWidth = 120, ArenaFlatHealthBarHeight = 20, ArenaFlatPowerBarHeight = 8,
 		ArenaFlatHealthFontSize = 9, ArenaFlatPowerFontSize = 9, ArenaFlatMirrored = false,
@@ -391,9 +391,9 @@ function K.ResetFlatDefaults()
 	return defaults;
 end
 
--- =========================================================
--- FLAT PET FRAME STYLING
--- =========================================================
+
+
+
 
 local flatPetOriginals = {};
 local flatPetBackgrounds = {};
@@ -409,7 +409,7 @@ local function CapturePetOriginals(petFrame, index)
 		orig.texShown = petTex:IsShown();
 	end
 
-	-- Guardar portrait original
+
 	local petPortrait = _G[petFrame:GetName().."Portrait"];
 	if petPortrait then
 		orig.portraitW = petPortrait:GetWidth();
@@ -469,36 +469,36 @@ end
 
 function K.ApplyFlatPetStyle(petFrame, index)
 	if not petFrame then return; end
-	-- Marco de mascota de arena: protegido. En combate, al terminar.
+
 	if K.AfterCombat("FlatPet" .. tostring(index), function() K.ApplyFlatPetStyle(petFrame, index); end) then return; end
 	CapturePetOriginals(petFrame, index);
 
 	local arenaFrame = _G["ArenaEnemyFrame"..index];
 	if not arenaFrame then return; end
 
-	-- FIX MIRROR MODE: mismo OR logic que K.ApplyFlatStyle
+
 	local mirrored = C.ArenaFlatMirrored or C.ArenaMirrorMode;
 
-	-- Tamaños del pet: versión mini del frame principal
+
 	local petBarH = 8;
 	local petManaH = 4;
-	local iconSize = petBarH + petManaH + 2; -- cuadrado = alto total de barras
-	local petBarWidth = iconSize * 3; -- barras 3x más anchas que el icono
+	local iconSize = petBarH + petManaH + 2;
+	local petBarWidth = iconSize * 3;
 	local totalWidth = iconSize + 2 + petBarWidth;
 
-	-- Hide Blizzard pet texture
+
 	local petTex = _G[petFrame:GetName().."Texture"];
 	if petTex then petTex:Hide(); end
 
-	-- Resize pet frame
+
 	petFrame:SetSize(totalWidth, iconSize + 4);
 	petFrame:EnableMouse(true);
 
-	-- Position pet below arena frame manabar
+
 	petFrame:ClearAllPoints();
 	petFrame:SetPoint("TOPLEFT", arenaFrame.manabar, "BOTTOMLEFT", 0, -3);
 
-	-- Icono cuadrado del pet (portrait)
+
 	if not petFrame._flatPetIcon then
 		local icon = petFrame:CreateTexture(nil, "OVERLAY");
 		petFrame._flatPetIcon = icon;
@@ -507,31 +507,31 @@ function K.ApplyFlatPetStyle(petFrame, index)
 	icon:SetSize(iconSize, iconSize);
 	icon:ClearAllPoints();
 
-	-- Usar textura de la pet si existe, sino usar icono genérico
+
 	local petPortrait = _G[petFrame:GetName().."Portrait"];
 	if petPortrait then
 		petPortrait:ClearAllPoints();
 		petPortrait:SetSize(iconSize, iconSize);
 		petPortrait:Show();
-		icon:Hide(); -- usar el portrait real
+		icon:Hide();
 	else
 		icon:SetTexture("Interface\\Icons\\Ability_Hunter_Pet_Bear");
 		icon:SetTexCoord(0.07, 0.93, 0.07, 0.93);
 		icon:Show();
 	end
 
-	-- FIX: barTex era nil aquí porque era una variable local dentro de K.ApplyFlatStyle,
-	-- no accesible en este scope. El fallback (C.statusbarTexture) salvaba de un crash
-	-- pero C.ArenaFlatBarTexture se ignoraba silenciosamente para las barras del pet.
+
+
+
 	local barTex = C.ArenaFlatBarTexture;
-	-- Apply bar texture
+
 	local textureToUse = barTex;
 	if not textureToUse or textureToUse == "" then
-		-- FIX: Usar textura propia del addon en vez de depender de sArena
+
 		textureToUse = C.statusbarTexture or "Interface\\TargetingFrame\\UI-StatusBar";
 	end
 
-	-- Layout: mirrored = [Icon][Bars], normal = [Bars][Icon]
+
 	if mirrored then
 		icon:SetPoint("TOPLEFT", petFrame, "TOPLEFT", 0, 0);
 		if petPortrait then petPortrait:SetAllPoints(icon); end
@@ -555,7 +555,7 @@ function K.ApplyFlatPetStyle(petFrame, index)
 		petFrame.healthbar:SetStatusBarTexture(textureToUse);
 	end
 
-	-- Style manabar debajo de healthbar
+
 	if petFrame.manabar then
 		petFrame.manabar:ClearAllPoints();
 		petFrame.manabar:SetPoint("TOPLEFT", petFrame.healthbar, "BOTTOMLEFT", 0, -2);
@@ -565,7 +565,7 @@ function K.ApplyFlatPetStyle(petFrame, index)
 		end
 	end
 
-	-- Background con borde
+
 	local bg = EnsurePetFlatBackground(petFrame, index);
 	bg:ClearAllPoints();
 	if mirrored then
@@ -586,10 +586,10 @@ function K.RemoveFlatPetStyle(index)
 	local orig = flatPetOriginals[index];
 	if not petFrame or not orig then return; end
 
-	-- Hide custom flat icon
+
 	if petFrame._flatPetIcon then petFrame._flatPetIcon:Hide(); end
 
-	-- Restore pet portrait to original position
+
 	local petPortrait = _G[petFrame:GetName().."Portrait"];
 	if petPortrait and orig.portraitPoints then
 		petPortrait:ClearAllPoints();
@@ -599,20 +599,20 @@ function K.RemoveFlatPetStyle(index)
 		end
 	end
 
-	-- Restore Blizzard texture
+
 	local petTex = _G[petFrame:GetName().."Texture"];
 	if petTex then petTex:Show(); end
 
-	-- Restore size
+
 	petFrame:SetSize(orig.width, orig.height);
 
-	-- Restore position
+
 	petFrame:ClearAllPoints();
 	if orig.points then
 		for _, pt in ipairs(orig.points) do petFrame:SetPoint(unpack(pt)); end
 	end
 
-	-- Restore healthbar
+
 	if petFrame.healthbar and orig.hbPoints then
 		petFrame.healthbar:ClearAllPoints();
 		for _, pt in ipairs(orig.hbPoints) do petFrame.healthbar:SetPoint(unpack(pt)); end
@@ -620,19 +620,19 @@ function K.RemoveFlatPetStyle(index)
 		if orig.hbStatusBar then petFrame.healthbar:SetStatusBarTexture(orig.hbStatusBar); end
 	end
 
-	-- Restore manabar
+
 	if petFrame.manabar and orig.mbPoints then
 		petFrame.manabar:ClearAllPoints();
 		for _, pt in ipairs(orig.mbPoints) do petFrame.manabar:SetPoint(unpack(pt)); end
 		petFrame.manabar:SetSize(orig.mbW, orig.mbH);
 	end
 
-	-- FIX: NO borrar flatPetOriginals[index] — se capturan una sola vez
+
 end
 
 function K.ApplyFlatPetFrames()
-	-- FIX: Usar K.IsFlatModeActive (global) en vez de local IsFlatModeActive
-	-- para garantizar consistencia con ArenaFrame.lua si la lógica diverge
+
+
 	if not (K.IsFlatModeActive and K.IsFlatModeActive()) then return; end
 	if not C.ArenaFlatPetStyle then return; end
 

@@ -1,60 +1,60 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- PartyPetTargetFrame.lua  (integrado a NUF)
--- Marco propio para las mascotas de los companeros: retrato, vida/mana,
--- casteo, buffs/debuffs y aviso de CC.
---
--- CAMBIOS respecto del addon suelto:
---   * Es un modulo de NUF: checkbox propio en Frames > Party y los
---     eventos solo se registran con el modulo activo.
---   * UNIT_POWER_UPDATE no existe en 3.3.5a (es de retail): se cambio
---     por los eventos de recurso reales de WotLK.
---   * La textura CC-Glow no venia en el paquete: se usa una nativa.
---   * Se saco el print de carga.
---
--- ---------------------------------------------------------
--- DE UNA MASCOTA A CUATRO
---
--- Todo esto estaba escrito para party1pet y nada mas: un marco suelto,
--- con "party1pet" a mano en once lugares distintos. Agregar el compa 2
--- copiando el archivo habria dejado dos copias del mismo bug esperando.
---
--- Ahora hay UNA fabrica, PPF_Build(i), y cuatro marcos que salen de ella.
--- Cada uno guarda su indice y su unidad; ninguna funcion vuelve a nombrar
--- "party1pet". El que agregue un quinto compa el dia de manana cambia el
--- 4 de NUM_PETS y listo.
---
--- El marco 1 es el unico que se arrastra: los otros tres cuelgan de el en
--- cadena. Es lo que uno espera de una fila -- se agarra la de arriba y se
--- mueve el bloque -- y ademas evita cuatro posiciones guardadas que se
--- pueden desalinear entre si.
---
--- ---------------------------------------------------------
--- SOLO EN ARENAS
---
--- Fuera de arena estos cuatro marcos son ruido: en un raid de 25 la
--- mascota del compa 1 no le importa a nadie, y en el mundo abierto tapan
--- pantalla. En arena son justo lo contrario: saber si el felino esta en
--- miedo o si el elemental esta casteando decide la ronda.
---
--- Asi que por defecto solo se muestran en arena. No es un checkbox nuevo
--- en el panel a proposito -- esa columna ya esta llena y una casilla mas
--- ahi corre todo lo de abajo -- - va por /ppf arena, que ademas queda
--- documentado en el /ppf a secas.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local addonName = "PartyPetTargetFrame"
 local frame = CreateFrame("Frame", addonName.."Frame", UIParent)
 
-local NUM_PETS   = 4      -- party1pet .. party4pet
+local NUM_PETS   = 4
 local FRAME_W    = 160
 local FRAME_H    = 80
-local STACK_GAP  = 4      -- separacion entre un marco y el de abajo
+local STACK_GAP  = 4
 local DEF_X, DEF_Y = 300, 100
 
--- C_Timer.After is not available in WotLK (3.x); use a frame-based fallback
+
 local function TimerAfter(delay, func)
     local t = CreateFrame("Frame")
     local elapsed = 0
@@ -67,21 +67,21 @@ local function TimerAfter(delay, func)
     end)
 end
 
--- Variables de configuración
+
 local settings = {
     locked = false,
     clickable = true
 }
 
--- ---------------------------------------------------------
--- ZONA
---
--- IsActiveBattlefieldArena existe en 3.3.5a pero no en todos los cores
--- privados, asi que se pregunta con pcall y hay un segundo camino por
--- IsInInstance, que si esta siempre.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
 local function PPF_ArenaOnly()
-    return C.PartyPetArenaOnly ~= false      -- si la clave no existe, si
+    return C.PartyPetArenaOnly ~= false
 end
 
 local function PPF_InArena()
@@ -98,44 +98,44 @@ local function PPF_ZoneAllows()
     return PPF_InArena()
 end
 
--- ---------------------------------------------------------
--- POSICION GUARDADA
---
--- Antes no se guardaba nada: arrastrabas el marco y al recargar volvia al
--- centro. Con uno solo se toleraba; con cuatro en cadena es inaceptable,
--- asi que la posicion del marco 1 -- el unico que se mueve -- se escribe
--- en la DB al soltar.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
+
 local function PPF_DB()
     if not NidhausUnitFramesDB then NidhausUnitFramesDB = {} end
     NidhausUnitFramesDB.PartyPetPos = NidhausUnitFramesDB.PartyPetPos or {}
     return NidhausUnitFramesDB.PartyPetPos
 end
 
-local petFrames = {}      -- [1..NUM_PETS] = marco
+local petFrames = {}
 
--- =========================================================
--- VISIBILIDAD SEGURA
---
--- Los marcos son Buttons con SecureUnitButtonTemplate, o sea marcos
--- PROTEGIDOS: Show() y Hide() sobre ellos estan vedados en combate. El
--- OnUpdate llamaba a Show() diez veces por segundo, estuviera ya visible
--- o no, y el cliente cortaba cada llamada: 254 lineas seguidas en
--- taint.log de un solo combate, y el cartel amarillo "Interface action
--- failed because of an AddOn" en pantalla.
---
--- RegisterUnitWatch es la herramienta de Blizzard para esto: el codigo
--- seguro muestra y oculta el marco segun exista la unidad, y eso si
--- funciona en combate. Si el cliente no la tuviera, se cae a un Show/Hide
--- a mano que solo se llama cuando el estado cambia de verdad, y nunca
--- dentro de combate: lo pendiente se aplica al salir.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local PPF_HasUnitWatch = (type(RegisterUnitWatch) == "function")
 	and (type(UnregisterUnitWatch) == "function")
-local PPF_WantVisible  = false   -- lo que quiere el modulo: prendido o no
-local PPF_Pending      = nil     -- lo que quedo para cuando termine el combate
+local PPF_WantVisible  = false
+local PPF_Pending      = nil
 
-local PPF_ApplyVisibility        -- se define abajo, la usa el frame de combate
+local PPF_ApplyVisibility
 
 local ppfCombat = CreateFrame("Frame")
 ppfCombat:SetScript("OnEvent", function(self)
@@ -155,9 +155,9 @@ function PPF_ApplyVisibility(on)
 	end
 	PPF_WantVisible = on
 
-	-- La zona manda por encima del interruptor: prendido pero fuera de
-	-- arena, no se ve nada. Se guarda igual el "want" de arriba, asi al
-	-- entrar a la arena aparecen sin tener que tocar nada.
+
+
+
 	local show = on and PPF_ZoneAllows()
 
 	for i = 1, NUM_PETS do
@@ -184,7 +184,7 @@ function PPF_ApplyVisibility(on)
 	end
 end
 
--- Auras a ocultar
+
 local hiddenAuras = {
     ["Devotion Aura"] = true,
     ["Crusader Aura"] = true,
@@ -199,7 +199,7 @@ local hiddenAuras = {
     ["Aspect of the Wild"] = true,
 }
 
--- CC detection
+
 local ccDebuffs = {
     ["Stun"] = true,
     ["Fear"] = true,
@@ -219,7 +219,7 @@ local function IsUnitCC(unit)
     return false
 end
 
--- Buff visible según Castable Buffs
+
 local function IsVisibleBuff(unit, index)
     local name, _, _, _, _, _, caster = UnitBuff(unit, index)
     if not name then return false end
@@ -228,76 +228,76 @@ local function IsVisibleBuff(unit, index)
     return GetCVar("showCastableBuffs") == "1" and UnitCanAssist("player", unit)
 end
 
--- ---------------------------------------------------------
--- Tinte de Lorti UI
---
--- El marco de la mascota es arte de Blizzard sin tocar, asi que con Lorti
--- puesto quedaba dorado y brillante al lado del resto oscurecido. Piden el
--- tinte por el mismo camino que el grupo, arena y los target de grupo: si
--- Lorti esta apagado, ApplyLortiTint repone el blanco y todo queda como
--- antes.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
+
+
 local function ApplyPetLortiTint(pf)
 	if not K.ApplyLortiTint then return; end
 	K.ApplyLortiTint(pf.bg, "LortiUI_PartyPet");
 end
 
--- =========================================================
--- LA FABRICA
--- =========================================================
+
+
+
 local function PPF_Build(i)
 	local unit = "party" .. i .. "pet"
 
 	local petFrame = CreateFrame("Button", "CustomParty" .. i .. "PetFrame",
 		UIParent, "SecureUnitButtonTemplate")
-	-- 160x80, el tamano de siempre. El fondo es UI-PetFrame con SetAllPoints,
-	-- asi que agrandar el marco estiraba el arte y el aro del retrato salia
-	-- deformado. La barra de casteo y el nombre del objetivo cuelgan de la
-	-- barra de mana y no necesitan sitio extra: un hijo puede salirse del
-	-- marco, nadie lo recorta.
+
+
+
+
+
 	petFrame:SetSize(FRAME_W, FRAME_H)
 	petFrame.index = i
 	petFrame.unit  = unit
 
-	-- NACE ESCONDIDO.
-	--
-	-- CreateFrame devuelve el marco VISIBLE. La visibilidad recien se decide
-	-- cuando el modulo arranca o cuando RegisterUnitWatch toma el control, y
-	-- hasta ese momento el marco estaba en pantalla sin unidad detras: el
-	-- "fantasma" que aparecia al entrar por primera vez, con retrato vacio y
-	-- barras a cero, aunque no tuvieras mascota ni compa.
-	--
-	-- Un Hide() aca no puede fallar: todavia no estamos en combate al cargar.
+
+
+
+
+
+
+
+
+
 	petFrame:Hide()
 
-	-- Configurar atributos para clic
+
 	petFrame:SetAttribute("type1", "target")
 	petFrame:SetAttribute("unit", unit)
 	petFrame:RegisterForClicks("AnyUp")
 	petFrame:EnableMouse(true)
 
-	-- Fondo
+
 	petFrame.bg = petFrame:CreateTexture(nil, "BACKGROUND")
 	petFrame.bg:SetAllPoints(true)
 	petFrame.bg:SetTexture("Interface\\AddOns\\Nidhaus_UnitFrames\\Modules2\\PartyPetFrame\\Media\\UI-PetFrame")
 	petFrame.bg:SetDrawLayer("BACKGROUND", 0)
 
-	-- Indicador de bloqueo
+
 	petFrame.lockIndicator = petFrame:CreateTexture(nil, "OVERLAY")
 	petFrame.lockIndicator:SetSize(24, 24)
 	petFrame.lockIndicator:SetPoint("TOPRIGHT", petFrame, "TOPRIGHT", -5, -5)
 	petFrame.lockIndicator:SetTexture("Interface\\RAIDFRAME\\ReadyCheck-NotReady")
 	petFrame.lockIndicator:Hide()
 
-	-- Glow CC
+
 	petFrame.ccGlow = petFrame:CreateTexture(nil, "OVERLAY")
 	petFrame.ccGlow:SetAllPoints(true)
-	-- La textura CC-Glow no venia incluida en el addon: se usa el aro de
-	-- seleccion de Blizzard, que existe siempre.
+
+
 	petFrame.ccGlow:SetTexture("Interface\\Buttons\\CheckButtonGlow")
 	petFrame.ccGlow:Hide()
 
-	-- Retrato
+
 	petFrame.portraitFrame = CreateFrame("Frame", nil, petFrame)
 	petFrame.portraitFrame:SetSize(40, 40)
 	petFrame.portraitFrame:SetPoint("LEFT", 12, 12)
@@ -312,11 +312,11 @@ local function PPF_Build(i)
 	petFrame.portraitBG:SetAllPoints(true)
 	petFrame.portraitBG:SetVertexColor(0, 0, 0, 1)
 
-	-- Nombre
+
 	petFrame.name = petFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	petFrame.name:SetPoint("TOPLEFT", 65, -10)
 
-	-- Vida
+
 	petFrame.healthBar = CreateFrame("StatusBar", nil, petFrame)
 	petFrame.healthBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
 	petFrame.healthBar:SetSize(85, 24)
@@ -324,20 +324,20 @@ local function PPF_Build(i)
 	petFrame.healthBar:SetStatusBarColor(0, 1, 0)
 	petFrame.healthBar:SetFrameLevel(0)
 
-	-- Mana / Rage / Focus / Energy
+
 	petFrame.manaBar = CreateFrame("StatusBar", nil, petFrame)
 	petFrame.manaBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
 	petFrame.manaBar:SetSize(85, 10)
 	petFrame.manaBar:SetPoint("TOPLEFT", petFrame.healthBar, "BOTTOMLEFT", 0, -4)
 	petFrame.manaBar:SetFrameLevel(0)
 
-	-- Texto objetivo. Cuelga de la barra de casteo, no del borde del marco:
-	-- un frame oculto conserva su posicion, asi que el texto queda en el
-	-- mismo sitio castee o no la mascota. El anclaje real se pone mas
-	-- abajo, cuando castBar ya existe.
+
+
+
+
 	petFrame.targetText = petFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 
-	-- Debuffs
+
 	petFrame.debuffs = {}
 	for n = 1, 8 do
 		local icon = CreateFrame("Frame", nil, petFrame)
@@ -360,7 +360,7 @@ local function PPF_Build(i)
 		petFrame.debuffs[n] = icon
 	end
 
-	-- Buffs (con bordes)
+
 	petFrame.buffs = {}
 	for n = 1, 8 do
 		local icon = CreateFrame("Frame", nil, petFrame)
@@ -380,7 +380,7 @@ local function PPF_Build(i)
 		petFrame.buffs[n] = icon
 	end
 
-	-- Castbar
+
 	local castBar = CreateFrame("StatusBar", nil, petFrame)
 	castBar:SetSize(110, 14)
 	castBar:SetPoint("TOPLEFT", petFrame.manaBar, "BOTTOMLEFT", 0, -4)
@@ -389,22 +389,22 @@ local function PPF_Build(i)
 	castBar:Hide()
 	petFrame.castBar = castBar
 
-	-- El borde de barra de casteo de Blizzard media 138x54 sobre una barra de
-	-- 110x14: un marco enorme y desalineado alrededor de una barrita. Fuera.
-	-- La barra se lee sola por su fondo, igual que las de arena.
+
+
+
 	local castBarBG = castBar:CreateTexture(nil, "BACKGROUND")
 	castBarBG:SetTexture("Interface\\Buttons\\WHITE8X8")
 	castBarBG:SetPoint("TOPLEFT", castBar, "TOPLEFT", -1, 1)
 	castBarBG:SetPoint("BOTTOMRIGHT", castBar, "BOTTOMRIGHT", 1, -1)
 	castBarBG:SetVertexColor(0, 0, 0, 0.7)
 
-	-- Icono del hechizo, a la izquierda y por fuera de la barra.
+
 	castBar.icon = castBar:CreateTexture(nil, "ARTWORK")
 	castBar.icon:SetSize(14, 14)
 	castBar.icon:SetPoint("RIGHT", castBar, "LEFT", -3, 0)
-	castBar.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- sin el borde del icono
+	castBar.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
-	-- Ahora si: el nombre del objetivo, debajo de la barra de casteo.
+
 	petFrame.targetText:SetPoint("TOPLEFT", castBar, "BOTTOMLEFT", 0, -2)
 
 	local spark = castBar:CreateTexture(nil, "OVERLAY")
@@ -418,19 +418,19 @@ local function PPF_Build(i)
 	castBar.text:SetPoint("LEFT", castBar, "LEFT", 4, 0)
 	castBar.text:SetJustifyH("LEFT")
 
-	-- Segundos que faltan, contando hacia abajo.
+
 	castBar.timeText = castBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	castBar.timeText:SetPoint("RIGHT", castBar, "RIGHT", -4, 0)
 	castBar.timeText:SetJustifyH("RIGHT")
 
-	-- ---------------------------------------------------------
-	-- La barra se anima sola
-	--
-	-- Antes el valor lo movia el OnUpdate del marco, cada 0.1 s, asi que
-	-- avanzaba a los saltos. Ahora la barra tiene su propio OnUpdate y
-	-- recalcula en cada cuadro a partir de startTime y endTime, que es como
-	-- lo hace la barra de casteo del juego.
-	-- ---------------------------------------------------------
+
+
+
+
+
+
+
+
 	castBar:SetScript("OnUpdate", function(self)
 		if not self.endTime then return end
 		local now = GetTime()
@@ -440,7 +440,7 @@ local function PPF_Build(i)
 			return
 		end
 		if self.isChannel then
-			-- Canalizar VACIA la barra: el valor va de endTime hacia startTime.
+
 			self:SetValue(self.startTime + self.endTime - now)
 		else
 			self:SetValue(now)
@@ -451,15 +451,15 @@ local function PPF_Build(i)
 	return petFrame
 end
 
--- ---------------------------------------------------------
--- COLOCAR LA PILA
---
--- El 1 va donde lo dejo el usuario; del 2 al 4 cuelgan del de arriba.
--- Anclarlos en cadena y no cada uno a UIParent es a proposito: mover el
--- primero mueve el bloque entero, y no hay forma de que se desalineen.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
 local function PPF_Layout()
-	if InCombatLockdown() then return end     -- marcos protegidos
+	if InCombatLockdown() then return end
 	local pos = PPF_DB()
 	local f1 = petFrames[1]
 	if not f1 then return end
@@ -482,22 +482,22 @@ local function PPF_SavePosition()
 	if not f1 then return end
 	local point, rel, relPoint, x, y = f1:GetPoint(1)
 	if not point then return end
-	-- Se guarda el punto SOLO si esta colgado de UIParent, que es de donde
-	-- lo cuelga PPF_Layout. Si algun dia otro sistema lo reanclara a un
-	-- tercer marco, guardar esas coordenadas y despues reponerlas contra
-	-- UIParent lo mandaria a cualquier lado -- el clasico "lo movi dos
-	-- pixeles y aparecio en la otra punta". Mejor no guardar nada.
+
+
+
+
+
 	if rel and rel ~= UIParent then return end
 	local pos = PPF_DB()
 	pos.point, pos.relPoint, pos.x, pos.y = point, relPoint, x, y
 end
 
--- ---------------------------------------------------------
--- Arrastre: solo el marco 1.
---
--- StartMoving sobre un marco protegido en combate contamina, asi que el
--- arrastre se corta ahi mismo en vez de dejar que el cliente lo rechace.
--- ---------------------------------------------------------
+
+
+
+
+
+
 local function PPF_MakeDraggable(f)
 	f:SetMovable(true)
 	f:RegisterForDrag("LeftButton")
@@ -509,7 +509,7 @@ local function PPF_MakeDraggable(f)
 	f:SetScript("OnDragStop", function(self)
 		self:StopMovingOrSizing()
 		PPF_SavePosition()
-		PPF_Layout()          -- reanclar a UIParent con numeros limpios
+		PPF_Layout()
 	end)
 end
 
@@ -519,13 +519,13 @@ end
 PPF_MakeDraggable(petFrames[1])
 PPF_Layout()
 
--- =========================================================
--- ACTUALIZACION
--- =========================================================
+
+
+
 local function UpdatePetFrame(pf)
     local unit = pf.unit
-    -- Ni Show() ni Hide() aca: de mostrar y ocultar se encarga el unit
-    -- watch, o PPF_ApplyVisibility fuera de combate si no lo hubiera.
+
+
     if not UnitExists(unit) then
         if not PPF_HasUnitWatch then PPF_ApplyVisibility(PPF_WantVisible) end
         return
@@ -552,15 +552,15 @@ local function UpdatePetFrame(pf)
     }
     pf.manaBar:SetStatusBarColor(unpack(colors[powerType] or {0,0,1}))
 
-    -- Objetivo
+
     local targetUnit = unit.."target"
     if UnitExists(targetUnit) then
         local targetName = UnitName(targetUnit) or "Desconocido"
         if #targetName > 15 then
             targetName = strsub(targetName,1,12).."..."
         end
-        -- Nombre en color de clase. Solo tiene sentido con jugadores: los
-        -- NPC no tienen clase, asi que esos quedan con el color de siempre.
+
+
         local _, class = UnitClass(targetUnit)
         local col = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
         if col and UnitIsPlayer(targetUnit) then
@@ -569,19 +569,19 @@ local function UpdatePetFrame(pf)
         end
         pf.targetText:SetText((L["PETTARGET_PREFIX"] or "Target: ")..targetName)
     else
-        -- Sin objetivo no se escribe nada: un "Target: None" fijo bajo el
-        -- marco es ruido, y ademas es el estado normal casi todo el tiempo.
+
+
         pf.targetText:SetText("")
     end
 
-    -- Buffs con bordes
+
     local buffIndex = 1
     for i = 1, 16 do
         if IsVisibleBuff(unit, i) then
             local icon = pf.buffs[buffIndex]
-            -- El pool son 8 iconos y este bucle recorre hasta 16 buffs.
-            -- Con 9 o mas buffs visibles 'icon' venia nil y tiraba
-            -- "attempt to index local 'icon'" en cada OnUpdate.
+
+
+
             if not icon then break end
             local name, _, texture = UnitBuff(unit, i)
             icon.texture:SetTexture(texture)
@@ -593,7 +593,7 @@ local function UpdatePetFrame(pf)
             end
 
             icon.border:Show()
-            icon.border:SetVertexColor(1, 0.82, 0) -- Dorado
+            icon.border:SetVertexColor(1, 0.82, 0)
 
             icon:Show()
             buffIndex = buffIndex + 1
@@ -604,7 +604,7 @@ local function UpdatePetFrame(pf)
         pf.buffs[j].border:Hide()
     end
 
-    -- Debuffs con bordes de colores según tipo
+
     for i = 1, 8 do
         local icon = pf.debuffs[i]
         local name, _, texture, debuffType = UnitDebuff(unit, i)
@@ -613,19 +613,19 @@ local function UpdatePetFrame(pf)
             icon.texture:SetTexture(texture)
 
             local colorsDebuff = {
-                Magic   = {0.2, 0.6, 1},      -- Azul
-                Curse   = {0.6, 0, 1},        -- Morado
-                Disease = {0.6, 0.4, 0},      -- Marrón
-                Poison  = {0, 0.6, 0},        -- Verde
+                Magic   = {0.2, 0.6, 1},
+                Curse   = {0.6, 0, 1},
+                Disease = {0.6, 0.4, 0},
+                Poison  = {0, 0.6, 0},
             }
 
             if debuffType and colorsDebuff[debuffType] then
                 icon.border:Show()
                 icon.border:SetVertexColor(unpack(colorsDebuff[debuffType]))
             else
-                -- Si no tiene tipo específico, mostrar borde rojo genérico
+
                 icon.border:Show()
-                icon.border:SetVertexColor(0.8, 0.1, 0.1) -- Rojo
+                icon.border:SetVertexColor(0.8, 0.1, 0.1)
             end
         else
             icon:Hide()
@@ -633,7 +633,7 @@ local function UpdatePetFrame(pf)
         end
     end
 
-    -- CC Glow
+
     if IsUnitCC(unit) then
         pf.ccGlow:Show()
     else
@@ -643,24 +643,24 @@ local function UpdatePetFrame(pf)
 	ApplyPetLortiTint(pf);
 end
 
--- Castbar
+
 local function UpdateCastBar(pf)
     local unit    = pf.unit
     local castBar = pf.castBar
-    -- OJO CON EL ORDEN DE LOS RETORNOS.
-    --
-    -- Aca habia un bug que dejaba la barra invisible SIEMPRE: se leia
-    -- startTime en la cuarta posicion, que es la TEXTURA. Como es un
-    -- string, el "type(startTime) == number" de mas abajo daba falso y la
-    -- barra se ocultaba siempre, tanto casteando como canalizando.
-    --
-    -- En 3.3.5a el orden es:
-    --   UnitCastingInfo  name, nameSubtext, text, texture, startTime,
-    --                    endTime, isTradeSkill, castID, notInterruptible
-    --   UnitChannelInfo  lo mismo pero SIN castID
-    --
-    -- Se nombran todos, como en PartyCastingBars, para que no vuelva a
-    -- correrse un lugar sin que nadie lo note.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     local name, nameSubtext, text, texture, startTime, endTime,
           isTradeSkill, castID, notInterruptible = UnitCastingInfo(unit)
     local isChannel = false
@@ -671,13 +671,13 @@ local function UpdateCastBar(pf)
     end
 
     if name and type(startTime) == "number" and type(endTime) == "number" then
-        -- Los tiempos vienen en milisegundos; adentro se trabaja en segundos.
+
         castBar.startTime = startTime / 1000
         castBar.endTime   = endTime / 1000
         castBar.isChannel = isChannel
-        -- El minimo y el maximo son SIEMPRE start y end, en ese orden, para
-        -- las dos formas. Lo que cambia es el valor, y de eso se ocupa el
-        -- OnUpdate. Antes se invertian para canalizar y la barra no corria.
+
+
+
         castBar:SetMinMaxValues(castBar.startTime, castBar.endTime)
         castBar.text:SetText(name)
         if castBar.icon then
@@ -702,19 +702,19 @@ local function UpdateAll()
     end
 end
 
--- ---------------------------------------------------------
--- UN SOLO OnUpdate PARA LOS CUATRO
---
--- El original colgaba el OnUpdate del propio marco. Con cuatro marcos eso
--- serian cuatro temporizadores desfasados entre si haciendo lo mismo. Va
--- uno solo en el frame de eventos, que ademas solo existe con el modulo
--- prendido.
---
--- Y ademas: SOLO los marcos que estan a la vista. Repasar retratos, auras
--- y barras de una mascota que no existe, diez veces por segundo, es
--- trabajo puro al pedo -- y con el modo arena, fuera de arena, seria el
--- 100% del tiempo.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
 local timeSinceLastUpdate = 0
 local function PPF_OnUpdate(self, elapsed)
     timeSinceLastUpdate = timeSinceLastUpdate + elapsed
@@ -729,18 +729,18 @@ local function PPF_OnUpdate(self, elapsed)
     end
 end
 
--- Eventos
--- OJO: UNIT_POWER_UPDATE es de retail. En 3.3.5a el recurso se avisa con
--- un evento por tipo; se registran todos para cubrir cualquier mascota.
---
--- Los eventos NO se registran al cargar: los engancha el modulo al
--- prenderse (ver el final del archivo). Asi, apagado, no escucha nada.
+
+
+
+
+
+
 local PPF_EVENTS = { "UNIT_HEALTH", "UNIT_MANA", "UNIT_MAXMANA", "UNIT_FOCUS", "UNIT_ENERGY", "UNIT_RAGE", "UNIT_HAPPINESS", "UNIT_TARGET", "UNIT_PET", "PLAYER_ENTERING_WORLD", "PLAYER_ALIVE", "PLAYER_UNGHOST", "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_CHANNEL_UPDATE", "UNIT_SPELLCAST_DELAYED", "UNIT_AURA", "GROUP_ROSTER_UPDATE", "PARTY_MEMBERS_CHANGED", "RAID_ROSTER_UPDATE", "ZONE_CHANGED_NEW_AREA", "PLAYER_ENTERING_BATTLEGROUND", "PLAYER_LEAVING_BATTLEGROUND", "DUEL_FINISHED", "INSTANCE_GROUP_SIZE_CHANGED", "UPDATE_INSTANCE_INFO" };
 
--- "party3pet" -> el marco 3. Nil si el evento vino de cualquier otra cosa,
--- que es lo normal: UNIT_AURA y UNIT_HEALTH llegan para TODA unidad que se
--- mueva en pantalla, y sin este filtro repintariamos los cuatro marcos por
--- cada tick de veneno de un bicho al otro lado del mapa.
+
+
+
+
 local function PetFrameFor(unitID)
     if type(unitID) ~= "string" then return nil end
     local n = string.match(unitID, "^party(%d)pet$")
@@ -748,7 +748,7 @@ local function PetFrameFor(unitID)
     return petFrames[tonumber(n)]
 end
 
--- Y el mismo filtro para el dueno: UNIT_PET llega como "party2".
+
 local function PetFrameForOwner(unitID)
     if type(unitID) ~= "string" then return nil end
     local n = string.match(unitID, "^party(%d)$")
@@ -758,13 +758,13 @@ end
 
 frame:SetScript("OnEvent", function(self, event, arg1)
     if event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
-        -- La zona pudo cambiar: volver a decidir si se ven o no.
+
         PPF_ApplyVisibility(PPF_WantVisible)
         UpdateAll()
     elseif event == "ZONE_CHANGED_NEW_AREA" or event == "DUEL_FINISHED" or event == "PLAYER_ENTERING_BATTLEGROUND" or event == "PLAYER_LEAVING_BATTLEGROUND" or event == "INSTANCE_GROUP_SIZE_CHANGED" or event == "UPDATE_INSTANCE_INFO" then
-        -- Forzar actualización después de cambios de zona/duelo/instancia.
-        -- El medio segundo es porque al cruzar el portal de la arena el
-        -- cliente todavia reporta la zona vieja durante unos cuadros.
+
+
+
         TimerAfter(0.5, function()
             PPF_ApplyVisibility(PPF_WantVisible)
             UpdateAll()
@@ -786,7 +786,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
     end
 end)
 
--- Funciones de configuración
+
 local function ToggleLock()
     settings.locked = not settings.locked
 
@@ -802,10 +802,10 @@ local function ToggleLock()
             end
         end
     end
-    -- Solo el 1 se mueve, asi que solo el 1 cambia de movible.
+
     petFrames[1]:SetMovable(not settings.locked)
 
-    -- Sin aviso por chat: el indicador de bloqueo ya lo muestra.
+
 end
 
 local function ToggleClickable()
@@ -819,7 +819,7 @@ local function ToggleClickable()
             else
                 f:SetAttribute("type1", nil)
             end
-            -- Si está bloqueado, ajustar el mouse según clickable
+
             if settings.locked then f:EnableMouse(settings.clickable) end
         end
     end
@@ -837,7 +837,7 @@ local function ResetPosition()
     PPF_Layout()
 end
 
--- Comandos slash
+
 SLASH_PARTYPETFRAME1 = "/ppf"
 SLASH_PARTYPETFRAME2 = "/partypetframe"
 SlashCmdList["PARTYPETFRAME"] = function(msg)
@@ -869,9 +869,9 @@ SlashCmdList["PARTYPETFRAME"] = function(msg)
     end
 end
 
--- =========================================================
--- INTEGRACION NUF
--- =========================================================
+
+
+
 local function PPF_SetEnabled(on)
     if on then
         for _, e in ipairs(PPF_EVENTS) do pcall(frame.RegisterEvent, frame, e) end
@@ -894,8 +894,8 @@ function K.ResetPartyPetFramePosition()
     ResetPosition()
 end
 
--- Que el rearmado general (cambio de modo de barras, reset) vuelva a
--- colocar la fila donde el usuario la dejo.
+
+
 if K.LayoutRegisterStore then
     K.LayoutRegisterStore("PartyPetFrames", function()
         PPF_Layout()
@@ -907,7 +907,7 @@ K.RegisterModule("PartyPetFrame", {
     desc    = L["MOD_PARTYPETFRAME_DESC"]
         or "Custom frames for your party members' pets (party 1-4): portrait, health/mana, cast bar and CC warning. Arena only by default; /ppf for commands.",
     default = false,
-    hideFromModulesTab = true,   -- vive en Frames > Party
+    hideFromModulesTab = true,
     onEnable  = function() PPF_SetEnabled(true) end,
     onDisable = function() PPF_SetEnabled(false) end,
 });

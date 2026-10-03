@@ -1,15 +1,15 @@
---[[
-	PartyCastingBars - English Localization
-	
-	By: AnduinLothar
-	
-	$Id: localization.en.lua 4136 2006-10-10 00:23:30Z karlkfi $
-	$Rev: 4136 $
-	$LastChangedBy: karlkfi $
-	$Date: 2006-10-09 17:23:30 -0700 (Mon, 09 Oct 2006) $
-]]--
 
--- Khaos Configuration
+
+
+
+
+
+
+
+
+
+
+
 
 PCB_SECTION_TEXT			= "PartyCastingBars";
 PCB_SECTION_TIP				= "These options configure PartyCastingBars, casting bars for your party member unit frames.";
@@ -79,9 +79,9 @@ PCB_LOCATIONS_RESET		= "ArcanePartyBars - Bar Locations have been reset.";
 SLASH_PARTYCASTINGBARS1 = "/partycastingbars";
 SLASH_PARTYCASTINGBARS2 = "/pcb";
 
--------
--- Note: Color strings are format |c########Translatable text here|r
--------
+
+
+
 	 	
 PCB_HELP1				= "|c0055AA55PartyCastingBars Slash Command Help ("
 							..SLASH_PARTYCASTINGBARS2.." help).|r";

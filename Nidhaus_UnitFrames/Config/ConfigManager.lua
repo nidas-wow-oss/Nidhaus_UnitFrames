@@ -1,16 +1,16 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- ConfigManager
+
 
 local defaults = {
-	-- GENERAL
+
 	classColor = false,
 	statusbarBackdrop = true,
-	HealthPercentage = false,   -- apagado por defecto, se prende en Interface > General
+	HealthPercentage = false,
 	CastingTimers = true,
 	
-	-- FRAMES
+
 	SetPositions = false,
 	LockPositions = true,
 	PartyIndividualMove = false,
@@ -24,26 +24,26 @@ local defaults = {
 	BossFrameScale = 0.65,
 	PetFrameScale = 1.0,
 	
-	-- PARTY/ARENA
+
 	NewPartyFrame = false,
-	-- Estilo de los marcos de party: "Default" | "New" | "Improved"
-	-- Son excluyentes, los coordina Modules2/PartyFrameStyle.lua
+
+
 	PartyFrameStyle = "Default",
-	PartyTargetsEnabled = false,   -- apagado por defecto, se prende en Frames > Party
+	PartyTargetsEnabled = false,
 	PartyFrameOn = true,
-	-- OJO CON EL NOMBRE: esta clave esta en POSITIVO y el checkbox del
-	-- panel esta en NEGATIVO ("Hide party pet frames", con nufInverted).
-	-- En true = se MUESTRAN = la casilla "Hide" arranca DESTILDADA, que
-	-- es lo pedido.
+
+
+
+
 	PartyShowPetFrames = true,
-	-- Los cuatro marcos de mascota (Party pet enhanced) solo en arena.
-	-- Fuera de arena son ruido; adentro deciden la ronda. Se cambia con
-	-- /ppf arena.
+
+
+
 	PartyPetArenaOnly = true,
 	PartyFrameScale = 1.0,
 	PartyMemberFrameSpacing = 0,
 	PartyMode3v3 = false,
-	-- Escala individual de cada miembro en modo 3v3
+
 	Party3v3Scale1 = 1.5,
 	Party3v3Scale2 = 1.5,
 	Party3v3Scale3 = 1.3,
@@ -53,21 +53,21 @@ local defaults = {
 	ArenaFrameScale = 1.5,
 	ArenaCustomTexture = true,
 	ArenaFrame_Trinkets = true,
-	-- Trinkets de party: checkbox propio (Frames > Party), independiente
-	-- del rastreo de arena. Offset compartido por los 4 miembros.
+
+
 	PartyTrinketsEnabled = false,
 	PartyTrinketSize = 20,
 	ArenaFrame_Trinket_Voice = false,
 	ArenaMirrorMode = false,
 	ArenaFrameSpacing = 0,
 
-	-- ARENA STYLE: "Default", "Custom", "Flat"
-	ArenaFrameStyle = "Custom",
-	ArenaBlizzardClassColor = false, -- color de clase en el estilo Blizzard de arena
 
-	-- FLAT STYLE OPTIONS
+	ArenaFrameStyle = "Custom",
+	ArenaBlizzardClassColor = false,
+
+
 	ArenaFlatMode = false,
-	-- 100 y no 120: es el ancho con el que quedo probado el estilo Flat.
+
 	ArenaFlatWidth = 100,
 	ArenaFlatHealthBarHeight = 20,
 	ArenaFlatPowerBarHeight = 8,
@@ -77,193 +77,193 @@ local defaults = {
 	ArenaFlatMirrored = false,
 	ArenaFlatStatusText = true,
 
-	-- ARENA PET FRAME
+
 	ArenaPetFrameShow = false,
 	ArenaFlatPetStyle = true,
 
-	-- ARENA TARGET OF TARGET
-	-- (el on/off del ToT lo maneja K.RegisterModule("ArenaToT"), no un setting)
+
+
 	ArenaToTScale = 1.0,
 	ArenaToTClassIcon = false,
 	ArenaToTMirrored = false,
-	ArenaToTSquare = false,   -- retrato cuadrado, como el de Party Targets
+	ArenaToTSquare = false,
 
-	-- CAST BAR OPTIONS
+
 	ArenaCastBarEnable = false,
 	ArenaCastBarScale = 1.0,
 	ArenaCastBarWidth = 80,
 
-	-- Barra de casteo estilo pw (Modules2/CastBarPW.lua).
-	-- Apagada por defecto: cambia el aspecto de las tres barras y eso
-	-- se elige, no se hereda.
+
+
+
 	CastBarPWEnabled = false,
-	CastBarPWIcon = true,       -- icono del hechizo arriba de la barra
-	CastBarPWIconSize = 30,     -- tamaño del icono del jugador (pw: 30)
-	CastBarPWDark = true,       -- teñir el borde de gris, como pw
-	CastBarPWScale = 1.2,       -- escala (pw: 1.2)
-	CastBarPWTarget = true,     -- aplicar tambien a la barra del objetivo
-	CastBarPWFocus = true,      -- aplicar tambien a la barra del foco
+	CastBarPWIcon = true,
+	CastBarPWIconSize = 30,
+	CastBarPWDark = true,
+	CastBarPWScale = 1.2,
+	CastBarPWTarget = true,
+	CastBarPWFocus = true,
 
-	-- Agregados al tooltip (Modules2/TooltipExtras.lua). Los tres
-	-- apagados por defecto: los dos primeros hacen
-	-- consultas al servidor (comparacion de logros e inspeccion) y eso
-	-- se elige, no se hereda.
-	TooltipArenaExp = false,       -- rating de arena mas alto del jugador
-	TooltipTalents = false,        -- arbol y reparto de talentos
-	TooltipQualityBorder = false,  -- borde del tooltip segun calidad del objeto
-	TooltipIcons = false,          -- icono del objeto/hechizo en la primera linea
-	-- Vive en el mismo archivo pero su checkbox esta en Buffs y Debuffs,
-	-- que es donde uno lo busca.
-	AuraCastBy = false,            -- quien lanzo el buff/debuff, en su tooltip
 
-	-- Bordes de auras del objetivo y el foco (Modules2/AuraBorders.lua).
-	-- Apagado por defecto: cambia como se ven todos los iconos.
+
+
+
+	TooltipArenaExp = false,
+	TooltipTalents = false,
+	TooltipQualityBorder = false,
+	TooltipIcons = false,
+
+
+	AuraCastBy = false,
+
+
+
 	AuraBordersEnabled = false,
-	AuraBordersPurge = true,    -- resplandor en los buffs magicos del enemigo
+	AuraBordersPurge = true,
 
-	-- VISUAL THEME
+
 	darkFrames = false,
 	UnitFrameCustomTexture = false,
-	AsuriFrames = false, -- tema Asuri: marco de cadenas, barras finas
-	-- Texto de vida/mana (portado de ZyrokofArenaFrames)
-	ShowCurrentValueOnly = false,     -- "33401" en vez de "33401 / 33401"
-	BigStatusText = false,            -- Status Text > Big text: nombre arriba del marco (Light/Dark/Compact)
-	BigTextCustomSize = false,        -- Big text: tamaño propio de los numeros
-	BigTextHealthSize = 12,           -- Big text: tamaño del texto de vida (8-16)
-	BigTextManaSize = 10,             -- Big text: tamaño del texto de mana (8-16)
-	PartyHideHealthManaText = false,  -- esconde los numeros solo en el party
-	PartyFontSize = 0,                -- 0 = tamaño original de cada estilo
-	PartyFontOutline = "OUTLINE", -- contorno del texto de los del grupo
+	AsuriFrames = false,
 
-	-- NOTA: las opciones monocromas se sacaron. Si quedaron guardadas de
-	-- antes, la tabla DEAD de LoadConfig las devuelve a un valor valido.
+	ShowCurrentValueOnly = false,
+	BigStatusText = false,
+	BigTextCustomSize = false,
+	BigTextHealthSize = 12,
+	BigTextManaSize = 10,
+	PartyHideHealthManaText = false,
+	PartyFontSize = 0,
+	PartyFontOutline = "OUTLINE",
 
-	-- PARTY CASTING BARS
+
+
+
+
 	PCB_Enabled = false,
 
-	-- EXTRA OPTIONS
+
 	ArenaCountDown = true,
-	ShadowSightTimer = true,   -- ojo (Shadow Sight): icono + cuenta, checkbox propio
-	ArenaDR = false,           -- iconos de DR (pestaña Arena > DR)
-	ArenaDRSize = 22,          -- DR: tamaño de cada icono
-	ArenaDRSpacing = 2,        -- DR: separacion entre iconos
-	ArenaDRGrow = "AUTO",      -- DR: AUTO / LEFT / RIGHT / UP / DOWN
-	ArenaDRBorder = true,      -- DR: borde del color del nivel
-	ArenaDRText = true,        -- DR: texto 1/2 1/4 X
-	ArenaDRTimer = true,       -- DR: segundos que faltan para el reset
-	ArenaDRClassOnly = false,  -- DR: solo categorias de tu clase
-	ArenaDRHideCats = "",      -- DR: categorias ocultas, separadas por coma ("" = todas)
-	ArenaDoTWarn = false,      -- aviso de DoTs (pestaña Arena > DoT)
-	ArenaDoTSize = 16,         -- DoT: tamaño de los iconos
-	ArenaDoTSpacing = 2,       -- DoT: separacion
-	ArenaDoTMax = 3,           -- DoT: iconos como maximo
-	ArenaDoTGrow = "AUTO",     -- DoT: AUTO / LEFT / RIGHT / UP / DOWN
-	ArenaDoTLabel = true,      -- DoT: texto "DoT"
-	ArenaDoTBorder = true,     -- DoT: borde rojo
+	ShadowSightTimer = true,
+	ArenaDR = false,
+	ArenaDRSize = 22,
+	ArenaDRSpacing = 2,
+	ArenaDRGrow = "AUTO",
+	ArenaDRBorder = true,
+	ArenaDRText = true,
+	ArenaDRTimer = true,
+	ArenaDRClassOnly = false,
+	ArenaDRHideCats = "",
+	ArenaDoTWarn = false,
+	ArenaDoTSize = 16,
+	ArenaDoTSpacing = 2,
+	ArenaDoTMax = 3,
+	ArenaDoTGrow = "AUTO",
+	ArenaDoTLabel = true,
+	ArenaDoTBorder = true,
 	AutoSellGray = true,
 	AutoRepair = true,
 	ErrorHideInCombat = true,
-	BlockDuels = false,   -- rechazar duelos automaticamente
-	-- Tab solo a jugadores enemigos en zonas PvP (Modules2/TabBinder.lua)
+	BlockDuels = false,
+
 	TabBinderEnabled = false,
 
-	-- ARENA TIMERS
+
 	ArenaDalaranPipeTimer = false,
 	ArenaRoVPillarTimer = false,
 	ArenaEndTimer = false,
 
-	-- ACTION BAR TEXT
+
 	HideKeybindText = false,
 	HideMacroText = false,
 
-	-- Lado del casillero de la cuadricula del modo mover, en pixeles de
-	-- pantalla. 2 = casi libre, 10 = bien enganchado.
+
+
 	MoveGridStep = 10,
 
-	-- MINIMAP
-	AuraIconsPerRow   = 8,       -- iconos de buff por fila (BUFFS_PER_ROW)
-	SideBarsHover     = false,   -- barras laterales solo al pasar el mouse
-	MinimapSquare     = false,   -- cuadrado en vez de redondo
-	-- Default | Light | Tooltip | Thin | Flat | Blizzard
-	MinimapBorderStyle = "Default",
-	MinimapHideZone   = false,   -- ocultar el nombre de la zona
-	MinimapHideZoneBG = false,   -- ocultar la chapa dorada detras del nombre
-	MinimapHideAddonIcons = false, -- ocultar los iconos que cuelgan los addons
-	MinimapHideClock  = false,   -- ocultar el reloj
-	MinimapHideZoom   = false,   -- ocultar los botones de zoom
-	MinimapHideCalendar = false, -- ocultar el calendario (GameTimeFrame)
-	MinimapHideWorldMap = false, -- ocultar el boton del mapa del mundo
-	MinimapWheelZoom  = true,    -- zoom con la rueda del mouse
-	MinimapIconsOnHover = false, -- viejo: migrado a MinimapAddonIcons
-	MinimapAddonIcons = "Always", -- cuando se ven los iconos de addon: Always / Hover / Never
 
-	-- Bordes de marco. Las sub-opciones arrancan en nil a proposito: el
-	-- panel las trata como prendidas mientras no se toquen, igual que hace
-	-- Lorti con las suyas.
+	AuraIconsPerRow   = 8,
+	SideBarsHover     = false,
+	MinimapSquare     = false,
+
+	MinimapBorderStyle = "Default",
+	MinimapHideZone   = false,
+	MinimapHideZoneBG = false,
+	MinimapHideAddonIcons = false,
+	MinimapHideClock  = false,
+	MinimapHideZoom   = false,
+	MinimapHideCalendar = false,
+	MinimapHideWorldMap = false,
+	MinimapWheelZoom  = true,
+	MinimapIconsOnHover = false,
+	MinimapAddonIcons = "Always",
+
+
+
+
 	MinimapScale      = 1.0,
 
-	-- CLASS / PVP MODULES
-	MageWaterEleTimer  = true,   -- barra del elemental de agua (mago)
-	MageMirrorTimer    = true,   -- barra de imagenes espejo (mago)
-	MageIcyFrame       = false,  -- skin "Icy Portrait" del PlayerFrame (mago)
-	pwFrames           = false,  -- tema "Compact": marcos de pw_unitframes
-	PaladinICDKeepVisible = false, -- dejar el icono a la vista (a color) cuando esta listo
+
+	MageWaterEleTimer  = true,
+	MageMirrorTimer    = true,
+	MageIcyFrame       = false,
+	pwFrames           = false,
+	PaladinICDKeepVisible = false,
 	SwingTimerBorderStyle  = "Tooltip",
 	AutoShotBorderStyle    = "Tooltip",
-	ClassTimersLocked  = false,  -- las barras de clase arrancan movibles
-	ComboWatchLocked   = false,  -- el contador de combo arranca movible
-	PetBuffsLocked     = false,  -- los buffs de mascota arrancan movibles
-	EnemySpellAlertLocked = false, -- la alerta de hechizos enemigos arranca movible
+	ClassTimersLocked  = false,
+	ComboWatchLocked   = false,
+	PetBuffsLocked     = false,
+	EnemySpellAlertLocked = false,
 	PetBuffsIconSize   = 32,
-	PowerBarCombatOnly = false,  -- barra de recurso solo en combate
-	PowerBarShowPercent = false, -- mostrar % en vez de actual / maximo
-	PowerBarHideText = false,    -- apagar del todo los numeros de las dos barras
-	PowerBarShowHealth = false,  -- mostrar tambien una barra de vida arriba
-	PowerBarHealthGradient = true, -- la barra de vida cambia verde/amarillo/rojo
-	PowerBarHideWhenFull = false,  -- ocultarla a full vida y recurso fuera de combate
-	PowerBarHealthClassColor = false, -- la barra de vida con el color de tu clase
-	PowerBarShowAuras = false,     -- dos filas de iconos: buffs arriba, debuffs abajo
-	PowerBarAuraPos = "RIGHT",     -- donde van esas filas: RIGHT / BOTTOM / TOP
+	PowerBarCombatOnly = false,
+	PowerBarShowPercent = false,
+	PowerBarHideText = false,
+	PowerBarShowHealth = false,
+	PowerBarHealthGradient = true,
+	PowerBarHideWhenFull = false,
+	PowerBarHealthClassColor = false,
+	PowerBarShowAuras = false,
+	PowerBarAuraPos = "RIGHT",
 
-	-- UNIT NAME COLOR: "Default" | "White" | "Class"
+
 	UnitNameColorMode = "Default",
-	UnitNameBorder    = "None",   -- borde/contorno del nombre: None|Outline|Thick
+	UnitNameBorder    = "None",
 
-	-- CHAT
-	-- Copiar texto del chat: ENCENDIDO de fabrica. Es una comodidad sin
-	-- contraindicaciones -- no cambia nada en pantalla hasta que la usas.
+
+
+
 	ChatCopyEnabled = true,
 	ChatClickableURLs = true,
 
-	-- ACTION BARS
+
 	UnifyActionBars = false,
-	-- Separacion entre botones de las barras, en pixeles. Solo se aplica
-	-- con Unify o MiniBar puestos (Modules/ActionBars.lua).
+
+
 	ActionBarButtonSpace = 6,
 	MiniBarEnabled = false,
-	-- Ocultar el arte de fondo de las barras en modo MiniBar
+
 	MiniBarHideBackground = false,
 	HideGryphons = false,
 	ActionBarScale = 1.0,
-	-- Bolsas y micromenu de MiniBar. APARTE de ActionBarScale a proposito:
-	-- antes compartian ese valor y agrandar la barra 1 con Ctrl + rueda te
-	-- agrandaba tambien la mochila y el micromenu.
+
+
+
 	MiniBarExtrasScale = 1.0,
 	ShowBagPackTexture = true,
 
-	-- LORTI UI SUB-OPTIONS
-	LortiUI_PlayerTargetFocus = true,  -- Player, Target, Focus frame textures
-	LortiUI_Party             = true,  -- Party frame textures
-	LortiUI_PartyTargets      = true,  -- Target-of-party frame textures
-	LortiUI_PartyPet          = true,  -- Party pet frame textures
-	LortiUI_Arena             = true,  -- Arena frame textures
-	LortiUI_ActionBars        = true,  -- Action bar textures
-	LortiUI_Minimap           = true,  -- Minimap textures & scroll
+
+	LortiUI_PlayerTargetFocus = true,
+	LortiUI_Party             = true,
+	LortiUI_PartyTargets      = true,
+	LortiUI_PartyPet          = true,
+	LortiUI_Arena             = true,
+	LortiUI_ActionBars        = true,
+	LortiUI_Minimap           = true,
 };
 
 local configLoaded = false;
 
--- FireConfigEvent
+
 local eventCallbacks = {};
 
 local function FireConfigEvent(eventName)
@@ -277,9 +277,9 @@ local function FireConfigEvent(eventName)
 	end
 end
 
--- ── Checkboxes compartidos entre pestañas ────────────────
--- Un mismo setting (ej: PartyMode3v3) puede tener su checkbox en mas de
--- una pestaña. Se registran todos aca y se refrescan juntos al guardar.
+
+
+
 K._settingCheckboxes = K._settingCheckboxes or {};
 
 function K.RegisterSettingCheckbox(setting, cb)
@@ -295,12 +295,12 @@ function K.RefreshSettingCheckboxes(setting)
 	if type(value) == "number" then value = (value == 1); end
 	for _, cb in ipairs(list) do
 		if cb.SetChecked then
-			-- cb.nufInverted: el checkbox dice lo CONTRARIO del setting.
-			--
-			-- Hace falta para opciones redactadas en negativo ("Ocultar X")
-			-- cuyo setting guarda el positivo ("mostrar X"). Sin esto, el
-			-- refresco central les ponia el tilde al reves y el usuario veia
-			-- la opcion cambiar sola al abrir el panel.
+
+
+
+
+
+
 			if cb.nufInverted then
 				cb:SetChecked(value ~= true);
 			else
@@ -317,11 +317,11 @@ function K.RegisterConfigEvent(eventName, callback)
 	table.insert(eventCallbacks[eventName], callback);
 end
 
--- SafeConvertType
+
 local function SafeConvertType(value, targetType)
 	if targetType == "boolean" then
 		if type(value) == "string" then
-			-- FIX: "false"/"0" deben convertirse a false, no a true
+
 			return value == "true" or value == "1";
 		end
 		if type(value) == "number" then
@@ -340,7 +340,7 @@ local function SafeConvertType(value, targetType)
 	return value;
 end
 
--- LoadConfigFromDB
+
 local function LoadConfigFromDB()
 	if configLoaded then 
 		return; 
@@ -350,14 +350,14 @@ local function LoadConfigFromDB()
 		NidhausUnitFramesDB = {};
 	end
 	
-	-- Si la DB está vacía, copiar defaults
+
 	if not next(NidhausUnitFramesDB) then
 		for key, value in pairs(defaults) do
 			NidhausUnitFramesDB[key] = value;
 		end
 	end
 	
-	-- Cargar cada valor desde DB o usar default
+
 	for key, defaultValue in pairs(defaults) do
 		local savedValue = NidhausUnitFramesDB[key];
 		
@@ -374,9 +374,9 @@ local function LoadConfigFromDB()
 		end
 	end
 	
-	-- Opciones que ya no existen y podrian venir guardadas de una version
-	-- anterior. Sin esto, quedaban aplicadas aunque el desplegable ya no
-	-- las ofrezca (y el usuario no tenia como sacarlas).
+
+
+
 	local DEAD = {
 		UnitNameBorder   = { Mono = "None", OutMono = "None" },
 		PartyFontOutline = { MONOCHROME = "OUTLINE", ["OUTLINE,MONOCHROME"] = "OUTLINE" },
@@ -391,11 +391,11 @@ local function LoadConfigFromDB()
 
 	configLoaded = true;
 	
-	-- DISPARAR EVENTO: Config lista
+
 	FireConfigEvent("CONFIG_LOADED");
 end
 
--- SaveConfig
+
 local function SaveConfig(key, value)
 	if not configLoaded then
 		return false;
@@ -415,21 +415,21 @@ local function SaveConfig(key, value)
 		return false;
 	end
 	
-	-- Guardar en ambos lugares
+
 	C[key] = actualValue;
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	NidhausUnitFramesDB[key] = actualValue;
 	
-	-- Mantener sincronizados los checkboxes del mismo setting en otras pestañas
+
 	if K.RefreshSettingCheckboxes then K.RefreshSettingCheckboxes(key); end
 
-	-- DISPARAR EVENTO: Config cambiada
+
 	FireConfigEvent("CONFIG_CHANGED");
 	
 	return true;
 end
 
--- ShowConfig
+
 local function ShowConfig()
 	print(L["CFG_HEADER"]);
 	
@@ -474,7 +474,7 @@ local function ShowConfig()
 		print(L["CFG_SAVED_POS"]);
 		for key, pos in pairs(NidhausUnitFramesDB.positions) do
 			if type(pos) == "table" then
-				-- FIX: Soportar formato con nombres (FrameDragger) y con índices (legacy)
+
 				local anchor = pos.point or pos[1] or "?";
 				local xVal = pos.x or pos[4] or 0;
 				local yVal = pos.y or pos[5] or 0;
@@ -497,31 +497,31 @@ local function ShowConfig()
 	print("");
 end
 
--- ResetConfig
---
--- BORRA TODO Y RE-SIEMBRA, en vez de ir clave por clave.
---
--- Antes esto reponia los "defaults" y limpiaba solo dos sub-tablas
--- (positions y ArenaMover). Pero el addon guarda MUCHO mas que eso: al
--- medirlo habia 41 claves que no son settings normales — posiciones de cada
--- modulo, escalas, estado de prendido/apagado, anclas de auras, trinkets,
--- timers, iconos del minimapa — y ademas otras cuatro SavedVariables
--- enteras (PartyBuffsDB, NiceDamageDB, DTSU_DB, PaladinICD_DB) que no se
--- tocaban nunca. O sea que "Reset Defaults" dejaba casi todo como estaba.
---
--- Enumerar las 41 seria volver al mismo problema: cada modulo nuevo que
--- guarde algo hay que acordarse de agregarlo, y el primer olvido rompe el
--- reset otra vez. Asi que se hace al reves: se vacia la base y se vuelve a
--- sembrar desde defaults. Lo que se agregue en el futuro queda cubierto
--- solo, sin mantener ninguna lista.
---
--- Lo unico que se conserva son los PERFILES GUARDADOS. No son ajustes:
--- son copias de la config y de las barras/macros de otros personajes, y
--- perderlas no se puede deshacer.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local PRESERVE_ON_RESET = {
-	CharProfiles = true,   -- config del addon, por personaje
-	SlotProfiles = true,   -- barras / macros / bindeos, por personaje
-	SlotBackup   = true,   -- backup del ultimo import o borrado
+	CharProfiles = true,
+	SlotProfiles = true,
+	SlotBackup   = true,
 };
 
 local function ResetConfig()
@@ -531,31 +531,31 @@ local function ResetConfig()
 
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 
-	-- Apartar lo que sobrevive
+
 	local guardado = {};
 	for key in pairs(PRESERVE_ON_RESET) do
 		guardado[key] = NidhausUnitFramesDB[key];
 	end
 
-	-- Vaciar de verdad
+
 	for key in pairs(NidhausUnitFramesDB) do
 		NidhausUnitFramesDB[key] = nil;
 	end
 
-	-- Volver a poner lo apartado
+
 	for key, value in pairs(guardado) do
 		NidhausUnitFramesDB[key] = value;
 	end
 
-	-- Y sembrar los defaults
+
 	for key, value in pairs(defaults) do
 		C[key] = value;
 		NidhausUnitFramesDB[key] = value;
 	end
 
-	-- Las otras SavedVariables del addon. Son globales aparte y por eso se
-	-- escapaban del reset. Se vacian y cada modulo las vuelve a llenar con
-	-- sus propios defaults en el reload que viene despues.
+
+
+
 	if PartyBuffsDB   ~= nil then PartyBuffsDB   = {}; end
 	if NiceDamageDB   ~= nil then NiceDamageDB   = {}; end
 	if DTSU_DB        ~= nil then DTSU_DB        = {}; end
@@ -564,25 +564,25 @@ local function ResetConfig()
 	print(L["CFG_RESET_OK"]);
 	
 	FireConfigEvent("CONFIG_RESET");
-	-- FIX: También disparar CONFIG_LOADED para que los módulos se re-inicialicen
-	-- (la mayoría solo escucha CONFIG_LOADED y CONFIG_CHANGED, no CONFIG_RESET)
+
+
 	FireConfigEvent("CONFIG_LOADED");
 end
 
--- IsConfigLoaded
+
 local function IsConfigLoaded()
 	return configLoaded;
 end
 
--- Exports
+
 K.SaveConfig = SaveConfig;
 
--- El valor DE FABRICA de un ajuste.
---
--- Lo necesita cualquiera que quiera volver a el sin copiar el numero a
--- mano. El boton Reset de Action Bars, por ejemplo: sin esto tenia que
--- leer C.ActionBarScale, que es justamente el valor que Ctrl + rueda ya
--- habia cambiado, y "resetear" te devolvia a la escala agrandada.
+
+
+
+
+
+
 function K.GetConfigDefault(key)
 	return defaults[key];
 end
@@ -590,8 +590,8 @@ K.ShowConfig = ShowConfig;
 K.ResetConfig = ResetConfig;
 K.IsConfigLoaded = IsConfigLoaded;
 
--- FIX: SaveConfigSilent — guarda sin disparar CONFIG_CHANGED (para batch saves)
--- Usar con FlushConfigChanges al final del batch
+
+
 function K.SaveConfigSilent(key, value)
 	if not configLoaded then return false; end
 	if defaults[key] == nil then return false; end
@@ -604,16 +604,16 @@ function K.SaveConfigSilent(key, value)
 	return true;
 end
 
--- FIX: FlushConfigChanges — dispara CONFIG_CHANGED una sola vez después de batch save
+
 function K.FlushConfigChanges()
 	FireConfigEvent("CONFIG_CHANGED");
 end
 
--- =========================================================
--- PROFILE SERIALIZER (Export / Import)
--- =========================================================
 
--- Serialize a Lua value to a portable string
+
+
+
+
 local function SerializeValue(val)
 	local t = type(val);
 	if t == "string" then
@@ -639,13 +639,13 @@ local function SerializeValue(val)
 	end
 end
 
--- Serialize the full config DB to a copyable string
+
 function K.ExportProfile()
 	if not configLoaded or not NidhausUnitFramesDB then
 		return nil, "Config not loaded";
 	end
 
-	-- Build export table: all defaults keys + positions + modules + ArenaMover
+
 	local exportData = {};
 
 	for key in pairs(defaults) do
@@ -663,11 +663,11 @@ function K.ExportProfile()
 	if NidhausUnitFramesDB.ArenaMover then
 		exportData.ArenaMover = NidhausUnitFramesDB.ArenaMover;
 	end
-	-- Y LO DEL MODO MOVER (Move Everything): barras, buffs, minimapa,
-	-- barra de casteo... y la escala de Player, Target, Pet y barras, que
-	-- el slider escribe en C Y aca. Sin esto, importar un perfil ponia la
-	-- escala del perfil en C y, al recargar, la vieja guardada aca le
-	-- pasaba por encima: el marco con un tamano y el slider con otro.
+
+
+
+
+
 	if NidhausUnitFramesDB.globalPos then
 		exportData.globalPos = NidhausUnitFramesDB.globalPos;
 	end
@@ -675,7 +675,7 @@ function K.ExportProfile()
 	return "return " .. SerializeValue(exportData);
 end
 
--- Deserialize a string back to a table (sandboxed)
+
 function K.ImportProfile(str)
 	if not str or str == "" then
 		return false, "Empty string";
@@ -686,7 +686,7 @@ function K.ImportProfile(str)
 		return false, "Syntax error: " .. tostring(err);
 	end
 
-	-- Sandbox: block access to all globals
+
 	setfenv(func, {});
 
 	local ok, result = pcall(func);
@@ -697,7 +697,7 @@ function K.ImportProfile(str)
 		return false, "Invalid data (expected table)";
 	end
 
-	-- Validate: at least some known keys exist
+
 	local knownCount = 0;
 	for key in pairs(defaults) do
 		if result[key] ~= nil then knownCount = knownCount + 1; end
@@ -706,7 +706,7 @@ function K.ImportProfile(str)
 		return false, "Data doesn't look like a NUF profile (too few known keys)";
 	end
 
-	-- Apply: overwrite settings
+
 	for key, defaultValue in pairs(defaults) do
 		if result[key] ~= nil then
 			local value = SafeConvertType(result[key], type(defaultValue));
@@ -715,24 +715,24 @@ function K.ImportProfile(str)
 		end
 	end
 
-	-- Overwrite positions if present
+
 	if result.positions and type(result.positions) == "table" then
 		NidhausUnitFramesDB.positions = result.positions;
 	end
 
-	-- Overwrite modules if present
+
 	if result.Modules and type(result.Modules) == "table" then
 		NidhausUnitFramesDB.Modules = result.Modules;
 	end
 
-	-- Overwrite ArenaMover if present
+
 	if result.ArenaMover and type(result.ArenaMover) == "table" then
 		NidhausUnitFramesDB.ArenaMover = result.ArenaMover;
 	end
 
-	-- Modo mover: el del perfil. Si la cadena es vieja y no lo trae, al
-	-- menos se borra la ESCALA guardada de los marcos que tienen slider,
-	-- para que mande la del perfil (ver ExportProfile).
+
+
+
 	if result.globalPos and type(result.globalPos) == "table" then
 		NidhausUnitFramesDB.globalPos = result.globalPos;
 	elseif type(NidhausUnitFramesDB.globalPos) == "table" and K.GetMovablesForSetting then
@@ -741,7 +741,7 @@ function K.ImportProfile(str)
 			if movs then
 				for _, mk in ipairs(movs) do
 					for gk, pos in pairs(NidhausUnitFramesDB.globalPos) do
-						-- "MainBar#mini": la clave lleva el modo de barras.
+
 						local base = string.match(gk, "^([^#]+)") or gk;
 						if base == mk and type(pos) == "table" then pos.scale = nil; end
 					end
@@ -753,19 +753,19 @@ function K.ImportProfile(str)
 	return true;
 end
 
--- =========================================================
--- PERFILES POR PERSONAJE (el "Copy" de Profiles / MySlot)
---
--- Vivian en el panel de opciones, que es un addon aparte que se carga
--- RECIEN cuando lo abris. Por eso su "guardar al entrar" (PLAYER_LOGIN)
--- nunca corria: cuando el panel se carga, ese evento ya paso. Un
--- personaje entraba a la lista solo si abrias la pestaña de perfiles, y
--- con la config de ESE momento: lo que cambiabas despues no se copiaba.
---
--- Ahora se guarda desde aca, que siempre esta cargado: al entrar y al
--- salir (PLAYER_LOGOUT tambien corre con /reload). Mismo arreglo que el
--- de Character Setup.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
 function K.GetCharProfileKey()
 	local name  = UnitName("player") or "Unknown";
 	local realm = GetRealmName() or "Unknown";
@@ -795,14 +795,14 @@ charProfileSaver:SetScript("OnEvent", function(self, event)
 		return;
 	end
 	self:UnregisterEvent("PLAYER_LOGIN");
-	-- Un frame despues: que la config ya este cargada.
+
 	self:SetScript("OnUpdate", function(s)
 		s:SetScript("OnUpdate", nil);
 		pcall(K.SaveCurrentCharProfile);
 	end);
 end);
 
--- Deep copy helper (for future profile copy features)
+
 function K.DeepCopy(orig)
 	if type(orig) ~= "table" then return orig; end
 	local copy = {};
@@ -812,7 +812,7 @@ function K.DeepCopy(orig)
 	return copy;
 end
 
--- SyncConfigToDB
+
 local function SyncConfigToDB()
 	if not configLoaded then return; end
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
@@ -823,7 +823,7 @@ local function SyncConfigToDB()
 	end
 end
 
--- ADDON_LOADED
+
 local initFrame = CreateFrame("Frame");
 initFrame:RegisterEvent("ADDON_LOADED");
 initFrame:SetScript("OnEvent", function(self, event, addonName)
@@ -832,23 +832,23 @@ initFrame:SetScript("OnEvent", function(self, event, addonName)
 		
 		local success, err = pcall(LoadConfigFromDB);
 		if not success then
-			-- FIX: Imprimir el error para que el usuario sepa que su config no cargó
+
 			print("|cffFF0000NUF:|r Config load error: " .. tostring(err));
 			for key, value in pairs(defaults) do
 				C[key] = value;
 			end
 			configLoaded = true;
-			-- FIX: Disparar CONFIG_LOADED incluso si pcall falló.
-			-- Sin esto, NINGÚN sistema se inicializa (ArenaFrame, NewPartyFrame, etc.)
+
+
 			FireConfigEvent("CONFIG_LOADED");
 		end
 	end
 end);
 
--- FIX PERF: Only sync on PLAYER_LOGOUT (safety net).
--- SaveConfig() already writes to both C[] and NidhausUnitFramesDB in real-time.
--- PLAYER_LEAVING_WORLD fires on EVERY loading screen (instance, BG, zone change),
--- running a full iteration of ~45 keys each time for no benefit.
+
+
+
+
 local saveFrame = CreateFrame("Frame");
 saveFrame:RegisterEvent("PLAYER_LOGOUT");
 saveFrame:SetScript("OnEvent", function(self, event)

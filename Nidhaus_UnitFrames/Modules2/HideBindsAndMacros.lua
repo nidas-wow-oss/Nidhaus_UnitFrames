@@ -1,16 +1,16 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- HideBindsAndMacros.lua
--- Oculta el texto de los bindeos (hotkey) y/o el nombre de
--- las macros en los botones de las barras de accion.
--- Dos opciones independientes:
---   C.HideKeybindText -> oculta el texto de la tecla
---   C.HideMacroText   -> oculta el nombre de la macro
--- =========================================================
 
--- Prefijos de botones a procesar
+
+
+
+
+
+
+
+
+
 local buttonGroups = {
 	{ prefix = "ActionButton",              count = 12 },
 	{ prefix = "MultiBarBottomLeftButton",  count = 12 },
@@ -47,9 +47,9 @@ local function ApplyAll()
 end
 K.ApplyHideBindsAndMacros = ApplyAll;
 
--- ---------------------------------------------------------
--- Hooks: Blizzard vuelve a mostrar los textos en cada update
--- ---------------------------------------------------------
+
+
+
 hooksecurefunc("ActionButton_UpdateHotkeys", function(self)
 	if not self or not self.GetName then return; end
 	if not (C.HideKeybindText or C.HideMacroText) then return; end
@@ -71,14 +71,14 @@ if type(PetActionBar_Update) == "function" then
 	end);
 end
 
--- ---------------------------------------------------------
--- Aplicar al cambiar la config y al entrar al mundo
--- ---------------------------------------------------------
+
+
+
 if K.RegisterConfigEvent then
 	K.RegisterConfigEvent("CONFIG_CHANGED", ApplyAll);
 end
 
--- Reintentos: algunas barras se crean tarde (relog, entrar a arena)
+
 local retry = CreateFrame("Frame");
 local attempts, acc = 0, 0;
 retry:Hide();

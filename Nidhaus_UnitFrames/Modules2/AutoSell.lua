@@ -1,5 +1,5 @@
--- AutoSell - Vende grises automaticamente al abrir vendor
--- Credit: FatalEntity | Integrated into NUF by Nidhaus
+
+
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
@@ -18,7 +18,7 @@ local function OnMerchantShow()
 					local itemLink = GetContainerItemLink(bagIndex, slotIndex);
 					local quality = select(3, string.find(itemLink, "(|c%x+)"));
 					if quality == ITEM_QUALITY_COLORS[0].hex then
-						-- FIX: Track sell value before selling
+
 						local _, stackCount = GetContainerItemInfo(bagIndex, slotIndex);
 						local _, _, _, _, _, _, _, _, _, _, sellPrice = GetItemInfo(itemLink);
 						if sellPrice and sellPrice > 0 and stackCount then
@@ -32,7 +32,7 @@ local function OnMerchantShow()
 		end
 	end
 
-	-- FIX: Show feedback so user knows what happened (matches AutoRepair style)
+
 	if itemCount > 0 and totalSold > 0 then
 		local gold   = math.floor(totalSold / 10000);
 		local silver = math.floor(totalSold / 100) % 100;

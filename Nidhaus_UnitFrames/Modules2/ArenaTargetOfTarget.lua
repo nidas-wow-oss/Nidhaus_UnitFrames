@@ -1,7 +1,7 @@
--- ArenaTargetOfTarget.lua
--- Shows who each arena enemy is targeting using Blizzard ToT-style frames.
--- Features: draggable (Shift+Alt+Click), scale, class icon / portrait toggle.
--- Position saved per arena style + mirror mode key.
+
+
+
+
 
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
@@ -11,8 +11,8 @@ local MOVER_ARENA_COUNT = 3;
 
 local moduleActive = false;
 local eventFrame = CreateFrame("Frame");
-local totFrames = {};     -- [index] = frame
-local dragOverlays = {};  -- [index] = overlay
+local totFrames = {};
+local dragOverlays = {};
 
 local FRAME_W, FRAME_H = 96, 46;
 local PORTRAIT_SIZE = 28;
@@ -20,32 +20,32 @@ local BAR_W, BAR_H = 33, 4;
 local BORDER_TEXTURE = "Interface\\TargetingFrame\\UI-TargetofTargetFrame";
 local BAR_TEXTURE = "Interface\\TargetingFrame\\UI-StatusBar";
 
--- ══════════════════════════════════════════════════════════════
--- ESTILO SQUARE
---
--- El mismo que ya usa Party Targets: en vez de la barrita horizontal
--- estilo Target-of-Target de Blizzard, un cuadradito vertical con el
--- retrato al medio.
---
---     Classic (96x46)            Square (70x75)
---     +----------------+              Nombre
---     |(o) ====== 85%  |             +------+
---     |    ------      |             |  o   |
---     +----------------+             +------+
---          Nombre                     ======
---                                     ------
---
--- Los numeros salen de pw_unitframes/modules/partytarget.lua, tal cual
--- estan en Modules2/PartyTargets/SquareStyle.lua. No los deduje mirando
--- capturas: eso ya lo intente tres veces con el de party y las tres
--- salieron mal.
---
--- Aca es MUCHO mas facil que en party: estos marcos los crea este mismo
--- archivo, no Blizzard, y ApplyFrameLayout vuelve a anclar todas las
--- piezas desde cero en cada llamada. Por eso no hace falta el sistema de
--- "foto original": para volver a Classic alcanza con que la otra rama
--- deje las medidas y las texturas de siempre, cosa que ya hacia.
--- ══════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local SQ = {
 	frame    = { w = 70, h = 75 },
 	border   = { w = 64, h = 64, y = -2 },
@@ -59,9 +59,9 @@ local TEXPATH       = "Interface\\AddOns\\" .. AddOnName .. "\\Textures\\";
 local SQUARE_TEX    = TEXPATH .. "TargetOfTargetSquare.tga";
 local SQUARE_BAR    = TEXPATH .. "beige.tga";
 
--- ══════════════════════════════════════════════════════════════
--- CLASS COLORS
--- ══════════════════════════════════════════════════════════════
+
+
+
 local function GetClassColorRGB(class)
 	if not class then return 0.7, 0.7, 0.7; end
 	local cc = RAID_CLASS_COLORS[class];
@@ -69,9 +69,9 @@ local function GetClassColorRGB(class)
 	return 0.7, 0.7, 0.7;
 end
 
--- ══════════════════════════════════════════════════════════════
--- POSITION SAVE / RESTORE (per style + ToT mirror key)
--- ══════════════════════════════════════════════════════════════
+
+
+
 local function GetToTPositionKey()
 	local style = C.ArenaFrameStyle or "Custom";
 	local mirror = C.ArenaToTMirrored and "mirror" or "normal";
@@ -114,10 +114,10 @@ function K.ResetArenaToTPositions()
 	end
 end
 
--- ══════════════════════════════════════════════════════════════
--- VISUAL MIRROR — flips frame contents (portrait right, bars left)
--- Same concept as PartyTargets mirror: flip border texture + reanchor elements
--- ══════════════════════════════════════════════════════════════
+
+
+
+
 local function ApplyFrameLayout(f, mirrored)
 	if not f then return; end
 
@@ -126,11 +126,11 @@ local function ApplyFrameLayout(f, mirrored)
 	f.manabar:ClearAllPoints();
 	f.nameText:ClearAllPoints();
 
-	-- ── Square ──
-	--
-	-- Sale antes que las otras dos ramas porque el espejado no aplica: el
-	-- cuadrado es simetrico, el retrato ya esta centrado y no hay un lado
-	-- al que mandarlo. Si estan las dos opciones puestas, manda esta.
+
+
+
+
+
 	if C.ArenaToTSquare then
 		f:SetSize(SQ.frame.w, SQ.frame.h);
 
@@ -142,10 +142,10 @@ local function ApplyFrameLayout(f, mirrored)
 		tex:SetPoint("CENTER", f, "CENTER", 0, SQ.border.y);
 		tex:SetVertexColor(1, 1, 1, 1);
 
-		-- Retrato y barras van DENTRO del cuadrado, anclados a EL y no al
-		-- marco. La textura del cuadrado tiene el centro transparente y
-		-- solo dibuja el contorno, asi que a simple vista parece rodear
-		-- solo el retrato; pero es una caja que contiene todo.
+
+
+
+
 		f.portrait:SetSize(SQ.portrait.size, SQ.portrait.size);
 		f.portrait:SetPoint("CENTER", tex, "CENTER", 0, SQ.portrait.y);
 
@@ -157,17 +157,17 @@ local function ApplyFrameLayout(f, mirrored)
 		f.manabar:SetPoint("TOPLEFT", f.healthbar, "BOTTOMLEFT", 0, 0);
 		f.manabar:SetStatusBarTexture(SQUARE_BAR);
 
-		-- El nombre colgado del CUADRADO, no de la barra de vida: la barra
-		-- esta descentrada dentro del marco y el nombre heredaba ese
-		-- corrimiento. Es el mismo detalle que ya esta anotado en el
-		-- Square de party.
+
+
+
+
 		f.nameText:SetSize(SQ.name.w, 10);
 		f.nameText:SetPoint("BOTTOM", tex, "TOP", 0, -2);
 		f.nameText:SetJustifyH("CENTER");
 		return;
 	end
 
-	-- ── Classic: volver a las medidas y texturas de siempre ──
+
 	f:SetSize(FRAME_W, FRAME_H);
 	f.borderTex:SetTexture(BORDER_TEXTURE);
 	f.borderTex:ClearAllPoints();
@@ -181,29 +181,29 @@ local function ApplyFrameLayout(f, mirrored)
 	f.manabar:SetStatusBarTexture(BAR_TEXTURE);
 
 	if mirrored then
-		-- Portrait on the RIGHT
+
 		f.portrait:SetPoint("TOPRIGHT", f, "TOPRIGHT", -4, -2);
-		-- Bars on the LEFT (TOPLEFT anchored so StatusBar renders correctly)
+
 		f.healthbar:SetPoint("TOPLEFT", f, "TOPLEFT", 28, -11);
 		f.manabar:SetPoint("TOPLEFT", f, "TOPLEFT", 28, -18);
-		-- Name on the LEFT
+
 		f.nameText:SetSize(60, 10);
 		f.nameText:SetPoint("TOPLEFT", f, "TOPLEFT", 28, -22);
 		f.nameText:SetJustifyH("LEFT");
-		-- Flip border texture horizontally (swap UL↔UR, LL↔LR)
-		-- 8-arg: ULx,ULy, LLx,LLy, URx,URy, LRx,LRy
+
+
 		f.borderTex:SetTexCoord(1, 0, 1, 1, 0, 0, 0, 1);
 	else
-		-- Portrait on the LEFT (default Blizzard layout)
+
 		f.portrait:SetPoint("TOPLEFT", f, "TOPLEFT", 4, -2);
-		-- Bars on the RIGHT
+
 		f.healthbar:SetPoint("TOPLEFT", f, "TOPLEFT", 35, -11);
 		f.manabar:SetPoint("TOPLEFT", f, "TOPLEFT", 35, -18);
-		-- Name on the RIGHT
+
 		f.nameText:SetSize(60, 10);
 		f.nameText:SetPoint("TOPLEFT", f, "TOPLEFT", 35, -22);
 		f.nameText:SetJustifyH("LEFT");
-		-- Normal border texture
+
 		f.borderTex:SetTexCoord(0, 0, 0, 1, 1, 0, 1, 1);
 	end
 end
@@ -215,20 +215,20 @@ local function ApplyMirrorToAll()
 	end
 end
 
--- Publica: la llama el panel al tocar Square o Mirror.
---
--- Ademas de reacomodar las piezas hay que volver a colocar los marcos:
--- Square mide 70x75 contra los 96x46 de Classic, asi que el anclaje por
--- defecto respecto del marco de arena cambia de lugar. Sin esto, cambiar
--- de estilo dejaba el cuadrado corrido.
+
+
+
+
+
+
 function K.RefreshArenaToTLayout()
 	ApplyMirrorToAll();
 	if K.RepositionAllArenaToT then K.RepositionAllArenaToT(); end
 end
 
--- ══════════════════════════════════════════════════════════════
--- FRAME CREATION
--- ══════════════════════════════════════════════════════════════
+
+
+
 local function CreateToTFrame(index)
 	if totFrames[index] then return totFrames[index]; end
 	local arenaFrame = _G["ArenaEnemyFrame"..index];
@@ -241,13 +241,13 @@ local function CreateToTFrame(index)
 	f:SetFrameLevel(10);
 	f:SetID(index);
 
-	-- Portrait
+
 	local portrait = f:CreateTexture(name.."Portrait", "BACKGROUND");
 	portrait:SetSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
 	portrait:SetPoint("TOPLEFT", 4, -2);
 	f.portrait = portrait;
 
-	-- Health bar
+
 	local hb = CreateFrame("StatusBar", name.."HealthBar", f);
 	hb:SetSize(BAR_W, BAR_H);
 	hb:SetPoint("TOPLEFT", 35, -11);
@@ -260,7 +260,7 @@ local function CreateToTFrame(index)
 	local hbBG = hb:CreateTexture(nil, "BACKGROUND");
 	hbBG:SetAllPoints(); hbBG:SetTexture(0, 0, 0, 0.5);
 
-	-- Mana bar
+
 	local mb = CreateFrame("StatusBar", name.."ManaBar", f);
 	mb:SetSize(BAR_W, BAR_H);
 	mb:SetPoint("TOPLEFT", 35, -18);
@@ -273,14 +273,14 @@ local function CreateToTFrame(index)
 	local mbBG = mb:CreateTexture(nil, "BACKGROUND");
 	mbBG:SetAllPoints(); mbBG:SetTexture(0, 0, 0, 0.5);
 
-	-- Border
+
 	local border = f:CreateTexture(name.."Texture", "ARTWORK");
 	border:SetSize(FRAME_W, FRAME_H);
 	border:SetPoint("TOPLEFT", 0, 0);
 	border:SetTexture(BORDER_TEXTURE);
 	f.borderTex = border;
 
-	-- Name
+
 	local nameFS = f:CreateFontString(name.."Name", "OVERLAY", "GameFontNormalSmall");
 	nameFS:SetSize(60, 10);
 	nameFS:SetPoint("TOPLEFT", 35, -22);
@@ -288,7 +288,7 @@ local function CreateToTFrame(index)
 	nameFS:SetTextColor(1, 0.82, 0);
 	f.nameText = nameFS;
 
-	-- Apply saved scale
+
 	local scale = C.ArenaToTScale or 1.0;
 	if scale > 0 then f:SetScale(scale); end
 
@@ -297,15 +297,15 @@ local function CreateToTFrame(index)
 	f:Hide();
 	totFrames[index] = f;
 
-	-- Apply mirror layout
+
 	ApplyFrameLayout(f, C.ArenaToTMirrored);
 
 	return f;
 end
 
--- ══════════════════════════════════════════════════════════════
--- POSITIONING (default, before any drag offset)
--- ══════════════════════════════════════════════════════════════
+
+
+
 function PositionToTFrame(index)
 	local f = totFrames[index];
 	if not f then return; end
@@ -338,13 +338,13 @@ function K.RepositionAllArenaToT()
 	for i = 1, MAX_ARENA_ENEMIES do
 		PositionToTFrame(i);
 	end
-	-- Re-apply saved drag offset after default positioning
+
 	K.RestoreArenaToTPositions();
 end
 
--- ══════════════════════════════════════════════════════════════
--- SCALE
--- ══════════════════════════════════════════════════════════════
+
+
+
 function K.ApplyArenaToTScale(scale)
 	if type(scale) ~= "number" or scale <= 0 then scale = 1.0; end
 	for i = 1, MAX_ARENA_ENEMIES do
@@ -352,9 +352,9 @@ function K.ApplyArenaToTScale(scale)
 	end
 end
 
--- ══════════════════════════════════════════════════════════════
--- PORTRAIT / CLASS ICON
--- ══════════════════════════════════════════════════════════════
+
+
+
 local function SetPortraitOrClassIcon(f, unit, class)
 	if not f or not f.portrait then return; end
 	if C.ArenaToTClassIcon and class then
@@ -365,16 +365,16 @@ local function SetPortraitOrClassIcon(f, unit, class)
 			return;
 		end
 	end
-	-- Portrait mode (or class icon fallback)
+
 	if unit and UnitExists(unit) then
 		SetPortraitTexture(f.portrait, unit);
 		f.portrait:SetTexCoord(0, 1, 0, 1);
 	end
 end
 
--- ══════════════════════════════════════════════════════════════
--- DRAG OVERLAYS (Shift+Alt+Click, same pattern as castbar/trinket)
--- ══════════════════════════════════════════════════════════════
+
+
+
 local function CreateDragOverlay(index)
 	local f = totFrames[index];
 	if not f then return; end
@@ -425,7 +425,7 @@ local function CreateDragOverlay(index)
 		tot:ClearAllPoints();
 		tot:SetPoint("CENTER", arenaFrame, "CENTER", offsetX, offsetY);
 
-		-- Save and apply to all ToT frames
+
 		SaveToTPosition(offsetX, offsetY);
 		for j = 1, MAX_ARENA_ENEMIES do
 			if totFrames[j] and j ~= idx then
@@ -469,9 +469,9 @@ end
 K.ShowArenaToTDragOverlays = ShowDragOverlays;
 K.HideArenaToTDragOverlays = HideDragOverlays;
 
--- ══════════════════════════════════════════════════════════════
--- UPDATE (live arena)
--- ══════════════════════════════════════════════════════════════
+
+
+
 local function UpdateToTFrame(index)
 	local f = totFrames[index];
 	if not f then return; end
@@ -481,24 +481,24 @@ local function UpdateToTFrame(index)
 	local targetUnit = "arena"..index.."target";
 	if not UnitExists(targetUnit) then f:Hide(); return; end
 
-	-- Portrait / class icon
+
 	local _, targetClass = UnitClass(targetUnit);
 	SetPortraitOrClassIcon(f, targetUnit, targetClass);
 
-	-- Name
+
 	local targetName = UnitName(targetUnit) or "?";
 	if #targetName > 10 then targetName = targetName:sub(1, 9) .. ".."; end
 	local r, g, b = GetClassColorRGB(targetClass);
 	f.nameText:SetText(targetName);
 	f.nameText:SetTextColor(r, g, b);
 
-	-- Health
+
 	local hp = UnitHealth(targetUnit) or 0;
 	local hpMax = UnitHealthMax(targetUnit); if not hpMax or hpMax <= 0 then hpMax = 1; end
 	f.healthbar:SetMinMaxValues(0, hpMax); f.healthbar:SetValue(hp);
 	f.healthbar:SetStatusBarColor(r, g, b);
 
-	-- Power
+
 	local mp = UnitMana(targetUnit) or 0;
 	local mpMax = UnitManaMax(targetUnit); if not mpMax or mpMax <= 0 then mpMax = 1; end
 	f.manabar:SetMinMaxValues(0, mpMax); f.manabar:SetValue(mp);
@@ -509,7 +509,7 @@ local function UpdateToTFrame(index)
 	elseif pt == 6 then f.manabar:SetStatusBarColor(0, 0.82, 1);
 	else f.manabar:SetStatusBarColor(0, 0, 1); end
 
-	-- Glow if targeting player
+
 	if UnitIsUnit(targetUnit, "player") then
 	else
 	end
@@ -520,9 +520,9 @@ local function UpdateAll()
 	for i = 1, MAX_ARENA_ENEMIES do UpdateToTFrame(i); end
 end
 
--- ══════════════════════════════════════════════════════════════
--- TEST MODE
--- ══════════════════════════════════════════════════════════════
+
+
+
 local testData = {
 	{name = "Nidhaus",  class = "WARLOCK",     hp = 18000, hpMax = 22000, mp = 8500,  mpMax = 12000, power = 0, me = true},
 	{name = "Arthas",   class = "DEATHKNIGHT", hp = 30000, hpMax = 35000, mp = 80,    mpMax = 100,   power = 6, me = false},
@@ -538,7 +538,7 @@ local function ShowTestMode()
 		if scale > 0 then f:SetScale(scale); end
 		local d = testData[i]; if not d then break; end
 
-		-- Portrait / class icon
+
 		if C.ArenaToTClassIcon then
 			local coords = CLASS_ICON_TCOORDS[d.class];
 			if coords and f.portrait then
@@ -546,7 +546,7 @@ local function ShowTestMode()
 				f.portrait:SetTexCoord(unpack(coords));
 			end
 		else
-			-- Test mode: no unit exists, use class icon as fallback
+
 			local coords = CLASS_ICON_TCOORDS[d.class];
 			if coords and f.portrait then
 				f.portrait:SetTexture("Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES");
@@ -564,11 +564,11 @@ local function ShowTestMode()
 
 		f:Show();
 	end
-	-- Apply mirror layout to all frames
+
 	ApplyMirrorToAll();
-	-- Restore saved positions
+
 	K.RestoreArenaToTPositions();
-	-- Show drag overlays
+
 	ShowDragOverlays();
 end
 
@@ -580,9 +580,9 @@ end
 K._ShowArenaToTTest = ShowTestMode;
 K._HideArenaToTTest = HideAll;
 
--- ══════════════════════════════════════════════════════════════
--- EVENTS
--- ══════════════════════════════════════════════════════════════
+
+
+
 local function OnEvent(self, event, unit)
 	if event == "UNIT_TARGET" then
 		if not unit or not unit:find("^arena") or unit:find("pet") then return; end
@@ -600,10 +600,10 @@ local function OnEvent(self, event, unit)
 			if idx then
 				CreateToTFrame(idx);
 				PositionToTFrame(idx);
-				-- FIX: Restore saved drag position + scale for this frame.
-				-- Without this, frames created via ARENA_OPPONENT_UPDATE use
-				-- default positions because PLAYER_ENTERING_WORLD ran before
-				-- the ArenaEnemyFrames existed.
+
+
+
+
 				K.RestoreArenaToTPositions();
 				K.ApplyArenaToTScale(C.ArenaToTScale or 1.0);
 				UpdateToTFrame(idx);
@@ -632,9 +632,9 @@ local function OnEvent(self, event, unit)
 	end
 end
 
--- ══════════════════════════════════════════════════════════════
--- TEST MODE WATCHER
--- ══════════════════════════════════════════════════════════════
+
+
+
 local testModeWatcher = CreateFrame("Frame");
 testModeWatcher:Hide();
 local twElapsed, lastState = 0, false;
@@ -662,7 +662,7 @@ K.RegisterConfigEvent("CONFIG_CHANGED", function()
 	if not moduleActive then return; end
 	ApplyMirrorToAll();
 	K.ApplyArenaToTScale(C.ArenaToTScale or 1.0);
-	-- If in test mode, re-show to pick up changes
+
 	local isTest = K._testModeActive or
 		(NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover and NidhausUnitFramesDB.ArenaMover.IsShown);
 	if isTest then
@@ -672,9 +672,9 @@ K.RegisterConfigEvent("CONFIG_CHANGED", function()
 	end
 end);
 
--- ══════════════════════════════════════════════════════════════
--- ENABLE / DISABLE
--- ══════════════════════════════════════════════════════════════
+
+
+
 local function Enable()
 	moduleActive = true;
 	eventFrame:RegisterEvent("UNIT_TARGET");
@@ -711,9 +711,9 @@ local function Disable()
 	HideAll();
 end
 
--- ══════════════════════════════════════════════════════════════
--- REGISTER
--- ══════════════════════════════════════════════════════════════
+
+
+
 K.RegisterModule("ArenaToT", {
 	name      = "Arena Target of Target",
 	desc      = "Shows who each arena enemy is targeting with Blizzard ToT-style frames.",
