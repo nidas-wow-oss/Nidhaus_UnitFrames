@@ -5,7 +5,7 @@ local function fmtMS(sec)
   sec = math.max(0, math.floor((sec or 0) + 0.5));
   local m = math.floor(sec / 60);
   local s = sec % 60;
-  -- Segundos siempre con dos cifras: "0:05", no "0:5".
+
   return string.format("%d:%02d", m, s);
 end
 
@@ -24,7 +24,7 @@ local function GetConfirmIndex()
 end
 
 local function GetBestArenaQueueIndex()
-  -- FIX: Ahora también matchea BGs (antes solo arenas)
+
   for i = 1, MAX_BATTLEFIELD_QUEUES do
     local status = GetBattlefieldStatus(i);
     if status == "queued" or status == "confirm" then
@@ -38,7 +38,7 @@ if _G["ArenaTimes_InviteBarHolder"] then return; end
 
 local initialized = false;
 
--- FIX: Upvalues para onDisable
+
 local AT_qFrame;
 local AT_eventFrame;
 local AT_StopInviteBar;
@@ -49,7 +49,7 @@ local function Init()
   if initialized then return; end
   initialized = true;
 
-  -- FIX: Guardar valor original para poder restaurar en onDisable
+
   if StaticPopupDialogs and StaticPopupDialogs["CONFIRM_BATTLEFIELD_ENTRY"] then
     AT_origHideOnEscape = StaticPopupDialogs["CONFIRM_BATTLEFIELD_ENTRY"].hideOnEscape;
     StaticPopupDialogs["CONFIRM_BATTLEFIELD_ENTRY"].hideOnEscape = false;
@@ -128,7 +128,7 @@ local function Init()
     if not popup or not popup:IsShown() then StopInviteBar(); return; end
     local idxNow = GetConfirmIndex();
     if not idxNow then StopInviteBar(); return; end
-    -- Si ya está corriendo para el mismo índice, no reiniciar
+
     if enabled and confirmIndex == idxNow then return; end
     confirmIndex = idxNow;
     LayoutToPopup(popup);
@@ -142,7 +142,7 @@ local function Init()
     txt:SetText(fmtMS(timeLeft));
     holder:Show();
     textFrame:Show();
-    -- Usa elapsed para animación suave (server devuelve enteros = saltos feos)
+
     holder:SetScript("OnUpdate", function(self, elapsed)
       if not popup:IsShown() then StopInviteBar(); return; end
       local sr = GetBattlefieldPortExpiration(confirmIndex) or 0;
@@ -181,7 +181,7 @@ local function Init()
     qText:Show();
   end
 
-  -- FIX: qFrame empieza oculto, solo corre OnUpdate cuando hay cola activa
+
   local qFrame = CreateFrame("Frame", "ArenaTimes_QueueUpdater", UIParent);
   qFrame:Hide();
   qFrame:SetScript("OnUpdate", function(self, elapsed)
@@ -205,7 +205,7 @@ local function Init()
     end
     if GetConfirmIndex() then StartInviteBar(); else StopInviteBar(); end
 
-    -- FIX: Activar/desactivar qFrame según si hay cola
+
     if GetBestArenaQueueIndex() then
       qFrame:Show();
     else
@@ -215,14 +215,14 @@ local function Init()
   end);
   AT_eventFrame = e;
 
-  -- Check inicial
+
   if GetBestArenaQueueIndex() then
     qFrame:Show();
   end
   UpdateArenaQueueTime();
 end
 
--- FIX: onDisable para limpieza
+
 local function Disable()
   if not initialized then return; end
   if AT_qFrame then AT_qFrame:Hide(); end
@@ -238,7 +238,7 @@ K.RegisterModule("ArenaTimes", {
     name = L["MOD_ARENA_TIMES"] or "Arena Times",
     desc = L["MOD_ARENA_TIMES_DESC"] or "Timer on arena invite popup + queue time next to minimap.",
     default = true,
-    -- El checkbox vive en Arena > Options, no repetirlo aca
+
     hideFromModulesTab = true,
     onEnable = Init,
     onDisable = Disable,

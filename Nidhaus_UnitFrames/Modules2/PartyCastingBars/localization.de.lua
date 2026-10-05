@@ -1,17 +1,17 @@
---[[
-	PartyCastingBars - German Localization
-	
-	By: StarDust
-	
-	$Id: localization.de.lua 4136 2006-10-10 00:23:30Z karlkfi $
-	$Rev: 4136 $
-	$LastChangedBy: karlkfi $
-	$Date: 2006-10-09 17:23:30 -0700 (Mon, 09 Oct 2006) $
-]]--
+
+
+
+
+
+
+
+
+
+
 
 if ( GetLocale() == "deDE" ) then
 
-	-- Khaos Configuration
+
 	PCB_SECTION_TEXT			= "Gruppen-Zauberleisten";
 	PCB_SECTION_TIP				= "Erlaubt es Zauber-Fortschrittsbalken der Gruppenmitgliedern neben deren Charakterfenster anzuzeigen und zu verschieben.";
 	PCB_HEADER_TEXT				= "Gruppen-Zauberleisten";
@@ -76,9 +76,9 @@ if ( GetLocale() == "deDE" ) then
 	PCB_LOCATIONS_RESET			= "Positionen der Zauberleisten wurden zur\195\188ckgesetzt.";
 
 
-	-------
-	-- Note: Color strings are format |c########Translatable text here|r
-	-------
+
+
+
 	PCB_HELP1				= "|c0055AA55Gruppen-Zauberleisten /chat Befehle.|r";
 	PCB_HELP2				= "|c00995555Beachte, dss diese befehle nur funktionieren wenn das AddOn Khaos nicht aktiv ist. Ansonsten kannst du all diese Optionen in den Einstellungen von Khaos finden.|r";
 	PCB_HELP3				= "|c00555555Enable|r - |c00AA5555Aktiviert die Gruppen-Zauberleisten.|r";

@@ -1,34 +1,34 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- BigStatusText.lua  ·  Interface > General > Status Text
---
---   [x] Big text (name above the frame)      C.BigStatusText
---       [x] Custom text size                 C.BigTextCustomSize
---           Health text  8 ──●── 16          C.BigTextHealthSize
---           Mana text    8 ──●── 16          C.BigTextManaSize
---
--- La idea viene del modo de marcos gruesos de RougeUI (el BigFrames de
--- ZyrokofArenaFrames): nombre arriba del marco y la barra libre para el
--- numero. Los marcos grandes en si NO hacen falta: Light, Dark y Compact
--- ya son marcos gruesos, y por eso la opcion solo existe con esos tres.
---
--- Quien hace que:
---   * Core/API.lua             K.BigStatusTextOn / K.BigStatusSizeOn (la regla)
---   * UnitFrames/PlayerFrame   nombre arriba + numero centrado (jugador)
---   * UnitFrames/TargetFrame   lo mismo en objetivo y foco
---   * AbbreviatedStatus        una ranura de posiciones aparte ("+Big")
---   * este archivo             el tamaño de los numeros, y el boton que
---                              reaplica todo al tocar la opcion
---
--- TAMAÑO: solo cambia el tamaño. La cara y el contorno se dejan como los
--- tenga la fuente (los de Blizzard, o los de otro modulo). Toca el numero
--- de cada barra; el porcentaje del texto abreviado (otro FontString, de
--- ese modulo) copia la fuente del numero, asi que lo sigue solo.
--- =========================================================
 
-local BARS = {};   -- [barra] = { unit = "player", hp = true/false }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+local BARS = {};
 do
 	local list = {
 		{ "PlayerFrameHealthBar", "player", true  }, { "PlayerFrameManaBar", "player", false },
@@ -48,8 +48,8 @@ local function Clamp(v, def)
 	return v;
 end
 
--- Tamaño de fabrica de cada FontString, tomado la PRIMERA vez que se lo
--- agranda. Sin tocar nunca, no hay nada que devolver.
+
+
 local origSize = {};
 
 local function SetSize(fs, size)
@@ -75,16 +75,16 @@ local function ApplyBar(bar, info)
 		size = info.hp and Clamp(C.BigTextHealthSize, 12) or Clamp(C.BigTextManaSize, 10);
 	end
 	SetSize(bar.TextString, size);
-	-- El porcentaje copia la fuente ENTERA del numero (no un tamano aparte:
-	-- con dos tamanos guardados por separado, al apagar quedaban distintos).
+
+
 	if K.MirrorAbbrevPct then K.MirrorAbbrevPct(bar); else SetSize(bar._nufPct, size); end
 end
 
--- Cada vez que Blizzard repinta el texto de una barra. Corre para TODAS
--- las barras del juego (placas de nombre incluidas), asi que lo primero es
--- descartar las que no son nuestras: una busqueda en una tabla y afuera.
--- Va despues del hook del texto abreviado (carga antes en el XML), asi que
--- el porcentaje que ese modulo crea en su primera pasada ya existe aca.
+
+
+
+
+
 hooksecurefunc("TextStatusBar_UpdateTextString", function(bar)
 	local info = BARS[bar];
 	if info then pcall(ApplyBar, bar, info); end
@@ -94,8 +94,8 @@ function K.RefreshBigStatusFonts()
 	for bar, info in pairs(BARS) do pcall(ApplyBar, bar, info); end
 end
 
--- Lo llama el panel al tocar cualquiera de las dos casillas: reacomoda los
--- marcos (nombre, numero centrado), el texto abreviado y el tamaño.
+
+
 function K.ApplyBigStatusText()
 	if K.ApplyPlayerFrameSkin    then pcall(K.ApplyPlayerFrameSkin);    end
 	if K.ApplyTargetFrameSkin    then pcall(K.ApplyTargetFrameSkin);    end

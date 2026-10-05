@@ -3,14 +3,14 @@ local K, C, L = unpack(ns);
 
 local HCBframe = nil;
 
--- FIX: Variables locales en vez de globales sueltas
--- Se cargan desde NidhausUnitFramesDB en ADDON_LOADED
+
+
 local HCBxpos = 0;
 local HCBypos = 0;
 local HCBkeyable = false;
 local HCBuseralpha = .25;
 
--- FIX: Helpers para persistir en NidhausUnitFramesDB (ya es SavedVariable)
+
 local function SaveHCBSettings()
     if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
     NidhausUnitFramesDB.HCBxpos = HCBxpos;
@@ -34,7 +34,7 @@ if not HCBframe then
     HCBframe:EnableMouse(true);
     HCBframe:RegisterForDrag("RightButton");
     HCBframe:SetScript("OnDragStart", HCBframe.StartMoving);
-    -- FIX: Guardar posición al soltar el drag
+
     HCBframe:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing();
         local _, _, _, x, y = self:GetPoint(1);
@@ -188,24 +188,24 @@ end);
 
 local HCBmoduleOn = false;
 
--- Enganche a ChatEdit_ActivateChat.
---
--- ANTES se pisaba la global directamente (function ChatEdit_ActivateChat...),
--- guardando la original en un local y llamandola al final. Funcionaba, pero
--- ensuciaba (taint) toda la cadena del chat: el taint.log mostraba
---
---   Execution tainted by Nidhaus_UnitFrames while reading ACTIVE_CHAT_EDIT_BOX
---     - ChatFrame.lua:3363 ChatEdit_OnHide()
---
--- y de ahi salia el cartel "Interface action failed because of an AddOn" al
--- cambiar de canal. Al reemplazar la global, TODO lo que Blizzard ejecuta
--- despues queda marcado como codigo de addon, y cuando esa cadena toca algo
--- protegido el cliente la corta.
---
--- hooksecurefunc hace lo mismo sin ensuciar nada: Blizzard corre su funcion
--- normalmente y despues nos llama. Lo unico que cambia es el orden — antes
--- mostrabamos el boton antes de activar el chat, ahora despues — y para
--- mostrar un boton propio eso da igual.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 if type(ChatEdit_ActivateChat) == "function" then
     hooksecurefunc("ChatEdit_ActivateChat", function(frame)
         if HCBmoduleOn and HCBkeyable == true and HCBframe and HCBframe.ChatIsShown == false then
@@ -214,9 +214,9 @@ if type(ChatEdit_ActivateChat) == "function" then
     end);
 end
 
--- Estos 10 eventos solo sirven para pintar el aviso de mensaje nuevo
--- sobre el boton. Con el modulo apagado no hay boton que pintar, asi
--- que antes se despachaban 10 eventos de chat por gusto.
+
+
+
 local function HCB_RegisterEvents()
     HCBframe:RegisterEvent("CHAT_MSG_BATTLEGROUND");
     HCBframe:RegisterEvent("CHAT_MSG_BATTLEGROUND_LEADER");
@@ -229,17 +229,17 @@ local function HCB_RegisterEvents()
     HCBframe:RegisterEvent("CHAT_MSG_WHISPER");
 end
 
--- ADDON_LOADED se necesita SIEMPRE: es donde se cargan los settings
--- guardados, y si el modulo arranca activo tiene que haber corrido antes.
+
+
 HCBframe:RegisterEvent("ADDON_LOADED");
 
--- FIX: Tabla movida fuera de OnEvent (no recrearla en cada evento)
--- FIX: Key corregida — CHAT_MSG_OFFICER (no CHAT_MSG_GUILD_OFFICER) para matchear el evento registrado
+
+
 local eventcolors = {
     CHAT_MSG_BATTLEGROUND        = "cc6633B",
     CHAT_MSG_BATTLEGROUND_LEADER = "cc6633B",
     CHAT_MSG_GUILD               = "66cc00G",
-    CHAT_MSG_OFFICER             = "66cc00O",   -- FIX: era CHAT_MSG_GUILD_OFFICER, no matcheaba
+    CHAT_MSG_OFFICER             = "66cc00O",
     CHAT_MSG_PARTY               = "6666FFP",
     CHAT_MSG_PARTY_LEADER        = "6666FFP",
     CHAT_MSG_RAID                = "cc6600R",
@@ -251,7 +251,7 @@ HCBframe.OnEvent = function(frame, event, ...)
     if event == "ADDON_LOADED" then
         local addonName = ...;
         if addonName == AddOnName then
-            -- FIX: Cargar settings persistidos y reposicionar
+
             LoadHCBSettings();
             HCBframe:ClearAllPoints();
             HCBframe:SetPoint("BOTTOMLEFT", HCBxpos, HCBypos);
@@ -288,7 +288,7 @@ K.RegisterModule("HideChatButton", {
     end,
     onDisable = function()
         HCBmoduleOn = false;
-        -- ADDON_LOADED ya cumplio su funcion, se puede soltar todo
+
         HCBframe:UnregisterAllEvents();
         if HCBframe.ChatIsShown == false then
             HCBframe:ShowChat();

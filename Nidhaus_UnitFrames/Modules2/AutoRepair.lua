@@ -1,5 +1,5 @@
--- AutoRepair - Repara automaticamente al abrir vendor
--- Credit: Nidhaus | Integrated into NUF
+
+
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
@@ -30,7 +30,7 @@ local function OnMerchantShow()
 		costStr = format("%s|cffeda55fc|r", copper);
 	end
 
-	-- Intentar con banco de guild primero
+
 	if CanGuildBankRepair() then
 		RepairAllItems(1);
 		if GetRepairAllCost() == 0 then
@@ -39,7 +39,7 @@ local function OnMerchantShow()
 		end
 	end
 
-	-- Reparar con fondos propios
+
 	if GetRepairAllCost() > 0 then
 		RepairAllItems();
 		print(format("|cff00FF00NUF:|r Repaired for %s.", costStr));

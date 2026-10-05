@@ -4,9 +4,9 @@ local K, C, L = unpack(ns);
 local _G, string_lower, print = _G, string.lower, print;
 local MAX_BOSS_FRAMES = MAX_BOSS_FRAMES;
 
--- La ayuda ahora es la lista COMPLETA (Core/CommandList.lua), no cinco
--- lineas sueltas. Si por lo que sea ese archivo no cargo, se cae en la
--- ayuda vieja para no dejar al usuario sin nada.
+
+
+
 local function PrintHelpInfo()
 	if K.PrintCommandList then
 		K.PrintCommandList();
@@ -31,13 +31,13 @@ local function ShowBossFrames()
 		local scale = C.BossFrameScale or 0.65;
 		if type(scale) ~= "number" or scale <= 0 or scale > 3 then scale = 0.65; end
 		local spacing = C.BossTargetFrameSpacing or 0;
-		-- FIX: Negate so positive slider values = more separation (consistent with BossFrame.lua)
+
 		local offset = -spacing;
 
 		mover:Show();
 
 		for i = 1, MAX_BOSS_FRAMES do
-			-- Siempre usar los frames originales de Blizzard, igual que el original
+
 			local bossFrame = _G["Boss"..i.."TargetFrame"];
 			if bossFrame then
 				bossFrame:SetScale(scale);
@@ -68,7 +68,7 @@ local function ShowBossFrames()
 	end
 end
 
--- API para el modo mover: mostrar/ocultar los marcos de boss de prueba
+
 function K.SetBossTestFrames(state)
 	if state and not IsBossFramesShown then
 		ShowBossFrames();
@@ -83,9 +83,9 @@ end
 
 SLASH_NUF1 = "/nuf";
 SlashCmdList["NUF"] = function(msg)
-	-- /nuf SOLO abre el panel. Es lo que uno quiere el 95% de las veces, y
-	-- antes escupia una ayuda de cinco lineas que ademas estaba incompleta.
-	-- La lista entera quedo en /nuf help.
+
+
+
 	if not msg or msg == "" then
 		if K.ToggleOptionsPanel then K.ToggleOptionsPanel(); end
 	elseif string_lower(msg) == "help" or string_lower(msg) == "ayuda"
@@ -97,8 +97,8 @@ SlashCmdList["NUF"] = function(msg)
 		ShowBossFrames();
 	elseif string_lower(msg) == "arena" then
 		if K.ToggleArenaFramesMover then K.ToggleArenaFramesMover(); end
-	-- /nuf arena 2 | 3 | 5  -> modo test con esa cantidad de marcos.
-	-- /nuf arena clear      -> esconderlos. Misma idea que sArena.
+
+
 	elseif string_lower(msg) == "arena 2" or string_lower(msg) == "arena2" then
 		if K.SetArenaTestCount then K.SetArenaTestCount(2); end
 	elseif string_lower(msg) == "arena 3" or string_lower(msg) == "arena3" then

@@ -1,25 +1,25 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- DTSU.lua  (integrado a NUF, de NidhausTools)
--- Tracker de daño saliente: swing, directo y periodico, con iconos
--- flotantes que muestran total / ultimo golpe / cantidad de hits.
---
--- CAMBIOS respecto del addon suelto:
---   * Se prende/apaga como modulo de NUF. COMBAT_LOG_EVENT_UNFILTERED
---     (el evento caro) solo se registra con el modulo activo; apagado no
---     escucha nada y el ticker queda oculto.
---   * La fuente apunta a la copia dentro de NUF.
--- =========================================================
 
--- Valores por defecto. OJO: no basta con "DTSU_DB = DTSU_DB or {...}".
--- WoW carga el archivo de SavedVariables DESPUES de ejecutar este .lua, asi que
--- lo que se asigne aqui lo pisa la tabla guardada. Si esa tabla venia de una
--- version vieja (o guardada vacia, DTSU_DB = {}) los campos quedaban en nil y
--- reventaba en IsIgnored. Por eso los defaults se fusionan en ADDON_LOADED.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local DTSU_DEFAULTS = {
-    static = false,        -- true = no autohide/duration, queda fijo
+    static = false,
     short_numbers = false,
     ignored_names_direct = {},
     ignored_ids_direct = {},
@@ -40,13 +40,13 @@ local function ApplyDefaults()
         end
     end
 end
-ApplyDefaults()   -- para que el resto del archivo pueda leer el DB al cargar
+ApplyDefaults()
 
 local dbLoader = CreateFrame("Frame")
 dbLoader:RegisterEvent("ADDON_LOADED")
 dbLoader:SetScript("OnEvent", function(self, event, addon)
     if addon ~= AddOnName then return end
-    ApplyDefaults()   -- ahora si, sobre la tabla que trajo SavedVariables
+    ApplyDefaults()
     if DTSU_Anchor then
         DTSU_Anchor:ClearAllPoints()
         DTSU_Anchor:SetPoint(DTSU_DB.point, UIParent, DTSU_DB.point, DTSU_DB.x, DTSU_DB.y)
@@ -56,15 +56,15 @@ end)
 
 local DURATION = 4.5
 local HIT_WINDOW = 0.2
--- Iconos rectangulares (como el WeakAura original), no cuadrados.
+
 local ICON_W = 34
 local ICON_H = 22
 local SPACING = 4
 local MAX_ICONS = 8
 local ICON_FALLBACK = "Interface\\Icons\\INV_Misc_QuestionMark"
 
--- fuente: intenta usar Fira Mono Medium (la que usaba el WeakAura original),
--- si el archivo no esta presente cae al font por defecto de la UI
+
+
 local CUSTOM_FONT = "Interface\\AddOns\\Nidhaus_UnitFrames\\Modules2\\NidhausTools\\FiraMono-Medium.ttf"
 local FALLBACK_FONT = select(1, GameFontNormal:GetFont())
 
@@ -76,7 +76,7 @@ local function SetCustomFont(fontString, size, flags)
 end
 
 local anchor = CreateFrame("Frame", "DTSU_Anchor", UIParent)
--- Escala configurable desde el panel (registro central en ScaleAPI).
+
 if K.RegisterScalable then K.RegisterScalable("DTSU", anchor, 1.0); end
 anchor:SetSize(ICON_W, ICON_H)
 anchor:SetPoint(DTSU_DB.point, UIParent, DTSU_DB.point, DTSU_DB.x, DTSU_DB.y)
@@ -94,10 +94,10 @@ local function ShortNumber(n)
     else return tostring(n) end
 end
 
--- ===== widget pool =====
+
 local pool = {}
-local active = {}   -- lista ordenada de keys activas
-local states = {}   -- key -> state
+local active = {}
+local states = {}
 
 local function CreateWidget()
     local f = CreateFrame("Frame", nil, anchor)
@@ -105,7 +105,7 @@ local function CreateWidget()
 
     f.icon = f:CreateTexture(nil, "ARTWORK")
     f.icon:SetAllPoints()
-    -- Recorte para que el icono rectangular no se deforme (crop vertical).
+
     f.icon:SetTexCoord(0.08, 0.92, 0.23, 0.77)
 
     f.border = f:CreateTexture(nil, "BACKGROUND")
@@ -114,12 +114,12 @@ local function CreateWidget()
     f.border:SetTexture("Interface\\Buttons\\WHITE8x8")
     f.border:SetVertexColor(0, 0, 0, 1)
 
-    -- Total acumulado a la DERECHA del icono (como el WeakAura original).
+
     f.total = f:CreateFontString(nil, "OVERLAY")
     f.total:SetPoint("LEFT", f, "RIGHT", 4, 0)
     SetCustomFont(f.total, 14, "OUTLINE")
 
-    -- Rafaga / ultimo golpe a la IZQUIERDA (se pinta de amarillo si fue crit).
+
     f.current = f:CreateFontString(nil, "OVERLAY")
     f.current:SetPoint("RIGHT", f, "LEFT", -4, 0)
     SetCustomFont(f.current, 14, "OUTLINE")
@@ -151,7 +151,7 @@ local function ReleaseWidget(f)
 end
 
 local function Layout()
-    -- Ordenar por total descendente: el daño mas grande se acumula arriba.
+
     table.sort(active, function(k1, k2)
         local s1, s2 = states[k1], states[k2]
         if not (s1 and s2) then return false end
@@ -195,7 +195,7 @@ local function UpdateWidget(st)
         w.hits:SetText("")
     end
 
-    -- El crit colorea la rafaga (numero de la izquierda); el total va blanco.
+
     if st.crit then
         w.current:SetTextColor(1, 1, 0)
     else
@@ -206,7 +206,7 @@ local function UpdateWidget(st)
     w:Show()
 end
 
--- ===== combate =====
+
 local function TouchState(key, icon, amount, crit)
     local now = GetTime()
     local st = states[key]
@@ -251,15 +251,15 @@ local function TouchState(key, icon, amount, crit)
 end
 
 local function IsIgnored(name, id, ignoredNames, ignoredIds)
-    -- Defensivo: si el DB llega incompleto no se debe reventar en pleno combate.
+
     if name and ignoredNames and ignoredNames[name] then return true end
     if id and ignoredIds and ignoredIds[id] then return true end
     return false
 end
 
--- El registro de eventos lo maneja el modulo (onEnable/onDisable), no se
--- deja enganchado al cargar: COMBAT_LOG_EVENT_UNFILTERED dispara cientos
--- de veces por segundo y con el modulo apagado no debe escuchar nada.
+
+
+
 local f = CreateFrame("Frame")
 
 f:SetScript("OnEvent", function(self, event, ...)
@@ -280,12 +280,12 @@ f:SetScript("OnEvent", function(self, event, ...)
     if sourceGUID ~= UnitGUID("player") then return end
 
     if subevent == "SWING_DAMAGE" then
-        -- a1=amount a2=overkill a3=school a4=resisted a5=blocked a6=absorbed a7=critical
+
         local amount, critical = a1, a7
-        -- Icono del arma ORIGINAL, no la transfiguracion. GetInventoryItemTexture
-        -- devuelve la textura MOSTRADA (con transmog en Warmane) y esa trae un
-        -- borde blanco incorporado; GetItemIcon del item real equipado da el
-        -- icono limpio del arma de verdad.
+
+
+
+
         local icon
         local itemId = GetInventoryItemID("player", 16)
         if itemId then icon = GetItemIcon(itemId) end
@@ -293,7 +293,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         TouchState("swing", icon, amount, critical)
 
     elseif subevent == "SPELL_DAMAGE" or subevent == "RANGE_DAMAGE" then
-        -- a1=spellId a2=spellName a3=school a4=amount ... a10=critical
+
         local spellId, spellName, amount, critical = a1, a2, a4, a10
         if IsIgnored(spellName, spellId, DTSU_DB.ignored_names_direct, DTSU_DB.ignored_ids_direct) then return end
         local icon = select(3, GetSpellInfo(spellId))
@@ -307,11 +307,11 @@ f:SetScript("OnEvent", function(self, event, ...)
     end
 end)
 
--- ticker de expiracion + reintento de iconos que fallaron la primera vez
--- (a veces GetSpellInfo devuelve nil si el cliente todavia no cacheo ese spellId)
+
+
 local ticker = CreateFrame("Frame")
 ticker.elapsed = 0
-ticker:Hide()  -- oculto hasta que el modulo se active
+ticker:Hide()
 ticker:SetScript("OnUpdate", function(self, dt)
     self.elapsed = self.elapsed + dt
     if self.elapsed < 0.2 then return end
@@ -337,7 +337,7 @@ ticker:SetScript("OnUpdate", function(self, dt)
     end
 end)
 
--- ===== slash commands =====
+
 SLASH_DTSU1 = "/dtsu"
 SlashCmdList["DTSU"] = function(msg)
     msg = msg:lower():trim()
@@ -373,7 +373,7 @@ SlashCmdList["DTSU"] = function(msg)
     end
 end
 
--- ===== integracion NUF: on/off del modulo =====
+
 local function ClearAll()
     local toRemove = {}
     for key in pairs(states) do table.insert(toRemove, key) end

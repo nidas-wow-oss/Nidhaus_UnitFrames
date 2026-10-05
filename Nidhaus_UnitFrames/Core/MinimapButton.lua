@@ -1,13 +1,13 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- MinimapButton.lua - Icono en el minimapa para abrir el panel de opciones
---
--- Click izquierdo: Abre/cierra el panel de opciones
--- Click derecho: Toggle Arena Mover
--- Ctrl+Click: Modo "mover todo" (GlobalUnlock, el mismo de /move)
--- Shift+Click: /reload
--- Arrastrar: Mover alrededor del minimapa
+
+
+
+
+
+
+
 
 local math_sqrt, math_atan2, math_sin, math_cos, math_deg, math_rad =
 	math.sqrt, math.atan2, math.sin, math.cos, math.deg, math.rad;
@@ -37,13 +37,13 @@ local function UpdatePosition(angle)
 	local x, y;
 
 	if C and C.MinimapSquare then
-		-- MAPA CUADRADO: seguir el PERIMETRO, no una circunferencia.
-		-- Con el radio fijo de 80 el icono describia un circulo y en las
-		-- diagonales se metia adentro del mapa, mientras que arriba y a los
-		-- costados quedaba flotando afuera.
-		--
-		-- Se proyecta el angulo sobre el cuadrado escalando por la
-		-- componente mas grande: asi el punto siempre cae sobre un borde.
+
+
+
+
+
+
+
 		local half = (Minimap:GetWidth() or 140) / 2 + 8;
 		local m = math.max(math.abs(cos), math.abs(sin));
 		if m < 0.0001 then m = 1; end
@@ -118,7 +118,7 @@ local function CreateMinimapButton()
 			if IsShiftKeyDown() then
 				ReloadUI();
 			elseif IsControlKeyDown() then
-				-- Mismo modo que /move: overlay arrastrable sobre todo lo movible.
+
 				if K.ToggleGlobalUnlock then
 					K.ToggleGlobalUnlock("all");
 				end
@@ -145,10 +145,10 @@ local function CreateMinimapButton()
 		self:SetScript("OnUpdate", nil);
 	end);
 
-	-- El boton se crea en PLAYER_LOGIN, a veces DESPUES de que el barrido de
-	-- "ocultar iconos de addon" ya paso, y por eso quedaba visible. Reaplicamos
-	-- el ocultado ahora que el boton ya existe: asi tambien se esconde (y se
-	-- puede reabrir el panel con /nuf).
+
+
+
+
 	if K.ApplyMinimapAddonIcons then K.ApplyMinimapAddonIcons(); end
 end
 

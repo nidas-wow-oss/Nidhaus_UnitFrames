@@ -7,19 +7,19 @@ local unpack = unpack;
 
 local isInitialized = false;
 
--- ── ASURI ─────────────────────────────────────────────────────
--- Tercer tema (RougeUI "Asuri UI Frames"). En el player oculta el nivel
--- (el marco no tiene donde ponerlo) y sube el nombre por encima de las
--- barras, que Asuri corre hacia abajo y afina.
+
+
+
+
 local ASURI = "Interface\\AddOns\\"..AddOnName.."\\Media\\Asuri\\";
 
--- Carpeta del tema activo.
---
--- Este archivo repetia la ruta completa en cuatro lugares, con un
--- "if darkFrames then Dark else Light" cada vez. Agregar un tercer tema
--- significaba tocar los cuatro y acordarse de todos — justo el tipo de
--- cosa que se olvida en uno. Con un resolvedor, el tema nuevo se agrega
--- en un solo lugar.
+
+
+
+
+
+
+
 local function ThemeDir()
 	local base = "Interface\\AddOns\\" .. AddOnName .. "\\Media\\";
 	if C.pwFrames   then return base .. "pw\\";   end
@@ -27,42 +27,42 @@ local function ThemeDir()
 	return base .. "Light\\";
 end
 
--- Icy manda por encima de todo lo demas.
---
--- No es una variante del skin custom: es un marco entero y propio, del
--- mago. Mientras esta puesto, los temas visuales (Light / Dark / Asuri /
--- Compact) no pintan nada — con Asuri encima el marco quedaba negro y
--- derretido, porque Asuri afina y baja las barras y mueve el aro del
--- retrato, medidas que el arte de hielo no comparte. Lorti tampoco lo
--- toca: oscurecerle la textura al hielo lo apaga y ya.
---
--- La clase se resuelve una vez y se recuerda: nadie cambia de clase a
--- mitad de sesion, y en ADDON_LOADED UnitClass todavia puede no responder.
+
+
+
+
+
+
+
+
+
+
+
 local playerClass;
 
 local function IcyOn()
 	if not playerClass then playerClass = select(2, UnitClass("player")); end
 	return (C.MageIcyFrame and playerClass == "MAGE") and true or false;
 end
-K.IcyPlayerFrameOn = IcyOn;   -- la consulta Lorti UI
+K.IcyPlayerFrameOn = IcyOn;
 
 local function AsuriOn()
 	return C.UnitFrameCustomTexture and C.AsuriFrames and not IcyOn();
 end
 
--- "Group 2" encima del marco, en arena, no informa nada: sos dos o tres y
--- ya sabes cual sos. Lo unico que hace es taparte el marco. Se apaga con
--- alfa y NO con Hide(): Blizzard vuelve a mostrar ese FontString cada vez
--- que corre PlayerFrame_UpdateGroupIndicator, y pelearle con Hide termina
--- en parpadeo. Mismo truco que se usa con el nivel en Asuri y Compact.
---
--- CON EL TEXTO GRANDE TAMPOCO: el nombre sube justo al borde de arriba del
--- marco, que es donde vive "Group N", y los dos quedaban encimados ("Group"
--- tapando el nombre). Con el texto grande el nombre manda y el grupo se
--- oculta, igual que en arena. Se pregunta directo a K.BigStatusTextOn (la
--- regla de Core/API.lua: Light, Dark o Compact) porque esta funcion esta
--- antes que BigTextOn en el archivo. Al tocar la opcion o el tema, el skin
--- del jugador se reaplica y vuelve a pasar por aca.
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function UpdateGroupIndicator()
 	if not PlayerFrameGroupIndicatorText then return; end
 	local _, instanceType = IsInInstance();
@@ -70,64 +70,64 @@ local function UpdateGroupIndicator()
 	PlayerFrameGroupIndicatorText:SetAlpha((instanceType == "arena" or big) and 0 or 1);
 end
 
--- El hook a PlayerFrame_UpdateGroupIndicator cubre el rearmado del grupo,
--- pero al entrar a la arena esa funcion no siempre vuelve a correr. Estos
--- dos eventos cierran el hueco, y son baratos.
+
+
+
 local groupIndicatorWatcher = CreateFrame("Frame");
 groupIndicatorWatcher:RegisterEvent("PLAYER_ENTERING_WORLD");
 groupIndicatorWatcher:RegisterEvent("ZONE_CHANGED_NEW_AREA");
 groupIndicatorWatcher:SetScript("OnEvent", UpdateGroupIndicator);
 
--- El arte de hielo tiene la forma del marco con skin, asi que quiere la
--- MISMA geometria que Light: barras gruesas y arriba. Por eso vale aunque
--- el Custom Skin este destildado.
+
+
+
 local function SkinLayoutOn()
 	return IcyOn() or C.UnitFrameCustomTexture;
 end
 
 local origNameFont;
 
--- ── TEXTO GRANDE ──────────────────────────────────────────────
--- Interface > General > Status Text > Big text. La regla de cuando vale
--- esta en Core/API.lua (K.BigStatusTextOn): Light, Dark o Compact.
--- 35 = el borde de arriba del marco: la barra de vida empieza 26 px por
--- encima del centro, asi que el nombre queda justo encima, sin tocarla.
+
+
+
+
+
 local BIG_NAME_Y = 35;
 
 local function BigTextOn()
 	return K.BigStatusTextOn and K.BigStatusTextOn("player") or false;
 end
 
--- Fuera del marco no hay fondo detras del nombre: se le suma el contorno
--- a la MISMA fuente (cara, tamaño y color quedan), y la sombra queda por
--- si otro modulo (Name border) despues le cambia la fuente.
+
+
+
 local function OutlineName(fs)
 	if not fs or not fs.GetFont then return; end
 	local face, size = fs:GetFont();
 	if face and size then pcall(fs.SetFont, fs, face, size, "OUTLINE"); end
 	fs:SetShadowOffset(1, -1);
 end
-K.OutlineBigName = OutlineName;   -- TargetFrame usa la misma
+K.OutlineBigName = OutlineName;
 
 local function InitializePlayerFrame()
 	if isInitialized then return; end
 	
-	-- FIX: Capturar el estado ORIGINAL de Blizzard ANTES de tocar nada.
-	-- Se hace una sola vez, acá, cuando los elementos todavía tienen su
-	-- geometría/textura default. El checkbox "Custom Skin" usa esto para
-	-- restaurar el default exacto al desactivarse (sin adivinar valores).
+
+
+
+
 	K.CaptureTexture(PlayerFrameTexture, "PlayerFrameTexture");
 	K.CaptureTexture(PlayerPVPIcon, "PlayerPVPIcon");
 	K.CaptureTexture(PlayerStatusTexture, "PlayerStatusTexture");
 	K.CaptureAnchors(PlayerStatusTexture, "PlayerStatusTextureAnchor");
 	
-	-- Crear frame de movimiento (reparenta y reancla los hijos del PlayerFrame)
+
 	K.MoveFrame(PlayerFrame, "NidhausPlayerFrame", "Player", 105, 27);
 
-	-- FIX: capturar la geometría/anclajes de la healthbar DESPUÉS de MoveFrame,
-	-- porque MoveFrame reparenta y reancla los hijos → el anclaje válido es el
-	-- post-MoveFrame. Guardamos geometría (para default) y anclajes completos
-	-- (para el doble anclaje del look custom, igual que Target).
+
+
+
+
 	if PlayerFrame.healthbar then
 		K.CaptureBarGeometry(PlayerFrame.healthbar, "PlayerHealthBar");
 		K.CaptureAnchors(PlayerFrame.healthbar, "PlayerHealthBarAnchors");
@@ -136,7 +136,7 @@ local function InitializePlayerFrame()
 		end
 	end
 
-	-- Aplicar escala (solo al contenedor visual)
+
 	if C.PlayerFrameScale and type(C.PlayerFrameScale) == "number" and C.PlayerFrameScale > 0 and C.PlayerFrameScale <= 3 then
 		if NidhausPlayerFrame then 
 			NidhausPlayerFrame:SetScale(C.PlayerFrameScale); 
@@ -147,16 +147,16 @@ local function InitializePlayerFrame()
 		K.CaptureAnchors(PlayerFrame.manabar, "PlayerManaBarAnchors");
 	end
 
-	-- Anclaje del NOMBRE. Hace falta porque K.SetOffset suma sobre el punto
-	-- ACTUAL: sin restaurar antes, cada pasada de ToPlayerArt (que corre en
-	-- un monton de eventos) subiria el nombre otro poco, y terminaba fuera
-	-- de la pantalla. Target ya hacia esto; Player no.
+
+
+
+
 	if PlayerFrame.name then
 		K.CaptureAnchors(PlayerFrame.name, "PlayerName");
 	end
 
-	-- Asuri achica el fondo negro de las barras: guardar el tamaño/anclaje
-	-- original para poder devolverlo.
+
+
 	if PlayerFrameBackground and not PlayerFrameBackground._nufOrig then
 		PlayerFrameBackground._nufOrig = {
 			w = PlayerFrameBackground:GetWidth(),
@@ -172,17 +172,17 @@ local function InitializePlayerFrame()
 	isInitialized = true;
 end
 
---	Player frame.
+
 local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 	if C.statusbarOn then
 		self.healthbar:SetStatusBarTexture(C.statusbarTexture);
 		self.manabar:SetStatusBarTexture(C.statusbarTexture);
 	end;
 	if AsuriOn() then
-		-- Status3 = SOLO el aro del retrato, sin el contorno de la barra.
-		-- Las otras dos versiones traen ese contorno dibujado y con Asuri
-		-- las barras son mas finas y estan mas abajo, asi que el trazo
-		-- quedaba flotando encima de la vida.
+
+
+
+
 		PlayerStatusTexture:SetTexture("Interface\\AddOns\\"..AddOnName.."\\Media\\UI-Player-Status3");
 		PlayerStatusTexture:ClearAllPoints();
 		PlayerStatusTexture:SetPoint("CENTER", NidhausPlayerFrame, "CENTER", 16, 8);
@@ -191,7 +191,7 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 		PlayerStatusTexture:ClearAllPoints();
 		PlayerStatusTexture:SetPoint("CENTER", NidhausPlayerFrame, "CENTER", 16, 8);
 	else
-		-- FIX: restaurar textura + anclaje default de Blizzard (capturados en init)
+
 		K.RestoreTexture(PlayerStatusTexture, "PlayerStatusTexture");
 		K.RestoreAnchors(PlayerStatusTexture, "PlayerStatusTextureAnchor");
 	end
@@ -202,18 +202,18 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 	PlayerFrameGroupIndicatorRight:Hide();
 	UpdateGroupIndicator();
 	
-	-- FIX: Checkbox "Custom Skin (Player/Target/Focus)". Con el skin apagado
-	-- se restauran el marco y el ícono de PVP default (capturados en init),
-	-- no las texturas .blp custom.
-	-- OJO CON EL ORDEN: Icy va PRIMERO.
-	--
-	-- Estaba dentro de la cadena que arranca con "si el skin custom esta
-	-- apagado, restaurar", asi que con Custom Skin destildado nunca se
-	-- llegaba a esta rama y el marco de hielo no se aplicaba nunca. Pero
-	-- Icy no es una variante del skin custom: es un skin en si mismo, del
-	-- mago. Que dependa del otro no tiene sentido.
+
+
+
+
+
+
+
+
+
+
 	if IcyOn() then
-		-- Icy Portrait (portado de SquidFrame).
+
 		PlayerFrameTexture:SetTexture("Interface\\AddOns\\"..AddOnName.."\\Media\\icy.tga");
 		PlayerPVPIcon:SetTexture("Interface\\TargetingFrame\\UI-PVP-FFA");
 	elseif not C.UnitFrameCustomTexture then
@@ -225,8 +225,8 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 		PlayerPVPIcon:SetTexture("Interface\\TargetingFrame\\UI-PVP-FFA");
 	else
 		PlayerFrameTexture:SetTexture(ThemeDir() .. "UI-TargetingFrame");
-		-- El icono de PvP propio solo lo tienen Dark y pw; Light usa el de
-		-- Blizzard, que combina mejor con su paleta clara.
+
+
 		if C.darkFrames or C.pwFrames then
 			PlayerPVPIcon:SetTexture(ThemeDir() .. "UI-PVP-FFA");
 		else
@@ -234,15 +234,15 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 		end
 	end;
 
-	-- Sin esto, al salir de Asuri el marco normal quedaba gris: el
-	-- SetVertexColor de arriba no lo revierte ninguna otra rama.
-	--
-	-- Y aca estaba el motivo de que Lorti UI no se viera en el jugador:
-	-- este blanco corre en CADA reaplicacion del skin (PlayerFrame_ToPlayerArt
-	-- se dispara todo el tiempo) y le borraba el tinte oscuro que Lorti
-	-- pone una sola vez al cargar. Ahora se le pregunta a Lorti primero.
+
+
+
+
+
+
+
 	if IcyOn() then
-		-- El hielo va a su color, sin tinte de Lorti ni el gris de Asuri.
+
 		PlayerFrameTexture:SetVertexColor(1, 1, 1);
 	elseif not C.AsuriFrames then
 		if not (K.ApplyLortiTint and K.ApplyLortiTint(PlayerFrameTexture,
@@ -253,20 +253,20 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 end;
 
 local function Nidhaus_UnitFrames_PlayerFrame_ToPlayerArt(self)
-	-- Re-apply custom textures (Blizzard resets them when this function fires)
+
 	Nidhaus_UnitFrames_Style_PlayerFrame(self);
 
-	-- Volver al anclaje base ANTES de sumar el offset (ver la nota de la
-	-- captura): asi el resultado es absoluto y no se acumula.
+
+
 	K.RestoreAnchors(self.name, "PlayerName");
 	if C.PlayerNameOffset and type(C.PlayerNameOffset) == "table" then
 		self.name:SetPoint(K.SetOffset(self.name, unpack(C.PlayerNameOffset)));
 	end
 
 	if AsuriOn() then
-		-- Asuri corre las barras hacia abajo y las afina, asi que el nombre
-		-- queda pisandolas. Se lo sube por encima, a la misma altura
-		-- relativa que usa el objetivo (que ahi va en -50, 25).
+
+
+
 		self.name:SetAlpha(1);
 		if origNameFont then self.name:SetFontObject(origNameFont); end
 		local nameHost = _G["NidhausPlayerFrame"] or self;
@@ -278,10 +278,10 @@ local function Nidhaus_UnitFrames_PlayerFrame_ToPlayerArt(self)
 		self.name:SetShadowOffset(1, -1);
 	end
 
-	-- TEXTO GRANDE: el nombre sale de la barra y va arriba del marco, en el
-	-- borde de arriba (como los marcos gruesos de RougeUI). Va DESPUES del
-	-- bloque de arriba a proposito: ese repone la fuente de fabrica en cada
-	-- pasada, asi que al apagar la opcion el nombre vuelve solo.
+
+
+
+
 	if BigTextOn() then
 		local nameHost = _G["NidhausPlayerFrame"] or self;
 		self.name:ClearAllPoints();
@@ -289,13 +289,13 @@ local function Nidhaus_UnitFrames_PlayerFrame_ToPlayerArt(self)
 		OutlineName(self.name);
 	end
 
-	-- Sin nivel en Asuri ni en Compact: ninguno de los dos marcos tiene
-	-- donde ponerlo. Se usa alfa y no Hide() porque Blizzard vuelve a
-	-- mostrar ese FontString en cada actualizacion, y pelearle con Hide
-	-- termina en parpadeo.
+
+
+
+
 	if PlayerLevelText then
-		-- Con Icy el nivel se ve: el marco de hielo tiene donde ponerlo,
-		-- a diferencia de Asuri y Compact.
+
+
 		local hideLevel = (not IcyOn())
 			and (AsuriOn() or (C.UnitFrameCustomTexture and C.pwFrames));
 		PlayerLevelText:SetAlpha(hideLevel and 0 or 1);
@@ -314,22 +314,22 @@ local function Nidhaus_UnitFrames_PlayerFrame_ToPlayerArt(self)
 			self.manabar:SetHeight(13);
 		end
 	elseif SkinLayoutOn() then
-		-- FIX: mismo doble anclaje que Target: restaurar el/los anclaje(s)
-		-- default (post-MoveFrame) antes de sumar el TOPLEFT, para que la
-		-- barra se estire correctamente en vez de quedar con un solo anclaje
-		-- y flotar al costado tras un toggle (bug con Custom Positions).
+
+
+
+
 		K.RestoreAnchors(self.healthbar, "PlayerHealthBarAnchors");
 		self.healthbar:SetPoint("TOPLEFT", 106, -24);
 		self.healthbar:SetHeight(28);
-		-- -5 deja lugar al nombre, que va arriba de la barra. Con el texto
-		-- grande el nombre ya no esta ahi: el numero va centrado.
+
+
 		self.healthbar.TextString:SetPoint("CENTER", self.healthbar, "CENTER", 0,
 			BigTextOn() and 0 or -5);
 	else
-		-- FIX: restaurar geometría de la barra y anclaje del texto default
-		-- (capturados en init). Restaurar el ANCLAJE del texto es clave: el
-		-- addon lo re-ancla a la barra, y ese cambio no se revierte solo →
-		-- era la causa del texto flotando cuando el skin estaba apagado.
+
+
+
+
 		K.RestoreBarGeometry(self.healthbar, "PlayerHealthBar");
 		K.RestoreAnchors(self.healthbar.TextString, "PlayerHealthText");
 	end
@@ -337,8 +337,8 @@ local function Nidhaus_UnitFrames_PlayerFrame_ToPlayerArt(self)
 		K.RestoreAnchors(self.manabar, "PlayerManaBarAnchors");
 	end
 
-	-- Fondo negro de las barras: en Asuri se recorta al alto de vida+mana,
-	-- si no queda un rectangulo grande sobresaliendo del marco.
+
+
 	if PlayerFrameBackground then
 		if AsuriOn() then
 			PlayerFrameBackground:SetWidth(119);
@@ -363,20 +363,20 @@ local function Nidhaus_UnitFrames_PlayerFrame_ToPlayerArt(self)
 	PlayerFrameFlash:SetTexCoord(0.9453125, 0, 0, 0.181640625);
 end;
 
--- FIX: local para evitar colisiones con otros addons
+
 local function playerPvpIcon()
 	local factionGroup = UnitFactionGroup("player");
 	if factionGroup and factionGroup ~= "Neutral" and UnitIsPVP("player") then
 		if C.UnitFrameCustomTexture and (C.darkFrames or C.pwFrames) and not IcyOn() then
 			PlayerPVPIcon:SetTexture(ThemeDir() .. "UI-PVP-" .. factionGroup);
 		else
-			-- Default de Blizzard (también usado por el skin custom en modo Light)
+
 			PlayerPVPIcon:SetTexture("Interface\\TargetingFrame\\UI-PVP-"..factionGroup);
 		end;
 	end;
 end;
 
---	Player vehicle frame.
+
 local function Nidhaus_UnitFrames_PlayerFrame_ToVehicleArt(self, vehicleType)
 	if vehicleType == "Natural" then
 		PlayerFrameFlash:SetTexture("Interface\\AddOns\\"..AddOnName.."\\Media\\Vehicles\\UI-Vehicle-Frame-Organic-Flash");
@@ -390,7 +390,7 @@ local function Nidhaus_UnitFrames_PlayerFrame_ToVehicleArt(self, vehicleType)
 	self.healthbar.TextString:SetPoint("CENTER", self.healthbar, "CENTER", 0, 0);
 end;
 
--- Pet frame
+
 local function Nidhaus_UnitFrames_PetFrame_Update(self, override)
 	if (not PlayerFrame.animating) or (override) then
 		if UnitIsVisible(self.unit) and not PlayerFrame.vehicleHidesPet then
@@ -400,11 +400,11 @@ local function Nidhaus_UnitFrames_PetFrame_Update(self, override)
 			else
 				PetFrameTexture:SetTexture(ThemeDir() .. "UI-SmallTargetingFrame");
 			end;
-			-- SetTexture no resetea el tinte. Si Lorti oscurecio el marco de
-			-- la mascota y despues se apago, ese gris se quedaba pegado y la
-			-- mascota seguia negra para siempre. Se le pregunta igual que en
-			-- el marco del jugador: con Lorti apagado ApplyLortiTint repone
-			-- el blanco.
+
+
+
+
+
 			if not (K.ApplyLortiTint and K.ApplyLortiTint(PetFrameTexture,
 				"LortiUI_PlayerTargetFocus")) then
 				PetFrameTexture:SetVertexColor(1, 1, 1);
@@ -413,7 +413,7 @@ local function Nidhaus_UnitFrames_PetFrame_Update(self, override)
 	end;
 end;
 
--- Backdrop;
+
 local function ApplyBackdrop()
 	if C.statusbarBackdrop then
 		K.CreateBackdrop(PlayerFrame);
@@ -429,53 +429,53 @@ function K.ApplyPlayerFrameScale(scale)
 	end
 end
 
--- FIX: Aplica el toggle "Custom Skin" en tiempo real (sin /reload).
--- Re-corre nuestra rutina de arte completa, que ahora es idempotente:
--- en modo custom aplica las .blp; en modo default restaura el estado
--- original capturado en init. Como cada llamada deja un estado final
--- determinístico (no depende de "lo que había antes"), togglear rápido
--- muchas veces siempre termina en el estado correcto. Llamada desde
--- OptionsPanel.lua.
+
+
+
+
+
+
+
 function K.ApplyPlayerFrameSkin()
 	if not isInitialized then return; end
-	-- No forzar arte de player si estás en vehículo (usa arte de vehículo)
+
 	if UnitInVehicle and UnitInVehicle("player") then return; end
 	Nidhaus_UnitFrames_PlayerFrame_ToPlayerArt(PlayerFrame);
 	playerPvpIcon();
-	-- El skin reancla los textos de vida/mana: avisar al modulo de texto
-	-- abreviado para que recapture la posicion buena (si no, queda corrido).
+
+
 	if K.InvalidateAbbrevAnchors then K.InvalidateAbbrevAnchors(); end
 end
 
--- Escala del marco de la mascota (Frames > Pet)
+
 function K.ApplyPetFrameScale(scale)
 	scale = scale or C.PetFrameScale or 1.0;
 	if PetFrame then PetFrame:SetScale(scale); end
 end
 
 K.RegisterConfigEvent("CONFIG_LOADED", function()
-	-- Inicializar frame
+
 	InitializePlayerFrame();
 
-	-- Escala guardada de la mascota
+
 	if K.ApplyPetFrameScale then K.ApplyPetFrameScale(C.PetFrameScale); end
 	
-	-- Aplicar estilos
+
 	Nidhaus_UnitFrames_Style_PlayerFrame(PlayerFrame);
 	
-	-- Registrar hooks
+
 	hooksecurefunc("PlayerFrame_ToPlayerArt", Nidhaus_UnitFrames_PlayerFrame_ToPlayerArt);
 	hooksecurefunc("PlayerFrame_UpdatePvPStatus", playerPvpIcon);
 	hooksecurefunc("PlayerFrame_ToVehicleArt", Nidhaus_UnitFrames_PlayerFrame_ToVehicleArt);
 	hooksecurefunc("PetFrame_Update", Nidhaus_UnitFrames_PetFrame_Update);
-	-- La que de verdad decide si "Group N" se ve. Engancharse aca alcanza
-	-- para cubrir el cambio de zona y el rearmado del grupo, que es cuando
-	-- Blizzard lo vuelve a encender.
+
+
+
 	if type(PlayerFrame_UpdateGroupIndicator) == "function" then
 		hooksecurefunc("PlayerFrame_UpdateGroupIndicator", UpdateGroupIndicator);
 	end
 	
-	-- Aplicar backdrop
+
 	ApplyBackdrop();
 end);
 
@@ -485,14 +485,14 @@ K.RegisterConfigEvent("CONFIG_CHANGED", function()
 	end
 end);
 
--- FIX: Re-apply textures when UI scale or display mode changes
--- Blizzard resets PlayerFrameTexture/PVP icons to defaults on these events
+
+
 local playerFrameEventWatcher = CreateFrame("Frame");
 playerFrameEventWatcher:RegisterEvent("UI_SCALE_CHANGED");
 playerFrameEventWatcher:RegisterEvent("DISPLAY_SIZE_CHANGED");
 playerFrameEventWatcher:SetScript("OnEvent", function(self)
 	if not isInitialized then return; end
-	-- Small delay to let Blizzard finish its own updates first
+
 	local elapsed = 0;
 	self:SetScript("OnUpdate", function(s, dt)
 		elapsed = elapsed + dt;

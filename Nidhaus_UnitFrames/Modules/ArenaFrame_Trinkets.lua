@@ -9,27 +9,27 @@ local PlaySoundFile = PlaySoundFile;
 local MAX_ARENA_ENEMIES = MAX_ARENA_ENEMIES or 5;
 local MAX_PARTY = MAX_PARTY_MEMBERS or 4;
 
--- =========================================================
--- Trinkets y raciales que rompen control, por spellID.
---
--- POR QUE POR ID Y NO POR NOMBRE: antes se hacia
---   spell == GetSpellInfo(59752)
--- o sea, se resolvia el nombre localizado del hechizo y se comparaba
--- string contra string en CADA evento. Eso es mas lento y ademas se
--- rompe si el cliente esta en otro idioma que el esperado. El spellID
--- es el mismo en todos lados.
---
--- OJO con la duracion de Will of the Forsaken (7744): en WotLK deberia
--- ser de 2 minutos, pero el valor que traia el addon era 45s. Warmane
--- podria tenerlo custom, asi que se deja en una constante aparte y bien
--- marcada para poder corregirla facil despues de verificar en el juego.
--- =========================================================
-local WOTF_COOLDOWN = 120;   -- Will of the Forsaken (verificar en Warmane)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+local WOTF_COOLDOWN = 120;
 
 local TRINKET_SPELLS = {
-	[42292] = { cd = 120, voice = "Trinket" },              -- Medallon PvP (ambas facciones)
-	[59752] = { cd = 120, voice = "Trinket" },              -- Every Man for Himself (humano)
-	[7744]  = { cd = WOTF_COOLDOWN, voice = "WillOfTheForsaken" }, -- Voluntad de los Renegados
+	[42292] = { cd = 120, voice = "Trinket" },
+	[59752] = { cd = 120, voice = "Trinket" },
+	[7744]  = { cd = WOTF_COOLDOWN, voice = "WillOfTheForsaken" },
 };
 
 ns.ArenaFrame_Trinkets = CreateFrame("Frame");
@@ -41,40 +41,40 @@ Core:SetScript("OnEvent", function(self, event, ...) return self[event](self, ..
 Core.addonLoaded = false;
 Core.created = false;
 Core.frames = {};
--- Mapa unitID -> frame de cooldown. Incluye arena Y party, para poder
--- resolver por GUID sin importar de que tipo de unidad se trate.
+
+
 Core.cooldowns = {};
 Core.partyFrames = {};
--- GUID -> unitID. Se llena cuando la unidad es visible (ver RefreshGUIDCache)
+
 Core.guidCache = {};
 
 local function IsEnabled()
 	return C.ArenaFrameOn and C.ArenaFrame_Trinkets;
 end
 
--- Los trinkets de party son independientes de los de arena: pueden estar
--- prendidos con el rastreo de arena apagado y al reves. El combat log se
--- necesita si CUALQUIERA de los dos esta activo.
+
+
+
 local function AnyTrinketEnabled()
 	return IsEnabled() or (C.PartyTrinketsEnabled == true);
 end
 
--- Helper — obtener posición guardada de trinket según mirror mode actual
--- Misma lógica que castbar: guarda posición separada para mirror/normal
--- Posiciones DE FABRICA del modo Flat.
---
--- El modo Flat rearma los marcos por completo, asi que los lugares
--- utiles del trinket y de la barra de casteo no son los mismos que en
--- Custom. Estos valores salieron de dejarlos acomodados en el juego y
--- son los que se usan mientras Flat este activo y el usuario no haya
--- movido nada todavia.
+
+
+
+
+
+
+
+
+
 local FLAT_DEFAULT = { "CENTER", "CENTER", 78.2, 9 };
 
 function K.GetSavedTrinketPos()
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.TrinketPositions;
 
-	-- Sin nada guardado para Flat, se usa la posicion de fabrica de Flat
-	-- en vez de dejar el trinket donde caiga.
+
+
 	local isFlat = (C.ArenaFrameStyle == "Flat") or (C.ArenaFlatMode == true);
 	if isFlat then
 		local key = K.GetArenaPositionKey and K.GetArenaPositionKey() or "Flat_normal";
@@ -82,12 +82,12 @@ function K.GetSavedTrinketPos()
 	end
 
 	if not db then return nil; end
-	-- Try composite key first (style + mirror), fallback to legacy keys
+
 	if K.GetArenaPositionKey then
 		local compositeKey = K.GetArenaPositionKey();
 		if db[compositeKey] then return db[compositeKey]; end
 	end
-	-- Legacy fallback: mirror/normal keys
+
 	local key = C.ArenaMirrorMode and "mirror" or "normal";
 	return db[key] or db.global;
 end
@@ -100,9 +100,9 @@ function Core:CreateTrinket(Frame, Index)
 	local Border = CreateFrame("Frame", "NidhausArenaTrinketBorder"..Index, Frame);
 	Border:SetFrameStrata("MEDIUM");
 
-	-- FIX: Posición inicial según mirror mode y flat mode
-	-- Sin esto, el trinket se crea SIEMPRE a la derecha y las funciones de
-	-- reposicionamiento pueden no ejecutarse a tiempo.
+
+
+
 	local isFlat = K.IsFlatModeActive and K.IsFlatModeActive();
 	if isFlat and C.ArenaMirrorMode then
 		Border:SetPoint("BOTTOMRIGHT", Frame, "BOTTOMLEFT", -8, 0);
@@ -116,7 +116,7 @@ function Core:CreateTrinket(Frame, Index)
 
 	Border:SetSize(32, 32);
 	Border:SetMovable(true);
-	-- Mouse deshabilitado por defecto; se activa solo en test mode + Flat style
+
 	Border:EnableMouse(false);
 
 	Border:SetBackdrop({
@@ -150,12 +150,12 @@ function Core:CreateTrinket(Frame, Index)
 	local CoolDownFrame = CreateFrame("Cooldown", nil, Trinket, "CooldownFrameTemplate");
 	CoolDownFrame:SetAllPoints(Trinket);
 
-	-- sArena-style drag: OnMouseDown/OnMouseUp (NO OnUpdate)
-	-- Funciona en Flat mode y en Test mode (Shift+Alt+Click)
+
+
 	Border:SetScript("OnMouseDown", function(self, button)
 		if button ~= "LeftButton" then return; end
 		if InCombatLockdown() then return; end
-		-- Permitir drag en Flat mode O en test mode
+
 		local isFlat = K.IsFlatModeActive and K.IsFlatModeActive();
 		local isTestMode = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover
 			and NidhausUnitFramesDB.ArenaMover.IsShown;
@@ -207,7 +207,7 @@ function Core:CreateTrinket(Frame, Index)
 		end
 	end);
 
-	-- Failsafe: stop drag si el frame se oculta
+
 	Border:SetScript("OnHide", function(self)
 		if self._isMoving then
 			self:StopMovingOrSizing();
@@ -215,7 +215,7 @@ function Core:CreateTrinket(Frame, Index)
 		end
 	end);
 
-	-- Restaurar posición guardada o aplicar mirror mode en Flat
+
 	if K.IsFlatModeActive and K.IsFlatModeActive() then
 		local saved = K.GetSavedTrinketPos();
 		if saved then
@@ -307,15 +307,15 @@ function Core:ApplyState()
 		return
 	end
 
-	-- FIX: Si Blizzard_ArenaUI ya está cargado pero ADDON_LOADED no se disparó
-	-- (porque el addon se habilitó después del load), setear el flag manualmente.
-	-- Sin esto, addonLoaded quedaba en false y TryCreate() nunca se ejecutaba.
+
+
+
 	if not self.addonLoaded then
 		if IsAddOnLoaded("Blizzard_ArenaUI") then
 			self.addonLoaded = true;
 		else
 			LoadAddOn("Blizzard_ArenaUI");
-			-- Si LoadAddOn tuvo éxito, setear flag (ADDON_LOADED puede no dispararse sincrónicamente)
+
 			if IsAddOnLoaded("Blizzard_ArenaUI") then
 				self.addonLoaded = true;
 			end
@@ -337,8 +337,8 @@ function Core:ADDON_LOADED(addonName)
 end
 
 function Core:PLAYER_ENTERING_WORLD()
-	-- Los de party se arman SIEMPRE que su propio checkbox este activo,
-	-- sin importar el estado del rastreo de arena.
+
+
 	self:SetupPartyTrinkets();
 	self:ShowPartyTrinkets(C.PartyTrinketsEnabled);
 
@@ -354,7 +354,7 @@ function Core:PLAYER_ENTERING_WORLD()
 		if not self:IsEventRegistered("COMBAT_LOG_EVENT_UNFILTERED") then
 			self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
 		end
-		-- Arena nueva: los GUIDs viejos ya no sirven
+
 		self:WipeGUIDCache();
 		if not self:IsEventRegistered("ARENA_OPPONENT_UPDATE") then
 			self:RegisterEvent("ARENA_OPPONENT_UPDATE");
@@ -364,7 +364,7 @@ function Core:PLAYER_ENTERING_WORLD()
 		end
 		self:RefreshGUIDCache();
 	else
-		-- Fuera de arena no hace falta escuchar el combat log
+
 		if self:IsEventRegistered("COMBAT_LOG_EVENT_UNFILTERED") then
 			self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
 		end
@@ -384,21 +384,21 @@ function Core:PLAYER_ENTERING_WORLD()
 end
 
 
--- =========================================================
--- TRINKETS DE PARTY
---
--- NUF solo cubria arena. Saber si tu healer todavia tiene trinket vale
--- tanto como saberlo del enemigo, asi que se agrega el mismo icono al
--- lado de cada marco de party.
---
--- Se crean una sola vez y quedan siempre visibles (con el cooldown
--- vacio cuando no se uso nada). Se cuelgan del marco de party, asi que
--- siguen su escala y posicion sin codigo extra.
--- =========================================================
--- Offset COMPARTIDO por los 4: se arrastra uno y los otros tres siguen.
--- Se guarda como desplazamiento respecto del marco de party, no como
--- posicion absoluta, para que aguante cambios de escala y de posicion
--- de los marcos sin quedar desalineado.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function PartyTrinketDB()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.PartyTrinket then
@@ -441,8 +441,8 @@ function Core:SetupPartyTrinkets()
 			holder.icon = holder:CreateTexture(nil, "BACKGROUND");
 			holder.icon:SetAllPoints();
 
-			-- Icono segun la faccion del jugador: en party sos aliado,
-			-- asi que comparten faccion.
+
+
 			local faction = select(1, UnitFactionGroup("player"));
 			if faction == "Horde" then
 				holder.icon:SetTexture("Interface\\Icons\\inv_jewelry_trinketpvp_02");
@@ -453,13 +453,13 @@ function Core:SetupPartyTrinkets()
 			local cd = CreateFrame("Cooldown", nil, holder, "CooldownFrameTemplate");
 			cd:SetAllPoints(holder);
 
-			-- Overlay de arrastre (solo visible en modo mover)
+
 			holder.dragHint = holder:CreateTexture(nil, "OVERLAY");
 			holder.dragHint:SetAllPoints();
 			holder.dragHint:SetTexture(0, 0.7, 1, 0.35);
 			holder.dragHint:Hide();
 
-			-- Al soltar se calcula el offset y se aplica a LOS CUATRO
+
 			holder:SetScript("OnMouseDown", function(self, button)
 				if button ~= "LeftButton" or not Core.partyMoveMode then return; end
 				if InCombatLockdown() then return; end
@@ -474,15 +474,15 @@ function Core:SetupPartyTrinkets()
 				local parentFrame = self:GetParent();
 				if not parentFrame then return; end
 
-				-- El ancla es LEFT del icono contra RIGHT del marco, y ambos
-				-- puntos estan centrados verticalmente. Entonces:
-				--   x = borde izquierdo del icono - borde derecho del marco
-				--   y = centro del icono - centro del marco
-				--
-				-- BUG que tenia: calculaba el Y mezclando GetTop() con medias
-				-- alturas, asi que al soltar el icono saltaba a otro lado. Se
-				-- sentia "imantado" porque ApplyPartyTrinketLayout lo re-anclaba
-				-- enseguida con un offset mal calculado.
+
+
+
+
+
+
+
+
+
 				local pRight            = parentFrame:GetRight();
 				local sLeft             = self:GetLeft();
 				local _,      pCenterY  = parentFrame:GetCenter();
@@ -519,16 +519,16 @@ function Core:ShowPartyTrinkets(show)
 	end
 end
 
--- ── API para el panel de opciones ────────────────────────
+
 Core.partyMoveMode = false;
 
 function K.SetPartyTrinketMoveMode(state)
 	Core.partyMoveMode = state and true or false;
 	Core:SetupPartyTrinkets();
 
-	-- Los trinkets cuelgan de PartyMemberFrameN: si no hay grupo, el padre
-	-- esta oculto y el hijo no se dibuja por mas que lo mostremos. Se
-	-- enciende el modo prueba para poder acomodarlos estando solo.
+
+
+
 	if K.SetPartyTestMode and not InCombatLockdown() then
 		if Core.partyMoveMode then
 			if not (K.IsPartyTestMode and K.IsPartyTestMode()) then
@@ -548,7 +548,7 @@ function K.SetPartyTrinketMoveMode(state)
 			if Core.partyMoveMode then
 				f.holder.dragHint:Show();
 				f.holder:Show();
-				-- Cooldown de muestra para que se vea algo mientras se acomoda
+
 				CooldownFrame_SetTimer(f.cd, GetTime(), 120, 1);
 			else
 				f.holder.dragHint:Hide();
@@ -575,31 +575,31 @@ function K.ApplyPartyTrinketSettings()
 	Core:ShowPartyTrinkets(C.PartyTrinketsEnabled);
 end
 
--- =========================================================
--- DETECCION POR COMBAT LOG
---
--- POR QUE SE CAMBIO: antes esto usaba UNIT_SPELLCAST_SUCCEEDED
--- filtrando por el token "arenaX". Ese evento SOLO dispara si el token
--- es valido en ese instante, y en 3.3.5a los tokens de arena se
--- invalidan cuando el cliente no "ve" al enemigo: en sigilo, fuera de
--- rango, o antes de que la UI de arena lo registre. Resultado: si el
--- picaro trinketeaba desde sigilo, el trinket no se marcaba nunca.
---
--- El combat log reporta por GUID y no le importa la visibilidad, asi
--- que se entera igual. Es la razon por la que otros addons de trinket
--- se sienten mas confiables.
--- =========================================================
 
--- ── Cache de GUIDs ──────────────────────────────────────
--- Preguntar UnitGUID("arena1") en el momento del trinket NO alcanza:
--- si el picaro esta en sigilo el token no es valido y UnitExists da
--- false, que es exactamente el caso que queremos cubrir. (El addon
--- ArenaPartyTrinkets tiene este mismo agujero.)
---
--- Solucion: cachear el GUID de cada unidad CADA VEZ que si es visible,
--- y despues resolver contra el cache. Al principio de la ronda todos
--- son visibles al menos un instante, asi que para cuando alguien se
--- mete en sigilo ya sabemos que GUID le corresponde.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function Core:RefreshGUIDCache()
 	for unit in pairs(self.cooldowns) do
 		if UnitExists(unit) then
@@ -613,17 +613,17 @@ function Core:WipeGUIDCache()
 	for k in pairs(self.guidCache) do self.guidCache[k] = nil; end
 end
 
--- Resuelve un GUID a su frame de cooldown (arena o party)
+
 function Core:FindCooldownByGUID(guid)
 	if not guid then return nil; end
 
-	-- 1) Por cache: funciona aunque la unidad este en sigilo o fuera de rango
+
 	local unit = self.guidCache[guid];
 	if unit and self.cooldowns[unit] then
 		return self.cooldowns[unit];
 	end
 
-	-- 2) Fallback en vivo, por si el cache todavia no vio a esta unidad
+
 	for u, cdFrame in pairs(self.cooldowns) do
 		if UnitExists(u) and UnitGUID(u) == guid then
 			self.guidCache[guid] = u;
@@ -634,7 +634,7 @@ function Core:FindCooldownByGUID(guid)
 	return nil;
 end
 
--- Cada vez que un enemigo aparece o el grupo cambia, actualizar el cache
+
 function Core:ARENA_OPPONENT_UPDATE()
 	if AnyTrinketEnabled() then self:RefreshGUIDCache(); end
 end
@@ -674,11 +674,11 @@ function K.ToggleArenaTrinketsTracking(enabled)
 	end
 end
 
--- Habilita/deshabilita mouse en trinkets. Funciona en Flat mode y Test mode.
+
 function K.SetTrinketMouseState(state)
 	if not Core.frames then return; end
-	-- FIX: Also check K._testModeActive — the DB flag IsShown may not be set yet
-	-- when this is called during test mode setup (timing issue)
+
+
 	local isFlat = K.IsFlatModeActive and K.IsFlatModeActive();
 	local isTestMode = K._testModeActive or (NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover
 		and NidhausUnitFramesDB.ArenaMover.IsShown);
@@ -695,8 +695,8 @@ function K.SetTrinketMouseState(state)
 	end
 end
 
--- FIX: Actualizar color del borde de trinkets cuando cambia darkFrames
--- Sin esto, cambiar el tema dark/light no actualiza los bordes hasta /reload
+
+
 function K.UpdateTrinketBorderColors()
 	if not Core.frames then return; end
 	for i = 1, MAX_ARENA_ENEMIES do

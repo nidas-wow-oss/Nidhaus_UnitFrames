@@ -1,20 +1,20 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- ChatCopy.lua
--- Doble click en la pestana del chat -> abre una caja con el
--- historial para seleccionar y copiar (Ctrl+A / Ctrl+C).
--- Escape cierra. Opcion: C.ChatCopyEnabled
--- =========================================================
+
+
+
+
+
+
 
 local HISTORY_LIMIT = 128;
 
 local tinsert, tremove, floor = table.insert, table.remove, math.floor;
 
--- ---------------------------------------------------------
--- Frames
--- ---------------------------------------------------------
+
+
+
 local scroll  = CreateFrame("ScrollFrame", "NUF_ChatCopyScroll", UIParent);
 local slider  = CreateFrame("Slider", "NUF_ChatCopyScrollBar", scroll);
 local editbox = CreateFrame("EditBox", "NUF_ChatCopyBox", scroll);
@@ -29,24 +29,24 @@ scroll.bg:SetTexture(0, 0, 0, 1);
 scroll.bg:SetPoint("TOPLEFT", -3, 3);
 scroll.bg:SetPoint("BOTTOMRIGHT", 3, -3);
 
--- ---------------------------------------------------------
--- ABRIR DONDE ESTABA EL CHAT
---
--- Antes la caja saltaba SIEMPRE al ultimo mensaje. Si estabas leyendo algo
--- veinte lineas mas arriba y hacias doble click justo para copiar ESO, se
--- te iba al final y habia que volver a buscarlo -- exactamente lo
--- contrario de para lo que abriste la caja.
---
--- GetScrollOffset() dice cuantas lineas por encima del final esta mirando
--- el chat; 0 es abajo del todo. La caja se dibuja encima del chat, con su
--- misma fuente y su mismo ancho, asi que el texto se corta en los mismos
--- lugares: una linea de alla es una linea de aca.
---
--- La conversion a pixeles usa el alto de la fuente. Es una aproximacion --
--- WoW no expone el alto real de linea -- pero cae dentro de una linea o
--- dos, que para "abrime donde estaba" es de sobra. Con offset 0 no hay
--- aproximacion ninguna: se va al fondo, igual que antes.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function TargetScroll(self, yrange)
 	local off = self.nufOffset or 0;
 	if off <= 0 then return yrange; end
@@ -61,9 +61,9 @@ scroll:SetScript("OnScrollRangeChanged", function(self, xrange, yrange)
 	local value = slider:GetValue();
 	slider:SetMinMaxValues(0, yrange);
 
-	-- El rango no se conoce hasta que el texto esta medido, y por eso el
-	-- posicionado va aca y no en el OnShow: este evento es el primero que
-	-- sabe cuanto mide.
+
+
+
 	if self.nufPlaceScroll then
 		self.nufPlaceScroll = nil;
 		local target = TargetScroll(self, yrange);
@@ -100,8 +100,8 @@ scroll:SetScript("OnShow", function(self)
 	editbox:SetHeight(chatFrame:GetHeight());
 	editbox:SetText("");
 
-	-- La caja tiene que verse igual que el chat que tapa: en el mismo
-	-- punto de la conversacion, no siempre al final. Ver TargetScroll.
+
+
 	local offset = 0;
 	if chatFrame.GetScrollOffset then
 		offset = chatFrame:GetScrollOffset() or 0;
@@ -123,8 +123,8 @@ scroll:SetScript("OnShow", function(self)
 	editbox.cached = editbox:GetText();
 	editbox:SetCursorPosition(editbox:GetNumLetters() or 0);
 
-	-- Si el texto entero cabe sin scroll, OnScrollRangeChanged puede no
-	-- dispararse; se resuelve la posicion aca tambien para no depender de el.
+
+
 	self:UpdateScrollChildRect();
 	local yrange = self:GetVerticalScrollRange() or 0;
 	if yrange > 0 and self.nufPlaceScroll then
@@ -134,7 +134,7 @@ scroll:SetScript("OnShow", function(self)
 		slider:SetValue(target);
 		self:SetVerticalScroll(target);
 	end
-	-- Bloquear edicion (pero permitir seleccionar/copiar)
+
 	editbox:SetScript("OnChar", function(self) self:SetText(self.cached or ""); end);
 end);
 
@@ -143,7 +143,7 @@ scroll:SetScript("OnHide", function()
 	editbox:SetScript("OnChar", nil);
 end);
 
--- Barra lateral
+
 slider:Hide();
 slider:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 6, 0);
 slider:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 6, 1);
@@ -169,7 +169,7 @@ slider:SetScript("OnValueChanged", function(self, value)
 	scroll:SetVerticalScroll(value);
 end);
 
--- Caja de texto
+
 editbox:SetTextColor(1, 1, 1, 1);
 editbox:SetFontObject(ChatFontNormal);
 editbox:SetAutoFocus(true);
@@ -180,20 +180,20 @@ editbox:SetScript("OnEscapePressed", function(self)
 	scroll:Hide();
 end);
 
--- ---------------------------------------------------------
--- Captura del historial + hooks en las pestanas
--- ---------------------------------------------------------
--- Dos enganches por ventana y CADA UNO CON SU MARCA.
---
--- Antes habia una sola: "si ya tiene NUFHistory, no hagas nada". Con eso
--- alcanzaba porque esto corria una sola vez al cargar. Ahora se vuelve a
--- pasar cada vez que aparece una ventana nueva (ver mas abajo), y una
--- marca compartida deja media ventana sin enganchar: si el historial ya
--- existia pero la pestana todavia no estaba, la funcion salia en la
--- primera linea y el doble click no se enganchaba nunca.
---
--- Cada cosa se marca por separado, y la funcion es idempotente: llamarla
--- diez veces sobre la misma ventana engancha exactamente una.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function HookChatFrame(index)
 	local chatFrame = _G["ChatFrame" .. index];
 	if not chatFrame then return; end
@@ -202,9 +202,9 @@ local function HookChatFrame(index)
 		chatFrame.NUFHistory = {};
 
 		hooksecurefunc(chatFrame, "AddMessage", function(self, msg, r, g, b)
-			-- Salida temprana: con la opcion apagada no se guarda nada.
-			-- Antes se acumulaba historial de CADA mensaje en los 7 chat
-			-- frames aunque el usuario nunca fuera a copiarlo.
+
+
+
 			if not C.ChatCopyEnabled then return; end
 			if type(msg) ~= "string" then return; end
 			local history = self.NUFHistory;
@@ -246,16 +246,16 @@ local function HookChatFrame(index)
 	end);
 end
 
--- LAS DE SUSURRO SON ChatFrame11 EN ADELANTE.
---
--- Este barrido iba de 1 a NUM_CHAT_WINDOWS (10). Pero cuando no hay una
--- ventana libre, FCF_OpenTemporaryWindow CREA una nueva y la numera desde
--- NUM_CHAT_WINDOWS + 1: la pestaña de susurro era ChatFrame11 y nunca se
--- enganchaba, por mas veces que se volviera a barrer. Por eso el doble
--- click no hacia nada en el susurro.
---
--- Ahora se recorre tambien CHAT_FRAMES, la lista de Blizzard con TODAS las
--- ventanas de chat, temporales incluidas.
+
+
+
+
+
+
+
+
+
+
 local function HookAllChatFrames()
 	for i = 1, (NUM_CHAT_WINDOWS or 10) do
 		HookChatFrame(i);
@@ -270,26 +270,26 @@ end
 
 HookAllChatFrames();
 
--- =========================================================
--- LAS VENTANAS QUE NACEN DESPUES
---
--- Este barrido corria UNA sola vez, al cargar el addon. Las pestanas que
--- ya estaban -- General, Combat Log -- quedaban enganchadas y andaban; las
--- que aparecen mas tarde, no.
---
--- Y aparecen mas tarde justamente las que el usuario pidio: una pestana de
--- susurro la crea FCF_OpenTemporaryWindow cuando llega el primer /w, y una
--- pestana propia de party la crea FCF_OpenNewWindow cuando la armas a
--- mano. Las dos reutilizan un ChatFrame libre, y aunque el marco ya
--- existiera al cargar, su pestana puede no haber estado lista todavia.
---
--- Se vuelve a barrer despues de cada una de esas llamadas. HookChatFrame
--- es idempotente, asi que barrer de mas no cuesta nada.
---
--- El cuadro de espera es necesario: cuando FCF_OpenTemporaryWindow
--- devuelve el control, todavia esta terminando de armar la pestana. Sin
--- esperar un cuadro se engancha sobre algo a medio hacer.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local rehook = CreateFrame("Frame");
 rehook:Hide();
 rehook:SetScript("OnUpdate", function(self)
@@ -298,9 +298,9 @@ rehook:SetScript("OnUpdate", function(self)
 end);
 
 local function HookSoon()
-	-- Una pasada YA, para que el historial empiece a guardar desde el primer
-	-- susurro (el mensaje que abrio la pestaña llega enseguida), y otra un
-	-- cuadro despues para la pestaña, que todavia se esta terminando de armar.
+
+
+
 	HookAllChatFrames();
 	rehook:Show();
 end
@@ -312,18 +312,18 @@ for _, fname in ipairs({ "FCF_OpenTemporaryWindow", "FCF_OpenNewWindow",
 	end
 end
 
--- Y un barrido al entrar al mundo, por si algun otro addon de chat (Prat,
--- Chatter) rearma las pestanas despues que nosotros.
+
+
 local rehookLogin = CreateFrame("Frame");
 rehookLogin:RegisterEvent("PLAYER_ENTERING_WORLD");
 rehookLogin:SetScript("OnEvent", HookSoon);
 
--- UNA VENTANA TEMPORAL QUE CAMBIA DE DUENO EMPIEZA DE CERO.
---
--- Las de susurro se reciclan: la misma ChatFrame5 que era el susurro con
--- Pepe pasa a ser el susurro con Juan. Sin esto, abrir la caja en la
--- segunda mostraba mezclada la conversacion de la primera -- y eso es
--- filtrar una charla privada dentro de otra.
+
+
+
+
+
+
 if type(FCF_SetTemporaryWindowType) == "function" then
 	hooksecurefunc("FCF_SetTemporaryWindowType", function(chatFrame, chatType, chatTarget)
 		if not chatFrame then return; end
@@ -334,9 +334,9 @@ if type(FCF_SetTemporaryWindowType) == "function" then
 	end);
 end
 
--- Si se desactiva la opcion mientras la caja esta abierta, cerrarla
--- y liberar el historial: si no, quedan 7 tablas de mensajes colgadas
--- en memoria hasta el proximo /reload.
+
+
+
 if K.RegisterConfigEvent then
 	local lastState = C.ChatCopyEnabled;
 	K.RegisterConfigEvent("CONFIG_CHANGED", function()

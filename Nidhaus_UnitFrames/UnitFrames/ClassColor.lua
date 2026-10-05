@@ -9,28 +9,28 @@ local CUSTOM_CLASS_COLORS, RAID_CLASS_COLORS, FACTION_BAR_COLORS = CUSTOM_CLASS_
 
 local isInitialized = false;
 
--- FIX: local para evitar colisiones con otros addons
+
 local function unitClassColors(healthbar, unit)
 	if not healthbar or not unit then return; end
 	if not UnitIsPlayer(unit) or unit ~= healthbar.unit then return; end
 	if not UnitClass(unit) then return; end
 	
-	-- QUIEN DECIDE EL COLOR DE ESTA BARRA.
-	--
-	-- Los marcos de arena no tienen coloreo propio en ningun otro lado:
-	-- dependen de este mismo hook, asi que la regla entera vive aca.
-	--
-	--   Arena, estilo retocado -> SIEMPRE por clase. Ahi el color no es
-	--     decoracion: es como identificas de un vistazo a quien le estas
-	--     pegando, y apagarlo deja los tres marcos iguales.
-	--
-	--   Arena, estilo Blizzard -> manda su casilla, y manda SOLA. Los
-	--     marcos son los de fabrica y hay quien los quiere tal cual,
-	--     verdes, aunque tenga el color de clase prendido para el resto de
-	--     la interfaz. Por eso no se mira C.classColor aca: si se mirara,
-	--     con la opcion general puesta la casilla no podria apagar nada.
-	--
-	--   Cualquier otro marco -> la opcion general de siempre.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	local isArena = unit and string.find(unit, "^arena%d") ~= nil;
 	local useClass;
 
@@ -68,21 +68,21 @@ local function npcReactionColors(healthbar, unit)
 	if not healthbar or not unit then return; end
 	if not UnitExists(unit) or UnitIsPlayer(unit) or unit ~= healthbar.unit then return; end
 
-	-- DOS CASOS EN LOS QUE ESTA BARRA NO VA POR REACCION.
-	--
-	-- 1) LAS MASCOTAS. UnitReaction sobre la mascota de un enemigo devuelve
-	--    3, y el color de esa reaccion es naranja: por eso el cangrejo del
-	--    cazador salia naranja en vez de verde. Blizzard NUNCA pinta por
-	--    reaccion lo que controla un jugador -- mascotas, vehiculos,
-	--    totems: van del mismo verde que su dueno.
-	--
-	-- 2) SIN CUSTOM SKIN. Apagar la piel es pedir la interfaz de fabrica, y
-	--    de fabrica todas las barras de vida son verdes. Pintar por
-	--    reaccion ahi era el addon metiendose donde dijiste que no.
-	--
-	-- Se escribe el verde A MANO en vez de salir sin tocar nada: la barra
-	-- conserva el color anterior, asi que viniendo de un bicho rojo se
-	-- quedaba con el rojo pegado.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	if UnitPlayerControlled(unit) or (not C.UnitFrameCustomTexture) then
 		if UnitIsConnected(unit) == false then
 			healthbar:SetStatusBarColor(0.6, 0.6, 0.6, 0.5);
@@ -143,13 +143,13 @@ end
 local function InitializeClassColors()
 	if isInitialized then return; end
 	
-	-- Un solo hook para UnitFrameHealthBar_Update (class colors + NPC reaction)
+
 	hooksecurefunc("UnitFrameHealthBar_Update", function(healthbar, unit)
 		unitClassColors(healthbar, unit);
 		npcReactionColors(healthbar, unit);
 	end);
 	
-	-- Un solo hook para HealthBar_OnValueChanged
+
 	hooksecurefunc("HealthBar_OnValueChanged", function(self)
 		unitClassColors(self, self.unit);
 		npcReactionColors(self, self.unit);

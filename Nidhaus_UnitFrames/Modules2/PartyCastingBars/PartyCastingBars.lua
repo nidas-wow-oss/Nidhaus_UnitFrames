@@ -1,24 +1,24 @@
---[[
-	PartyCastingBars - Adapted for Nidhaus_UnitFrames
-	Original by: AnduinLothar / Mercedesa
-	Adapted by: Nidhaus integration
-	
-	Changes from original:
-	  - Uses NUF namespace (K, C, L) instead of standalone SavedVariables
-	  - Removed ChatThrottleLib dependency (uses SendAddonMessage directly)
-	  - Removed Khaos config block (NUF has its own options panel)
-	  - Fixed texture path to point inside Nidhaus_UnitFrames folder
-	  - Initialization hooked into CONFIG_LOADED instead of VARIABLES_LOADED
-	  - EnableToggle uses local tracking var instead of broken global SavedVar
-	  - Slash commands registered at parse-time (always available)
-]]--
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
---------------------------------------------------
--- Globals / Namespace
---------------------------------------------------
+
+
+
 
 PartyCastingBars = {};
 
@@ -30,24 +30,24 @@ PartyCastingBars.Bars = {};
 
 PartyCastingBars.DefaultColors = {
 	["FRIENDLY"] = {
-		["CAST"]    = { r=0.0, g=0.7, b=1.0 },  -- Light Blue
-		["CHANNEL"] = { r=0.0, g=1.0, b=0.0 },  -- Green
-		["SUCCESS"] = { r=0.0, g=1.0, b=0.0 },  -- Green
-		["FAILURE"] = { r=1.0, g=0.0, b=0.0 },  -- Red
+		["CAST"]    = { r=0.0, g=0.7, b=1.0 },
+		["CHANNEL"] = { r=0.0, g=1.0, b=0.0 },
+		["SUCCESS"] = { r=0.0, g=1.0, b=0.0 },
+		["FAILURE"] = { r=1.0, g=0.0, b=0.0 },
 	},
 	["HOSTILE"] = {
-		["CAST"]    = { r=1.0, g=0.5, b=0.1 },  -- Orange
-		["CHANNEL"] = { r=1.0, g=0.6, b=0.2 },  -- Orange
-		["SUCCESS"] = { r=0.0, g=1.0, b=0.0 },  -- Green
-		["FAILURE"] = { r=1.0, g=0.0, b=0.0 },  -- Red
+		["CAST"]    = { r=1.0, g=0.5, b=0.1 },
+		["CHANNEL"] = { r=1.0, g=0.6, b=0.2 },
+		["SUCCESS"] = { r=0.0, g=1.0, b=0.0 },
+		["FAILURE"] = { r=1.0, g=0.0, b=0.0 },
 	},
 };
 
 PartyCastingBars.TIME_LEFT       = "(%.1fs)";
 PartyCastingBars.SPELL_AND_TARGET = "%s - %s";
-PartyCastingBars.COMM_FORMAT     = "%s,%s,%s"; -- spellname, targetname, hostile/friendly
+PartyCastingBars.COMM_FORMAT     = "%s,%s,%s";
 
--- Color table (runtime only; saved as C.PCB_* via NUF DB)
+
 PartyCastingBars_Colors = {
 	["FRIENDLY"] = {
 		["CAST"]    = { r=0.0, g=0.7, b=1.0 },
@@ -63,45 +63,45 @@ PartyCastingBars_Colors = {
 	},
 };
 
--- Tag each color entry with its own extraInfo for the color picker
+
 for reaction, info in pairs(PartyCastingBars_Colors) do
 	for typeString, typeInfo in pairs(info) do
 		typeInfo.extraInfo = { typeString = typeString, reaction = reaction };
 	end
 end
 
--- Local flag: tracks whether OnEvent/OnUpdate scripts are currently active on bars.
+
 local PCB_IsActive = false;
 
--- Internal state (managed by the addon itself, NOT by ConfigManager)
+
 local PCB_IconsEnabled = true;
 local PCB_Parented     = true;
 local PCB_Scale        = 0.7;
 
--- Aspecto de la barra, tres valores:
---   "Arcane"    el de siempre: borde de tooltip y flash propio.
---   "Blizzard"  el que trae CastingBarFrameTemplate, con su marco.
---   "Arena"     sin marco, como las barras de casteo de los marcos de
---               arena, cuyo template no dibuja borde ninguno.
+
+
+
+
+
 local PCB_BarStyle     = "Arcane";
 
---------------------------------------------------
--- Guardado
---
--- Estas cuatro cosas — escala, iconos, anclaje y los ocho colores —
--- vivian solo en memoria y volvian al default en cada relogueo. El
--- comentario de arriba de la tabla de colores decia "saved as C.PCB_*
--- via NUF DB", pero eso no pasaba en ningun lado.
---
--- No van en ConfigManager porque los colores son una tabla anidada y
--- ese sistema copia los defaults por referencia y les aplica una
--- conversion de tipo. Van en su propia SavedVariable, como PartyBuffs.
---
--- SIEMPRE por la funcion, nunca cacheada en una local de archivo: la
--- SavedVariable recien existe en ADDON_LOADED, o sea DESPUES de que
--- corren todos los .lua. Guardarse la tabla ahora seria quedarse con
--- una huerfana que no se guarda nunca. Ya paso con ArenaPointsCalcDB.
---------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local function PCB_DB()
 	if type(PartyCastingBarsDB) ~= "table" then PartyCastingBarsDB = {}; end
@@ -119,12 +119,12 @@ local function PCB_SaveColors()
 	end
 end
 
--- Cada estilo de barra guarda su propia escala. Arcane y Blizzard dibujan
--- marco propio, Arena no lo dibuja y ademas copia el tamano de las barras
--- de casteo de arena: son barras de tamanos muy distintos, asi que un solo
--- numero de escala obligaba a reajustar el slider en cada cambio. La
--- db.scale de antes se sigue leyendo como punto de partida, asi que nadie
--- arranca de cero.
+
+
+
+
+
+
 local function PCB_StyleScale(style)
 	local db  = PCB_DB();
 	local key = style or PCB_BarStyle;
@@ -151,7 +151,7 @@ local function PCB_LoadSaved()
 		or db.barStyle == "Arena" then
 		PCB_BarStyle = db.barStyle;
 	end
-	-- El estilo ya quedo resuelto: su escala pisa a la escala suelta.
+
 	PCB_Scale = PCB_StyleScale(PCB_BarStyle);
 
 	if type(db.colors) ~= "table" then return; end
@@ -168,7 +168,7 @@ local function PCB_LoadSaved()
 	end
 end
 
--- Lo que necesita el menu (PCB_Menu.lua) para dibujarse al dia.
+
 function PartyCastingBars.GetIcons()    return PCB_IconsEnabled; end
 function PartyCastingBars.GetParented() return PCB_Parented; end
 function PartyCastingBars.GetScale()    return PCB_Scale; end
@@ -185,9 +185,9 @@ function PartyCastingBars.ResetAllColors()
 	PCB_SaveColors();
 end
 
---------------------------------------------------
--- Color Utilities
---------------------------------------------------
+
+
+
 
 local function colorToString(color)
 	if not color then return "FFFFFFFF"; end
@@ -235,10 +235,10 @@ function PartyCastingBars.OpenColorPicker(info)
 	ColorPickerFrame.func        = setBarColor;
 	ColorPickerFrame.cancelFunc  = cancelBarColorChange;
 	ColorPickerFrame.extraInfo   = info.extraInfo;
-	-- El menu de PCB va en FULLSCREEN_DIALOG (por encima del panel de NUF)
-	-- y el selector de color de Blizzard en DIALOG: se abria DETRAS del menu.
-	-- Se lo sube mientras se usa desde aca y al cerrarse vuelve a su capa,
-	-- asi no cambia para los demas que lo abran.
+
+
+
+
 	if not ColorPickerFrame._nufStrataHook then
 		ColorPickerFrame._nufStrataHook = true;
 		local origStrata = ColorPickerFrame:GetFrameStrata();
@@ -260,9 +260,9 @@ function PartyCastingBars.GetColorArgs(database)
 	return database.r, database.g, database.b;
 end
 
---------------------------------------------------
--- Party Member Caching
---------------------------------------------------
+
+
+
 
 PartyCastingBars.PartyMembers   = {};
 PartyCastingBars.HostilityCache = {};
@@ -288,13 +288,13 @@ function PartyCastingBars.CachePartyMembers()
 	end
 end
 
---------------------------------------------------
--- EventFrame Scripts
---------------------------------------------------
+
+
+
 
 function PartyCastingBars.EventFrameOnLoad(frame)
-	-- BUG FIX: Removed VARIABLES_LOADED (initialization now via CONFIG_LOADED hook).
-	-- Only register the runtime events here.
+
+
 	frame:RegisterEvent("PLAYER_ENTERING_WORLD");
 	frame:RegisterEvent("PARTY_MEMBERS_CHANGED");
 	frame:RegisterEvent("PLAYER_TARGET_CHANGED");
@@ -302,15 +302,15 @@ function PartyCastingBars.EventFrameOnLoad(frame)
 	frame:RegisterEvent("CHAT_MSG_ADDON");
 end
 
---------------------------------------------------
--- Reset de barras colgadas
---
--- BUG: al entrar a una arena la barra se quedaba pegada (p.ej. "Crimson
--- Deathcharger" a 0.0s y sin desvanecerse). Motivo: durante la pantalla de
--- carga la barra deja de recibir OnUpdate y el UNIT_SPELLCAST_STOP del
--- lanzamiento se pierde, asi que se queda con estado a medias y visible.
--- Nada en el modulo la devolvia a cero.
---------------------------------------------------
+
+
+
+
+
+
+
+
+
 
 function PartyCastingBars.ResetBar(bar)
 	if not bar then return; end
@@ -329,9 +329,9 @@ function PartyCastingBars.ResetBar(bar)
 	bar:Hide();
 end
 
--- onlyMissing = true  -> solo las barras cuya unidad ya no existe.
+
 function PartyCastingBars.ResetAllBars(onlyMissing)
-	if PartyCastingBars.draggable then return; end   -- en modo mover deben quedarse
+	if PartyCastingBars.draggable then return; end
 	for i, bar in ipairs(PartyCastingBars.Bars) do
 		if (not onlyMissing) or (bar.unit and not UnitExists(bar.unit)) then
 			PartyCastingBars.ResetBar(bar);
@@ -341,14 +341,14 @@ end
 
 function PartyCastingBars.EventFrameOnEvent(event, newarg1, newarg2, newarg3, newarg4)
 	if event == "PLAYER_ENTERING_WORLD" then
-		-- Cambio de zona (arena, mazmorra, portal...): lo que hubiera en curso
-		-- ya no vale y su evento de fin se perdio en la carga.
+
+
 		PartyCastingBars.ResetAllBars(false);
 		PartyCastingBars.CachePartyMembers();
 
 	elseif event == "PARTY_MEMBERS_CHANGED" then
-		-- Aca solo se limpian las barras de gente que ya no esta, para no
-		-- cortar el lanzamiento de los que siguen en el grupo.
+
+
 		PartyCastingBars.ResetAllBars(true);
 		PartyCastingBars.CachePartyMembers();
 
@@ -358,9 +358,9 @@ function PartyCastingBars.EventFrameOnEvent(event, newarg1, newarg2, newarg3, ne
 		end
 
 	elseif event == "UNIT_SPELLCAST_SENT" then
-		-- arg1=unit, arg2=spellName, arg3=rank, arg4=targetName
+
 		if newarg2 and newarg4 then
-			-- BUG FIX: Removed ChatThrottleLib (not a dep of NUF). Use SendAddonMessage directly.
+
 			if PartyCastingBars.HostilityCache[newarg4] then
 				SendAddonMessage("PartyCastingBars", format(PartyCastingBars.COMM_FORMAT, newarg2, newarg4, "hostile"),  "PARTY");
 			else
@@ -369,13 +369,13 @@ function PartyCastingBars.EventFrameOnEvent(event, newarg1, newarg2, newarg3, ne
 		end
 
 	elseif event == "CHAT_MSG_ADDON" then
-		-- prefix, msg, distribution, sender
+
 		if newarg1 == "PartyCastingBars" then
 			local partyNum = PartyCastingBars.PartyMembers[newarg4];
 			if partyNum then
 				local _, _, spellName, targetName, relationship = strfind(newarg2, "^(.+),(.+),(.+)$");
 				if spellName and targetName and relationship then
-					-- BUG FIX: replaced deprecated getglobal() with _G[]
+
 					local frame = _G["PartyMemberFrame"..partyNum.."CastingBarFrame"];
 					if frame then
 						frame.targetName = targetName;
@@ -388,28 +388,28 @@ function PartyCastingBars.EventFrameOnEvent(event, newarg1, newarg2, newarg3, ne
 	end
 end
 
---------------------------------------------------
--- Bar Scripts
---------------------------------------------------
 
---------------------------------------------------
--- Aspecto de la barra
---------------------------------------------------
---
--- El template del que cuelgan estas barras es CastingBarFrameTemplate, el
--- mismo de las barras de casteo de arena. Lo que las hacia verse distinto
--- era que aca se les pisaba el borde y el flash apenas se creaban.
---
--- El aspecto original no se escribe a mano: se captura del propio frame la
--- primera vez, antes de tocarlo. Asi no hay que adivinar rutas ni medidas
--- de Blizzard, y el estilo "Blizzard" devuelve exactamente lo que el
--- template traia.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local function PCB_CaptureDefaultLook(bar, border, flash)
 	if bar._pcbDefaultLook then return; end
 	local d = {};
-	-- Tamaño propio de la barra y del icono, para poder volver desde el
-	-- modo Arena, que los reemplaza por los de las barras de arena.
+
+
 	d.barW, d.barH = bar:GetWidth(), bar:GetHeight();
 	local ic = bar.barIcon or _G[(bar:GetName() or "").."Icon"];
 	if ic then
@@ -441,12 +441,12 @@ local function PCB_RestorePoints(region, pts)
 	return true;
 end
 
--- Medidas de una barra de casteo de arena.
---
--- Si los marcos de arena existen — en arena, o con el mover de prueba
--- abierto — se leen de ahi, que es la fuente de verdad. Si no existen
--- todavia, se cae en la configuracion de NUF, que es lo que el addon les
--- aplica a esas barras: ArenaCastBarWidth y el alto del template.
+
+
+
+
+
+
 local function PCB_ArenaMetrics()
 	local ref = _G.ArenaEnemyFrame1CastingBar;
 	if ref and (ref:GetWidth() or 0) > 0 then
@@ -472,30 +472,30 @@ function PartyCastingBars.ApplyBarStyle(bar)
 	local icon = bar.barIcon or _G[barName.."Icon"];
 
 	if PCB_BarStyle == "Arena" then
-		-- Sin marco: el template de las barras de arena no dibuja borde.
+
 		if border then border:Hide(); end
-		-- Y del mismo tamaño que aquellas, barra e icono.
+
 		local aw, ah, aiw, aih = PCB_ArenaMetrics();
 		if aw and ah then bar:SetWidth(aw); bar:SetHeight(ah); end
 		if icon and aiw and aih then icon:SetWidth(aiw); icon:SetHeight(aih); end
 
-		-- EL FLASH TAMBIEN SE VA.
-		--
-		-- Aca me equivoque antes: lo dejaba puesto "porque avisa que
-		-- termino el casteo". Pero el flash de Blizzard tiene la FORMA del
-		-- marco, asi que al terminar cada casteo dibujaba por un instante
-		-- justo el borde que este estilo no tiene. Se veia aparecer un
-		-- recuadro fantasma de la nada, sin barra adentro.
-		--
-		-- No alcanza con Hide(): el OnUpdate del template lo vuelve a
-		-- mostrar y le maneja el alfa durante la animacion de cierre. Hay
-		-- que dejarlo sin textura, y entonces se muestra sin dibujar nada.
-		-- Los otros dos estilos le reponen la suya desde d.flashTex.
+
+
+
+
+
+
+
+
+
+
+
+
 		if flash then
 			local src = _G.ArenaEnemyFrame1CastingBarFlash;
 			local tex = src and src.GetTexture and src:GetTexture();
 			if tex then
-				-- Si las barras de arena traen su propio flash, ese va.
+
 				flash:SetTexture(tex);
 				flash:SetWidth(src:GetWidth());
 				flash:SetHeight(src:GetHeight());
@@ -563,8 +563,8 @@ function PartyCastingBars.SetBarStyle(value)
 	for i, barFrame in ipairs(PartyCastingBars.Bars) do
 		PartyCastingBars.ApplyBarStyle(barFrame);
 	end
-	-- Y con el estilo viaja su escala: el RefreshMenu de abajo lleva el
-	-- slider al valor que este estilo tenia guardado.
+
+
 	PartyCastingBars.SetScales(PCB_StyleScale(PCB_BarStyle));
 	if PartyCastingBars.RefreshMenu then PartyCastingBars.RefreshMenu(); end
 end
@@ -582,7 +582,7 @@ function PartyCastingBars.OnLoad(bar)
 	bar:RegisterForDrag("LeftButton");
 
 	bar.partyFrame  = bar:GetParent();
-	-- GetAttribute("unit") is the safe way; .unit is the old Blizzard convention
+
 	bar.unit        = bar:GetParent().unit or bar:GetParent():GetAttribute("unit");
 	bar.showTradeSkills = true;
 	bar.casting     = nil;
@@ -592,7 +592,7 @@ function PartyCastingBars.OnLoad(bar)
 
 	local barName = bar:GetName();
 
-	-- Text
+
 	local text = _G[barName.."Text"];
 	if text then
 		text:ClearAllPoints();
@@ -600,20 +600,20 @@ function PartyCastingBars.OnLoad(bar)
 		bar.barText = text;
 	end
 
-	-- Borde y flash: los pone ApplyBarStyle segun el estilo elegido.
+
 	PartyCastingBars.ApplyBarStyle(bar);
 
-	-- Icon
+
 	local icon = _G[barName.."Icon"];
 	if icon then
 		icon:Show();
 		bar.barIcon = icon;
 	end
 
-	-- Spark
+
 	bar.barSpark = _G[barName.."Spark"];
 
-	-- Time font string (defined as $parentTime in XML)
+
 	bar.barTime = _G[barName.."Time"];
 
 	tinsert(PartyCastingBars.Bars, bar);
@@ -682,7 +682,7 @@ function PartyCastingBars.OnEvent(bar, event, unit, spellName)
 			local min, max = bar:GetMinMaxValues();
 			local currTimeLeft = max - bar:GetValue();
 			if currTimeLeft > 0.1 and not bar.channeling then
-				-- Treat as interrupted
+
 				event = "UNIT_SPELLCAST_INTERRUPTED";
 			else
 				barSpark:Hide();
@@ -729,7 +729,7 @@ function PartyCastingBars.OnEvent(bar, event, unit, spellName)
 		end
 
 	elseif event == "UNIT_SPELLCAST_TARGET_CHANGED" then
-		-- Fake event generated by the addon-message system
+
 		if not spellName then return; end
 		if bar:IsShown() then
 			local min, max = bar:GetMinMaxValues();
@@ -899,10 +899,10 @@ function PartyCastingBars.OnUpdate(bar)
 		end
 
 	elseif bar:IsShown() then
-		-- Red de seguridad: visible pero sin lanzamiento, canalizacion, flash
-		-- ni fade pendientes = barra colgada. Antes se quedaba asi para
-		-- siempre porque ninguna rama la tocaba. Se comprueba ademas contra
-		-- la API por si el evento de fin llego a perderse.
+
+
+
+
 		if not (UnitCastingInfo(bar.unit) or UnitChannelInfo(bar.unit)) then
 			PartyCastingBars.ResetBar(bar);
 		end
@@ -914,23 +914,23 @@ function PartyCastingBars.OnDragStart(bar, button)
 	bar:StartMoving();
 end
 
--- ---------------------------------------------------------
--- MOVER UNA = MOVER LAS CUATRO
---
--- Antes esto era solo StopMovingOrSizing. O sea: cada barra quedaba donde
--- la dejabas, las otras tres no se enteraban, y al recargar volvian todas
--- al lugar de fabrica -- porque este modulo NO guarda posiciones (ver la
--- cabecera: usa el espacio de NUF). Las guarda NUF, en globalPos.PartyCast,
--- y solo la del compa 1.
---
--- Ahora al soltar se le avisa a NUF que barra se movio. El se encarga de
--- pasar ese desplazamiento a la barra 1, guardarlo y copiarlo a las otras
--- tres. Es exactamente lo que ya hacia /nufmove; lo unico que le faltaba a
--- /pcb drag era avisar.
---
--- Si NUF no estuviera cargado, la barra se mueve sola como antes: nada se
--- rompe, simplemente no se alinean ni se guarda.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function BarIndex(bar)
 	local name = bar and bar.GetName and bar:GetName();
 	local i = name and tonumber(string.match(name, "PartyMemberFrame(%d)"));
@@ -948,12 +948,12 @@ function PartyCastingBars.OnHide(bar)
 	bar:StopMovingOrSizing();
 end
 
---------------------------------------------------
--- Master Enable / Disable
--- BUG FIX: Uses PCB_IsActive (local) instead of PartyCastingBars_Enabled (broken global).
--- OptionsPanelFrames calls K.SaveConfig("PCB_Enabled", val) THEN EnableToggle(val).
--- PCB_IsActive tracks the actual script state so double-calls are safe.
---------------------------------------------------
+
+
+
+
+
+
 
 function PartyCastingBars.EnableToggle(value)
 	if value then
@@ -969,7 +969,7 @@ function PartyCastingBars.EnableToggle(value)
 			PCB_IsActive = true;
 		end
 	else
-		-- Desactivar scripts, drag mode y ocultar barras
+
 		PartyCastingBars.draggable = false;
 		for i, barFrame in ipairs(PartyCastingBars.Bars) do
 			barFrame:SetScript("OnEvent", nil);
@@ -981,9 +981,9 @@ function PartyCastingBars.EnableToggle(value)
 	end
 end
 
---------------------------------------------------
--- Icon Toggle
---------------------------------------------------
+
+
+
 
 function PartyCastingBars.EnableIcons(value)
 	PCB_IconsEnabled = value;
@@ -994,14 +994,14 @@ function PartyCastingBars.EnableIcons(value)
 			else           barFrame.barIcon:Hide(); end
 		end
 	end
-	-- Al final, no al principio: si no, el menu se repinta con el
-	-- estado viejo y la casilla queda al reves de lo que pasa.
+
+
 	if PartyCastingBars.RefreshMenu then PartyCastingBars.RefreshMenu(); end
 end
 
---------------------------------------------------
--- Parent Toggle
---------------------------------------------------
+
+
+
 
 function PartyCastingBars.SetParents(value)
 	PCB_Parented = value;
@@ -1012,9 +1012,9 @@ function PartyCastingBars.SetParents(value)
 	if PartyCastingBars.RefreshMenu then PartyCastingBars.RefreshMenu(); end
 end
 
---------------------------------------------------
--- Scale
---------------------------------------------------
+
+
+
 
 function PartyCastingBars.SetScales(value)
 	PCB_Scale = value;
@@ -1024,10 +1024,10 @@ function PartyCastingBars.SetScales(value)
 	end
 end
 
---------------------------------------------------
--- Draggable Mode
--- BUG FIX: Added nil guards on bar sub-elements.
---------------------------------------------------
+
+
+
+
 
 function PartyCastingBars.EnableDragging(value)
 	if value and not C.PCB_Enabled then
@@ -1056,17 +1056,17 @@ function PartyCastingBars.EnableDragging(value)
 	end
 end
 
---------------------------------------------------
--- Reset Bar Locations
---------------------------------------------------
+
+
+
 
 function PartyCastingBars.ResetBarLocations()
-	-- PRIMERO SOLTAR EL CANDADO DE NUF.
-	--
-	-- La posicion de la barra 1 la guarda NUF y le pone un candado sobre
-	-- SetPoint. Sin borrarla antes, el SetPoint de abajo se revertia en el
-	-- acto: la barra 1 se quedaba donde estaba y las otras tres si volvian
-	-- al costado de su marco. El mismo reset con dos resultados distintos.
+
+
+
+
+
+
 	if K and K.ForgetPartyCastBarPosition then
 		pcall(K.ForgetPartyCastBarPosition);
 	end
@@ -1077,14 +1077,14 @@ function PartyCastingBars.ResetBarLocations()
 	end
 end
 
---------------------------------------------------
--- Initialization (via NUF CONFIG_LOADED)
--- BUG FIX: Removed VARIABLES_LOADED path. We hook NUF's own config event so
--- C.PCB_Enabled is guaranteed to be populated when we apply initial state.
---------------------------------------------------
+
+
+
+
+
 
 local function PCB_ApplyInitialState()
-	-- Enable / disable scripts
+
 	if C.PCB_Enabled then
 		for i, barFrame in ipairs(PartyCastingBars.Bars) do
 			barFrame:SetScript("OnEvent", function(self, event, ...)
@@ -1104,11 +1104,11 @@ local function PCB_ApplyInitialState()
 		PCB_IsActive = false;
 	end
 
-	-- Lo guardado manda sobre los defaults del archivo. Va ANTES de los
-	-- tres Enable/Set de abajo, que son los que lo aplican a las barras.
+
+
 	PCB_LoadSaved();
 
-	-- Apply internal defaults
+
 	PartyCastingBars.EnableIcons(PCB_IconsEnabled);
 	PartyCastingBars.SetParents(PCB_Parented);
 	PartyCastingBars.SetScales(PCB_Scale);
@@ -1116,8 +1116,8 @@ local function PCB_ApplyInitialState()
 	PartyCastingBars.CachePartyMembers();
 end
 
--- Hook into NUF's CONFIG_LOADED. At that point C[] is fully populated.
--- We defer one more frame to PLAYER_LOGIN so all bar frames are definitely created.
+
+
 K.RegisterConfigEvent("CONFIG_LOADED", function()
 	local waitFrame = CreateFrame("Frame");
 	waitFrame:RegisterEvent("PLAYER_LOGIN");
@@ -1127,7 +1127,7 @@ K.RegisterConfigEvent("CONFIG_LOADED", function()
 	end);
 end);
 
--- Also react to CONFIG_CHANGED so the options panel checkbox takes effect live
+
 K.RegisterConfigEvent("CONFIG_CHANGED", function()
 	if not PCB_IsActive and C.PCB_Enabled then
 		PartyCastingBars.EnableToggle(true);
@@ -1136,26 +1136,26 @@ K.RegisterConfigEvent("CONFIG_CHANGED", function()
 	end
 end);
 
---------------------------------------------------
--- Slash Commands
--- BUG FIX: Registered at parse-time (not inside RegisterConfig/VARIABLES_LOADED).
--- This guarantees /pcb drag (and all other commands) work immediately after login.
---------------------------------------------------
+
+
+
+
+
 
 SLASH_PARTYCASTINGBARS1 = "/partycastingbars";
 SLASH_PARTYCASTINGBARS2 = "/pcb";
 
--- =====================================================================
--- /pcb  ->  abre el menu.
---
--- Los subcomandos siguen andando (drag, icon, scale, parent, reset):
--- no cuestan nada y sirven para macros. Lo que cambia es que /pcb
--- pelado ya no imprime una lista de ayuda que nadie lee, sino que
--- abre la ventana donde estan todos.
--- =====================================================================
+
+
+
+
+
+
+
+
 SlashCmdList["PARTYCASTINGBARS"] = function(msg)
-	-- Con PCB apagado no hay barras que configurar. Antes esto era un
-	-- return mudo: escribias /pcb y no pasaba nada, sin explicacion.
+
+
 	if not C.PCB_Enabled then
 		DEFAULT_CHAT_FRAME:AddMessage(
 			"PCB - Party Cast Bars is turned off. Turn it on in Frames > Party.", 1, 0.5, 0);
