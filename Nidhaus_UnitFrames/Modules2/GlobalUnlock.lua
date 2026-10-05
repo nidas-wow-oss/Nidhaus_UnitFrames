@@ -332,6 +332,10 @@ local MOVABLES = {
 	{ key = "ArenaEnd",    group = "extra", frames = {"NUF_ArenaEndTimer"},
 	  label = "Arena time", scalable = true,
 	  setting = "ArenaEndTimer", preview = "SetArenaTimersPreview" },
+	-- El ojo (Shadow Sight): antes estaba clavado arriba al centro.
+	{ key = "ShadowSight", group = "extra", frames = {"NUF_ShadowSightTimer"},
+	  label = "Shadow Sight", scalable = true,
+	  setting = "ShadowSightTimer", preview = "SetArenaTimersPreview" },
 
 	-- ── Timers de clase (mago) ──
 	--
@@ -1399,6 +1403,7 @@ end
 -- ---------------------------------------------------------
 local ARENA_TIMER_FRAMES = {
 	"NUF_DalaranPipeTimer", "NUF_RoVPillarTimer", "NUF_ArenaEndTimer",
+	"NUF_ShadowSightTimer",
 };
 
 function K.SetArenaTimersPreview(on)
@@ -2337,6 +2342,7 @@ local OWN_STORES = {
 	DalaranPipe  = "timerPos",
 	RoVPillars   = "timerPos",
 	ArenaEnd     = "timerPos",
+	ShadowSight  = "timerPos",
 };
 
 -- entrada -> variable guardada APARTE (tienen su propio SavedVariable)

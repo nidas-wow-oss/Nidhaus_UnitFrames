@@ -8,9 +8,9 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 
 > ## Download
 >
-> **Latest version: 4.1** — this is the current, recommended build and the one actively in use.
+> **Latest version: 4.2** — this is the current, recommended build and the one actively in use.
 >
-> **[Download v4.1 (latest release)](../../releases/latest)**
+> **[Download v4.2 (latest release)](../../releases/latest)**
 >
 > One download, everything included: the addon and its options panel.
 
@@ -38,7 +38,7 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 
 ## Installation
 
-1. Download **v4.1** from the [releases page](../../releases/latest).
+1. Download **v4.2** from the [releases page](../../releases/latest).
 2. Extract the archive. You will get two folders: `Nidhaus_UnitFrames` and `Nidhaus_UnitFrames_Config`.
 3. Copy **both** folders into your WoW `Interface/AddOns/` directory.
 4. Restart the WoW client, or type `/reload` if you are already in-game.
@@ -103,6 +103,16 @@ adaptations, and the credit for those belongs to their original authors:
 Integration, porting to 3.3.5a, bug fixing and everything else: **Nidhaus**.
 
 ## Changelog
+
+### v4.2
+- Arena time left ("Arena: 28:07"): turns off when the match ends or when you leave the arena. It used to keep counting in the open world.
+- Ring of Valor pillars: the timer runs every 25s, the first cycle too, and turns off when the match ends.
+- Shadow Sight (eye) timer: shows minutes and seconds (1:20) and can be moved like the other arena timers (Alt + drag, /nuftimers, Move Everything, Ctrl + wheel to scale).
+- Queue time next to the minimap shows 0:05 instead of 0:5.
+- Status Text: the abbreviated percentage uses the same font, size and layer as the number (on party frames the "100%" was bigger and the mana one was cut off), it hides together with "Hide health / mana numbers", changing the party style no longer leaves the texts on top of each other, turning the abbreviated text off puts the number back where it was, and a value of 0 shows "0" instead of "0 / 100".
+- Big text: the "Group N" label above the player frame is hidden so it does not cover the name.
+- Pet tab: new "Hide health / power text" option.
+- Party Buffs: no more "PartyMemberFrame_RefreshDebuffs (a nil value)" error with Party Debuffs off.
 
 ### v4.1
 - Full English and Spanish: every visible text now follows the game's language. That covers the options, tooltips, chat messages and alerts of the modules (Arena Calculator, Arena Times, Arrow Count, Auto Repair, the Auto Shot and Melee Swing timers, Button Range, Class Icons, Dungeon Roles, MiniBar, Paladin Auras, Sacred Shield, Seduction Alert, Party Buffs, Party Castbars, Party Pet Target, Party Targets, Power Bar, Spec Icons, System Spam Filter and more), the Move Everything labels and the Lorti UI options.

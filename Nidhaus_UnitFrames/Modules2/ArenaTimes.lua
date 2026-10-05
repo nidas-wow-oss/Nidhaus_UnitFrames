@@ -5,7 +5,8 @@ local function fmtMS(sec)
   sec = math.max(0, math.floor((sec or 0) + 0.5));
   local m = math.floor(sec / 60);
   local s = sec % 60;
-  return string.format("%d:%d", m, s);
+  -- Segundos siempre con dos cifras: "0:05", no "0:5".
+  return string.format("%d:%02d", m, s);
 end
 
 local function AT_IsInArenaInstance()

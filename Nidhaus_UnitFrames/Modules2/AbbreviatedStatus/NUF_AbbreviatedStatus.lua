@@ -375,6 +375,60 @@ local function RestoreOrigPoints(self, fs)
 	end
 end
 
+-- EL PORCENTAJE VA DONDE VA EL NUMERO.
+--
+-- Antes se creaba colgado de la BARRA y con la fuente de fabrica
+-- (TextStatusBarText). Dos problemas, los dos a la vista en el grupo:
+--   * El numero de Blizzard no cuelga de la barra sino de un marco que se
+--     dibuja ENCIMA de las dos barras. El porcentaje, colgado de la barra
+--     de mana, quedaba DEBAJO de la de vida: el "100%" del mana salia
+--     cortado por arriba.
+--   * El numero del grupo usa la fuente del estilo (o la del slider de
+--     tamano) y el porcentaje no: "100%" grande al lado de "34.3k" chico.
+-- Ahora nace en el mismo marco y la misma capa que el numero, y copia su
+-- fuente, color, sombra y transparencia (MirrorPct).
+local function CreatePct(bar, statusText)
+	local holder = statusText:GetParent() or bar;
+	local ok, layer = pcall(statusText.GetDrawLayer, statusText);
+	if not ok or not layer then layer = "OVERLAY"; end
+	local fs = holder:CreateFontString(nil, layer, "TextStatusBarText");
+	local okS, sx, sy = pcall(statusText.GetShadowOffset, statusText);
+	if okS and sx then fs:SetShadowOffset(sx, sy); end
+	local okC, r, g, b, a = pcall(statusText.GetShadowColor, statusText);
+	if okC and r then fs:SetShadowColor(r, g, b, a); end
+	bar._nufPct = fs;
+	-- Si la barra se esconde (una unidad sin mana, por ejemplo) y el
+	-- porcentaje vive en otro marco, se tiene que ir con ella.
+	bar:HookScript("OnHide", function() fs:Hide(); end);
+	return fs;
+end
+
+-- Que el porcentaje se vea IGUAL que el numero: misma fuente y tamano (el
+-- del estilo del grupo, el del texto grande...), mismo color y la misma
+-- transparencia. Lo ultimo es lo que hace que "Ocultar texto" del grupo y
+-- de la mascota, que bajan el numero a transparente, se lleven tambien el
+-- porcentaje (antes quedaba el "100%" solo). La fuente se toca solo si
+-- cambio: esto corre en cada refresco de barra.
+local function MirrorPct(statusText, pctFS)
+	local face, size, flags = statusText:GetFont();
+	if face and (pctFS._nufFace ~= face or pctFS._nufSize ~= size or pctFS._nufFlags ~= flags) then
+		if pcall(pctFS.SetFont, pctFS, face, size, flags) then
+			pctFS._nufFace, pctFS._nufSize, pctFS._nufFlags = face, size, flags;
+		end
+	end
+	pctFS:SetTextColor(statusText:GetTextColor());
+	pctFS:SetAlpha(statusText:GetAlpha());
+end
+
+-- Para el texto grande, que cambia el tamano del numero DESPUES de este
+-- hook (carga despues en el XML): asi el porcentaje lo sigue en la misma
+-- pasada y no en la proxima.
+function K.MirrorAbbrevPct(bar)
+	if bar and bar._nufPct and bar.TextString then
+		pcall(MirrorPct, bar.TextString, bar._nufPct);
+	end
+end
+
 local function ApplyBar(self)
 	local statusText = self.TextString;
 	if not statusText then return; end
@@ -436,17 +490,31 @@ local function ApplyBar(self)
 	local value = self:GetValue() or 0;
 	local _, vmax = self:GetMinMaxValues();
 
+	-- BARRA SIN MAXIMO (unidad sin mana, o sin datos todavia): Blizzard ya
+	-- escondio la barra y el numero. No se toca nada y el % se va; si no,
+	-- el Show() de mas abajo dejaba un texto suelto flotando donde estaba
+	-- la barra.
+	if not vmax or vmax <= 0 then
+		if self._nufPct then self._nufPct:Hide(); end
+		return;
+	end
+
 	-- FontString propia para el porcentaje (creada la primera vez)
 	local pctFS = self._nufPct;
 	if wantPct and not pctFS then
-		pctFS = self:CreateFontString(nil, "OVERLAY", "TextStatusBarText");
-		self._nufPct = pctFS;
+		pctFS = CreatePct(self, statusText);
 	end
+	if pctFS then MirrorPct(statusText, pctFS); end
 
 	-- Numero abreviado
 	if wantNum then
 		if value > 0 then
 			statusText:SetText(Abbrev(value, db.remainder, db.prefix));
+		elseif not self.zeroText then
+			-- En cero Blizzard escribe "0 / 100" (la ira del guerrero fuera
+			-- de pelea): quedaba ese texto largo y sin abreviar al lado de
+			-- los demas. Si la barra trae su propio texto de cero, se respeta.
+			statusText:SetText("0");
 		end
 		statusText:Show();
 	else
@@ -493,9 +561,15 @@ local function ApplyBar(self)
 		if pctFS then
 			SetWithOffset(self, pctFS, pctX, pctY);
 		end
-		-- Marcamos como movido solo si el usuario puso algun offset; si no,
-		-- queda en su sitio natural y se puede seguir recapturando.
-		self._nufMoved = (numX ~= 0 or numY ~= 0 or pctX ~= 0 or pctY ~= 0);
+		-- SIEMPRE "MOVIDO".
+		--
+		-- Antes se marcaba solo si habia algun offset, pensando que con
+		-- ceros el texto quedaba en su sitio natural. No: SetWithOffset lo
+		-- reancla al centro de la barra, y ese no es el lugar de cada estilo
+		-- (el del grupo lo cuelga del marco, el skin lo baja unos pixeles).
+		-- Con "no movido" la pasada siguiente tomaba ESTE centro como el
+		-- lugar original, y al apagar el modulo el texto ya no volvia.
+		self._nufMoved = true;
 	end
 end
 
@@ -558,21 +632,38 @@ end);
 -- La llama PlayerFrame al prender/apagar el "Custom Skin": ese skin reancla
 -- los textos, asi que hay que olvidar la posicion guardada y volver a
 -- capturarla, si no el texto queda con el anclaje del modo anterior.
-function K.InvalidateAbbrevAnchors()
+local function ReleaseBar(bar)
+	-- PRIMERO devolver el texto a su lugar, MIENTRAS todavia tenemos
+	-- guardado cual era. Si se borra la posicion con el texto todavia
+	-- movido, la proxima captura toma la posicion CORRIDA como si
+	-- fuera la original — y el desplazamiento se vuelve permanente.
+	if bar._nufMoved and bar.TextString then
+		pcall(RestoreOrigPoints, bar, bar.TextString);
+	end
+	bar._nufOrigPts = nil;
+	bar._nufMoved   = false;
+end
+
+-- SOLTAR SIN REFRESCAR, para quien esta por reanclar los textos el mismo
+-- (el reestilado del grupo): primero el texto vuelve a su lugar de verdad,
+-- despues el estilo pone el suyo, y el refresco que pide el que llama toma
+-- ESE como el lugar original.
+--
+-- Sin esto, al cambiar el estilo del grupo con el abreviado prendido, el
+-- numero quedaba donde lo ponia el estilo y el porcentaje donde lo ponia
+-- el abreviado, uno encima del otro, hasta el proximo cambio de vida.
+-- prefix: solo las barras cuyo nombre empieza asi (nil = todas).
+function K.ReleaseAbbrevAnchors(prefix)
 	for _, name in ipairs(UNIT_BARS) do
-		local bar = _G[name];
-		if bar then
-			-- PRIMERO devolver el texto a su lugar, MIENTRAS todavia tenemos
-			-- guardado cual era. Si se borra la posicion con el texto todavia
-			-- movido, la proxima captura toma la posicion CORRIDA como si
-			-- fuera la original — y el desplazamiento se vuelve permanente.
-			if bar._nufMoved and bar.TextString then
-				pcall(RestoreOrigPoints, bar, bar.TextString);
-			end
-			bar._nufOrigPts = nil;
-			bar._nufMoved   = false;
+		if not prefix or string.find(name, prefix, 1, true) == 1 then
+			local bar = _G[name];
+			if bar then ReleaseBar(bar); end
 		end
 	end
+end
+
+function K.InvalidateAbbrevAnchors()
+	K.ReleaseAbbrevAnchors();
 	RefreshAllBars();
 end
 

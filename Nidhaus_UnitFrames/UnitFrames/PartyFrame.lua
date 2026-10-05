@@ -300,9 +300,16 @@ K.InitializePartyFrames = InitializePartyFrames;
 -- adapten (fuente propia con estilos custom, default con Blizzard).
 function K.RestylePartyFrames()
 	if not isInitialized then return; end
+	-- TEXTO ABREVIADO: el estilo reancla y cambia la fuente del numero de
+	-- vida. Antes de eso el abreviado suelta sus anclajes (devuelve el
+	-- texto a su lugar), y despues vuelve a aplicarse sobre lo nuevo. Si
+	-- no, el numero quedaba donde lo ponia el estilo y el porcentaje donde
+	-- lo ponia el abreviado, encimados, hasta el proximo cambio de vida.
+	if K.ReleaseAbbrevAnchors then pcall(K.ReleaseAbbrevAnchors, "PartyMemberFrame"); end
 	for i = 1, MAX_PARTY_MEMBERS do
 		Nidhaus_UnitFrames_Style_PartyMemberFrame(i);
 	end
+	if K.RefreshAbbreviatedStatusBars then pcall(K.RefreshAbbreviatedStatusBars); end
 end
 
 function K.ApplyPartyFrameScale(scale)

@@ -118,19 +118,49 @@ end);
 -- ---------------------------------------------------------
 local endTime  = 0;
 local updAcc   = 0;
+local testMode = false;
+
+-- DENTRO DE UNA ARENA = el tipo de instancia, no el estado de la cola.
+--
+-- Antes se preguntaba con IsActiveBattlefieldArena, que justo al salir de
+-- la arena (en la pantalla de carga) todavia dice que si. El timer creia
+-- que seguia adentro y quedaba contando en el mundo.
+local function InArena()
+	local inInstance, instanceType = IsInInstance();
+	return inInstance and instanceType == "arena";
+end
+
+-- La partida ya termino: hay ganador y el marcador final esta en pantalla.
+-- Lo que falta hasta que te sacan de la arena ya no es "tiempo de arena".
+local function MatchOver()
+	return GetBattlefieldWinner and GetBattlefieldWinner() ~= nil;
+end
 
 local function Stop()
 	frame:Hide();
 	frame:SetScript("OnUpdate", nil);
 	frame.text:SetText("");
-	endTime = 0;
-	updAcc  = 0;
+	endTime  = 0;
+	updAcc   = 0;
+	testMode = false;
 end
 
 local function OnUpdate(self, elapsed)
 	updAcc = updAcc + elapsed;
 	if updAcc < 0.2 then return; end
 	updAcc = 0;
+
+	-- SE APAGA SOLO CUANDO LA ARENA TERMINA.
+	--
+	-- Antes solo se cortaba al llegar a cero o al cargar una zona (y ahi
+	-- con la pregunta de arriba, que fallaba). Terminabas la arena y el
+	-- "Arena: 28:07" seguia en pantalla en Elwynn. Ahora se revisa en cada
+	-- pasada, que es barato: fuera de la arena, partida con ganador u
+	-- opcion apagada, y se va. El modo de prueba (/nuftimers) no se toca.
+	if not testMode and (not C.ArenaEndTimer or not InArena() or MatchOver()) then
+		Stop();
+		return;
+	end
 
 	local remaining = endTime - GetTime();
 	if remaining <= 0 then
@@ -148,11 +178,12 @@ local function OnUpdate(self, elapsed)
 	end
 end
 
-local function Start(duration)
+local function Start(duration, isTest)
 	local newEnd = GetTime() + duration;
 	-- Si ya corre, quedarse con la duracion mas larga
 	if frame:IsShown() and newEnd <= endTime then return; end
 	endTime = newEnd;
+	testMode = isTest and true or false;
 	RestorePosition();
 	frame:Show();
 	updAcc = 1;
@@ -161,20 +192,33 @@ end
 
 K.ArenaTimerTests = K.ArenaTimerTests or {};
 K.ArenaTimerTests[KEY] = function()
-	if frame:IsShown() then Stop(); else Start(DURATION_EMOTE); end
+	if frame:IsShown() then Stop(); else Start(DURATION_EMOTE, true); end
 end;
 
 local events = CreateFrame("Frame");
 events:RegisterEvent("CHAT_MSG_BG_SYSTEM_NEUTRAL");
 events:RegisterEvent("CHAT_MSG_RAID_BOSS_EMOTE");
 events:RegisterEvent("PLAYER_ENTERING_WORLD");
+events:RegisterEvent("ZONE_CHANGED_NEW_AREA");
+events:RegisterEvent("UPDATE_BATTLEFIELD_STATUS");
 events:SetScript("OnEvent", function(self, event, ...)
 	if event == "PLAYER_ENTERING_WORLD" then
-		if not IsActiveBattlefieldArena() then Stop(); end
+		-- Al cargar fuera de una arena se apaga todo, prueba incluida.
+		if not InArena() then Stop(); end
+		return;
+	end
+	if event == "ZONE_CHANGED_NEW_AREA" or event == "UPDATE_BATTLEFIELD_STATUS" then
+		-- Salir de la arena o que la partida tenga ganador lo apaga en el
+		-- acto, sin esperar a la proxima pasada.
+		if frame:IsShown() and not testMode and (not InArena() or MatchOver()) then
+			Stop();
+		end
 		return;
 	end
 
 	if not C.ArenaEndTimer then return; end
+	-- Solo dentro de una arena, y con la partida todavia en juego.
+	if not InArena() or MatchOver() then return; end
 
 	local msg = select(1, ...);
 	if not IsArenaStartMessage(msg) then return; end

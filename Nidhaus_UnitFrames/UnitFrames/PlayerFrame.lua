@@ -55,10 +55,19 @@ end
 -- alfa y NO con Hide(): Blizzard vuelve a mostrar ese FontString cada vez
 -- que corre PlayerFrame_UpdateGroupIndicator, y pelearle con Hide termina
 -- en parpadeo. Mismo truco que se usa con el nivel en Asuri y Compact.
+--
+-- CON EL TEXTO GRANDE TAMPOCO: el nombre sube justo al borde de arriba del
+-- marco, que es donde vive "Group N", y los dos quedaban encimados ("Group"
+-- tapando el nombre). Con el texto grande el nombre manda y el grupo se
+-- oculta, igual que en arena. Se pregunta directo a K.BigStatusTextOn (la
+-- regla de Core/API.lua: Light, Dark o Compact) porque esta funcion esta
+-- antes que BigTextOn en el archivo. Al tocar la opcion o el tema, el skin
+-- del jugador se reaplica y vuelve a pasar por aca.
 local function UpdateGroupIndicator()
 	if not PlayerFrameGroupIndicatorText then return; end
 	local _, instanceType = IsInInstance();
-	PlayerFrameGroupIndicatorText:SetAlpha(instanceType == "arena" and 0 or 1);
+	local big = K.BigStatusTextOn and K.BigStatusTextOn("player");
+	PlayerFrameGroupIndicatorText:SetAlpha((instanceType == "arena" or big) and 0 or 1);
 end
 
 -- El hook a PlayerFrame_UpdateGroupIndicator cubre el rearmado del grupo,

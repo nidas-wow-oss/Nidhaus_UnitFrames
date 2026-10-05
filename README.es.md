@@ -8,9 +8,9 @@ NUF combina y reescribe varios addons existentes — entre ellos Eazy Frames y s
 
 > ## Descarga
 >
-> **Última versión: 4.1** — es la build actual, la recomendada y la que está en uso.
+> **Última versión: 4.2** — es la build actual, la recomendada y la que está en uso.
 >
-> **[Descargar v4.1 (última release)](../../releases/latest)**
+> **[Descargar v4.2 (última release)](../../releases/latest)**
 >
 > Una sola descarga, todo incluido: el addon y su panel de opciones.
 
@@ -38,7 +38,7 @@ NUF combina y reescribe varios addons existentes — entre ellos Eazy Frames y s
 
 ## Instalación
 
-1. Descargá la **v4.1** desde la [página de releases](../../releases/latest).
+1. Descargá la **v4.2** desde la [página de releases](../../releases/latest).
 2. Extraé el archivo. Vas a obtener dos carpetas: `Nidhaus_UnitFrames` y `Nidhaus_UnitFrames_Config`.
 3. Copiá **las dos** carpetas a tu directorio `Interface/AddOns/` de WoW.
 4. Reiniciá el cliente, o escribí `/reload` si ya estás en el juego.
@@ -98,6 +98,16 @@ NUF está construido sobre el trabajo de mucha gente. El motor y varios módulos
 Integración, port a 3.3.5a, corrección de bugs y todo lo demás: **Nidhaus**.
 
 ## Changelog
+
+### v4.2
+- Tiempo restante de la arena ("Arena: 28:07"): se apaga cuando termina la partida o cuando salís de la arena. Antes seguía contando en el mundo.
+- Pilares del Círculo del Valor: el timer va cada 25s, también el primer ciclo, y se apaga al terminar la partida.
+- Timer del ojo (Shadow Sight): se ve en minutos y segundos (1:20) y se mueve como los otros timers de arena (Alt + arrastrar, /nuftimers, Mover todo, Ctrl + rueda para el tamaño).
+- El tiempo de cola al lado del minimapa muestra 0:05 en vez de 0:5.
+- Texto de estado: el porcentaje del texto abreviado usa la misma fuente, tamaño y capa que el número (en el grupo el "100%" salía más grande y el del maná cortado), se oculta junto con "Ocultar texto vida/maná", cambiar el estilo del grupo ya no deja los textos encimados, apagar el abreviado devuelve el número a su lugar, y en cero se ve "0" en vez de "0 / 100".
+- Texto grande: el cartel "Group N" arriba del marco del jugador se oculta para no tapar el nombre.
+- Pestaña Mascota: nueva opción "Ocultar texto de vida / energía".
+- Party Buffs: ya no sale el error "PartyMemberFrame_RefreshDebuffs (a nil value)" con Party Debuffs apagado.
 
 ### v4.1
 - Todo en español e inglés: cada texto visible sigue el idioma del juego. Incluye las opciones, los tooltips, los mensajes del chat y las alertas de los módulos (Arena Calculator, Arena Times, Arrow Count, Auto Repair, los timers de Auto Shot y Melee Swing, Button Range, Class Icons, Dungeon Roles, MiniBar, Paladin Auras, Sacred Shield, Seduction Alert, Party Buffs, Party Castbars, Party Pet Target, Party Targets, Power Bar, Spec Icons, System Spam Filter y más), los nombres de Move Everything y las opciones de Lorti UI.

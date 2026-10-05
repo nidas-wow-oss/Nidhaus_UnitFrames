@@ -132,6 +132,7 @@ local defaults = {
 	BigTextHealthSize = 12,           -- Big text: tamaño del texto de vida (8-16)
 	BigTextManaSize = 10,             -- Big text: tamaño del texto de mana (8-16)
 	PartyHideHealthManaText = false,  -- esconde los numeros solo en el party
+	PetHideHealthManaText = false,    -- esconde los numeros de tu mascota (Frames > Pet)
 	PartyFontSize = 0,                -- 0 = tamaño original de cada estilo
 	PartyFontOutline = "OUTLINE", -- contorno del texto de los del grupo
 

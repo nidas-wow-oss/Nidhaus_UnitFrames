@@ -21,6 +21,13 @@ local function IsPartyBar(statusBar)
 	return string.find(n, "^PartyMemberFrame%d") ~= nil;
 end
 
+-- ¿Es una barra del marco de TU mascota? Para "Ocultar texto de vida /
+-- energia" de Frames > Pet. Las mascotas del grupo no entran (son otro
+-- marco). Comparar con la barra es mas barato que mirar el nombre.
+local function IsPetBar(statusBar)
+	return statusBar == PetFrameHealthBar or statusBar == PetFrameManaBar;
+end
+
 -- ¿Es una barra de un marco de ARENA?
 --
 -- "Vida completa" borra el "/ maximo", y en arena ese maximo es
@@ -45,6 +52,9 @@ local function OnTextStatusBarUpdateTextString(statusBar)
 	-- pelear con el codigo de Blizzard que muestra/oculta ese texto.
 	if IsPartyBar(statusBar) then
 		textString:SetAlpha(C.PartyHideHealthManaText and 0 or 1);
+	elseif IsPetBar(statusBar) then
+		-- Mismo criterio que el grupo: transparente, no Hide().
+		textString:SetAlpha(C.PetHideHealthManaText and 0 or 1);
 	end
 
 	if not C.ShowCurrentValueOnly then return; end

@@ -74,7 +74,7 @@ L["TIP_ArenaCastBarWidth"]       = "Cast bar width.";
 
 -- === OPTIONS PANEL ===
 L["PANEL_TITLE"]                 = "Nidhaus UnitFrames";
-L["PANEL_VERSION"]               = "|cffFFAA00v4.1|r";
+L["PANEL_VERSION"]               = "|cffFFAA00v4.2|r";
 L["PANEL_SUBTITLE"]              = "Unit Frame Customization & Arena Tools";
 L["PANEL_SIZE_RESET"]            = "Options window restored to 820x620 and centered.";
 
@@ -797,7 +797,7 @@ L["HEADER_ARENA_TIMERS"]         = "|cffFFD100Arena Timers|r";
 L["CB_DALARAN_PIPE"]             = "Dalaran Waterfall Timer";
 L["TIP_ArenaDalaranPipeTimer"]   = "Shows a 10 second icon timer when the Dalaran Arena waterfall is about to push players off the pipe.";
 L["CB_ROV_PILLARS"]              = "Ring of Valor Pillar Timer";
-L["TIP_ArenaRoVPillarTimer"]     = "Shows when the pillars rise in the Ring of Valor arena.\nFirst cycle 45s, then every 25s.";
+L["TIP_ArenaRoVPillarTimer"]     = "Shows when the pillars rise in the Ring of Valor arena.\nEvery 25s from the start of the match.";
 L["CB_ARENA_END"]                = "Arena Time Remaining";
 L["TIP_ArenaEndTimer"]           = "Shows how much time is left before the arena ends in a draw.";
 L["ARENA_END_PREFIX"]            = "Arena: ";
@@ -895,6 +895,8 @@ L["PARTY_FONT_AUTO"]             = "Auto";
 L["TIP_PartyFontSize"]           = "Size of the health / mana numbers on party frames. Auto keeps whatever size the chosen style uses.";
 L["CB_PARTY_HIDE_TEXT"]          = "Hide health / mana numbers";
 L["TIP_PartyHideHealthManaText"] = "Hides the health and mana numbers on party bars only (does not affect Arena / Player / Target).\nThe bars stay visible, only the numbers go away.";
+L["CB_PET_HIDE_TEXT"]            = "Hide health / power text";
+L["TIP_PetHideHealthManaText"]   = "Hides the health and power (mana, focus, energy) numbers on your pet frame.\nThe bars stay visible, only the numbers go away.";
 L["CB_FULL_VALUE"]               = "Current value only (no /max)";
 L["CB_BIG_TEXT"]                 = "Big text (name above the frame)";
 L["TIP_BigStatusText"]           = "Moves the name of the Player, Target and Focus frames above the frame and centers the health number in the bar, so it has room to be bigger. Only with the Light, Dark and Compact themes.";
@@ -971,7 +973,7 @@ L["COLLAPSE_ICON_COLLAPSE"]      = "[v]";
 L["HEADER_ABOUT"]                = "|cffFFD100About|r";
 L["ABOUT_ADDON_NAME"]            = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["ABOUT_DESCRIPTION"]           = "A PVP-focused UI addon for WoW WotLK 3.3.5a.\nCustom arena frames, trinket tracking, mirror mode,\nclass-colored health bars, and optimized frame positioning\ndesigned for competitive arena gameplay.";
-L["ABOUT_VERSION"]               = "|cffFFAA00Version:|r 4.1";
+L["ABOUT_VERSION"]               = "|cffFFAA00Version:|r 4.2";
 L["ABOUT_COMMANDS_HEADER"]       = "|cffFFAA00Slash Commands:|r";
 L["ABOUT_CMD_OPTIONS"]           = "|cffFFFFFF/nuf|r — Open options panel";
 L["ABOUT_CMD_CONFIG"]            = "|cffFFFFFF/nuf config|r — Show saved variables";
@@ -1285,6 +1287,7 @@ L["MOVER_LBL_CaptureBar"]        = "Capture bar";
 L["MOVER_LBL_DalaranPipe"]       = "Dalaran waterfall";
 L["MOVER_LBL_RoVPillars"]        = "RoV pillars";
 L["MOVER_LBL_ArenaEnd"]          = "Arena time";
+L["MOVER_LBL_ShadowSight"]       = "Shadow Sight (eye)";
 L["MOVER_LBL_WaterEle"]          = "Water Elemental";
 L["MOVER_LBL_MirrorImg"]         = "Mirror Image";
 
@@ -1351,7 +1354,7 @@ L["TIP_ArenaCastBarWidth"]       = "Ancho de la castbar.";
 
 -- === OPTIONS PANEL ===
 L["PANEL_TITLE"]                 = "Nidhaus UnitFrames";
-L["PANEL_VERSION"]               = "|cffFFAA00v4.1|r";
+L["PANEL_VERSION"]               = "|cffFFAA00v4.2|r";
 L["PANEL_SUBTITLE"]              = "Personalización de Unit Frames & Herramientas de Arena";
 L["PANEL_SIZE_RESET"]            = "Ventana de opciones restaurada a 820x620 y centrada.";
 
@@ -2069,7 +2072,7 @@ L["HEADER_ARENA_TIMERS"]         = "|cffFFD100Timers de Arena|r";
 L["CB_DALARAN_PIPE"]             = "Timer de la Cascada de Dalaran";
 L["TIP_ArenaDalaranPipeTimer"]   = "Muestra un icono con cuenta regresiva de 10s antes de que la cascada de la Arena de Dalaran tire a los jugadores de la tuber\195\173a.";
 L["CB_ROV_PILLARS"]              = "Timer de Pilares (C\195\173rculo de Valor)";
-L["TIP_ArenaRoVPillarTimer"]     = "Muestra cu\195\161ndo suben los pilares en la arena C\195\173rculo de Valor.\nPrimer ciclo 45s, despu\195\169s cada 25s.";
+L["TIP_ArenaRoVPillarTimer"]     = "Muestra cu\195\161ndo suben los pilares en la arena C\195\173rculo de Valor.\nCada 25s desde que arranca la partida.";
 L["CB_ARENA_END"]                = "Tiempo Restante de Arena";
 L["TIP_ArenaEndTimer"]           = "Muestra cu\195\161nto falta para que la arena termine en empate.";
 L["ARENA_END_PREFIX"]            = "Arena: ";
@@ -2167,6 +2170,8 @@ L["PARTY_FONT_AUTO"]             = "Auto";
 L["TIP_PartyFontSize"]           = "Tama\195\177o de los n\195\186meros de vida y man\195\161 del grupo. En Auto usa el tama\195\177o propio del estilo elegido.";
 L["CB_PARTY_HIDE_TEXT"]          = "Ocultar texto vida/man\195\161";
 L["TIP_PartyHideHealthManaText"] = "Oculta los n\195\186meros de vida y man\195\161 sobre las barras del grupo (no afecta Arena / Player / Target).\nLas barras siguen visibles, solo se oculta el texto.";
+L["CB_PET_HIDE_TEXT"]            = "Ocultar texto de vida / energ\195\173a";
+L["TIP_PetHideHealthManaText"]   = "Oculta los n\195\186meros de vida y energ\195\173a (man\195\161, foco, energ\195\173a) del marco de tu mascota.\nLas barras siguen visibles, solo se oculta el texto.";
 L["CB_FULL_VALUE"]               = "Vida completa (sin /max)";
 L["CB_BIG_TEXT"]                 = "Texto grande (nombre arriba del marco)";
 L["TIP_BigStatusText"]           = "Sube el nombre de los marcos de jugador, objetivo y foco por encima del marco y centra el n\195\186mero de vida en la barra, as\195\173 tiene lugar para ser m\195\161s grande. Solo con los temas Light, Dark y Compact.";
@@ -2243,7 +2248,7 @@ L["COLLAPSE_ICON_COLLAPSE"]      = "[v]";
 L["HEADER_ABOUT"]                = "|cffFFD100Acerca de|r";
 L["ABOUT_ADDON_NAME"]            = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["ABOUT_DESCRIPTION"]           = "Un addon de interfaz enfocado en PVP para WoW WotLK 3.3.5a.\nArena frames custom, tracking de trinkets, modo espejo,\nbarras de vida por clase, y posicionamiento optimizado\ndiseñado para arena competitivo.";
-L["ABOUT_VERSION"]               = "|cffFFAA00Versión:|r 4.1";
+L["ABOUT_VERSION"]               = "|cffFFAA00Versión:|r 4.2";
 L["ABOUT_COMMANDS_HEADER"]       = "|cffFFAA00Comandos:|r";
 L["ABOUT_CMD_OPTIONS"]           = "|cffFFFFFF/nuf|r — Abrir panel de opciones";
 L["ABOUT_CMD_CONFIG"]            = "|cffFFFFFF/nuf config|r — Mostrar variables guardadas";
@@ -2549,6 +2554,7 @@ L["MOVER_LBL_CaptureBar"]        = "Barra de captura";
 L["MOVER_LBL_DalaranPipe"]       = "Cascada de Dalaran";
 L["MOVER_LBL_RoVPillars"]        = "Pilares de RoV";
 L["MOVER_LBL_ArenaEnd"]          = "Tiempo de arena";
+L["MOVER_LBL_ShadowSight"]       = "Ojo (Shadow Sight)";
 L["MOVER_LBL_WaterEle"]          = "Elemental de agua";
 L["MOVER_LBL_MirrorImg"]         = "Reflejo exacto";
 

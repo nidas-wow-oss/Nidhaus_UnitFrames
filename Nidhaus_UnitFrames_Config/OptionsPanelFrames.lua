@@ -1655,6 +1655,24 @@ function K.PopulateFramesTab(panel)
 
 	pv = pv - 40;
 
+	-- ── TEXTO DE VIDA / ENERGIA ──
+	--
+	-- Igual que "Ocultar texto" del grupo: los numeros de las barras de la
+	-- mascota quedan transparentes (no se esconden, para no pelear con
+	-- Blizzard, que los muestra al pasar el mouse). El porcentaje del texto
+	-- abreviado copia esa transparencia, asi que se va con ellos.
+	local petHideCB = CreateFeatureCheckBox(panePet,
+		L["CB_PET_HIDE_TEXT"] or "Hide health / power text", x, pv,
+		L["TIP_PetHideHealthManaText"]);
+	petHideCB:SetChecked(C.PetHideHealthManaText and true or false);
+	if K.RegisterSettingCheckbox then K.RegisterSettingCheckbox("PetHideHealthManaText", petHideCB); end
+	petHideCB:SetScript("OnClick", function(self)
+		local v = self:GetChecked() == 1 or self:GetChecked() == true;
+		if K.SaveConfig then K.SaveConfig("PetHideHealthManaText", v); end
+		if K.ApplyHealthTextFormat then K.ApplyHealthTextFormat(); end
+	end);
+	pv = pv - 36;
+
 	-- ── BUFFS DE LA MASCOTA ──
 	--
 	-- El mismo modulo que en Addons, no una copia: el checkbox se anota en

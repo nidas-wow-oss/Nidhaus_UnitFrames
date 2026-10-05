@@ -4,11 +4,16 @@ local K, C, L = unpack(ns);
 -- =========================================================
 -- ArenaRoVPillarTimer.lua
 -- Temporizador de los pilares de la Arena Circulo de Valor.
--- Primer ciclo: 45s desde el inicio. Luego se repite cada 25s.
+-- Los pilares cambian cada 25s, desde que arranca la partida.
 -- Mover: Alt + click izquierdo y arrastrar.
 -- =========================================================
 
-local FIRST_CYCLE  = 45;
+-- CADA 25 SEGUNDOS, TAMBIEN EL PRIMERO.
+--
+-- Antes el primer ciclo era de 45s (el valor del codigo de TrinityCore) y
+-- recien despues 25. En el servidor los pilares cambian cada 25s desde el
+-- arranque, asi que el timer quedaba 20s corrido en todos los ciclos.
+local FIRST_CYCLE  = 25;
 local NEXT_CYCLE   = 25;
 local KEY          = "RoVPillars";
 
@@ -23,6 +28,18 @@ local function IsArenaStartMessage(msg)
 		or string.find(msg, "batalla de arena ha comenzado")
 		or string.find(msg, "batalla en la arena ha comenzado")
 		or string.find(msg, "combate en la arena ha comenzado");
+end
+
+-- Mismo criterio que el timer de fin de arena: tipo de instancia (no el
+-- estado de la cola, que al salir sigue diciendo "activa" un momento) y
+-- partida sin ganador.
+local function InArena()
+	local inInstance, instanceType = IsInInstance();
+	return inInstance and instanceType == "arena";
+end
+
+local function MatchOver()
+	return GetBattlefieldWinner and GetBattlefieldWinner() ~= nil;
 end
 
 local function IsRingOfValor()
@@ -131,7 +148,7 @@ local function OnUpdate(self, elapsed)
 	checkAcc = checkAcc + elapsed;
 	if checkAcc >= 1 then
 		checkAcc = 0;
-		if not testMode and not IsActiveBattlefieldArena() then
+		if not testMode and (not InArena() or MatchOver()) then
 			Stop();
 			return;
 		end
@@ -172,7 +189,7 @@ events:SetScript("OnEvent", function(self, event, ...)
 	if not C.ArenaRoVPillarTimer then return; end
 
 	local msg = select(1, ...);
-	if IsArenaStartMessage(msg) and IsRingOfValor() then
+	if IsArenaStartMessage(msg) and InArena() and IsRingOfValor() then
 		Start(FIRST_CYCLE, false);
 	end
 end);

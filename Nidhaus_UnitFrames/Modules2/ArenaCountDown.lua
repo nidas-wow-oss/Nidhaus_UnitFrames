@@ -156,6 +156,10 @@ end
 --
 -- Se corta al salir de la arena o cuando la arena termina.
 --
+-- Se ve en minutos y segundos ("1:20") y se mueve como los otros timers de
+-- arena: Alt + arrastrar, /nuftimers para verlo fuera de una arena, y
+-- tambien desde "Mover todo".
+--
 -- Probar sin esperar una arena:  /script K_TestShadowSight()
 -- =========================================================
 local EYE_SPELL_ID = 34709;   -- Shadow Sight
@@ -168,9 +172,11 @@ local total = 0
 local eyeTest = false   -- prueba manual: no se corta al cambiar de zona
 
 local frame = CreateFrame("Frame", "NUF_ShadowSightTimer", UIParent)
+-- Escala con Ctrl + rueda en "Mover todo" (registro central en ScaleAPI),
+-- igual que los otros timers de arena.
+if K.RegisterScalable then K.RegisterScalable("ShadowSightTimer", frame, 1.0); end
 frame:SetHeight(32)
 frame:SetWidth(92)
-frame:SetPoint("TOP", UIParent, "TOP", 0, -30)
 frame:Hide()
 
 frame.icon = frame:CreateTexture(nil, "ARTWORK")
@@ -183,6 +189,64 @@ frame.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 frame.text = frame:CreateFontString(nil, "OVERLAY", "PVPInfoTextFont")
 frame.text:SetPoint("LEFT", frame.icon, "RIGHT", 6, 0)
 frame.text:SetJustifyH("LEFT")
+
+-- MINUTOS Y SEGUNDOS: "1:20", no "80". El ojo sale al minuto y medio y
+-- asi se lee de un vistazo cuanto falta.
+local function FormatEye(sec)
+	sec = math.max(0, math.floor(sec or 0))
+	return string.format("%d:%02d", math.floor(sec / 60), sec % 60)
+end
+-- Texto de entrada: es lo que se ve al acomodarlo en "Mover todo".
+frame.text:SetText(FormatEye(EYE_TIME))
+
+-- ---------------------------------------------------------
+-- MOVIBLE
+--
+-- Antes estaba clavado arriba al centro (TOP 0,-30) y no habia forma de
+-- correrlo. Ahora es igual que los otros timers de arena: Alt + arrastrar,
+-- y la posicion se guarda con la de ellos (timerPos), asi el Reset de
+-- "Mover todo" la limpia igual.
+-- ---------------------------------------------------------
+local EYE_KEY = "ShadowSight"
+
+local function SaveEyePosition()
+	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {} end
+	if not NidhausUnitFramesDB.timerPos then NidhausUnitFramesDB.timerPos = {} end
+	local point, _, relativePoint, x, y = frame:GetPoint()
+	-- Sin punto no se guarda nada (una tabla vacia haria reventar SetPoint
+	-- despues: ver el mismo caso en ArenaEndTimer).
+	if not point then
+		NidhausUnitFramesDB.timerPos[EYE_KEY] = nil
+		return
+	end
+	NidhausUnitFramesDB.timerPos[EYE_KEY] = {
+		point = point, relativePoint = relativePoint, x = x, y = y,
+	}
+end
+
+local function RestoreEyePosition()
+	local pos = NidhausUnitFramesDB and NidhausUnitFramesDB.timerPos
+		and NidhausUnitFramesDB.timerPos[EYE_KEY]
+	frame:ClearAllPoints()
+	if pos and pos.point then
+		frame:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y)
+	else
+		frame:SetPoint("TOP", UIParent, "TOP", 0, -30)   -- donde estaba siempre
+	end
+end
+
+frame:SetMovable(true)
+frame:EnableMouse(true)
+frame:SetClampedToScreen(true)
+frame:RegisterForDrag("LeftButton")
+frame:SetScript("OnDragStart", function(self)
+	if IsAltKeyDown() then self:StartMoving() end
+end)
+frame:SetScript("OnDragStop", function(self)
+	self:StopMovingOrSizing()
+	SaveEyePosition()
+end)
+RestoreEyePosition()
 
 local function EyeEnabled()
 	return C.ShadowSightTimer ~= false;
@@ -204,7 +268,7 @@ local function OnUpdate(self, elapsed)
 	if total >= 1.0 then
 		total = total - 1
 		timer = timer - 1
-		frame.text:SetText(timer)
+		frame.text:SetText(FormatEye(timer))
 		if timer <= 0 then
 			StopEye()
 		end
@@ -214,7 +278,10 @@ end
 local function StartEye(seconds)
 	timer = seconds
 	total = 0
-	frame.text:SetText(timer)
+	frame.text:SetText(FormatEye(timer))
+	-- La posicion guardada se lee aca (al cargar el archivo la config
+	-- todavia no esta).
+	RestoreEyePosition()
 	frame:Show()
 	frame:SetScript("OnUpdate", OnUpdate)
 end
@@ -268,4 +335,16 @@ end
 function K_TestShadowSight()
 	StartEye(30)
 	eyeTest = true
+end
+
+-- /nuftimers: lo muestra (o lo saca) junto con los otros timers de arena,
+-- con la cuenta entera, para acomodarlo con Alt + arrastrar.
+K.ArenaTimerTests = K.ArenaTimerTests or {}
+K.ArenaTimerTests[EYE_KEY] = function()
+	if frame:IsShown() then
+		StopEye()
+	else
+		StartEye(EYE_TIME)
+		eyeTest = true
+	end
 end

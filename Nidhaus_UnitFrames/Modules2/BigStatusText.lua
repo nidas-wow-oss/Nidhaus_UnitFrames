@@ -24,8 +24,8 @@ local K, C, L = unpack(ns);
 --
 -- TAMAÑO: solo cambia el tamaño. La cara y el contorno se dejan como los
 -- tenga la fuente (los de Blizzard, o los de otro modulo). Toca el numero
--- de cada barra y el porcentaje del texto abreviado (que es otro
--- FontString, creado por ese modulo la primera vez que hace falta).
+-- de cada barra; el porcentaje del texto abreviado (otro FontString, de
+-- ese modulo) copia la fuente del numero, asi que lo sigue solo.
 -- =========================================================
 
 local BARS = {};   -- [barra] = { unit = "player", hp = true/false }
@@ -75,7 +75,9 @@ local function ApplyBar(bar, info)
 		size = info.hp and Clamp(C.BigTextHealthSize, 12) or Clamp(C.BigTextManaSize, 10);
 	end
 	SetSize(bar.TextString, size);
-	SetSize(bar._nufPct, size);   -- porcentaje del texto abreviado
+	-- El porcentaje copia la fuente ENTERA del numero (no un tamano aparte:
+	-- con dos tamanos guardados por separado, al apagar quedaban distintos).
+	if K.MirrorAbbrevPct then K.MirrorAbbrevPct(bar); else SetSize(bar._nufPct, size); end
 end
 
 -- Cada vez que Blizzard repinta el texto de una barra. Corre para TODAS

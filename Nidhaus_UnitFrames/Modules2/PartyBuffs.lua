@@ -274,11 +274,16 @@ local function RefreshFrameAuras(f)
 	if ShowDebuffs() then
 		if RefreshDebuffs then
 			RefreshDebuffs(f, unit, GetMaxDebuffs(), nil, 1);
-		else
+		elseif PartyMemberFrame_RefreshDebuffs then
 			PartyMemberFrame_RefreshDebuffs(f);
 		end
 	else
-		PartyMemberFrame_RefreshDebuffs(f);   -- los 4 de Blizzard
+		-- los 4 de Blizzard (esta funcion no existe en todos los clientes)
+		if PartyMemberFrame_RefreshDebuffs then
+			PartyMemberFrame_RefreshDebuffs(f);
+		elseif RefreshDebuffs then
+			RefreshDebuffs(f, unit, 4, nil, 1);
+		end
 	end
 	if ShowBuffs() then
 		if RefreshBuffs then
@@ -402,7 +407,7 @@ local function SetupFrames()
 				if unit == f.unit then
 					RefreshFrameAuras(f)
 				elseif unit == f.unit .. "pet" then
-					PartyMemberFrame_RefreshPetDebuffs(f)
+					if PartyMemberFrame_RefreshPetDebuffs then PartyMemberFrame_RefreshPetDebuffs(f) end
 				end
 			end)
 
