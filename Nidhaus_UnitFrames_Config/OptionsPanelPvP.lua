@@ -636,7 +636,8 @@ local CLASS_MODULES = {
 			auraCB:SetPoint("TOPLEFT", auraHdr, "BOTTOMLEFT", 0, -6);
 		end
 
-		local auraBody = K.UI.Collapsible(pane, x, 0, 440, 34, function()
+		-- 34 de los botones + las casillas de "Mostrarlo en:" (dos filas).
+		local auraBody = K.UI.Collapsible(pane, x, 0, 440, 108, function()
 			return K.IsModuleEnabled and K.IsModuleEnabled("PaladinAuras");
 		end);
 		auraBody:ClearAllPoints();
@@ -665,6 +666,33 @@ local CLASS_MODULES = {
 		paReset:SetScript("OnClick", function()
 			if K.ResetPaladinAurasPosition then K.ResetPaladinAurasPosition(); end
 		end);
+
+		-- Donde mostrarse (mismo esquema que el Gargoyle y la alerta de
+		-- hechizos): arena, battlegrounds, duelos y mundo abierto.
+		local paWhere = auraBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
+		paWhere:SetPoint("TOPLEFT", 4, -36);
+		paWhere:SetText((K.UI and K.UI.Label(L["GARG_WHERE"] or "Show it in:"))
+			or (L["GARG_WHERE"] or "Show it in:"));
+		local paZones = {
+			{ key = "inArena", text = L["GARG_ARENA"] or "Arena",         x = 4,   y = -52 },
+			{ key = "inBG",    text = L["GARG_BG"]    or "Battlegrounds", x = 128, y = -52 },
+			{ key = "inDuel",  text = L["GARG_DUEL"]  or "Duels",         x = 278, y = -52 },
+			{ key = "inWorld", text = L["GARG_WORLD"] or "Open world",    x = 4,   y = -78 },
+		};
+		for _, z in ipairs(paZones) do
+			checkboxCount = checkboxCount + 1;
+			local cbName = "NidhausPalZoneCB" .. checkboxCount;
+			local cb = CreateFrame("CheckButton", cbName, auraBody, "InterfaceOptionsCheckButtonTemplate");
+			cb:SetPoint("TOPLEFT", z.x, z.y);
+			cb:SetHitRectInsets(0, 0, 0, 0);
+			local fs = _G[cbName .. "Text"];
+			if fs then fs:SetText(z.text); end
+			cb:SetChecked(K.GetPaladinAurasZone and K.GetPaladinAurasZone(z.key));
+			cb:SetScript("OnClick", function(self)
+				local v = (self:GetChecked() == 1 or self:GetChecked() == true);
+				if K.SetPaladinAurasZone then K.SetPaladinAurasZone(z.key, v); end
+			end);
+		end
 
 		-- Turn Evil es un modulo APARTE, no un sub-ajuste de Paladin auras:
 		-- rastrea otra cosa y tiene su propia posicion en pantalla.

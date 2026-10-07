@@ -76,8 +76,49 @@ local function DB()
 	if not NidhausUnitFramesDB.PaladinAuras then
 		NidhausUnitFramesDB.PaladinAuras = { x = -60, y = 38, scale = 0.95 };
 	end
-	return NidhausUnitFramesDB.PaladinAuras;
+	local db = NidhausUnitFramesDB.PaladinAuras;
+	-- Donde mostrarse: de fabrica en todos lados, como hasta ahora. El ==
+	-- nil es para no pisarle nada a quien ya lo haya configurado.
+	if db.inArena == nil then db.inArena = true; end
+	if db.inBG    == nil then db.inBG    = true; end
+	if db.inDuel  == nil then db.inDuel  = true; end
+	if db.inWorld == nil then db.inWorld = true; end
+	return db;
 end
+
+-- ---------------------------------------------------------
+-- DONDE MOSTRARSE (mismo esquema que el Gargoyle y la alerta de hechizos)
+--
+-- Arena / Battlegrounds / Duelos / Mundo abierto. El duelo se sigue por
+-- sus eventos: desde que te desafian (o desafias) hasta que termina.
+-- (El Gargoyle mira DuelOutOfBoundsTimer, que solo existe si te saliste
+-- del area del duelo; con los eventos se ve el duelo entero.)
+-- ---------------------------------------------------------
+local inDuel = false;
+local duelWatch = CreateFrame("Frame");
+duelWatch:RegisterEvent("DUEL_REQUESTED");
+duelWatch:RegisterEvent("DUEL_INBOUNDS");
+duelWatch:RegisterEvent("DUEL_OUTOFBOUNDS");
+duelWatch:RegisterEvent("DUEL_FINISHED");
+-- Un duelo no sobrevive a una pantalla de carga.
+duelWatch:RegisterEvent("PLAYER_ENTERING_WORLD");
+duelWatch:SetScript("OnEvent", function(self, event)
+	inDuel = (event ~= "DUEL_FINISHED" and event ~= "PLAYER_ENTERING_WORLD");
+end);
+if type(StartDuel) == "function" then
+	hooksecurefunc("StartDuel", function() inDuel = true; end);
+end
+
+local function ZoneAllowed()
+	local db = DB();
+	local _, itype = GetInstanceInfo();
+	if itype == "arena" then return db.inArena; end
+	if itype == "pvp"   then return db.inBG; end
+	if inDuel and db.inDuel then return true; end
+	return db.inWorld;
+end
+
+function K.GetPaladinAurasZone(key) return DB()[key] and true or false; end
 
 -- ---------------------------------------------------------
 -- Ancla del grupo (es lo que se arrastra)
@@ -471,6 +512,16 @@ end
 local function Refresh()
 	if not enabled then return; end
 
+	-- Fuera de las zonas elegidas no se muestra (salvo en modo mover).
+	if not previewOn then
+		if ZoneAllowed() then
+			if not anchor:IsShown() then anchor:Show(); end
+		else
+			if anchor:IsShown() then anchor:Hide(); end
+			return;
+		end
+	end
+
 	-- 1) Holy Strength
 	local icon, expires, duration = FindSelfBuff();
 	if icon then
@@ -704,6 +755,11 @@ function K.SetPaladinAurasPreview(state)
 end
 
 function K.IsPaladinAurasPreview() return previewOn; end
+
+function K.SetPaladinAurasZone(key, v)
+	DB()[key] = v and true or false;
+	Refresh();
+end
 
 function K.ResetPaladinAurasPosition()
 	local db = DB();

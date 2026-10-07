@@ -167,6 +167,17 @@ K.ArenaTimerTests[KEY] = function()
 	if frame:IsShown() and testMode then Stop(); else Start(true); end
 end;
 
+-- /nuftimers: arrancar / cortar la prueba SIN tocar un timer de verdad
+-- (si estas en una arena y ya esta corriendo, se queda como esta).
+K.ArenaTimerTestStart = K.ArenaTimerTestStart or {};
+K.ArenaTimerTestStop  = K.ArenaTimerTestStop  or {};
+K.ArenaTimerTestStart[KEY] = function()
+	if not frame:IsShown() then Start(true); end
+end;
+K.ArenaTimerTestStop[KEY] = function()
+	if testMode then Stop(); end
+end;
+
 local events = CreateFrame("Frame");
 events:RegisterEvent("CHAT_MSG_BG_SYSTEM_NEUTRAL");
 events:RegisterEvent("CHAT_MSG_RAID_BOSS_EMOTE");

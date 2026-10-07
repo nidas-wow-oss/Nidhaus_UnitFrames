@@ -111,6 +111,8 @@ Integración, port a 3.3.5a, corrección de bugs y todo lo demás: **Nidhaus**.
   - Los números de la cuenta regresiva, los buffs sin posición propia y los marcos de Paladín / Turn Evil siguen a su slider; la rueda sobre la barra de casteo escala también la del objetivo; el Reset deja cada uno en su valor de fábrica.
   - Nuevo slider de tamaño del ojo (Shadow Sight) en Arena, con los otros timers.
 - Party Buffs: al apagar el módulo se ocultan todos los buffs del grupo (antes quedaban los cuatro primeros en pantalla).
+- /nuftimers dura 25 segundos: cuando la cuenta de los pilares del Círculo del Valor llega a 0 se ocultan todos los timers juntos (antes cada uno seguía por su lado y había que escribirlo de nuevo). Escribirlo otra vez antes de tiempo los oculta en el acto, y dentro de una arena ya no corta los timers de la partida.
+- Paladin tracker: nueva opción "Mostrarlo en:" Arena / Battlegrounds / Duelos / Mundo abierto, como el Gargoyle y la alerta de hechizos. De fábrica viene todo tildado (como hasta ahora).
 
 ### v4.2
 - Tiempo restante de la arena ("Arena: 28:07"): se apaga cuando termina la partida o cuando salís de la arena. Antes seguía contando en el mundo.

@@ -355,3 +355,17 @@ K.ArenaTimerTests[EYE_KEY] = function()
 		eyeTest = true
 	end
 end
+
+-- /nuftimers: arrancar / cortar la prueba SIN tocar un timer de verdad
+-- (si estas en una arena y ya esta corriendo, se queda como esta).
+K.ArenaTimerTestStart = K.ArenaTimerTestStart or {}
+K.ArenaTimerTestStop  = K.ArenaTimerTestStop  or {}
+K.ArenaTimerTestStart[EYE_KEY] = function()
+	if not frame:IsShown() then
+		StartEye(EYE_TIME)
+		eyeTest = true
+	end
+end
+K.ArenaTimerTestStop[EYE_KEY] = function()
+	if eyeTest then StopEye() end
+end

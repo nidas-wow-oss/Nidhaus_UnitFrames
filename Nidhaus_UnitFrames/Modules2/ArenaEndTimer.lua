@@ -195,6 +195,17 @@ K.ArenaTimerTests[KEY] = function()
 	if frame:IsShown() then Stop(); else Start(DURATION_EMOTE, true); end
 end;
 
+-- /nuftimers: arrancar / cortar la prueba SIN tocar un timer de verdad
+-- (si estas en una arena y ya esta corriendo, se queda como esta).
+K.ArenaTimerTestStart = K.ArenaTimerTestStart or {};
+K.ArenaTimerTestStop  = K.ArenaTimerTestStop  or {};
+K.ArenaTimerTestStart[KEY] = function()
+	if not frame:IsShown() then Start(DURATION_EMOTE, true); end
+end;
+K.ArenaTimerTestStop[KEY] = function()
+	if testMode then Stop(); end
+end;
+
 local events = CreateFrame("Frame");
 events:RegisterEvent("CHAT_MSG_BG_SYSTEM_NEUTRAL");
 events:RegisterEvent("CHAT_MSG_RAID_BOSS_EMOTE");
@@ -235,13 +246,44 @@ RestorePosition();
 -- =========================================================
 -- /nuftimers  -> muestra/oculta todos los timers de arena
 -- para poder reposicionarlos con Alt + arrastrar.
+--
+-- DURA 25 SEGUNDOS: un ciclo de los pilares del Circulo del Valor. Cuando
+-- esa cuenta llega a 0 se esconden TODOS juntos, ya acomodados. Antes cada
+-- uno seguia por su lado (el de pilares arrancaba otro ciclo, el de la
+-- arena seguia 45 minutos) y habia que volver a escribir /nuftimers.
+-- Escribirlo de nuevo antes de tiempo los esconde en el acto.
 -- =========================================================
-SLASH_NUFARENATIMERS1 = "/nuftimers";
-SlashCmdList["NUFARENATIMERS"] = function()
-	if not K.ArenaTimerTests then return; end
-	for _, fn in pairs(K.ArenaTimerTests) do
+local TEST_SECONDS = 25;   -- un ciclo de pilares
+local testLeft = 0;
+local testTimer = CreateFrame("Frame");
+testTimer:Hide();
+testTimer:SetScript("OnUpdate", function(self, elapsed)
+	testLeft = testLeft - elapsed;
+	if testLeft <= 0 then K.StopArenaTimerTests(); end
+end);
+
+local function RunAll(list)
+	for _, fn in pairs(list or {}) do
 		local ok, err = pcall(fn);
 		if not ok then print("|cffFF0000NUF:|r " .. tostring(err)); end
 	end
+end
+
+-- Corta la prueba de todos los timers (lo llama tambien el de pilares al
+-- llegar a 0). Un timer de verdad, de una arena en curso, no se toca.
+function K.StopArenaTimerTests()
+	testTimer:Hide();
+	RunAll(K.ArenaTimerTestStop);
+end
+
+SLASH_NUFARENATIMERS1 = "/nuftimers";
+SlashCmdList["NUFARENATIMERS"] = function()
+	if testTimer:IsShown() then
+		K.StopArenaTimerTests();
+		return;
+	end
+	RunAll(K.ArenaTimerTestStart);
+	testLeft = TEST_SECONDS;
+	testTimer:Show();
 	print("|cff4FC3F7NUF:|r " .. (L["TIMERS_TEST_HINT"] or "Arena timers test mode toggled. Alt + drag to move them."));
 end

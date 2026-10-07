@@ -156,6 +156,12 @@ local function OnUpdate(self, elapsed)
 
 	local remaining = endTime - GetTime();
 	if remaining <= 0 then
+		-- En la prueba (/nuftimers) no hay otro ciclo: al llegar a 0 se
+		-- esconden todos los timers de la prueba juntos.
+		if testMode then
+			if K.StopArenaTimerTests then K.StopArenaTimerTests(); else Stop(); end
+			return;
+		end
 		StartCycle(NEXT_CYCLE);
 		return;
 	end
@@ -174,6 +180,17 @@ end
 K.ArenaTimerTests = K.ArenaTimerTests or {};
 K.ArenaTimerTests[KEY] = function()
 	if frame:IsShown() and testMode then Stop(); else Start(FIRST_CYCLE, true); end
+end;
+
+-- /nuftimers: arrancar / cortar la prueba SIN tocar un timer de verdad
+-- (si estas en una arena y ya esta corriendo, se queda como esta).
+K.ArenaTimerTestStart = K.ArenaTimerTestStart or {};
+K.ArenaTimerTestStop  = K.ArenaTimerTestStop  or {};
+K.ArenaTimerTestStart[KEY] = function()
+	if not frame:IsShown() then Start(FIRST_CYCLE, true); end
+end;
+K.ArenaTimerTestStop[KEY] = function()
+	if testMode then Stop(); end
 end;
 
 local events = CreateFrame("Frame");

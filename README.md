@@ -116,6 +116,8 @@ Integration, porting to 3.3.5a, bug fixing and everything else: **Nidhaus**.
   - The arena countdown numbers, the buffs without a custom position and the Paladin / Turn Evil frames follow their slider; the wheel on the cast bar also scales the target cast bar; Reset puts each one back to its default.
   - New Shadow Sight scale slider in Arena, with the other timers.
 - Party Buffs: turning the module off hides every party buff (the first four used to stay on screen).
+- /nuftimers lasts 25 seconds: when the Ring of Valor pillar countdown reaches 0 every timer hides together (each one used to keep going on its own and you had to type it again). Typing it again early hides them right away, and inside an arena it no longer stops the match timers.
+- Paladin tracker: new "Show it in:" option for Arena / Battlegrounds / Duels / Open world, like the Gargoyle and the spell alert. Everything is checked by default (same as before).
 
 ### v4.2
 - Arena time left ("Arena: 28:07"): turns off when the match ends or when you leave the arena. It used to keep counting in the open world.
