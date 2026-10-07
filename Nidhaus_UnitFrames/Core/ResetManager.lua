@@ -68,6 +68,7 @@ local function ResetBarScaleSetting()
 	if C then C.ActionBarScale = def; end
 	if K.SaveConfig then pcall(K.SaveConfig, "ActionBarScale", def); end
 	if K.RefreshScaleSliders then pcall(K.RefreshScaleSliders); end
+	if K.RefreshPanelSliders then pcall(K.RefreshPanelSliders, "ActionBarScale"); end
 	return def;
 end
 

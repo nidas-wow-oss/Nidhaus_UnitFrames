@@ -105,38 +105,40 @@ local function npcReactionColors(healthbar, unit)
 	end
 end
 
+-- Repinta todas las barras de vida con las reglas de arriba.
+--
+-- Antes llamaba a UnitFrameHealthBar_Update de Blizzard desde el addon,
+-- solo para que corriera el hook de color. Esa funcion ESCRIBE en la barra
+-- (currValue, disconnected, forceHideText) y, escrito desde el addon,
+-- queda manchado (taint) para el codigo de Blizzard que lo lee despues: el
+-- marco del objetivo, el del grupo, los de arena. Ahora se aplica el color
+-- directo, que era lo unico que hacia falta.
+local function Recolor(bar)
+	if not bar then return; end
+	local unit = bar.unit;
+	if not unit or not UnitExists(unit) then return; end
+	unitClassColors(bar, unit);
+	npcReactionColors(bar, unit);
+end
+
 local function ForceUpdateAllFrames()
-	if PlayerFrame and PlayerFrame.healthbar then
-		UnitFrameHealthBar_Update(PlayerFrame.healthbar, "player");
-	end
-	
-	if TargetFrame and TargetFrame.healthbar then
-		UnitFrameHealthBar_Update(TargetFrame.healthbar, "target");
-	end
-	
-	if FocusFrame and FocusFrame.healthbar then
-		UnitFrameHealthBar_Update(FocusFrame.healthbar, "focus");
-	end
-	
+	if PlayerFrame then Recolor(PlayerFrame.healthbar); end
+	if TargetFrame then Recolor(TargetFrame.healthbar); end
+	if FocusFrame then Recolor(FocusFrame.healthbar); end
+
 	for i = 1, (MAX_PARTY_MEMBERS or 4) do
 		local partyFrame = _G["PartyMemberFrame"..i];
-		if partyFrame and partyFrame.healthbar then
-			UnitFrameHealthBar_Update(partyFrame.healthbar, "party"..i);
-		end
+		if partyFrame then Recolor(partyFrame.healthbar); end
 	end
-	
+
 	for i = 1, (MAX_ARENA_ENEMIES or 0) do
 		local arenaFrame = _G["ArenaEnemyFrame"..i];
-		if arenaFrame and arenaFrame.healthbar then
-			UnitFrameHealthBar_Update(arenaFrame.healthbar, "arena"..i);
-		end
+		if arenaFrame then Recolor(arenaFrame.healthbar); end
 	end
-	
+
 	for i = 1, (MAX_BOSS_FRAMES or 0) do
 		local bossFrame = _G["Boss"..i.."TargetFrame"];
-		if bossFrame and bossFrame.healthbar then
-			UnitFrameHealthBar_Update(bossFrame.healthbar, "boss"..i);
-		end
+		if bossFrame then Recolor(bossFrame.healthbar); end
 	end
 end
 

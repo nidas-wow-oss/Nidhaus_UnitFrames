@@ -104,7 +104,9 @@ local function RestorePosition()
 	anchor:ClearAllPoints();
 	anchor:SetPoint(db.point or "CENTER", UIParent,
 		db.relativePoint or "CENTER", db.x or -60, db.y or 38);
-	anchor:SetScale(db.scale or 0.95);
+	-- La escala es la del slider del modulo (ScaleAPI). db.scale era fija
+	-- (0.95) y pisaba el slider en cada login.
+	anchor:SetScale((K.GetModuleScale and K.GetModuleScale("PaladinAuras")) or db.scale or 0.95);
 end
 
 local function SavePosition()
@@ -265,7 +267,8 @@ local function TeRestore()
 	teAnchor:ClearAllPoints();
 	teAnchor:SetPoint(db.point or "TOP", UIParent,
 		db.relativePoint or "CENTER", db.x or 99, db.y or 201);
-	teAnchor:SetScale(db.scale or 1.2);
+	-- Igual que el de auras: manda el slider (ScaleAPI).
+	teAnchor:SetScale((K.GetModuleScale and K.GetModuleScale("TurnEvil")) or db.scale or 1.2);
 end
 
 local function TeSave()
@@ -610,6 +613,7 @@ function K.ResetTurnEvilPosition()
 	local db = TeDB();
 	db.point, db.relativePoint = "TOP", "CENTER";
 	db.x, db.y, db.scale = 99, 201, 1.2;
+	if K.ResetModuleScale then K.ResetModuleScale("TurnEvil"); end
 	TeRestore();
 end
 
@@ -705,6 +709,7 @@ function K.ResetPaladinAurasPosition()
 	local db = DB();
 	db.point, db.relativePoint = "CENTER", "CENTER";
 	db.x, db.y, db.scale = -60, 38, 0.95;
+	if K.ResetModuleScale then K.ResetModuleScale("PaladinAuras"); end
 	RestorePosition();
 end
 

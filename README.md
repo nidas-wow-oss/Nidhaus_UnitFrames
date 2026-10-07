@@ -8,9 +8,9 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 
 > ## Download
 >
-> **Latest version: 4.2** — this is the current, recommended build and the one actively in use.
+> **Latest version: 4.3** — this is the current, recommended build and the one actively in use.
 >
-> **[Download v4.2 (latest release)](../../releases/latest)**
+> **[Download v4.3 (latest release)](../../releases/latest)**
 >
 > One download, everything included: the addon and its options panel.
 
@@ -38,7 +38,7 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 
 ## Installation
 
-1. Download **v4.2** from the [releases page](../../releases/latest).
+1. Download **v4.3** from the [releases page](../../releases/latest).
 2. Extract the archive. You will get two folders: `Nidhaus_UnitFrames` and `Nidhaus_UnitFrames_Config`.
 3. Copy **both** folders into your WoW `Interface/AddOns/` directory.
 4. Restart the WoW client, or type `/reload` if you are already in-game.
@@ -103,6 +103,19 @@ adaptations, and the credit for those belongs to their original authors:
 Integration, porting to 3.3.5a, bug fixing and everything else: **Nidhaus**.
 
 ## Changelog
+
+### v4.3
+- Fixed the "Nidhaus_UnitFrames has been blocked from an action only available to the Blizzard UI" popup. Several parts of the addon were leaving Blizzard's code "tainted": Party Buffs (it called Blizzard's aura functions and took UNIT_AURA away from the party frames), the target/focus health bar color lock, the class color refresh, the buffs-per-row setting and the tooltip icons (they added scripts to Blizzard's tooltips). They all work now without touching Blizzard's code.
+- Vehicles: after leaving a demolisher the action bars could not be clicked and the right side bars went missing. Fixed: the status text percentage no longer adds scripts to Blizzard's bars.
+- Party frames: their scale and position are no longer changed in combat (it was blocked after a /reload inside a battleground); they are applied when combat ends. The Compact names no longer overlap the frame border after leaving a battleground.
+- Action Bar Scale: the nExtraBars bars and the micro menu grow and shrink with it, and the bags no longer go back to 1 by themselves.
+- Scaling review across the whole addon:
+  - Ctrl + wheel in Move Everything saves to the same place as the slider and moves the slider. The wheel stops at the slider's limits.
+  - Module scales are applied on login: Gargoyle, arena timers, countdown, buffs/debuffs, spell alert, DTSU, Sacred Shield, Seduction, Paladin auras and Turn Evil. They used to go back to 1 after a /reload.
+  - Action bar 1 with the wheel is the Action Bar Scale (all bars, bags, micro menu and nExtraBars). The slider sets the three bars: moving it clears the scale a bar got from the wheel.
+  - The arena countdown numbers, the buffs without a custom position and the Paladin / Turn Evil frames follow their slider; the wheel on the cast bar also scales the target cast bar; Reset puts each one back to its default.
+  - New Shadow Sight scale slider in Arena, with the other timers.
+- Party Buffs: turning the module off hides every party buff (the first four used to stay on screen).
 
 ### v4.2
 - Arena time left ("Arena: 28:07"): turns off when the match ends or when you leave the arena. It used to keep counting in the open world.

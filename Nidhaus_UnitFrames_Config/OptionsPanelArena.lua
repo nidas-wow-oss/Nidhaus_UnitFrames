@@ -1074,6 +1074,11 @@ function K.PopulateArenaTab(panel)
 		local sc4 = K.UI.ScaleSlider(paneTimers, "ArenaRoVPillarTimer", 260, tY, 150,
 			L["SCALE_ROV"] or "Ring of Valor");
 		if sc3 or sc4 then tY = tY - 54; end
+
+		-- El ojo se escalaba solo con Ctrl + rueda; ahora tiene su slider.
+		local sc5 = K.UI.ScaleSlider(paneTimers, "ShadowSightTimer", 24, tY, 150,
+			L["MOVER_LBL_ShadowSight"] or "Shadow Sight");
+		if sc5 then tY = tY - 54; end
 	end
 
 	tY = tY - 20;

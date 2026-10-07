@@ -407,13 +407,55 @@ local function IconOnCleared(self)
 	iconDone[self] = nil;
 end
 
+-- ---------------------------------------------------------
+-- ENGANCHAR SIN PONERLE SCRIPTS A LOS TOOLTIPS DE BLIZZARD
+--
+-- HookScript solo "engancha" si el tooltip YA tiene ese script. Si no lo
+-- tiene, le PONE la funcion del addon como script propio (el mismo error
+-- que el OnHide de las barras de vida). GameTooltip no trae
+-- OnTooltipSetSpell, y los ShoppingTooltip (comparar objetos) no traen
+-- ninguno. Resultado: cada vez que Blizzard mostraba un hechizo en el
+-- tooltip -- pasar el mouse por una barra de accion, el libro, la barra
+-- de la mascota o de posturas -- corria codigo del addon en el medio, y
+-- todo lo que Blizzard hacia despues quedaba manchado (taint).
+--
+-- Ahora: si el script existe, HookScript (seguro, corre despues). Si no
+-- existe, se engancha con hooksecurefunc el METODO que lo dispara
+-- (SetSpell, SetAction...), que tambien corre despues y nunca mancha.
+-- ---------------------------------------------------------
+local SPELL_SETTERS = {
+	"SetSpell", "SetAction", "SetPetAction", "SetShapeshift",
+	"SetHyperlink", "SetTalent", "SetTrainerService",
+};
+local ITEM_SETTERS = { "SetHyperlinkCompareItem", "SetHyperlink", "SetInventoryItem" };
+
+local function SafeHook(tip, script, fn, setters)
+	if tip:GetScript(script) then
+		tip:HookScript(script, fn);
+		return;
+	end
+	if not setters then return; end
+	-- Sin OnTooltipCleared propio nadie borra la marca del icono: se borra
+	-- aca, en cada objeto nuevo.
+	local noClear = not tip:GetScript("OnTooltipCleared");
+	local run = fn;
+	if noClear and fn == IconOnSetItem then
+		run = function(self) iconDone[self] = nil; IconOnSetItem(self); end;
+	end
+	for _, m in ipairs(setters) do
+		if type(tip[m]) == "function" then
+			hooksecurefunc(tip, m, run);
+		end
+	end
+end
+
 -- Los mismos tooltips que ya usa el borde por calidad, mas el del chat.
 for _, name in ipairs(QUALITY_TIPS) do
 	local tip = _G[name];
 	if tip and tip.HookScript then
-		tip:HookScript("OnTooltipSetItem",  IconOnSetItem);
-		tip:HookScript("OnTooltipSetSpell", IconOnSetSpell);
-		tip:HookScript("OnTooltipCleared",  IconOnCleared);
+		SafeHook(tip, "OnTooltipSetItem",  IconOnSetItem,  ITEM_SETTERS);
+		SafeHook(tip, "OnTooltipSetSpell", IconOnSetSpell, SPELL_SETTERS);
+		SafeHook(tip, "OnTooltipCleared",  IconOnCleared);
 	end
 end
 
@@ -434,8 +476,10 @@ for _, name in ipairs(QUALITY_TIPS) do
 	local tip = _G[name];
 	if tip and tip.HookScript then
 		SaveDefaultBorder(tip);
-		tip:HookScript("OnTooltipSetItem", QualityOnSetItem);
-		tip:HookScript("OnHide", ResetBorder);
+		SafeHook(tip, "OnTooltipSetItem", QualityOnSetItem, ITEM_SETTERS);
+		-- Sin OnHide propio (los ShoppingTooltip) no se le pone uno: el
+		-- borde se repone solo con el proximo objeto (QualityOnSetItem).
+		SafeHook(tip, "OnHide", ResetBorder);
 	end
 end
 

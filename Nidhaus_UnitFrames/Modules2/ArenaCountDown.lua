@@ -22,6 +22,13 @@ ACDFrame:Hide()
 local ACDNumFrame = CreateFrame("Frame", "ACDNumFrame", UIParent)
 -- Escala configurable desde el panel (registro central en ScaleAPI).
 if K.RegisterScalable then K.RegisterScalable("ArenaCountDown", ACDNumFrame, 1.0); end
+-- Los numeros cambian de tamaño solos (dos cifras mas chicas): antes eso
+-- se hacia con SetScale(1.0 / 0.7) a secas y pisaba el slider en cada
+-- numero. Ahora es relativo a la escala del slider.
+local function ACDScale(base)
+	local s = (K.GetModuleScale and K.GetModuleScale("ArenaCountDown")) or 1.0;
+	return base * s;
+end
 ACDNumFrame:SetHeight(256)
 ACDNumFrame:SetWidth(256)
 ACDNumFrame:SetPoint("CENTER", 0, 128)
@@ -55,7 +62,7 @@ ACDFrame:SetScript("OnUpdate", function(self, elapse )
 				ACDNumOnes:Hide();
 				ACDNumOne:Show();
 				ACDNumOne:SetTexture("Interface\\AddOns\\Nidhaus_UnitFrames\\Artwork\\fight");
-				ACDNumFrame:SetScale(1.0);
+				ACDNumFrame:SetScale(ACDScale(1.0));
 				if EyeFromCountdown then EyeFromCountdown(); end
 			elseif (string.len(str) == 2) then
 				-- Display has 2 digits
@@ -64,14 +71,14 @@ ACDFrame:SetScript("OnUpdate", function(self, elapse )
 
 				ACDNumTens:SetTexture("Interface\\AddOns\\Nidhaus_UnitFrames\\Artwork\\".. string.sub(str,0,1));
 				ACDNumOnes:SetTexture("Interface\\AddOns\\Nidhaus_UnitFrames\\Artwork\\".. string.sub(str,2,2));
-				ACDNumFrame:SetScale(0.7)
+				ACDNumFrame:SetScale(ACDScale(0.7))
 			elseif (string.len(str) == 1) then
 				-- Display has 1 digit
 				ACDNumOne:Show();
 				ACDNumOne:SetTexture("Interface\\AddOns\\Nidhaus_UnitFrames\\Artwork\\".. string.sub(str,0,1));
 				ACDNumOnes:Hide();
 				ACDNumTens:Hide();
-				ACDNumFrame:SetScale(1.0)
+				ACDNumFrame:SetScale(ACDScale(1.0))
 			end
 		end
 		countdown = countdown - elapse;

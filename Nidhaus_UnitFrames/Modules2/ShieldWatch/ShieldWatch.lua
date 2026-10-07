@@ -460,7 +460,9 @@ function shieldwatch_shieldup(spellid, spelldata, caster_GUID)
             end
         end
     else
-        _, _, _, _, _, _, shieldstore[slot].shieldexpires = UnitBuff("player", spellname, spellrank)
+        -- select y no "_, _, ... =": esos "_" sin local escribian la
+        -- variable GLOBAL "_" desde el addon, en cada escudo.
+        shieldstore[slot].shieldexpires = select(7, UnitBuff("player", spellname, spellrank))
     end
     
     shieldstore[slot].shieldduration = tostring(floor(shieldstore[slot].shieldexpires - GetTime() + .5))
@@ -729,7 +731,7 @@ function shieldwatch_onevent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, ar
         self:RegisterEvent("PLAYER_LEVEL_UP")
         self:RegisterEvent("PLAYER_TALENT_UPDATE")
         Debug("guid is " .. shieldwatch_MyGUID)
-        _, shieldwatch_myclass = UnitClass("player")
+        shieldwatch_myclass = select(2, UnitClass("player"))
         
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")
         

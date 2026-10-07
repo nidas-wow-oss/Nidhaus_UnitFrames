@@ -136,6 +136,17 @@ function K.UI.SliderEnds(slider, minText, maxText)
 	return low, high;
 end
 
+-- Todos los sliders de escala de modulo, para poder ponerlos al dia
+-- cuando la escala cambia por otro lado (Ctrl + rueda en "Mover todo",
+-- un reset, la carga de la SavedVariables).
+local moduleScaleSliders = {};
+
+function K.RefreshModuleScaleSliders(id)
+	for _, s in ipairs(moduleScaleSliders) do
+		if (not id or s._moduleId == id) and s.Refresh then s:Refresh(); end
+	end
+end
+
 function K.UI.ScaleSlider(parent, moduleId, x, y, width, label)
 	if not (K.IsScalable and K.IsScalable(moduleId)) then return nil; end
 
@@ -184,6 +195,11 @@ function K.UI.ScaleSlider(parent, moduleId, x, y, width, label)
 		self:SetValue(c);
 		val:SetText(string.format("%.2f", c));
 	end
+
+	-- Al dia siempre: al cambiar por otro lado y cada vez que se muestra.
+	s._moduleId = moduleId;
+	table.insert(moduleScaleSliders, s);
+	s:HookScript("OnShow", function(self) self:Refresh(); end);
 
 	return s;
 end

@@ -86,6 +86,8 @@ local function RestorePosition()
 	-- de aca lo mandaba de vuelta al default en cada toggle del modulo.
 	local gp = NidhausUnitFramesDB and NidhausUnitFramesDB.globalPos;
 	if gp and gp.ArrowCount and gp.ArrowCount.point then
+		-- El lugar es de "Mover todo"; la escala es de aca.
+		frame:SetScale(DB().scale or 1);
 		if K.RestoreGlobalPositions then pcall(K.RestoreGlobalPositions); end
 		return;
 	end
@@ -311,6 +313,17 @@ SlashCmdList["NUFARROWCOUNT"] = function(msg)
 	end
 end
 
+
+-- Escala (la usa "Mover todo": Ctrl + rueda escribe ACA, no en globalPos)
+function K.GetArrowCountScale()
+	return DB().scale or 1;
+end
+
+function K.SaveArrowCountScale(s)
+	s = tonumber(s) or 1;
+	DB().scale = s;
+	frame:SetScale(s);
+end
 
 function K.ResetArrowCountPosition()
 	local db = DB();

@@ -940,6 +940,116 @@ local function SaveScale(entry, scale)
 	end
 end
 
+-- Sacarle a un movible la escala guardada en globalPos (si se queda sin
+-- nada, la entrada entera se va).
+local function ClearSavedScale(entry)
+	local db = DB();
+	local k = EntryKey(entry);
+	local p = db[k];
+	if p and p.scale then
+		p.scale = nil;
+		if not p.point then db[k] = nil; end
+	end
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- UN SOLO DUEÑO POR ESCALA  (revision general del escalado)
+--
+-- Muchos movibles tienen su escala guardada en OTRO lado: un slider del
+-- panel que escribe en la escala del modulo (ScaleAPI), o la DB propia
+-- del modulo (Auto Shot, Swing, flechas). Ctrl + rueda, en cambio,
+-- guardaba siempre en globalPos. Dos (y hasta tres) lugares con el mismo
+-- numero, y cada uno se aplicaba en un momento distinto:
+--
+--   * Ctrl + rueda no movia el slider.
+--   * Movias el slider, se veia bien, y al /reload volvia el numero de la
+--     rueda (globalPos se aplica ultimo).
+--   * El Reset devolvia el marco a 1.0 pero el modulo conservaba su valor.
+--
+-- Ahora, si la escala tiene dueño, la rueda escribe EN EL DUEÑO (que la
+-- aplica y mueve su slider) y en globalPos no queda escala. Lo que hubiera
+-- quedado guardado de antes se pasa al dueño la primera vez (RestoreOne).
+-- ═══════════════════════════════════════════════════════════
+
+-- Movible -> escala del modulo (ScaleAPI, slider generico del panel).
+local MODULE_SCALE_ID = {
+	Buffs        = "PlayerBuffs",
+	Debuffs      = "PlayerDebuffs",
+	DalaranPipe  = "ArenaDalaranPipeTimer",
+	RoVPillars   = "ArenaRoVPillarTimer",
+	ArenaEnd     = "ArenaEndTimer",
+	ShadowSight  = "ShadowSightTimer",
+	PalAuras     = "PaladinAuras",
+	TurnEvil     = "TurnEvil",
+	SacredShield = "SacredShield",
+	SSTracker    = "SacredShieldTracker",
+	Seduction    = "SeductionAlert",
+};
+
+-- Movible -> escala en la DB propia del modulo (funciones de K).
+local OWN_SCALE = {
+	AutoShot   = { get = "GetAutoShotScale",   set = "SaveAutoShotScale",
+	               refresh = "RefreshAutoShotScaleSlider", default = 1.0 },
+	SwingTimer = { get = "GetMeleeSwingScale", set = "SaveMeleeSwingScale",
+	               refresh = "RefreshSwingScaleSlider",    default = 1.0 },
+	ArrowCount = { get = "GetArrowCountScale", set = "SaveArrowCountScale",
+	               default = 1.0 },
+};
+
+local function ScaleOwner(entry)
+	local key = (type(entry) == "table") and entry.key or entry;
+	local id = MODULE_SCALE_ID[key];
+	if id and K.IsScalable and K.IsScalable(id) then
+		return {
+			set   = function(v) K.SetModuleScale(id, v); end,
+			reset = function() K.ResetModuleScale(id); end,
+		};
+	end
+	local o = OWN_SCALE[key];
+	if o and type(K[o.set]) == "function" then
+		local function refresh()
+			local fn = o.refresh and K[o.refresh];
+			if type(fn) == "function" then pcall(fn); end
+		end
+		return {
+			set   = function(v) K[o.set](v); refresh(); end,
+			reset = function() K[o.set](o.default); refresh(); end,
+		};
+	end
+end
+
+-- LA BARRA 1 ES EL "ACTION BAR SCALE" (salvo con MiniBar).
+--
+-- Con las barras unificadas o las de Blizzard, escalar la barra 1 con la
+-- rueda tiene que ser lo mismo que mover el slider: todas las barras, la
+-- mochila, el micromenu y nExtraBars. Antes solo crecia la barra 1, el
+-- resto se ponia al dia recien al /reload, y el slider no se movia.
+--
+-- Con MiniBar cada fila tiene su escala propia y el slider es el maestro.
+local function MainBarIsMaster(entry)
+	local key = (type(entry) == "table") and entry.key or entry;
+	return key == "MainBar" and C.MiniBarEnabled ~= true;
+end
+
+-- Topes de los sliders del panel: con la rueda no se pasa de ahi, asi el
+-- slider siempre puede mostrar el numero.
+local SLIDER_RANGE = {
+	Player  = { 0.5, 1.5 },
+	Target  = { 0.5, 1.5 },
+	Pet     = { 0.5, 1.5 },
+	CastBar = { 0.5, 2.0 },
+};
+local MAINBAR_RANGE = { 0.65, 1.14 };
+
+-- El slider "Action Bar Scale" manda sobre las tres barras: al moverlo se
+-- borran las escalas propias que cada barra tenga de Ctrl + rueda (en el
+-- modo de barras actual). Si no, la que tuviera la suya no lo seguia.
+function K.ClearBarOwnScales()
+	for _, k in ipairs({ "MainBar", "ActionBar2", "ActionBar3" }) do
+		ClearSavedScale(k);
+	end
+end
+
 -- Escalar un movable desde AFUERA (un slider de otro panel, por ejemplo).
 --
 -- Existe para que no haya dos duenos del mismo numero. La escala de un
@@ -961,6 +1071,8 @@ function K.SetGlobalFrameScale(key, scale)
 	local f = ResolveFrame(entry);
 	if f then pcall(f.SetScale, f, scale); end
 	SaveScale(entry, scale);
+	-- nExtraBars acompaña a las barras de accion (MiniBar.lua).
+	if K.SyncExtraBarScale then pcall(K.SyncExtraBarScale); end
 	return true;
 end
 
@@ -1024,6 +1136,22 @@ local function RestoreOne(entry)
 
 	local pos = DB()[EntryKey(entry)];
 	if not pos then return; end
+
+	-- ESCALA CON DUEÑO PROPIO (ver ScaleOwner): no se aplica desde aca. Si
+	-- quedo una de antes, se le pasa al dueño -- es la que estabas viendo,
+	-- porque globalPos se aplicaba ultimo -- y se borra de aca. La de la
+	-- barra 1 sin MiniBar es la del slider (C.ActionBarScale).
+	if pos.scale then
+		local owner = ScaleOwner(entry);
+		if owner or MainBarIsMaster(entry) then
+			if owner then pcall(owner.set, pos.scale); end
+			pos.scale = nil;
+			if not pos.point then
+				DB()[EntryKey(entry)] = nil;
+				return;
+			end
+		end
+	end
 
 	local frame = ResolveFrame(entry);
 	if not frame then return; end
@@ -1852,40 +1980,66 @@ end
 
 			local current = self.target:GetScale() or 1;
 			local newScale = current + (delta > 0 and 0.05 or -0.05);
-			if newScale < 0.5 then newScale = 0.5; end
-			if newScale > 2.0 then newScale = 2.0; end
+			local key = self.entry.key;
+			local range = (MainBarIsMaster(self.entry) and MAINBAR_RANGE)
+				or SLIDER_RANGE[key] or { 0.5, 2.0 };
+			if newScale < range[1] then newScale = range[1]; end
+			if newScale > range[2] then newScale = range[2]; end
 
-			self.target:SetScale(newScale);
-			SaveScale(self.entry, newScale);
+			local owner = ScaleOwner(self.entry);
+			if owner then
+				-- Tiene dueño: se guarda y se aplica ALLA, y su slider se
+				-- mueve solo. En globalPos no queda escala.
+				owner.set(newScale);
+				ClearSavedScale(self.entry);
+			elseif MainBarIsMaster(self.entry) then
+				-- Barra 1 = "Action Bar Scale": lo mismo que mover el slider.
+				K.ClearBarOwnScales();
+				if K.SaveConfigSilent then K.SaveConfigSilent("ActionBarScale", newScale); end
+				if K.ApplyActionBarScale then pcall(K.ApplyActionBarScale, newScale); end
+				if K.RefreshPanelSliders then pcall(K.RefreshPanelSliders, "ActionBarScale"); end
+			else
+				self.target:SetScale(newScale);
+				SaveScale(self.entry, newScale);
 
-			-- CADA BARRA CON SU ESCALA.
-			--
-			-- SyncFrameScaleSetting escribe el ajuste general del panel
-			-- (MainBar -> ActionBarScale). Estando en MiniBar eso hacia que
-			-- escalar la barra 1 escribiera el valor comun y el siguiente
-			-- repintado se lo aplicara a las tres.
-			--
-			-- Con MiniBar la rueda guarda SOLO la escala de esa barra. El
-			-- slider del panel sigue siendo el maestro: mueve las tres.
-			local perBar = (C.MiniBarEnabled == true) and STACK_KEYS[self.entry.key];
-			if K.SyncFrameScaleSetting and not perBar then
-				K.SyncFrameScaleSetting(self.entry.key, newScale);
-			end
+				-- CADA BARRA CON SU ESCALA.
+				--
+				-- SyncFrameScaleSetting escribe el ajuste general del panel
+				-- (MainBar -> ActionBarScale). Estando en MiniBar eso hacia que
+				-- escalar la barra 1 escribiera el valor comun y el siguiente
+				-- repintado se lo aplicara a las tres.
+				--
+				-- Con MiniBar la rueda guarda SOLO la escala de esa barra. El
+				-- slider del panel sigue siendo el maestro: mueve las tres.
+				local perBar = (C.MiniBarEnabled == true) and STACK_KEYS[self.entry.key];
+				if K.SyncFrameScaleSetting and not perBar then
+					K.SyncFrameScaleSetting(self.entry.key, newScale);
+				end
 
-			-- EL FONDO ACOMPAÑA EN EL ACTO.
-			--
-			-- MainMenuBar -- el marco cuyo arte se ve de fondo -- toma su
-			-- escala de la fila 1, y eso lo reparte ApplyBarHolderScales.
-			-- Antes se llamaba sola porque la rueda escribia el ajuste
-			-- general; al dejar de escribirlo (para que cada barra tenga su
-			-- escala) nadie la llamaba, y el fondo recien se ponia al dia
-			-- en el proximo /reload.
-			--
-			-- Se la llama aca a proposito. Cada fila conserva SU escala
-			-- guardada, asi que repartir no contagia nada.
-			if perBar and K.ApplyBarHolderScales then
-				pcall(K.ApplyBarHolderScales, C.ActionBarScale or 1.0);
-			end
+				-- EL FONDO ACOMPAÑA EN EL ACTO.
+				--
+				-- MainMenuBar -- el marco cuyo arte se ve de fondo -- toma su
+				-- escala de la fila 1, y eso lo reparte ApplyBarHolderScales.
+				-- Antes se llamaba sola porque la rueda escribia el ajuste
+				-- general; al dejar de escribirlo (para que cada barra tenga su
+				-- escala) nadie la llamaba, y el fondo recien se ponia al dia
+				-- en el proximo /reload.
+				--
+				-- Se la llama aca a proposito. Cada fila conserva SU escala
+				-- guardada, asi que repartir no contagia nada.
+				if perBar and K.ApplyBarHolderScales then
+					pcall(K.ApplyBarHolderScales, C.ActionBarScale or 1.0);
+				end
+
+				-- La barra de casteo: el slider tambien escala la del objetivo
+				-- (modo custom). La rueda hace lo mismo.
+				if key == "CastBar" and K.ApplyCastBarPWScale then
+					pcall(K.ApplyCastBarPWScale, newScale);
+				end
+			end   -- (sin dueño propio)
+
+			-- nExtraBars acompaña a las barras de accion (MiniBar.lua).
+			if K.SyncExtraBarScale then pcall(K.SyncExtraBarScale); end
 
 			self.text:SetText(self.entry.label .. "  " .. string.format("%.2f", newScale));
 			self:AnchorOverlay();
@@ -1965,6 +2119,9 @@ function K.SyncFrameScaleSetting(key, scale)
 	end
 	if K.RefreshScaleSliders then K.RefreshScaleSliders(); end
 	if K.RefreshCastBarScaleSlider then K.RefreshCastBarScaleSlider(); end
+	-- Los sliders del panel general (Action Bar Scale, por ejemplo) no
+	-- estan en la lista de RefreshScaleSliders.
+	if K.RefreshPanelSliders then pcall(K.RefreshPanelSliders, setting); end
 end
 
 -- Se puede volver a llamar: algunos frames (NidhausPlayerFrame, las barras
@@ -2553,7 +2710,17 @@ function K.ResetGlobalPositions(only)
 	-- Por eso al resetear volvia la posicion pero la barra de casteo seguia
 	-- agrandada. Hay que ponersela de vuelta a mano.
 	for _, entry in ipairs(MOVABLES) do
-		if entry.scalable and Wanted(entry.key) then
+		local owner = entry.scalable and Wanted(entry.key) and ScaleOwner(entry);
+		if owner then
+			-- Con dueño propio: el reset es el del dueño (su valor de
+			-- fabrica, que no siempre es 1.0: el Turn Evil viene en 1.2).
+			pcall(owner.reset);
+		elseif entry.scalable and Wanted(entry.key) and MainBarIsMaster(entry) then
+			local def = (K.GetConfigDefault and K.GetConfigDefault("ActionBarScale")) or 1.0;
+			if K.SaveConfigSilent then pcall(K.SaveConfigSilent, "ActionBarScale", def); end
+			if K.ApplyActionBarScale then pcall(K.ApplyActionBarScale, def); end
+			if K.RefreshPanelSliders then pcall(K.RefreshPanelSliders, "ActionBarScale"); end
+		elseif entry.scalable and Wanted(entry.key) then
 			-- EL DE FABRICA DE SU AJUSTE, NO 1.0 FIJO.
 			--
 			-- La barra de casteo viene en 1.2 (CastBarPWScale); con el 1.0
@@ -2579,6 +2746,8 @@ function K.ResetGlobalPositions(only)
 
 	-- Y refrescar los sliders del panel, que ahora valen otra cosa
 	if K.RefreshScaleSliders then K.RefreshScaleSliders(); end
+	if K.RefreshPanelSliders then pcall(K.RefreshPanelSliders); end
+	if K.RefreshModuleScaleSliders then pcall(K.RefreshModuleScaleSliders); end
 
 	-- REACOMODAR LA PILA EN EL ACTO.
 	--

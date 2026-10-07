@@ -8,9 +8,9 @@ NUF combina y reescribe varios addons existentes — entre ellos Eazy Frames y s
 
 > ## Descarga
 >
-> **Última versión: 4.2** — es la build actual, la recomendada y la que está en uso.
+> **Última versión: 4.3** — es la build actual, la recomendada y la que está en uso.
 >
-> **[Descargar v4.2 (última release)](../../releases/latest)**
+> **[Descargar v4.3 (última release)](../../releases/latest)**
 >
 > Una sola descarga, todo incluido: el addon y su panel de opciones.
 
@@ -38,7 +38,7 @@ NUF combina y reescribe varios addons existentes — entre ellos Eazy Frames y s
 
 ## Instalación
 
-1. Descargá la **v4.2** desde la [página de releases](../../releases/latest).
+1. Descargá la **v4.3** desde la [página de releases](../../releases/latest).
 2. Extraé el archivo. Vas a obtener dos carpetas: `Nidhaus_UnitFrames` y `Nidhaus_UnitFrames_Config`.
 3. Copiá **las dos** carpetas a tu directorio `Interface/AddOns/` de WoW.
 4. Reiniciá el cliente, o escribí `/reload` si ya estás en el juego.
@@ -98,6 +98,19 @@ NUF está construido sobre el trabajo de mucha gente. El motor y varios módulos
 Integración, port a 3.3.5a, corrección de bugs y todo lo demás: **Nidhaus**.
 
 ## Changelog
+
+### v4.3
+- Arreglado el cartel "Nidhaus_UnitFrames has been blocked from an action only available to the Blizzard UI". Varias partes del addon dejaban "manchado" (taint) el código de Blizzard: Party Buffs (llamaba a las funciones de auras de Blizzard y les sacaba el UNIT_AURA a los marcos del grupo), el bloqueo de color de la barra de vida del objetivo y del foco, el repintado del color de clase, los iconos por fila de los buffs y los iconos de los tooltips (les ponían scripts a los tooltips de Blizzard). Ahora todo funciona sin tocar el código de Blizzard.
+- Vehículos: al bajar de un demoledor las barras de acción no se podían clickear y las laterales derechas desaparecían. Arreglado: el porcentaje del texto de estado ya no les pone scripts a las barras de Blizzard.
+- Marcos del grupo: su escala y su lugar ya no se cambian en combate (el juego lo bloqueaba al hacer /reload dentro de un BG); se aplican al terminar la pelea. Los nombres del estilo Compact ya no pisan el borde del marco al salir de un BG.
+- Action Bar Scale: las barras de nExtraBars y el micromenú crecen y se achican con él, y las bolsas ya no vuelven solas a 1.
+- Revisión general del escalado:
+  - Ctrl + rueda en Mover todo guarda en el mismo lugar que el slider y mueve el slider. La rueda no pasa de los topes del slider.
+  - Las escalas de los módulos se aplican al entrar: Gargoyle, timers de arena, cuenta regresiva, buffs/debuffs, alerta de hechizos, DTSU, Sacred Shield, Seducción, auras de Paladín y Turn Evil. Antes volvían a 1 después de un /reload.
+  - La barra 1 con la rueda es el Action Bar Scale (todas las barras, las bolsas, el micromenú y nExtraBars). El slider manda sobre las tres barras: al moverlo se borra la escala que una barra tuviera de la rueda.
+  - Los números de la cuenta regresiva, los buffs sin posición propia y los marcos de Paladín / Turn Evil siguen a su slider; la rueda sobre la barra de casteo escala también la del objetivo; el Reset deja cada uno en su valor de fábrica.
+  - Nuevo slider de tamaño del ojo (Shadow Sight) en Arena, con los otros timers.
+- Party Buffs: al apagar el módulo se ocultan todos los buffs del grupo (antes quedaban los cuatro primeros en pantalla).
 
 ### v4.2
 - Tiempo restante de la arena ("Arena: 28:07"): se apaga cuando termina la partida o cuando salís de la arena. Antes seguía contando en el mundo.

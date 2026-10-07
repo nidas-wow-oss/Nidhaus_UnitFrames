@@ -77,6 +77,15 @@ function K.SetModuleScale(id, value)
 	for _, f in ipairs(entry.frames or { entry.frame }) do
 		pcall(f.SetScale, f, value);
 	end
+	-- Que su slider muestre el numero nuevo, venga de donde venga (el
+	-- propio slider, Ctrl + rueda en "Mover todo", un reset).
+	if K.RefreshModuleScaleSliders then K.RefreshModuleScaleSliders(id); end
+end
+
+-- Tiene un valor guardado (no el de fabrica)?
+function K.HasModuleScale(id)
+	local saved = ScaleDB()[id];
+	return type(saved) == "number" and saved > 0;
 end
 
 function K.ResetModuleScale(id)
@@ -86,6 +95,7 @@ function K.ResetModuleScale(id)
 	for _, f in ipairs(entry.frames or { entry.frame }) do
 		pcall(f.SetScale, f, entry.default or 1.0);
 	end
+	if K.RefreshModuleScaleSliders then K.RefreshModuleScaleSliders(id); end
 end
 
 -- Reaplica todas las escalas guardadas (por si un modulo recrea su frame)
@@ -97,3 +107,27 @@ function K.ReapplyModuleScales()
 		end
 	end
 end
+
+-- ---------------------------------------------------------
+-- APLICAR LO GUARDADO CUANDO YA HAY ALGO GUARDADO
+--
+-- Cada modulo se anota con RegisterScalable al cargar su archivo, y en ese
+-- momento la SavedVariables (NidhausUnitFramesDB) todavia no llego: el
+-- juego la carga DESPUES de correr todos los archivos del addon. O sea que
+-- el "se aplica al cargar" de arriba nunca encontraba nada, y
+-- ReapplyModuleScales no la llamaba nadie. Resultado: movias el slider de
+-- escala de un modulo (el Gargoyle, los timers de arena, el ojo, los
+-- buffs...), se veia bien, hacias /reload y volvia a 1 aunque el slider
+-- siguiera mostrando tu numero.
+--
+-- Ahora se reaplica apenas llega la SavedVariables y otra vez al entrar.
+-- ---------------------------------------------------------
+local scaleLoader = CreateFrame("Frame");
+scaleLoader:RegisterEvent("ADDON_LOADED");
+scaleLoader:RegisterEvent("PLAYER_LOGIN");
+scaleLoader:SetScript("OnEvent", function(self, event, name)
+	if event == "ADDON_LOADED" and name ~= AddOnName then return; end
+	K.ReapplyModuleScales();
+	if K.RefreshModuleScaleSliders then K.RefreshModuleScaleSliders(); end
+	if event == "PLAYER_LOGIN" then self:UnregisterAllEvents(); end
+end);

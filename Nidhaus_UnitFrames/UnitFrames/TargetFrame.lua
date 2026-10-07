@@ -143,7 +143,7 @@ local function Nidhaus_UnitFrames_Style_TargetFrame(self)
 				bg:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", 7, 35);
 			end
 
-			self.healthbar.lockColor = true;
+			-- Sin lockColor: ver la nota al final de este estilo.
 			if C.statusbarOn then
 				self.healthbar:SetStatusBarTexture(C.statusbarTexture);
 				self.manabar:SetStatusBarTexture(C.statusbarTexture);
@@ -236,7 +236,18 @@ local function Nidhaus_UnitFrames_Style_TargetFrame(self)
 		K.RestoreAnchors(self.manabar, keyBase.."ManaBarAnchors");
 	end
 	
-	self.healthbar.lockColor = true;
+	-- SIN lockColor EN LA BARRA DE BLIZZARD.
+	--
+	-- Antes se ponia self.healthbar.lockColor = true para que Blizzard no
+	-- le volviera a poner el verde. Ese campo lo lee Blizzard en cada
+	-- actualizacion del objetivo (UnitFrameHealthBar_Update): escrito desde
+	-- el addon queda manchado (taint), y todo lo que el marco hacia despues
+	-- corria manchado -- en el taint.log, los iconos de auras del objetivo
+	-- (TargetFrameBuff/Debuff) nacian "tainted by Nidhaus_UnitFrames".
+	--
+	-- No hacia falta: ClassColor engancha UnitFrameHealthBar_Update y
+	-- HealthBar_OnValueChanged y repinta el color justo despues de Blizzard,
+	-- en el mismo instante, asi que no se ve el verde ni un cuadro.
 	if C.statusbarOn then
 		self.healthbar:SetStatusBarTexture(C.statusbarTexture);
 		self.manabar:SetStatusBarTexture(C.statusbarTexture);

@@ -1678,6 +1678,11 @@ function K.EnableUnifyActionBars()
                 if not InCombatLockdown() then
                     ApplyMicroAndBags();
                 end
+            else
+                -- Entrando: el micromenu pasa a la barra del vehiculo, que
+                -- ya tiene la escala de las barras. Ahi va solo con la suya
+                -- (si no, con el Action Bar Scale se agrandaria dos veces).
+                if K.MicroVehicleScale then K.MicroVehicleScale(); end
             end
         end);
         K._uabVehicleMicroHooked = true;

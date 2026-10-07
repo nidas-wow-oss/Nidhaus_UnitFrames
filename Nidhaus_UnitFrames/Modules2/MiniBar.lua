@@ -35,6 +35,31 @@ local mb_savedManaged   = {};  -- UIPARENT_MANAGED_FRAME_POSITIONS originals
 local BAGPACK_TEXTURE = "Interface\\AddOns\\"..AddOnName.."\\Modules2\\Textures\\bagpack";
 
 -- ============================================================
+-- ESCALA DE LA MOCHILA Y EL MICROMENU
+-- ============================================================
+-- Con las barras UNIFICADAS van con el "Action Bar Scale", igual que las
+-- barras: agrandas las barras y se agranda todo el bloque de abajo a la
+-- derecha.
+--
+-- Antes la mochila si seguia al slider (K.ApplyActionBarScale le ponia la
+-- escala) pero el micromenu no, y quedaban de dos tamaños. Y cualquier
+-- repintado del micromenu -- cambiar de talentos, subir de nivel -- pasaba
+-- por CreateBagPackFrame y le devolvia la mochila a 1.
+--
+-- Con MiniBar siguen con su escala propia (MiniBarExtrasScale), que es lo
+-- que se decidio para ese modo.
+local function BagPackBaseScale()
+	local s;
+	if C.MiniBarEnabled ~= true and K._unifyActive then
+		s = C.ActionBarScale;
+	else
+		s = C.MiniBarExtrasScale;
+	end
+	if type(s) ~= "number" or s <= 0 then s = 1.0; end
+	return s;
+end
+
+-- ============================================================
 -- Shared: Create BagPackFrame (used by both MiniBar and Unify)
 -- ============================================================
 function K.CreateBagPackFrame()
@@ -45,11 +70,8 @@ function K.CreateBagPackFrame()
 			if C.ShowBagPackTexture == false then BagPackFrame.texture:Hide(); else BagPackFrame.texture:Show(); end
 		end
 		-- FIX: Always re-apply scale (frame may retain old scale from previous mode)
-		-- SU PROPIA ESCALA, no la de las barras (ver MiniBarExtrasScale).
-		local scale = C.MiniBarExtrasScale;
-		if type(scale) == "number" and scale > 0 then
-			BagPackFrame:SetScale(scale);
-		end
+		-- La que corresponde al modo (ver BagPackBaseScale).
+		BagPackFrame:SetScale(BagPackBaseScale());
 		return BagPackFrame;
 	end
 
@@ -74,11 +96,8 @@ function K.CreateBagPackFrame()
 		BagPackFrame.texture:Show();
 	end
 
-	-- FIX: Apply saved scale immediately on creation.
-	local scale = C.MiniBarExtrasScale;
-	if type(scale) == "number" and scale > 0 then
-		BagPackFrame:SetScale(scale);
-	end
+	-- FIX: Apply saved scale immediately on creation (ver BagPackBaseScale).
+	BagPackFrame:SetScale(BagPackBaseScale());
 
 	return BagPackFrame;
 end
@@ -91,6 +110,37 @@ local MicroButtons = {
 	"AchievementMicroButton", "QuestLogMicroButton", "SocialsMicroButton",
 	"PVPMicroButton", "LFDMicroButton", "MainMenuMicroButton", "HelpMicroButton",
 };
+
+-- EL MICROMENU DEL MISMO TAMAÑO QUE LAS BOLSAS.
+--
+-- Las bolsas cuelgan de BagPackFrame y heredan su escala. El micromenu
+-- cuelga de UIParent (asi no desaparece con la mochila al subirse a un
+-- vehiculo sin barra propia), y por eso no la heredaba: con el "Action Bar
+-- Scale" arriba de 1 las bolsas crecian y el micromenu no. La escala de
+-- BagPackFrame se le pone a mano.
+local function MicroBagScale()
+	local s = C.MiniBarExtrasScale;
+	if type(s) ~= "number" or s <= 0 then s = 1.0; end
+	if BagPackFrame and BagPackFrame.GetEffectiveScale then
+		local ui = UIParent:GetEffectiveScale();
+		if ui and ui > 0 then
+			s = s * (BagPackFrame:GetEffectiveScale() / ui);
+		end
+	end
+	return s;
+end
+
+-- En un vehiculo Blizzard cuelga el micromenu de la barra del vehiculo, que
+-- ya tiene la escala de las barras: ahi va solo con la suya, si no se
+-- agrandaria dos veces.
+function K.MicroVehicleScale()
+	local s = C.MiniBarExtrasScale;
+	if type(s) ~= "number" or s <= 0 then s = 1.0; end
+	for _, name in ipairs(MicroButtons) do
+		local btn = _G[name];
+		if btn then btn:SetScale(s); end
+	end
+end
 
 function K.ApplyBagPackLayout()
 	if not BagPackFrame then return; end
@@ -112,6 +162,7 @@ function K.ApplyBagPackLayout()
 	if type(abScale) ~= "number" or abScale <= 0 then abScale = 1.0; end
 
 	-- Micro buttons → parented to UIParent (need explicit scale)
+	local microScale = MicroBagScale();
 	local microLevel = ((MainMenuBar and MainMenuBar:GetFrameLevel()) or 0) + 5;
 	for _, name in ipairs(MicroButtons) do
 		local btn = _G[name];
@@ -121,7 +172,7 @@ function K.ApplyBagPackLayout()
 			-- Nivel explicito: en vehiculo se lo subimos para que no quede
 			-- tapado por la chapa, y ese valor sobrevive al reparenteo.
 			btn:SetFrameLevel(microLevel);
-			btn:SetScale(abScale);
+			btn:SetScale(microScale);
 			btn:Show();
 		end
 	end
@@ -260,6 +311,80 @@ function K.ApplyGryphons()
 end
 
 -- ============================================================
+-- nExtraBars ACOMPAÑA LA ESCALA DE LAS BARRAS DE ACCION
+-- ============================================================
+-- Las dos barras de nExtraBars (NEB_BarLeft / NEB_BarRight) cuelgan de
+-- UIParent, no de las barras de Blizzard: el "Action Bar Scale" agrandaba
+-- o achicaba las de Blizzard y las de nExtraBars se quedaban en 1. Botones
+-- de otro tamaño, la barra derecha corrida respecto de la izquierda, y las
+-- de clase (posturas, totems) subidas de mas o de menos.
+--
+-- Ahora toman la escala REAL del marco al que nExtraBars las ancla (el
+-- mismo criterio que NEB:PositionBar: la barra de abajo a la izquierda si
+-- se ve, y si no, el boton 1). Se mide la escala efectiva en vez de leer
+-- el ajuste, asi da igual por donde vino el cambio: el slider, Ctrl +
+-- rueda en "Mover todo", MiniBar con una escala por fila, o el modo
+-- unificado.
+--
+-- Son marcos protegidos: en combate no se tocan y se completa al salir.
+local NEB_BARS = { "NEB_BarLeft", "NEB_BarRight" };
+
+local function NEBAnchor()
+	if MultiBarBottomLeft and MultiBarBottomLeft:IsShown() then
+		return MultiBarBottomLeft;
+	end
+	return ActionButton1;
+end
+
+function K.SyncExtraBarScale()
+	if not _G.NEB_BarLeft and not _G.NEB_BarRight then return; end
+	if InCombatLockdown() then
+		if K.AfterCombat then K.AfterCombat("NEBScaleSync", K.SyncExtraBarScale); end
+		return;
+	end
+	local anchor = NEBAnchor();
+	if not anchor or not anchor.GetEffectiveScale then return; end
+	local target = anchor:GetEffectiveScale();
+	if not target or target <= 0 then return; end
+	for _, name in ipairs(NEB_BARS) do
+		local bar = _G[name];
+		if bar and bar.SetScale then
+			local parent = bar:GetParent() or UIParent;
+			local pScale = parent.GetEffectiveScale and parent:GetEffectiveScale() or 1;
+			if pScale and pScale > 0 then
+				local want = target / pScale;
+				if math.abs((bar:GetScale() or 1) - want) > 0.001 then
+					bar:SetScale(want);
+				end
+			end
+		end
+	end
+end
+
+-- Al entrar al mundo (las escalas guardadas ya se aplicaron) y cuando
+-- Blizzard prende o apaga barras (cambia a cual se anclan).
+do
+	local nebSync = CreateFrame("Frame");
+	local wait = 0;
+	nebSync:Hide();
+	nebSync:SetScript("OnUpdate", function(self, elapsed)
+		wait = wait - elapsed;
+		if wait <= 0 then
+			self:Hide();
+			K.SyncExtraBarScale();
+		end
+	end);
+	nebSync:RegisterEvent("PLAYER_ENTERING_WORLD");
+	nebSync:SetScript("OnEvent", function(self)
+		wait = 1.5;
+		self:Show();
+	end);
+	if type(MultiActionBar_Update) == "function" then
+		hooksecurefunc("MultiActionBar_Update", function() K.SyncExtraBarScale(); end);
+	end
+end
+
+-- ============================================================
 -- Shared: Action bar scale (works for any action bar mode)
 -- ============================================================
 function K.ApplyActionBarScale(scale)
@@ -282,14 +407,25 @@ function K.ApplyActionBarScale(scale)
 	if C.MiniBarEnabled == true then
 		K.ApplyBarHolderScales(scale);
 		if K.ApplyBagPackLayout then K.ApplyBagPackLayout(); end
+		K.SyncExtraBarScale();
 		return;
 	end
 
 	-- Core bars — bags inherit scale from MainMenuBar via parent chain
 	if MainMenuBar then MainMenuBar:SetScale(scale); end
 	if VehicleMenuBar then VehicleMenuBar:SetScale(scale); end
-	if MultiBarBottomRight then MultiBarBottomRight:SetScale(scale); end
-	if MultiBarBottomLeft then MultiBarBottomLeft:SetScale(scale); end
+	-- La 2 y la 3 pueden tener escala propia (Ctrl + rueda en "Mover
+	-- todo"): si la tienen, va esa. Asi da igual quien corra primero al
+	-- entrar, esto o la reposicion de "Mover todo". El slider la borra al
+	-- moverse (K.ClearBarOwnScales): es el maestro de las tres.
+	local own2 = K.GetGlobalScale and K.GetGlobalScale("ActionBar2");
+	local own3 = K.GetGlobalScale and K.GetGlobalScale("ActionBar3");
+	if MultiBarBottomRight then
+		MultiBarBottomRight:SetScale((type(own3) == "number" and own3 > 0) and own3 or scale);
+	end
+	if MultiBarBottomLeft then
+		MultiBarBottomLeft:SetScale((type(own2) == "number" and own2 > 0) and own2 or scale);
+	end
 	if MultiBarRight then MultiBarRight:SetScale(scale); end
 	if MultiBarLeft then MultiBarLeft:SetScale(scale); end
 	-- BagPackFrame is parented to UIParent — needs explicit scale
@@ -299,6 +435,8 @@ function K.ApplyActionBarScale(scale)
 	if (K._minibarActive or K._unifyActive) and K.ApplyBagPackLayout then
 		K.ApplyBagPackLayout();
 	end
+	-- nExtraBars con el mismo tamaño (ver K.SyncExtraBarScale).
+	K.SyncExtraBarScale();
 end
 
 -- ============================================================
@@ -986,6 +1124,9 @@ function K.ApplyBarHolderScales(scale)
 
 	-- Y el arte se asegura de estar colgada donde va.
 	K.PinMainMenuBarToRow1();
+
+	-- nExtraBars con el mismo tamaño que la fila a la que se ancla.
+	K.SyncExtraBarScale();
 end
 
 function K.ResetMiniBarLayout()
@@ -1425,6 +1566,8 @@ function K.MiniBarPlaceVehicleMicro()
 			btn:Show();
 		end
 	end
+	-- Colgado de la barra del vehiculo: solo su escala (ver K.MicroVehicleScale).
+	if art then K.MicroVehicleScale(); end
 end
 
 local function MiniBar_VehicleMicroHook(skinName)
@@ -1438,9 +1581,12 @@ local function MiniBar_VehicleMicroHook(skinName)
 	};
 
 	if not skinName then
+		-- De vuelta en UIParent: otra vez del tamaño de las bolsas.
+		local microScale = MicroBagScale();
 		for _, frame in pairs(microBtns) do
 			frame:SetParent(UIParent);
 			frame:SetFrameStrata("MEDIUM");
+			frame:SetScale(microScale);
 			frame:Show();
 		end
 		CharacterMicroButton:ClearAllPoints();

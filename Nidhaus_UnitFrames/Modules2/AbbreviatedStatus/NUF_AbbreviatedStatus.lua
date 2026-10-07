@@ -385,21 +385,44 @@ end
 --     cortado por arriba.
 --   * El numero del grupo usa la fuente del estilo (o la del slider de
 --     tamano) y el porcentaje no: "100%" grande al lado de "34.3k" chico.
--- Ahora nace en el mismo marco y la misma capa que el numero, y copia su
--- fuente, color, sombra y transparencia (MirrorPct).
+-- Ahora va en la misma capa que el numero, por encima de las dos barras,
+-- y copia su fuente, color, sombra y transparencia (MirrorPct).
+--
+-- SIN SCRIPTS EN LAS BARRAS DE BLIZZARD.
+--
+-- La version anterior colgaba el porcentaje del marco del numero y, para
+-- que se fuera con la barra, le ponia a la barra un OnHide con
+-- HookScript. Esas barras no traen OnHide propio, y en ese caso HookScript
+-- no "engancha": le PONE el script, y queda una funcion del addon como
+-- manejador de la barra. Cuando el juego esconde esa barra en combate
+-- (subirse a un vehiculo cambia el marco del jugador y esconde la de
+-- mana), corria codigo del addon en medio del codigo de Blizzard, todo lo
+-- que seguia quedaba manchado y el juego lo cortaba: el marco de la
+-- mascota, la barra de posturas, la animacion del vehiculo... y al bajar
+-- del demoledor la barra del vehiculo quedaba tapando las de accion (no se
+-- podian clickear) y las laterales derechas no volvian.
+--
+-- Ahora el porcentaje vive en un marquito HIJO de la barra: se esconde
+-- solo cuando se esconde la barra (es su hijo), sin que corra nada nuestro.
+-- Va un nivel por encima de la barra y del marco del numero, asi se dibuja
+-- arriba de la barra de vida igual que el numero (el problema del "100%"
+-- del mana cortado no vuelve).
 local function CreatePct(bar, statusText)
-	local holder = statusText:GetParent() or bar;
+	local textParent = statusText:GetParent() or bar;
+	local box = CreateFrame("Frame", nil, bar);
+	box:SetAllPoints(bar);
+	local lvl = bar:GetFrameLevel() or 0;
+	local tl = textParent.GetFrameLevel and textParent:GetFrameLevel() or 0;
+	if tl > lvl then lvl = tl; end
+	box:SetFrameLevel(lvl + 1);
 	local ok, layer = pcall(statusText.GetDrawLayer, statusText);
 	if not ok or not layer then layer = "OVERLAY"; end
-	local fs = holder:CreateFontString(nil, layer, "TextStatusBarText");
+	local fs = box:CreateFontString(nil, layer, "TextStatusBarText");
 	local okS, sx, sy = pcall(statusText.GetShadowOffset, statusText);
 	if okS and sx then fs:SetShadowOffset(sx, sy); end
 	local okC, r, g, b, a = pcall(statusText.GetShadowColor, statusText);
 	if okC and r then fs:SetShadowColor(r, g, b, a); end
 	bar._nufPct = fs;
-	-- Si la barra se esconde (una unidad sin mana, por ejemplo) y el
-	-- porcentaje vive en otro marco, se tiene que ir con ella.
-	bar:HookScript("OnHide", function() fs:Hide(); end);
 	return fs;
 end
 

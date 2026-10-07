@@ -454,6 +454,17 @@ SlashCmdList["NUFAUTOSHOT"] = function(msg)
 end
 
 
+-- Escala (la usa "Mover todo": Ctrl + rueda escribe ACA, no en globalPos)
+function K.GetAutoShotScale()
+	return DB().scale or 1.0;
+end
+
+function K.SaveAutoShotScale(s)
+	s = tonumber(s) or 1.0;
+	DB().scale = s;
+	mover:SetScale(s);
+end
+
 -- Reset externo (boton del panel)
 function K.ResetAutoShotTimerPosition()
 	local db = DB();

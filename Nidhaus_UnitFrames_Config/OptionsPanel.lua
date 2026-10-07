@@ -855,14 +855,36 @@ local function CreateSlider(parent, labelText, setting, minVal, maxVal, step, xO
 	slider:SetScript("OnValueChanged", function(self, value)
 		if not value or value < minVal or value > maxVal then return; end
 		valueText:SetText(FormatSliderValue(step, value));
+		-- Puesta al dia desde afuera (Ctrl + rueda, un reset): el numero ya
+		-- esta guardado y aplicado, solo hay que mostrarlo.
+		if self._nufRefreshing then return; end
 		K.SaveConfig(setting, value);
 		if setting == "ActionBarScale" then
+			-- EL MAESTRO DE LAS TRES BARRAS: lo que cada una tuviera de
+			-- Ctrl + rueda se borra, si no esa no seguia al slider.
+			if K.ClearBarOwnScales then K.ClearBarOwnScales(); end
 			if K.ApplyActionBarScale then K.ApplyActionBarScale(value); end
 		end
 	end);
 
 	table.insert(sliders, slider);
 	return slider;
+end
+
+-- Pone los sliders de este panel al numero guardado (uno o todos). Lo
+-- llama "Mover todo" al escalar con Ctrl + rueda, y los resets: antes el
+-- de Action Bar Scale se quedaba en el numero viejo hasta cerrar y abrir.
+function K.RefreshPanelSliders(setting)
+	for _, s in ipairs(sliders) do
+		if s.setting and (not setting or s.setting == setting) then
+			local v = C[s.setting];
+			if type(v) == "number" and s:GetValue() ~= v then
+				s._nufRefreshing = true;
+				s:SetValue(v);
+				s._nufRefreshing = nil;
+			end
+		end
+	end
 end
 
 -- ────────────────────────────────────────────────────────────────────────────

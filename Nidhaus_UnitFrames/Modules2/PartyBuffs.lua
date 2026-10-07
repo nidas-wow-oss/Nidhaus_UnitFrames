@@ -265,38 +265,155 @@ local function EnsureAuraFrames(f)
 	end
 end
 
--- Refresca las auras de un marco segun que tipos maneja el modulo. Lo usa
--- el UNIT_AURA propio y los cambios del panel. Lee el maximo en el momento
--- (antes quedaba fijo el de cuando se prendio el modulo).
-local function RefreshFrameAuras(f)
-	local unit = f.unit;
-	if not unit or not UnitExists(unit) then return; end
-	if ShowDebuffs() then
-		if RefreshDebuffs then
-			RefreshDebuffs(f, unit, GetMaxDebuffs(), nil, 1);
-		elseif PartyMemberFrame_RefreshDebuffs then
-			PartyMemberFrame_RefreshDebuffs(f);
-		end
+-- ---------------------------------------------------------------------
+-- LAS AURAS SE DIBUJAN ACA, SIN LLAMAR A BLIZZARD
+--
+-- Antes esto llamaba a RefreshBuffs / RefreshDebuffs de Blizzard desde el
+-- addon. Esas funciones, ademas de pintar los iconos, ESCRIBEN en el marco
+-- del grupo (hasDispellable, debuffTotal, debuffCountdown). Escrito desde
+-- el addon, ese valor queda "manchado" (taint), y el OnUpdate de Blizzard
+-- de cada marco del grupo lo lee en CADA cuadro: desde ahi el codigo del
+-- grupo corria manchado todo el tiempo. En combate el juego corta lo que
+-- corre manchado, y de ahi el cartel "Nidhaus_UnitFrames has been blocked
+-- from an action only available to the Blizzard UI" (en el taint.log:
+-- "reading PartyMemberFrame4Buff8 - RefreshBuffs() <- PartyBuffs.lua").
+--
+-- Ademas el modulo le sacaba el UNIT_AURA al marco de Blizzard, asi que
+-- los debuffs de la mascota y el tooltip de auras del grupo tambien
+-- pasaban por aca.
+--
+-- Ahora:
+--   * El UNIT_AURA queda en el marco de Blizzard, como de fabrica: pinta
+--     sus 4 debuffs, los de la mascota y el tooltip, sin nada nuestro.
+--   * Justo DESPUES (hooksecurefunc sobre RefreshDebuffs, que no mancha a
+--     Blizzard) se pinta lo del modulo: los debuffs de mas, los buffs, y
+--     se esconde lo que pase del maximo.
+--   * El dibujo es propio: textura, borde, cooldown y Show/Hide de cada
+--     icono. Eso no mancha nada; no se escribe ningun campo en los marcos
+--     de Blizzard.
+-- ---------------------------------------------------------------------
+local function SetAuraCooldown(cd, expirationTime, duration)
+	if not cd then return; end
+	local start = (expirationTime or 0) - (duration or 0);
+	if duration and duration > 0 and start > 0 then
+		cd:SetCooldown(start, duration);
+		cd:Show();
 	else
-		-- los 4 de Blizzard (esta funcion no existe en todos los clientes)
-		if PartyMemberFrame_RefreshDebuffs then
-			PartyMemberFrame_RefreshDebuffs(f);
-		elseif RefreshDebuffs then
-			RefreshDebuffs(f, unit, 4, nil, 1);
+		cd:Hide();
+	end
+end
+
+-- Debuffs first..last. useFilter: respeta la opcion del juego "solo los
+-- que puedo disipar" (showDispelDebuffs), como hacia antes el modulo. Los
+-- 4 de fabrica de Blizzard van sin filtro.
+local function DrawDebuffs(f, unit, first, last, useFilter)
+	local fname = f:GetName();
+	local filter;
+	if useFilter and GetCVarBool("showDispelDebuffs") then filter = "RAID"; end
+	local isEnemy = UnitCanAttack("player", unit);
+	for i = first, last do
+		local slot = _G[fname .. "Debuff" .. i];
+		if slot then
+			local _, _, icon, _, debuffType, duration, expirationTime, caster = UnitDebuff(unit, i, filter);
+			if icon and (SHOW_CASTABLE_DEBUFFS == "0" or not isEnemy or caster == "player") then
+				local n = slot:GetName();
+				local tex = _G[n .. "Icon"];
+				if tex then tex:SetTexture(icon); end
+				local border = _G[n .. "Border"];
+				if border and DebuffTypeColor then
+					local c = (debuffType and DebuffTypeColor[debuffType]) or DebuffTypeColor["none"];
+					if c then border:SetVertexColor(c.r, c.g, c.b); end
+				end
+				SetAuraCooldown(_G[n .. "Cooldown"], expirationTime, duration);
+				slot:Show();
+			else
+				slot:Hide();
+			end
 		end
 	end
+end
+
+-- Buffs 1..last (filtro "los que puedo lanzar": showCastableBuffs).
+local function DrawBuffs(f, unit, last)
+	local fname = f:GetName();
+	local filter;
+	if GetCVarBool("showCastableBuffs") then filter = "RAID"; end
+	for i = 1, last do
+		local slot = _G[fname .. "Buff" .. i];
+		if slot then
+			local _, _, icon, _, _, duration, expirationTime = UnitBuff(unit, i, filter);
+			if icon then
+				local n = slot:GetName();
+				local tex = _G[n .. "Icon"];
+				if tex then tex:SetTexture(icon); end
+				SetAuraCooldown(_G[n .. "Cooldown"], expirationTime, duration);
+				slot:Show();
+			else
+				slot:Hide();
+			end
+		end
+	end
+end
+
+-- Refresca las auras de un marco segun que tipos maneja el modulo. Lee el
+-- maximo en el momento (antes quedaba fijo el de cuando se prendio).
+--
+-- afterBlizzard: viene del enganche a RefreshDebuffs, o sea que Blizzard
+-- acaba de pintar sus 4 debuffs. Si el modulo no maneja debuffs, esos ya
+-- estan bien y no se tocan. Desde el panel (sin afterBlizzard) se pintan
+-- los 4 de fabrica aca mismo, igual que Blizzard.
+--
+-- La unidad es la del grupo ("party1".."party4"), la misma que usa
+-- Blizzard para esos 4 debuffs, asi todo sale de la misma lista.
+local function RefreshFrameAuras(f, afterBlizzard, unitArg)
+	local unit = unitArg;
+	if type(unit) ~= "string" then
+		local id = f.GetID and f:GetID();
+		unit = (id and id > 0) and ("party" .. id) or f.unit;
+	end
+	if not unit or not UnitExists(unit) then return; end
+	local fname = f:GetName();
+	if ShowDebuffs() then
+		local maxD = GetMaxDebuffs();
+		DrawDebuffs(f, unit, 1, maxD, true);
+		for j = maxD + 1, 20 do
+			local d = _G[fname .. "Debuff" .. j];
+			if d then d:Hide(); end
+		end
+	elseif not afterBlizzard then
+		DrawDebuffs(f, unit, 1, 4, false);
+	end
 	if ShowBuffs() then
-		if RefreshBuffs then
-			RefreshBuffs(f, unit, GetMaxBuffs(), nil, 1);
-		elseif PartyMemberFrame_RefreshBuffs then
-			PartyMemberFrame_RefreshBuffs(f);
+		local maxB = GetMaxBuffs();
+		DrawBuffs(f, unit, maxB);
+		for j = maxB + 1, 20 do
+			local b = _G[fname .. "Buff" .. j];
+			if b then b:Hide(); end
 		end
 	else
 		for j = 1, 20 do
-			local bf = _G[f:GetName() .. "Buff" .. j];
+			local bf = _G[fname .. "Buff" .. j];
 			if bf then bf:Hide(); end
 		end
 	end
+end
+
+-- Los 4 marcos del grupo (para reconocerlos en el enganche).
+local partyFrameSet = {};
+local refreshHooked = false;
+
+-- Despues de cada RefreshDebuffs de Blizzard sobre un marco del grupo (lo
+-- hace en cada UNIT_AURA de ese compa y al actualizar el miembro) se pinta
+-- lo del modulo. hooksecurefunc corre lo nuestro aparte: Blizzard no se
+-- entera ni se mancha.
+local function HookBlizzardRefresh()
+	if refreshHooked or type(RefreshDebuffs) ~= "function" then return; end
+	refreshHooked = true;
+	hooksecurefunc("RefreshDebuffs", function(frame, unit)
+		if pbEnabled and frame and partyFrameSet[frame] then
+			RefreshFrameAuras(frame, true, unit);
+		end
+	end);
 end
 
 local function RefreshAllAuras()
@@ -393,23 +510,17 @@ local function SetupFrames()
 	local maxB    = GetMaxBuffs();
 	local maxD    = GetMaxDebuffs();
 
+	HookBlizzardRefresh()
+
 	for i = 1, 4 do
 		local f = _G["PartyMemberFrame" .. i]
 		if f then
-			-- Tomar control de UNIT_AURA para este frame
-			f:UnregisterEvent("UNIT_AURA")
-
-			local evt = CreateFrame("Frame")
-			evt:RegisterEvent("UNIT_AURA")
-			auraEvts[i] = evt
-			evt:SetScript("OnEvent", function(self, event, unit)
-				if not unit then return end
-				if unit == f.unit then
-					RefreshFrameAuras(f)
-				elseif unit == f.unit .. "pet" then
-					if PartyMemberFrame_RefreshPetDebuffs then PartyMemberFrame_RefreshPetDebuffs(f) end
-				end
-			end)
+			-- El UNIT_AURA se le deja a Blizzard (antes se lo sacabamos y lo
+			-- atendia un marco nuestro). Lo del modulo se pinta despues de
+			-- Blizzard desde HookBlizzardRefresh. Por si una version vieja se
+			-- lo saco en esta sesion, se lo devolvemos.
+			f:RegisterEvent("UNIT_AURA")
+			partyFrameSet[f] = true
 
 			-- Guardar los anclajes de fabrica ANTES de moverlos. Solo la
 			-- primera vez: si se recapturara al re-activar, se guardarian
@@ -1047,10 +1158,16 @@ local function PB_Disable()
 			RestoreOrigAnchor(i, f, "debuff")
 			RestoreOrigAnchor(i, f, "buff")
 
-			if f.unit and UnitExists(f.unit) then
-				if PartyMemberFrame_RefreshDebuffs then pcall(PartyMemberFrame_RefreshDebuffs, f) end
-				if PartyMemberFrame_RefreshBuffs   then pcall(PartyMemberFrame_RefreshBuffs, f)   end
+			-- Los buffs del grupo no existen de fabrica: se esconden todos
+			-- (antes quedaban los 4 primeros con el ultimo icono pegado).
+			for j = 1, 4 do
+				local b = _G[f:GetName() .. "Buff" .. j]
+				if b then b:Hide() end
 			end
+			-- Y los 4 debuffs de fabrica se pintan como Blizzard, sin llamar
+			-- a Blizzard (ver DrawDebuffs).
+			local unit = "party" .. f:GetID()
+			if UnitExists(unit) then DrawDebuffs(f, unit, 1, 4, false) end
 		end
 	end
 
@@ -1136,20 +1253,13 @@ function K.PartyBuffs_SetBlizzFilter(which, on)
 	local v = on and "1" or "0";
 	-- Con el evento del panel del juego, como lo hace el propio panel.
 	SetCVar(info.cvar, v, info.event);
-	-- RefreshBuffs / RefreshDebuffs de Blizzard leen la copia en Lua de la
-	-- opcion. Si el cliente no la actualizo con el evento, se actualiza
-	-- aca: si no, el cambio recien se veria despues de /reload.
-	if _G[info.uvar] ~= nil and _G[info.uvar] ~= v then _G[info.uvar] = v; end
-	-- Que se vea en el momento.
+	-- Antes ademas se escribia a mano la copia en Lua de la opcion
+	-- (SHOW_CASTABLE_BUFFS / SHOW_DISPELLABLE_DEBUFFS). Son variables de
+	-- Blizzard: escritas desde el addon quedan manchadas. Y no hacia falta:
+	-- en 3.3.5a el dibujo de las auras lee la CVar directo (GetCVarBool).
+	-- Que se vea en el momento (el filtro solo lo usa este modulo).
 	if pbEnabled then
 		RefreshAllAuras();
-	else
-		for i = 1, 4 do
-			local f = _G["PartyMemberFrame" .. i];
-			if f and f.unit and UnitExists(f.unit) and PartyMemberFrame_RefreshDebuffs then
-				pcall(PartyMemberFrame_RefreshDebuffs, f);
-			end
-		end
 	end
 	return true;
 end

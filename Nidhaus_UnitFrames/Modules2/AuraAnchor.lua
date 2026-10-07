@@ -96,11 +96,24 @@ local function MinimapInset()
 	return inset;
 end
 
+-- LA ESCALA ES LA DEL SLIDER (ScaleAPI: "PlayerBuffs" / "PlayerDebuffs").
+--
+-- Antes habia tres: la del slider del panel, la de Ctrl + rueda (globalPos)
+-- y una propia de aca (db.scale). Y la posicion de fabrica ademas le
+-- clavaba 1: sin posicion propia, el slider de escala de los buffs se
+-- deshacia en cada /reload o al cambiar el minimapa.
+local function BuffScale()
+	return (K.GetModuleScale and K.GetModuleScale("PlayerBuffs")) or 1;
+end
+local function DebuffScale()
+	return (K.GetModuleScale and K.GetModuleScale("PlayerDebuffs")) or 1;
+end
+
 -- Posicion de fabrica de los buffs en 3.3.5a
 local function ApplyDefaultAnchorPos()
 	anchor:ClearAllPoints();
 	anchor:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -MinimapInset(), -13);
-	anchor:SetScale(1);
+	anchor:SetScale(BuffScale());
 end
 
 -- Se llama al mover el slider de tamaño del minimapa.
@@ -110,30 +123,42 @@ end
 function K.RefreshAuraAnchorDefault()
 	if HasCustomPosition() then return; end
 	ApplyDefaultAnchorPos();
-	if BuffFrame_UpdateAllBuffAnchors then pcall(BuffFrame_UpdateAllBuffAnchors); end
+	-- Sin BuffFrame_UpdateAllBuffAnchors: llamada desde el addon corre
+	-- manchada (taint) y crea/acomoda los iconos de Blizzard manchados.
+	if K.ReanchorAuras then K.ReanchorAuras(); end
+	if K.ReanchorDebuffs then K.ReanchorDebuffs(); end
 end
 
 local function ApplyDefaultDebuffPos()
 	debuffAnchor:ClearAllPoints();
 	debuffAnchor:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -20);
-	debuffAnchor:SetScale(1);
+	debuffAnchor:SetScale(DebuffScale());
 end
 
 local function RestoreAnchorPosition()
 	local db = DB();
+	-- Una escala vieja guardada aca pasa al slider (una sola vez).
+	if db.scale then
+		if K.SetModuleScale then K.SetModuleScale("PlayerBuffs", db.scale); end
+		db.scale = nil;
+	end
 	if db.point then
 		anchor:ClearAllPoints();
 		anchor:SetPoint(db.point, UIParent, db.relativePoint, db.x, db.y);
-		if db.scale then anchor:SetScale(db.scale); end
+		anchor:SetScale(BuffScale());
 	else
 		ApplyDefaultAnchorPos();
 	end
 
 	local ddb = DebuffDB();
+	if ddb.scale then
+		if K.SetModuleScale then K.SetModuleScale("PlayerDebuffs", ddb.scale); end
+		ddb.scale = nil;
+	end
 	if ddb.point then
 		debuffAnchor:ClearAllPoints();
 		debuffAnchor:SetPoint(ddb.point, UIParent, ddb.relativePoint, ddb.x, ddb.y);
-		if ddb.scale then debuffAnchor:SetScale(ddb.scale); end
+		debuffAnchor:SetScale(DebuffScale());
 	else
 		ApplyDefaultDebuffPos();
 	end
@@ -147,8 +172,9 @@ function K.SaveAuraAnchorPosition()
 	if K.UpdateAuraAnchorEvents then K.UpdateAuraAnchorEvents(); end
 end
 
+-- Compatibilidad: la escala vive en ScaleAPI (ver BuffScale).
 function K.SaveAuraAnchorScale(scale)
-	DB().scale = scale;
+	if K.SetModuleScale then K.SetModuleScale("PlayerBuffs", scale); end
 end
 
 function K.GetAuraAnchor()
@@ -164,7 +190,7 @@ function K.SaveDebuffAnchorPosition()
 end
 
 function K.SaveDebuffAnchorScale(scale)
-	DebuffDB().scale = scale;
+	if K.SetModuleScale then K.SetModuleScale("PlayerDebuffs", scale); end
 end
 
 function K.ResetAuraAnchor()
@@ -174,10 +200,16 @@ function K.ResetAuraAnchor()
 	db.point, db.relativePoint, db.x, db.y, db.scale = nil, nil, nil, nil, nil;
 	local ddb = DebuffDB();
 	ddb.point, ddb.relativePoint, ddb.x, ddb.y, ddb.scale = nil, nil, nil, nil, nil;
+	-- Y la escala, que es la del slider.
+	if K.ResetModuleScale then
+		K.ResetModuleScale("PlayerBuffs");
+		K.ResetModuleScale("PlayerDebuffs");
+	end
 
 	ApplyDefaultAnchorPos();
 	ApplyDefaultDebuffPos();
-	if BuffFrame_UpdateAllBuffAnchors then pcall(BuffFrame_UpdateAllBuffAnchors); end
+	-- Sin BuffFrame_UpdateAllBuffAnchors (ver RefreshAuraAnchorDefault):
+	-- Blizzard vuelve a anclar los iconos solo en el proximo cambio de auras.
 	if not InCombatLockdown() and UIParent_ManageFramePositions then
 		pcall(UIParent_ManageFramePositions);
 	end
@@ -251,12 +283,34 @@ K.GetAuraIconsPerRow = GetIconsPerRow;
 -- nunca la reescribe. Alcanza con ponerle el valor al cargar y cuando el
 -- usuario mueve el slider (ApplyAuraIconsPerRow, aca abajo). El reordenado
 -- de iconos ya lo hace el hooksecurefunc que viene despues, que no ensucia.
-_G.BUFFS_PER_ROW = GetIconsPerRow();
+--
+-- Y SOLO SI CAMBIA. BUFFS_PER_ROW es una variable de Blizzard: escrita
+-- desde el addon queda manchada (taint), y Blizzard la lee al acomodar
+-- los iconos de buffs y debuffs. Con eso los iconos nuevos (DebuffButton15
+-- en el taint.log) nacian manchados. Con el valor de fabrica (8) no hay
+-- nada que escribir, y no se escribe.
+--
+-- Tampoco se escribe al cargar el archivo: ahi la configuracion guardada
+-- todavia no llego (C tiene los valores por defecto). Se aplica cuando
+-- carga la config.
+local function ApplyBuffsPerRow()
+	local n = GetIconsPerRow();
+	if _G.BUFFS_PER_ROW ~= n then
+		_G.BUFFS_PER_ROW = n;
+	end
+end
 
--- Re-arma las filas al mover el slider
+if K.RegisterConfigEvent then
+	K.RegisterConfigEvent("CONFIG_LOADED", ApplyBuffsPerRow);
+end
+
+-- Al mover el slider. Sin BuffFrame_UpdateAllBuffAnchors (correria
+-- manchada): Blizzard rearma las filas en el proximo cambio de auras, que
+-- en la practica es enseguida.
 function K.ApplyAuraIconsPerRow()
-	_G.BUFFS_PER_ROW = GetIconsPerRow();
-	if BuffFrame_UpdateAllBuffAnchors then pcall(BuffFrame_UpdateAllBuffAnchors); end
+	ApplyBuffsPerRow();
+	if K.ReanchorAuras then K.ReanchorAuras(); end
+	if K.ReanchorDebuffs then K.ReanchorDebuffs(); end
 end
 
 if type(BuffFrame_UpdateAllBuffAnchors) == "function" then
@@ -290,7 +344,6 @@ events:SetScript("OnEvent", function(self, event, unit)
 	if event == "UNIT_AURA" and unit ~= "player" then return; end
 	if event == "PLAYER_ENTERING_WORLD" then
 		RestoreAnchorPosition();
-K.UpdateAuraAnchorEvents();
 		K.UpdateAuraAnchorEvents();
 	end
 	ReanchorAuras();

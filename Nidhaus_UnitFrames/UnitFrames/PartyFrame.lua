@@ -48,7 +48,12 @@ local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 	if C.PartyMode3v3 and K.Get3v3Scale then
 		scale = K.Get3v3Scale(id);
 	end
-	if type(scale) == "number" and scale > 0 and scale <= 3 then
+	-- EN COMBATE NO. PartyMemberFrame es un marco protegido: cambiarle la
+	-- escala peleando lo corta el juego ("An action was blocked in combat
+	-- because of taint from Nidhaus_UnitFrames - PartyMemberFrame1:SetScale()"
+	-- en el taint.log, al recargar en un BG). RestylePartyFrames la vuelve a
+	-- pedir al terminar la pelea.
+	if type(scale) == "number" and scale > 0 and scale <= 3 and not InCombatLockdown() then
 		partyFrame:SetScale(scale);
 	end
 	-- OJO CON EL ORDEN: los estilos "New" e "Improved" ponen SU PROPIA
@@ -184,6 +189,8 @@ local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 	-- sobre los dos. Aca se replican esos dos cortes en vez de posicionar
 	-- a ciegas.
 	if not C.SetPositions then return; end;
+	-- Mover un marco protegido en combate tambien lo corta el juego.
+	if InCombatLockdown() then return; end;
 	if not NidhausPartyFrame then return; end;
 	if C.PartyMode3v3 then return; end;
 	if C.PartyIndividualMove then return; end;
@@ -300,6 +307,12 @@ K.InitializePartyFrames = InitializePartyFrames;
 -- adapten (fuente propia con estilos custom, default con Blizzard).
 function K.RestylePartyFrames()
 	if not isInitialized then return; end
+	-- En combate se aplica lo que se puede (fuentes y texturas) y la escala
+	-- y el lugar, que el juego no deja tocar peleando, se completan solos
+	-- al terminar la pelea con una pasada entera.
+	if InCombatLockdown() and K.AfterCombat then
+		K.AfterCombat("RestylePartyFrames", K.RestylePartyFrames);
+	end
 	-- TEXTO ABREVIADO: el estilo reancla y cambia la fuente del numero de
 	-- vida. Antes de eso el abreviado suelta sus anclajes (devuelve el
 	-- texto a su lugar), y despues vuelve a aplicarse sobre lo nuevo. Si

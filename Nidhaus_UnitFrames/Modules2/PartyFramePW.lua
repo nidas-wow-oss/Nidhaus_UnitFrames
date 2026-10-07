@@ -754,8 +754,16 @@ local function PinName(i)
 
 	-- Si ya esta donde lo queremos, no se escribe nada. Esto es lo que hace
 	-- que se pueda llamar sin miedo desde un camino que corre a cada rato.
+	--
+	-- CON UN SOLO ANCLAJE. Al salir de un BG el nombre quedaba unos pixeles
+	-- mas abajo, pisando el borde de arriba del marco, y solo un /reload lo
+	-- arreglaba. Blizzard le vuelve a poner su anclaje de fabrica SIN
+	-- borrar el nuestro: el nombre queda con DOS anclajes, el primero sigue
+	-- siendo el nuestro, y esta comprobacion (que solo miraba el primero)
+	-- creia que estaba todo bien y no lo tocaba. Con mas de uno, se rehace.
 	local point, rel, relPoint, _, y = nameFS:GetPoint(1);
-	if point == "BOTTOM" and rel == hp and relPoint == "TOP" and y == 2 then
+	if (nameFS:GetNumPoints() or 0) == 1 and point == "BOTTOM" and rel == hp
+		and relPoint == "TOP" and y == 2 then
 		return;
 	end
 
