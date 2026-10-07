@@ -1,26 +1,26 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- PCB_Menu.lua  -  ventana de opciones de /pcb
---
--- Antes todo lo de PartyCastingBars se manejaba escribiendo
--- subcomandos: /pcb icon, /pcb scale 0.8, /pcb parent, /pcb drag,
--- /pcb set FRIENDLY CAST... Ocho colores a mano, con dos palabras
--- en mayuscula cada uno, que habia que sacar de /pcb help.
---
--- Ahora /pcb abre esta ventana y estan todos ahi. Los subcomandos
--- siguen andando: no cuestan nada y hay gente con macros.
---
--- Vive en un archivo aparte del de la logica (830 lineas) porque no
--- comparte nada con el: lee y escribe SOLO por las funciones
--- publicas de PartyCastingBars.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local PANEL_W, PANEL_H = 320, 422;
 
-local menu;          -- la ventana, creada la primera vez que se pide
-local swatches = {}; -- [reaction][type] = textura del cuadradito
+local menu;
+local swatches = {};
 
 local REACTIONS = { "FRIENDLY", "HOSTILE" };
 local TYPES     = { "CAST", "CHANNEL", "SUCCESS", "FAILURE" };
@@ -32,13 +32,13 @@ local TYPE_LABEL = {
 	FAILURE = L["PCB_TYPE_FAILURE"] or "Failure",
 };
 
--- ---------------------------------------------------------
--- Posicion de la ventana
---
--- Se guarda en la misma SavedVariable que el resto de PCB, y
--- SIEMPRE por PartyCastingBars.GetDB(): la tabla recien existe en
--- ADDON_LOADED, despues de que corren los .lua.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
 local function SavePoint()
 	if not menu then return; end
 	local point, _, relPoint, x, y = menu:GetPoint(1);
@@ -59,25 +59,25 @@ local function PlaceFromDB()
 	end
 end
 
--- ---------------------------------------------------------
--- Construccion
--- ---------------------------------------------------------
+
+
+
 local function Build()
 	if menu then return menu; end
 
 	menu = CreateFrame("Frame", "PCB_MenuFrame", UIParent);
-	-- Cajita con el valor debajo del slider, misma que el resto del addon.
+
 	if K.UI and K.UI.AutoRestyle then K.UI.AutoRestyle(menu); end
 
 	menu:SetSize(PANEL_W, PANEL_H);
-	-- POR ENCIMA DEL PANEL DE NUF Y CON FONDO SOLIDO.
-	--
-	-- Estaba en "DIALOG", la misma capa que el panel principal: quien quedaba
-	-- arriba lo decidia el orden de dibujo, y el panel (que se abre antes y
-	-- es mas grande) la tapaba. Ademas el fondo tenia alfa 0.80, asi que los
-	-- botones del panel se veian a traves y se mezclaban con estos.
-	-- FULLSCREEN_DIALOG es una capa mas arriba; SetToplevel la sube al
-	-- hacerle click. Mismo arreglo que la ventana de Party Targets.
+
+
+
+
+
+
+
+
 	menu:SetFrameStrata("FULLSCREEN_DIALOG");
 	menu:SetToplevel(true);
 	menu:SetClampedToScreen(true);
@@ -87,7 +87,7 @@ local function Build()
 
 	if menu.SetBackdrop then
 		menu:SetBackdrop({
-			bgFile   = "Interface\\Buttons\\WHITE8x8",   -- pixel liso: opaco de verdad
+			bgFile   = "Interface\\Buttons\\WHITE8x8",
 			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
 			tile = false, edgeSize = 12,
 			insets = { left = 3, right = 3, top = 3, bottom = 3 },
@@ -95,7 +95,7 @@ local function Build()
 		menu:SetBackdropColor(0.05, 0.06, 0.09, 1);
 	end
 
-	-- ── Cabecera arrastrable ──
+
 	local header = CreateFrame("Frame", nil, menu);
 	header:SetPoint("TOPLEFT", 0, 0);
 	header:SetPoint("TOPRIGHT", 0, 0);
@@ -103,9 +103,9 @@ local function Build()
 	header:EnableMouse(true);
 	header:RegisterForDrag("LeftButton");
 	header:SetScript("OnDragStart", function()
-		-- ClearAllPoints antes de arrastrar: StartMoving le puede cambiar
-		-- el tipo de punto al frame, y con anclajes viejos mezclados la
-		-- ventana pelea contra si misma. Mismo motivo que en PartyBuffs.
+
+
+
 		menu:ClearAllPoints();
 		menu:StartMoving();
 	end);
@@ -124,7 +124,7 @@ local function Build()
 	sep0:SetPoint("TOPRIGHT", -4, -18);
 	sep0:SetHeight(1);
 
-	-- ── Escala ──
+
 	local lblScale = menu:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 	lblScale:SetPoint("TOPLEFT", 10, -26);
 	lblScale:SetText("|cffaaaaaa" .. (L["PCB_SCALE_LABEL"] or "Bar scale:") .. "|r");
@@ -147,7 +147,7 @@ local function Build()
 	end);
 	menu.scaleSlider = slider;
 
-	-- ── Casillas ──
+
 	local function MakeCheck(name, y, label, getFn, setFn)
 		local cb = CreateFrame("CheckButton", name, menu, "UICheckButtonTemplate");
 		cb:SetPoint("TOPLEFT", 10, y);
@@ -174,11 +174,11 @@ local function Build()
 		function() return PartyCastingBars.GetParented(); end,
 		function(v) PartyCastingBars.SetParents(v); end);
 
-	-- ── Estilo de la barra: tres botones excluyentes ──
-	--
-	-- Mismo patron que el selector de estilo de marco de grupo del panel:
-	-- se ven las tres opciones a la vez y la activa queda resaltada, en vez
-	-- de un boton que hay que apretar hasta dar con la que uno quiere.
+
+
+
+
+
 	local styleLbl = menu:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
 	styleLbl:SetPoint("TOPLEFT", 12, -138);
 	styleLbl:SetText("|cffaaaaaa" .. (L["PCB_STYLE_TITLE"] or "Bar style:") .. "|r");
@@ -240,11 +240,11 @@ local function Build()
 	sep1:SetPoint("TOPRIGHT", -4, -190);
 	sep1:SetHeight(1);
 
-	-- ── Colores ──
-	--
-	-- Cuadricula de 2 filas (amistoso / hostil) por 4 columnas. Cada
-	-- cuadradito abre el selector de color de Blizzard y se repinta
-	-- solo, porque el modulo llama a RefreshMenu al aceptar o cancelar.
+
+
+
+
+
 	local lblColor = menu:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 	lblColor:SetPoint("TOPLEFT", 10, -198);
 	lblColor:SetText("|cffaaaaaa" .. (L["PCB_COLORS_LABEL"] or "Bar colours:") .. "|r");
@@ -316,11 +316,11 @@ local function Build()
 	sep2:SetPoint("TOPRIGHT", -4, -330);
 	sep2:SetHeight(1);
 
-	-- ── Posicion de las barras ──
-	--
-	-- El modo arrastre muestra las cuatro barras con un casteo falso
-	-- para poder agarrarlas. Se apaga solo al cerrar la ventana: si
-	-- quedara puesto, las barras taparian el grupo en combate.
+
+
+
+
+
 	local dragBtn = CreateFrame("Button", nil, menu, "UIPanelButtonTemplate");
 	dragBtn:SetSize(140, 22);
 	dragBtn:SetPoint("TOPLEFT", 10, -340);
@@ -338,7 +338,7 @@ local function Build()
 		PartyCastingBars.ResetBarLocations();
 	end);
 
-	-- ── Cerrar ──
+
 	local closeBtn = CreateFrame("Button", nil, menu, "UIPanelButtonTemplate");
 	closeBtn:SetSize(100, 22);
 	closeBtn:SetPoint("BOTTOMRIGHT", -10, 10);
@@ -348,12 +348,12 @@ local function Build()
 	return menu;
 end
 
--- ---------------------------------------------------------
--- Refrescar
---
--- Publica porque el selector de color la llama desde el otro
--- archivo cada vez que se acepta, se cancela o se resetea.
--- ---------------------------------------------------------
+
+
+
+
+
+
 function PartyCastingBars.RefreshMenu()
 	if not menu or not menu:IsShown() then return; end
 
@@ -377,9 +377,9 @@ function PartyCastingBars.RefreshMenu()
 		or  (L["PCB_BTN_DRAG_ON"]  or "Move bars"));
 end
 
--- ---------------------------------------------------------
--- Abrir / cerrar
--- ---------------------------------------------------------
+
+
+
 function PartyCastingBars.OpenMenu()
 	Build();
 	PlaceFromDB();
@@ -389,9 +389,9 @@ end
 
 function PartyCastingBars.CloseMenu()
 	if not menu then return; end
-	-- El modo arrastre no se queda puesto: fuera de la ventana no hay
-	-- forma de darse cuenta de que esta activo hasta que las barras
-	-- aparecen en medio de una pelea.
+
+
+
 	if PartyCastingBars.IsDragging() then
 		PartyCastingBars.EnableDragging(false);
 	end

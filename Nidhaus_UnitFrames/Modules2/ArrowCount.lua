@@ -1,12 +1,12 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- ArrowCount.lua  (portado a NUF)
--- Muestra la cantidad de flechas / balas que tenes en las bolsas.
--- Mover: Alt + click izquierdo y arrastrar.
--- Comandos: /arrowcount show | hide | reset | scale <n>
--- =========================================================
+
+
+
+
+
+
 
 local arrowIDs = {
 	[2512] = true, [2515] = true, [3030] = true, [3031] = true,
@@ -20,18 +20,18 @@ local bulletIDs = {
 local enabled  = false;
 local unlocked = false;
 
--- ---------------------------------------------------------
--- Frame
--- ---------------------------------------------------------
--- Mismo aspecto que el addon original: recuadro con backdrop y borde,
--- icono cubriendo el frame y el numero en blanco abajo a la derecha.
+
+
+
+
+
 local frame = CreateFrame("Frame", "NUF_ArrowCountFrame", UIParent);
 frame:SetSize(64, 64);
 frame:Hide();
 frame:SetMovable(true);
--- Transparente al mouse salvo mientras se lo acomoda (boton "Move").
--- Con EnableMouse fijo en true el recuadro se comia los clicks de lo
--- que tuviera detras aunque ya estuviera en su lugar.
+
+
+
 frame:EnableMouse(false);
 frame:SetClampedToScreen(true);
 
@@ -50,8 +50,8 @@ frame.count = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge");
 frame.count:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -5, 5);
 frame.count:SetText("0");
 
--- Senal de desbloqueado: el mismo tinte celeste y el mismo cartel que usa
--- el AutoShotTimer, para que los movibles del addon se vean todos igual.
+
+
 local unlockOverlay = frame:CreateTexture(nil, "OVERLAY");
 unlockOverlay:SetAllPoints(frame);
 unlockOverlay:SetTexture(0, 0.8, 1, 0.25);
@@ -62,9 +62,9 @@ unlockText:SetPoint("CENTER", frame, "CENTER", 0, 0);
 unlockText:SetText("|cff00ccff" .. (L["DRAG_LABEL"] or "DRAG") .. "|r");
 unlockText:Hide();
 
--- ---------------------------------------------------------
--- Posicion / escala guardadas en la DB de NUF
--- ---------------------------------------------------------
+
+
+
 local function DB()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.ArrowCount then
@@ -80,13 +80,13 @@ local function SavePosition()
 end
 
 local function RestorePosition()
-	-- Este frame tiene DOS lugares donde puede quedar guardada su posicion:
-	-- el store propio (arrastre con Alt) y el de "Mover todo" (globalPos).
-	-- Si lo moviste con el modo mover, la posicion vive alla; restaurar la
-	-- de aca lo mandaba de vuelta al default en cada toggle del modulo.
+
+
+
+
 	local gp = NidhausUnitFramesDB and NidhausUnitFramesDB.globalPos;
 	if gp and gp.ArrowCount and gp.ArrowCount.point then
-		-- El lugar es de "Mover todo"; la escala es de aca.
+
 		frame:SetScale(DB().scale or 1);
 		if K.RestoreGlobalPositions then pcall(K.RestoreGlobalPositions); end
 		return;
@@ -104,8 +104,8 @@ end
 
 frame:RegisterForDrag("LeftButton");
 frame:SetScript("OnDragStart", function(self)
-	-- Desbloqueado se arrastra directo. El Alt se deja funcionando porque
-	-- es lo que decia el cartel de siempre y no cuesta nada mantenerlo.
+
+
 	if unlocked or IsAltKeyDown() then self:StartMoving(); end
 end);
 frame:SetScript("OnDragStop", function(self)
@@ -113,9 +113,9 @@ frame:SetScript("OnDragStop", function(self)
 	SavePosition();
 end);
 
--- ---------------------------------------------------------
--- Deteccion de munición
--- ---------------------------------------------------------
+
+
+
 local function GetEquippedAmmoType()
 	local slotID = GetInventorySlotInfo("RangedSlot");
 	if not slotID then return nil; end
@@ -124,7 +124,7 @@ local function GetEquippedAmmoType()
 
 	local _, _, _, _, _, _, itemSubType, _, _, _, _, classID, subClassID = GetItemInfo(itemID);
 
-	-- classID 2 = arma. subClassID: 2 = arcos, 3 = armas de fuego, 18 = ballestas
+
 	if classID == 2 and subClassID then
 		if subClassID == 3 then
 			return "bullet";
@@ -133,7 +133,7 @@ local function GetEquippedAmmoType()
 		end
 	end
 
-	-- Fallback por texto (otros idiomas / servers que no devuelven classID)
+
 	if itemSubType then
 		local st = string.lower(itemSubType);
 		if string.find(st, "gun") or string.find(st, "arma de fuego") or string.find(st, "fusil") then
@@ -176,23 +176,23 @@ local function UpdateDisplay()
 	end
 end
 
--- ---------------------------------------------------------
--- BLOQUEADO / DESBLOQUEADO
---
--- El boton "Mover" del panel era de IDA NOMAS: prendia el mouse del
--- recuadro y no habia nada que lo volviera a apagar. O sea que despues de
--- acomodarlo una vez, el contador se comia los clicks de todo lo que
--- tuviera detras -- hasta el siguiente /reload o hasta apagar el modulo.
---
--- Los otros cinco movibles del addon (AutoShotTimer, MeleeSwingTimer,
--- PowerBar, SeductionAlert y DungeonRoles) ya funcionan como interruptor:
--- el mismo boton desbloquea y vuelve a bloquear. Este era el unico que
--- faltaba. Se copia el patron del AutoShotTimer a proposito, para que
--- todos se comporten y se vean igual.
--- ---------------------------------------------------------
--- El boton del panel dice en que estado esta. Se avisa desde las dos
--- funciones de abajo, asi tambien queda bien cuando lo bloquea el combate
--- o al apagar el modulo -- y no solo cuando lo apretas vos.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function SyncConfigButton()
 	if K.SetModuleConfigLabel then
 		K.SetModuleConfigLabel("ArrowCount",
@@ -207,12 +207,12 @@ local function Lock()
 	unlockOverlay:Hide();
 	unlockText:Hide();
 	SavePosition();
-	-- Que vuelva a decidir la municion de verdad: si estaba en modo prueba
-	-- (sin flechas equipadas) esto lo esconde.
+
+
 	UpdateDisplay();
 	SyncConfigButton();
-	-- Sin aviso por chat: el recuadro desaparece, y al entrar en combate
-	-- (que tambien bloquea) el mensaje solo ensuciaba.
+
+
 end
 
 local function Unlock()
@@ -223,34 +223,34 @@ local function Unlock()
 	unlockText:Show();
 
 	if not frame:IsShown() then
-		-- Sin municion equipada no hay nada que mostrar, pero hay que poder
-		-- ubicarlo igual: modo prueba.
+
+
 		frame.icon:SetTexture("Interface\\Icons\\INV_Ammo_Arrow_02");
 		frame.count:SetText("---");
 		frame:Show();
 	end
 
 	SyncConfigButton();
-	-- Sin aviso por chat: el recuadro ya trae el texto de como moverlo.
+
 end
 
--- SE BLOQUEA SOLO AL ENTRAR EN COMBATE.
---
--- Si te lo olvidas abierto, en la pelea el recuadro se come los clicks
--- justo donde quedo. Este arranca en medio de la pantalla, asi que es el
--- que mas molesta de todos.
+
+
+
+
+
 local combatLock = CreateFrame("Frame");
 combatLock:RegisterEvent("PLAYER_REGEN_DISABLED");
 combatLock:SetScript("OnEvent", function()
 	if unlocked then Lock(); end
 end);
 
--- ---------------------------------------------------------
--- Eventos
--- ---------------------------------------------------------
+
+
+
 local events = CreateFrame("Frame");
 
--- Se registran solo con el modulo activo (BAG_UPDATE dispara mucho)
+
 local function RegisterArrowEvents()
 	events:RegisterEvent("PLAYER_ENTERING_WORLD");
 	events:RegisterEvent("BAG_UPDATE");
@@ -258,7 +258,7 @@ local function RegisterArrowEvents()
 	events:RegisterEvent("UNIT_INVENTORY_CHANGED");
 end
 
--- Al entrar al mundo los items todavia no estan cacheados: reintentar
+
 local retry = CreateFrame("Frame");
 local retryAcc, retryCount = 0, 0;
 retry:Hide();
@@ -282,9 +282,9 @@ events:SetScript("OnEvent", function(self, event)
 	end
 end);
 
--- ---------------------------------------------------------
--- Comandos
--- ---------------------------------------------------------
+
+
+
 SLASH_NUFARROWCOUNT1 = "/arrowcount";
 SlashCmdList["NUFARROWCOUNT"] = function(msg)
 	msg = string.lower(msg or "");
@@ -314,7 +314,7 @@ SlashCmdList["NUFARROWCOUNT"] = function(msg)
 end
 
 
--- Escala (la usa "Mover todo": Ctrl + rueda escribe ACA, no en globalPos)
+
 function K.GetArrowCountScale()
 	return DB().scale or 1;
 end
@@ -331,15 +331,15 @@ function K.ResetArrowCountPosition()
 	RestorePosition();
 end
 
--- ---------------------------------------------------------
--- Registro del modulo
--- ---------------------------------------------------------
+
+
+
 K.RegisterModule("ArrowCount", {
 	name    = L["MOD_ARROWCOUNT"] or "Arrow / Bullet Count",
 	desc    = L["MOD_ARROWCOUNT_DESC"] or "Shows how much ammo you have left. Alt + drag to move.",
 	default = false,
 	configLabel = L["BTN_MODULE_MOVE"] or "Move",
-	-- El mismo boton abre y cierra el candado, como en los otros movibles.
+
 	configFunc = function()
 		if unlocked then Lock(); else Unlock(); end
 	end,

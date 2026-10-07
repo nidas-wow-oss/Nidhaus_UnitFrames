@@ -7,23 +7,23 @@ local IsActiveBattlefieldArena = IsActiveBattlefieldArena;
 
 local ArenaMover;
 local MAX_ARENA_ENEMIES = MAX_ARENA_ENEMIES or 5;
--- ============================================================
--- CUANTOS MARCOS MUESTRA EL MODO TEST
---
--- Antes era una constante en 3 y no habia forma de probar 2v2 ni 5v5.
--- sArena lo resuelve con tres botones (Test 2 / Test 3 / Test 5) que
--- llaman a la misma rutina con distinto numero, y un Clear que esconde
--- todo. Misma idea aca.
---
--- DOS NUMEROS, NO UNO. Es la parte que importa:
---
---   ArenaTestCount()  -> cuantos se MUESTRAN ahora (2, 3 o 5)
---   MOVER_ARENA_MAX   -> hasta donde hay que BARRER al limpiar
---
--- Si los bucles de limpieza usaran la cantidad elegida, pasar de 5 a 2
--- dejaria los marcos 3, 4 y 5 colgados en pantalla para siempre: nadie
--- los volveria a tocar. Limpiar barre SIEMPRE hasta el maximo.
--- ============================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local MOVER_ARENA_MAX = 5;
 
 local function ArenaTestCount()
@@ -55,7 +55,7 @@ local function LoadArenaMoverPosition()
 		local savedPos = NidhausUnitFramesDB.positions["ArenaMover"]
 		              or NidhausUnitFramesDB.positions["NidhausArenaAnchor"];
 		if savedPos then
-			-- FIX: Leer con nombres (nuevo) o con índices (legacy)
+
 			local point = savedPos.point or savedPos[1];
 			local relName = savedPos.relativeTo or savedPos[2];
 			local relPoint = savedPos.relativePoint or savedPos[3];
@@ -87,7 +87,7 @@ local function SaveArenaMoverPosition()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.positions then NidhausUnitFramesDB.positions = {}; end
 	local relName = relativeTo and relativeTo:GetName() or "UIParent";
-	-- FIX: Formato con nombres, consistente con FrameDragger.SaveFramePosition
+
 	NidhausUnitFramesDB.positions["ArenaMover"] = {
 		point = point,
 		relativeTo = relName,
@@ -108,7 +108,7 @@ end
 local function CalcMoverHeight(scale, spacing)
 	local frameH = 60;
 	local s = spacing or C.ArenaFrameSpacing or 0;
-	-- FIX: Usar constante en vez de hardcoded 3
+
 	return (frameH * ArenaTestCount() + (20 + s) * (ArenaTestCount() - 1)) * scale;
 end
 
@@ -182,7 +182,7 @@ local function EnsureArenaAnchor()
 		        or NidhausUnitFramesDB.positions["NidhausArenaAnchor"];
 	end
 	if savedPos then
-		-- FIX: Leer con nombres (nuevo) o con índices (legacy)
+
 		local point = savedPos.point or savedPos[1];
 		local relName = savedPos.relativeTo or savedPos[2];
 		local relPoint = savedPos.relativePoint or savedPos[3];
@@ -196,13 +196,13 @@ local function EnsureArenaAnchor()
 	end
 end
 
--- FIX: Detectar si estamos en arena activa
+
 local function InLiveArena()
 	local _, instanceType = IsInInstance();
 	return instanceType == "arena";
 end
 
--- Modo prueba de las mascotas de arena, sin tocar su metodo Hide.
+
 local petTestActive, petHideHooked = {}, {};
 local petReshowing = false;
 local function HookPetHideForTest(petFrame)
@@ -216,9 +216,9 @@ local function HookPetHideForTest(petFrame)
 	end);
 end
 
--- Una mascota de prueba: se muestra con datos falsos y el gancho seguro de
--- arriba la mantiene visible mientras dure el Test. Lo usan el Test al
--- abrirse y la casilla del panel (K.RefreshArenaTestPets).
+
+
+
 local function ShowTestPet(petFrame)
 	if not petFrame._blizzDefaultPoints then
 		petFrame._blizzDefaultPoints = {};
@@ -249,17 +249,17 @@ local function HideTestPet(petFrame)
 end
 
 local function HideTestFrames()
-	-- sArena pattern: frames nunca se reparentearon ni se les cambió la escala.
-	-- Solo hay que ocultarlos y limpiar datos fake.
-	-- Barre hasta el MAXIMO: si venias de Test 5 y ahora hay 2, los otros
-	-- tres siguen visibles y hay que apagarlos igual.
+
+
+
+
 	for i = 1, MOVER_ARENA_MAX do
 		local frame = _G["ArenaEnemyFrame"..i];
 		if frame then
-			-- Pet frame: restaurar Hide original y ocultar
+
 			local petFrame = _G["ArenaEnemyFrame"..i.."PetFrame"];
 			if petFrame then HideTestPet(petFrame); end
-			-- Cast bar: ocultar
+
 			local castBar = _G["ArenaEnemyFrame"..i.."CastingBar"];
 			if castBar then
 				castBar.fadeOut = nil;
@@ -270,7 +270,7 @@ local function HideTestFrames()
 					castBar:Hide();
 				end
 			end
-			-- Ocultar el frame (no reparentar — ya está en ArenaEnemyFrames)
+
 			frame:Hide();
 		end
 	end
@@ -293,11 +293,11 @@ local function RestoreTrinketPositions()
 	end
 end
 
--- ═══════════════════════════════════════════════════════════
--- PET FRAME DRAG SYSTEM
--- Same pattern as castbar/trinket drag: Shift+Alt+Click to move,
--- saves offset relative to parent ArenaEnemyFrame per style+mirror key.
--- ═══════════════════════════════════════════════════════════
+
+
+
+
+
 
 function K.GetSavedPetFramePos()
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.PetFramePositions;
@@ -311,8 +311,8 @@ function K.GetSavedPetFramePos()
 end
 
 local function RestorePetFramePositions()
-	-- Lo llaman los OnShow de los marcos de arena, tambien en combate, y el
-	-- marco de mascota es protegido: en ese caso, al terminar la pelea.
+
+
 	if K.AfterCombat("RestorePetFramePositions", RestorePetFramePositions) then return; end
 	local saved = K.GetSavedPetFramePos();
 	if not saved then return; end
@@ -378,13 +378,13 @@ local function CreatePetFrameDragOverlays()
 					pf:ClearAllPoints();
 					pf:SetPoint("CENTER", arenaFrame, "CENTER", offsetX, offsetY);
 
-					-- Save to DB
+
 					if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 					if not NidhausUnitFramesDB.PetFramePositions then NidhausUnitFramesDB.PetFramePositions = {}; end
 					local posKey = K.GetArenaPositionKey and K.GetArenaPositionKey() or (C.ArenaMirrorMode and "mirror" or "normal");
 					NidhausUnitFramesDB.PetFramePositions[posKey] = {"CENTER", "CENTER", offsetX, offsetY};
 
-					-- Apply to ALL pet frames
+
 					for j = 1, MAX_ARENA_ENEMIES do
 						local otherPet = _G["ArenaEnemyFrame"..j.."PetFrame"];
 						local otherAF = _G["ArenaEnemyFrame"..j];
@@ -417,16 +417,16 @@ end
 K.CreatePetFrameDragOverlays = CreatePetFrameDragOverlays;
 K.HidePetFrameDragOverlays = HidePetFrameDragOverlays;
 
--- ═══════════════════════════════════════════════════════════
--- "Drag to move" overlay — estilo Gladius
--- Barra de título oscura arriba del anchor, draggable, con botón X
--- ═══════════════════════════════════════════════════════════
+
+
+
+
 local dragOverlay;
 
 local function CreateDragOverlay(anchor)
 	if dragOverlay then return dragOverlay; end
 
-	-- Barra de título (estilo Gladius): fondo oscuro, texto blanco, arriba del anchor
+
 	dragOverlay = CreateFrame("Frame", "NUF_ArenaDragOverlay", UIParent);
 	dragOverlay:SetFrameStrata("HIGH");
 	dragOverlay:SetFrameLevel(10);
@@ -437,7 +437,7 @@ local function CreateDragOverlay(anchor)
 	dragOverlay:SetClampedToScreen(true);
 	dragOverlay:Hide();
 
-	-- Fondo oscuro sólido (estilo Gladius)
+
 	dragOverlay:SetBackdrop({
 		bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
 		edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -447,7 +447,7 @@ local function CreateDragOverlay(anchor)
 	dragOverlay:SetBackdropColor(0.1, 0.1, 0.1, 0.92);
 	dragOverlay:SetBackdropBorderColor(0.6, 0.6, 0.6, 0.8);
 
-	-- Title text: "NUF - drag to move" (top portion)
+
 	local text = dragOverlay:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 	text:SetPoint("TOP", dragOverlay, "TOP", 0, -6);
 	text:SetText(L["MOVER_DRAG"] or "NUF - drag to move");
@@ -456,14 +456,14 @@ local function CreateDragOverlay(anchor)
 	text:SetShadowColor(0, 0, 0, 1);
 	dragOverlay.text = text;
 
-	-- Hint text: "†Shift+Alt+Click to move various elements" (below title)
+
 	local hint = dragOverlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 	hint:SetPoint("TOP", text, "BOTTOM", 0, -1);
 	hint:SetText("|cffFFAA00\226\128\160" .. (L["MOVER_HINT"] or "Shift+Alt+Click to move various elements") .. "|r");
 	hint:SetFont("Fonts\\FRIZQT__.TTF", 8, "");
 	dragOverlay.hint = hint;
 
-	-- Botón X para cerrar (estilo Gladius)
+
 	local closeBtn = CreateFrame("Button", nil, dragOverlay, "UIPanelCloseButton");
 	closeBtn:SetPoint("TOPRIGHT", dragOverlay, "TOPRIGHT", 2, 2);
 	closeBtn:SetWidth(22);
@@ -475,7 +475,7 @@ local function CreateDragOverlay(anchor)
 	end);
 	dragOverlay.closeBtn = closeBtn;
 
-	-- Drag handlers: mover el anchor desde la barra de título
+
 	dragOverlay:SetScript("OnDragStart", function(self)
 		local a = self._anchor;
 		if a then a:StartMoving(); end
@@ -484,7 +484,7 @@ local function CreateDragOverlay(anchor)
 		local a = self._anchor;
 		if not a then return; end
 		a:StopMovingOrSizing();
-		-- Guardar posición
+
 		local point, relativeTo, relativePoint, x, y = a:GetPoint();
 		if point then
 			if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
@@ -495,7 +495,7 @@ local function CreateDragOverlay(anchor)
 				relativePoint = relativePoint, x = x, y = y,
 			};
 		end
-		-- Sincronizar anchor → position saver
+
 		if K.UpdateArenaPosition then
 			local p2, r2, rp2, x2, y2 = a:GetPoint();
 			if p2 then
@@ -511,7 +511,7 @@ end
 local function ShowDragOverlay(anchor)
 	local overlay = CreateDragOverlay(anchor);
 	overlay._anchor = anchor;
-	-- Posicionar: barra de título ARRIBA del anchor, mismo ancho
+
 	overlay:ClearAllPoints();
 	local scale = C.ArenaFrameScale or 1.5;
 	overlay:SetWidth(180 * scale);
@@ -526,9 +526,9 @@ end
 
 local liveArenaOverlayActive = false;
 
--- ═══════════════════════════════════════════════════════════
--- FORCE HIDE (llamado desde FrameDragger, eventos, etc.)
--- ═══════════════════════════════════════════════════════════
+
+
+
 function K.ForceHideArenaMover()
 	if InCombatLockdown() then
 		if not K._moverCombatClose then
@@ -545,18 +545,18 @@ function K.ForceHideArenaMover()
 	end
 	EnsureArenaMoverDB();
 
-	-- Ocultar drag overlay (ambos modos)
+
 	HideDragOverlay();
 	liveArenaOverlayActive = false;
 
-	-- Bloquear el anchor
+
 	local anchor = _G["NidhausArenaEnemyFrames"];
 	if anchor then
 		anchor:SetMovable(false);
 		anchor:EnableMouse(false);
 	end
 
-	-- Ocultar frames fake del test mode
+
 	HideTestFrames();
 	for i = 1, MOVER_ARENA_MAX do
 		local overlay = _G["NUF_CastBarDragOverlay"..i];
@@ -568,28 +568,28 @@ function K.ForceHideArenaMover()
 	K._testModeActive = false;
 end
 
--- ═══════════════════════════════════════════════════════════
--- ARENA EN VIVO: Solo mover el anchor, no tocar frames (sArena pattern)
--- ═══════════════════════════════════════════════════════════
+
+
+
 
 local function ToggleLiveArena()
 	local anchor = _G["NidhausArenaEnemyFrames"];
 	if not anchor then return; end
 
 	if not liveArenaOverlayActive then
-		-- ACTIVAR: hacer anchor movible + mostrar overlay
+
 		anchor:SetMovable(true);
 		anchor:SetClampedToScreen(true);
 		anchor:EnableMouse(true);
 		ShowDragOverlay(anchor);
 		liveArenaOverlayActive = true;
-		-- FIX: NO setear IsShown = true. Eso activa escala individual
-		-- en K.ApplyArenaScale y causa compound scale.
+
+
 	else
-		-- DESACTIVAR: guardar posición + bloquear anchor
+
 		HideDragOverlay();
 
-		-- Guardar posición del anchor
+
 		local point, relativeTo, relativePoint, x, y = anchor:GetPoint();
 		if point then
 			if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
@@ -607,37 +607,37 @@ local function ToggleLiveArena()
 	end
 end
 
--- ═══════════════════════════════════════════════════════════
--- FUERA DE ARENA: Test mode completo con datos fake
--- ═══════════════════════════════════════════════════════════
+
+
+
 local function ToggleTestMode()
 	EnsureArenaMoverDB();
 	local anchor = _G["NidhausArenaEnemyFrames"];
 	if not anchor then return; end
 
 	if not NidhausUnitFramesDB.ArenaMover.IsShown then
-		-- sArena pattern: asegurar jerarquía normal ANTES de mostrar frames.
-		-- ArenaFrames_OnLoad setea: ArenaEnemyFrames:SetParent(anchor),
-		-- ArenaEnemyFrame1:SetPoint("TOPLEFT", anchor), y ArenaEnemyFrames:SetScale(C.ArenaFrameScale).
-		-- IMPORTANTE: llamar ANTES de _testModeActive para que ArenaFramesSettings no sea bloqueado.
+
+
+
+
 		if K.ArenaFrames_OnLoad and ArenaEnemyFrame1 and ArenaEnemyFrames then
 			K.ArenaFrames_OnLoad();
 		end
 
-		-- AHORA bloquear hooks de escala (frame:Show dispara OnShow → K.ApplyArenaScale)
+
 		K._testModeActive = true;
 
-		-- Asegurar que el anchor sea visible
+
 		anchor:Show();
 		if ArenaEnemyFrames then ArenaEnemyFrames:Show(); end
 
-		-- Hacer el anchor draggable + mostrar overlay
+
 		anchor:SetMovable(true);
 		anchor:SetClampedToScreen(true);
 		anchor:EnableMouse(true);
 		ShowDragOverlay(anchor);
 
-		-- Mostrar frames con datos fake (NO reparentar, NO cambiar escala)
+
 		for i = 1, ArenaTestCount() do
 			local frame = _G["ArenaEnemyFrame"..i];
 			if frame then
@@ -681,8 +681,8 @@ local function ToggleTestMode()
 
 				local petFrame = _G["ArenaEnemyFrame"..i.."PetFrame"];
 				if petFrame then
-					-- FIX: Capture Blizzard default position BEFORE any drag/flat changes.
-					-- Only capture once — subsequent opens keep the original.
+
+
 					if not petFrame._blizzDefaultPoints then
 						petFrame._blizzDefaultPoints = {};
 						for p = 1, petFrame:GetNumPoints() do
@@ -690,13 +690,13 @@ local function ToggleTestMode()
 						end
 					end
 					if C.ArenaPetFrameShow then
-						-- ANTES: petFrame.Hide = function() end, y al salir se
-						-- le volvia a asignar el original. Las dos cosas las
-						-- escribe el addon sobre un marco protegido, y desde
-						-- ahi Blizzard, al esconder la mascota en una arena de
-						-- verdad, corria "manchado" y el juego le cortaba el
-						-- Hide en combate. Ahora un gancho seguro la vuelve a
-						-- mostrar solo mientras dura el modo prueba.
+
+
+
+
+
+
+
 						ShowTestPet(petFrame);
 					else
 						petFrame:Hide();
@@ -705,7 +705,7 @@ local function ToggleTestMode()
 			end
 		end
 
-		-- Aplicar estilos (flat/custom/blizzard) sin tocar escala
+
 		if K.StyleSingleArenaFrame then
 			for i = 1, ArenaTestCount() do
 				local af = _G["ArenaEnemyFrame"..i];
@@ -713,7 +713,7 @@ local function ToggleTestMode()
 			end
 		end
 
-		-- Mostrar cast bars con datos fake
+
 		for i = 1, ArenaTestCount() do
 			local castBar = _G["ArenaEnemyFrame"..i.."CastingBar"];
 			if castBar then
@@ -742,7 +742,7 @@ local function ToggleTestMode()
 			end
 		end
 
-		-- Aplicar tamaño/escala de castbar (solo castbar, no frames)
+
 		if C.ArenaCastBarEnable then
 			for i = 1, ArenaTestCount() do
 				local castBar = _G["ArenaEnemyFrame"..i.."CastingBar"];
@@ -759,10 +759,10 @@ local function ToggleTestMode()
 		if C.ArenaPetFrameShow and K.IsFlatModeActive and K.IsFlatModeActive() and C.ArenaFlatPetStyle then
 			if K.ApplyFlatPetFrames then K.ApplyFlatPetFrames(); end
 		end
-		-- FIX: Restore saved pet frame positions after showing
+
 		if C.ArenaPetFrameShow then RestorePetFramePositions(); end
 
-		-- Crear overlay frames para drag de castbars (Shift+Alt+Click)
+
 		for i = 1, ArenaTestCount() do
 			local castBar = _G["ArenaEnemyFrame"..i.."CastingBar"];
 			if castBar then
@@ -818,7 +818,7 @@ local function ToggleTestMode()
 						local posKey = K.GetArenaPositionKey and K.GetArenaPositionKey() or (C.ArenaMirrorMode and "mirror" or "normal");
 						NidhausUnitFramesDB.CastBarPositions[posKey] = {"CENTER", "CENTER", offsetX, offsetY};
 
-						-- Sync ALL cast bars via single source of truth
+
 						for j = 1, ArenaTestCount() do
 							if K.PositionArenaCastBar then
 								K.PositionArenaCastBar(j);
@@ -832,15 +832,15 @@ local function ToggleTestMode()
 
 		if K.RestoreCastBarPositions then K.RestoreCastBarPositions(); end
 
-		-- FIX: Create pet frame drag overlays (Shift+Alt+Click to move)
+
 		if C.ArenaPetFrameShow then CreatePetFrameDragOverlays(); end
 
 		if K.SetTrinketMouseState then K.SetTrinketMouseState(true); end
 
 		NidhausUnitFramesDB.ArenaMover.IsShown = true;
 	else
-		-- CERRAR TEST MODE
-		-- Guardar posición del anchor
+
+
 		local point, relativeTo, relativePoint, x, y = anchor:GetPoint();
 		if point then
 			if not NidhausUnitFramesDB.positions then NidhausUnitFramesDB.positions = {}; end
@@ -870,9 +870,9 @@ local function ToggleTestMode()
 	end
 end
 
--- ═══════════════════════════════════════════════════════════
--- TOGGLE PRINCIPAL: decide qué camino tomar
--- ═══════════════════════════════════════════════════════════
+
+
+
 function K.ToggleArenaFramesMover()
 	if not C then return; end
 	if InCombatLockdown() then
@@ -889,28 +889,28 @@ function K.ToggleArenaFramesMover()
 	if InLiveArena() then
 		ToggleLiveArena();
 	else
-		-- Fuera de arena: test mode con datos fake (sArena pattern)
+
 		ForceCreateArenaFrames();
 		EnsureArenaAnchor();
 		ToggleTestMode();
 	end
 end
 
--- ============================================================
--- TEST 2 / TEST 3 / TEST 5  (la idea sale de sArena)
---
--- sArena tiene tres botones que llaman a la misma rutina con 2, 3 o 5, y
--- un Clear que esconde todo. Aca es lo mismo, apoyado en el modo test que
--- ya existia: se guarda la cantidad y se re-arma.
---
--- POR QUE APAGAR Y VOLVER A ENCENDER.
---
--- ToggleTestMode arma los marcos al mostrarse, asi que cambiar el numero
--- con el test ya en pantalla no lo re-arma solo. Se apaga y se prende. El
--- apagado barre hasta MOVER_ARENA_MAX, de modo que al bajar de 5 a 2 no
--- quedan los tres de mas colgados -- que es justo lo que pasaria si la
--- limpieza usara la cantidad nueva.
--- ============================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function K.SetArenaTestCount(n)
 	if n ~= 2 and n ~= 3 and n ~= 5 then return false; end
 	if not C then return false; end
@@ -922,7 +922,7 @@ function K.SetArenaTestCount(n)
 
 	EnsureArenaMoverDB();
 
-	-- En arena de verdad no se simula nada: los marcos son los reales.
+
 	if InLiveArena() then return false; end
 
 	NidhausUnitFramesDB.ArenaTestCount = n;
@@ -934,14 +934,14 @@ function K.SetArenaTestCount(n)
 	if NidhausUnitFramesDB.ArenaMover.IsShown then ToggleTestMode(); end
 	ToggleTestMode();
 
-	-- La caja del mover mide segun cuantos marcos hay (CalcMoverHeight usa
-	-- ArenaTestCount), asi que al cambiar el numero hay que remedirla.
+
+
 	UpdateArenaMoverSize(C.ArenaFrameScale);
 	return true;
 end
 
--- El "Clear" de sArena: esconde los marcos de prueba y deja de mostrar el
--- mover. Si no habia nada mostrandose, no hace nada.
+
+
 function K.ClearArenaTestFrames()
 	if InCombatLockdown() then
 		print("|cffFF0000NUF:|r " .. (L["ARENA_MOVER_COMBAT"] or "Cannot toggle arena mover in combat."));
@@ -952,14 +952,14 @@ function K.ClearArenaTestFrames()
 	return true;
 end
 
--- La casilla "Mostrar mascotas en el Test" con el Test ya abierto: muestra
--- o esconde las mascotas de prueba en el momento, solo las de los marcos
--- que hay (Test 2 / 3 / 5).
---
--- Una sola copia de esta logica. Antes el panel tenia la suya: le pisaba el
--- metodo Hide al marco de la mascota (taint, el mismo patron que ya se
--- habia sacado de aca) y, como ese Hide quedaba anulado, al cerrar el Test
--- las mascotas se quedaban colgadas en pantalla. Ademas usaba un 3 fijo.
+
+
+
+
+
+
+
+
 function K.RefreshArenaTestPets()
 	EnsureArenaMoverDB();
 	if not NidhausUnitFramesDB.ArenaMover.IsShown then return false; end
@@ -1019,10 +1019,10 @@ eventFrame:RegisterEvent("PLAYER_LEAVING_WORLD");
 
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
 	if event == "PLAYER_LOGOUT" or event == "PLAYER_LEAVING_WORLD" then
-		-- FIX: Guardar desde el ANCHOR (NidhausArenaEnemyFrames), no desde NUF_ArenaMover.
-		-- En test mode el drag overlay mueve el anchor directamente, pero NUF_ArenaMover
-		-- nunca se actualiza. Si guardamos desde NUF_ArenaMover, sobreescribimos la
-		-- posición correcta con datos stale y el /reload pierde la posición del usuario.
+
+
+
+
 		local anchor = _G["NidhausArenaEnemyFrames"];
 		if anchor then
 			local point, relativeTo, relativePoint, x, y = anchor:GetPoint();
@@ -1040,15 +1040,15 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
 			end
 		end
 	elseif event == "PLAYER_ENTERING_WORLD" then
-		-- FIX: Cerrar mover/overlay al entrar a cualquier zona nueva.
+
 		if NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover then
 			if NidhausUnitFramesDB.ArenaMover.IsShown then
 				K.ForceHideArenaMover();
 			end
 		end
-		-- FIX: Aplicar escala guardada al entrar al mundo/arena.
-		-- Antes la escala solo se aplicaba cuando se movía el slider o se usaba el test mode.
-		-- En una arena real (sin haber abierto el mover antes), los frames quedaban en escala 1.0.
+
+
+
 		if C and C.ArenaFrameOn and C.ArenaFrameScale then
 			if K.UpdateArenaScale then
 				K.UpdateArenaScale(C.ArenaFrameScale);
@@ -1058,17 +1058,17 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
 	else
 		UpdateArenaMoverBackground();
 		if event == "ARENA_PREP_OPPONENT_SPECIALIZATIONS" or event == "ARENA_OPPONENT_UPDATE" then
-			-- FIX 1 (Gladius pattern): Auto-disable test mode when real opponents detected.
-			-- Gladius does this explicitly to prevent fake data from overwriting real enemy info.
+
+
 			if K._testModeActive or (NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover
 				and NidhausUnitFramesDB.ArenaMover.IsShown) then
 				K.ForceHideArenaMover();
 			end
 			if K.SetupArenaCtrlShiftDrag then K.SetupArenaCtrlShiftDrag(); end
-			-- FIX: Re-aplicar escala en cada evento de arena. Blizzard puede resetear
-			-- los frames al hacer show/hide, lo que elimina la escala aplicada previamente.
-			-- Esto también corrige el caso en que el slider se mueve y el valor queda
-			-- guardado pero no se refleja hasta la siguiente arena.
+
+
+
+
 			if C and C.ArenaFrameOn and C.ArenaFrameScale then
 				if K.ApplyArenaScale then
 					K.ApplyArenaScale(C.ArenaFrameScale);

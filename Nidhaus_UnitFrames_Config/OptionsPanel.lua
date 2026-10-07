@@ -1,15 +1,15 @@
--- Este archivo vive en Nidhaus_UnitFrames_Config, un addon aparte que se
--- carga SOLO cuando abris el panel (LoadOnDemand). Por eso no recibe el
--- namespace por "...", que es privado de cada addon: lo toma de la global
--- que publica el addon principal en Core/Init.lua.
+
+
+
+
 local ns = _G.NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
 local mainFrame;
 local currentTab  = 1;
--- Los botones del pie que MakeSecondary atenua. Se declara ACA ARRIBA
--- porque la usan dos lugares muy lejos entre si: MakeSecondary, que la
--- llena, y RegisterThemeFrames, que se la pasa al ThemeManager.
+
+
+
 local secondaryButtons = {};
 local tabs        = {};
 local tabPanels   = {};
@@ -22,14 +22,14 @@ local partyMode3v3Checkbox;
 local lockPosCheckbox;
 local dragHintText;
 local partyIndivCheckbox;
-local resetPosBtnRef;   -- botón "Resetear posiciones" (vive en la pestaña Frames)
+local resetPosBtnRef;
 
--- ── Theme-aware module-level frame refs ──────────────────
-local titleBoxRef;   -- saved from CreateMainFrame for ThemeManager
-local tabBarRef;     -- saved from CreateTabs for ThemeManager
+
+local titleBoxRef;
+local tabBarRef;
 
 local tooltips = {
-	-- Tab 1 (General)
+
 	classColor          = "TIP_classColor",
 	statusbarBackdrop   = "TIP_statusbarBackdrop",
 	HealthPercentage    = "TIP_HealthPercentage",
@@ -57,7 +57,7 @@ local tooltips = {
 	PartyIndividualMove = "TIP_PartyIndividualMove",
 	PartyMode3v3        = "TIP_PartyMode3v3",
 	UnifyActionBars     = "TIP_UnifyActionBars",
-	-- Mudados desde Extra Options
+
 	AutoSellGray        = "TIP_AutoSellGray",
 	AutoRepair          = "TIP_AutoRepair",
 	BlockDuels          = "TIP_BlockDuels",
@@ -67,7 +67,7 @@ local tooltips = {
 	HideMacroText       = "TIP_HideMacroText",
 };
 
--- ── Backdrop helper ───────────────────────────────────────
+
 local function ApplyBackdrop(frame, inset)
 	inset = inset or 4;
 	frame:SetBackdrop({
@@ -82,14 +82,14 @@ local function ApplyBackdrop(frame, inset)
 	frame:SetBackdropBorderColor(0, 0, 0, 0.85);
 end
 
--- ────────────────────────────────────────────────────────────────────────────
--- CreateMainFrame
--- ────────────────────────────────────────────────────────────────────────────
+
+
+
 local function CreateMainFrame()
 	mainFrame = CreateFrame("Frame", "NidhausUnitFramesConfigFrame", UIParent);
-	-- 820 de ancho: 900 se comia media pantalla. Con la lista lateral en
-	-- 140px quedan ~600 utiles de contenido, que es exactamente el ancho
-	-- con el que estan armados los scrollChild.
+
+
+
 	mainFrame:SetSize(820, 620);
 	mainFrame:SetPoint("CENTER");
 	mainFrame:SetFrameStrata("DIALOG");
@@ -101,22 +101,22 @@ local function CreateMainFrame()
 	mainFrame:SetClampedToScreen(true);
 	mainFrame:Hide();
 
-	-- ── Redimensionado por la esquina inferior derecha ─────────────────────
-	--
-	-- Mismo mecanismo que usa AceGUI en la ventana de Threat Plates: un frame
-	-- transparente en la esquina que llama a StartSizing("BOTTOMRIGHT"), con
-	-- las dos rayitas diagonales dibujadas a partir de la textura del borde
-	-- de tooltip. No hace falta arte nueva.
-	--
-	-- El tamano se guarda: si no, cada vez que abrieras el panel volveria a
-	-- los 820x620 de fabrica y habria que reajustarlo.
-	mainFrame:SetResizable(true);
-	mainFrame:SetMinResize(640, 420);    -- por debajo de esto el contenido no cabe
 
-	-- Techo de tamano: NUNCA mas grande que la pantalla.
-	-- Con el maximo fijo de 1600x1200 que habia antes, en una pantalla mas
-	-- chica la esquina de agarre terminaba fuera de la vista y ya no habia
-	-- manera de volver a achicar la ventana.
+
+
+
+
+
+
+
+
+	mainFrame:SetResizable(true);
+	mainFrame:SetMinResize(640, 420);
+
+
+
+
+
 	local function MaxPanelSize()
 		local w = math.floor((UIParent:GetWidth()  or 1024) - 20);
 		local h = math.floor((UIParent:GetHeight() or 768)  - 20);
@@ -125,7 +125,7 @@ local function CreateMainFrame()
 		return w, h;
 	end
 
-	-- Recorta el tamano actual dentro de los limites y devuelve el resultado.
+
 	local function ClampPanelSize()
 		local maxW, maxH = MaxPanelSize();
 		mainFrame:SetMaxResize(maxW, maxH);
@@ -137,8 +137,8 @@ local function CreateMainFrame()
 		return nw, nh;
 	end
 
-	-- Si el marco quedo (total o parcialmente) fuera de la pantalla, se
-	-- recentra. Es la unica via de rescate cuando el sizer queda inalcanzable.
+
+
 	local function EnsureOnScreen()
 		local sw, sh = UIParent:GetWidth(), UIParent:GetHeight();
 		local l, r = mainFrame:GetLeft(), mainFrame:GetRight();
@@ -182,13 +182,13 @@ local function CreateMainFrame()
 	Rayita(14, 4);
 	Rayita(8, 4);
 
-	-- Cierre del redimensionado. Se llama desde tres sitios distintos porque
-	-- el OnMouseUp del sizer NO es fiable: si sueltas el boton con el cursor
-	-- fuera de la esquina (cosa facilisima, porque al agrandar el cursor va
-	-- siempre por delante del marco) ese script no llega a dispararse nunca,
-	-- el marco se queda en modo sizing pegado al raton y crece solo hasta el
-	-- tope. Eso es exactamente lo que paso: parpadeo, se disparo y quedo
-	-- fuera de pantalla, con el sizer inalcanzable.
+
+
+
+
+
+
+
 	local function StopSizing()
 		if not mainFrame.nufSizing then return; end
 		mainFrame.nufSizing = nil;
@@ -207,13 +207,13 @@ local function CreateMainFrame()
 		if button and button ~= "LeftButton" then return; end
 		if mainFrame.nufSizing then return; end
 		mainFrame.nufSizing = true;
-		-- El clamp a pantalla peleaba contra el redimensionado y producia el
-		-- tiron hacia abajo del principio. Se apaga mientras se arrastra y se
-		-- vuelve a encender al soltar.
+
+
+
 		mainFrame:SetClampedToScreen(false);
 		mainFrame:StartSizing("BOTTOMRIGHT");
-		-- Red de seguridad: en cuanto el boton izquierdo deja de estar
-		-- pulsado se corta, haya llegado o no el OnMouseUp.
+
+
 		self:SetScript("OnUpdate", function()
 			if not IsMouseButtonDown("LeftButton") then StopSizing(); end
 		end);
@@ -222,14 +222,14 @@ local function CreateMainFrame()
 	sizer:SetScript("OnHide",    StopSizing);
 
 	mainFrame:SetScript("OnShow", function()
-		-- Reponer el tamano guardado. Va aca y no al crear el frame porque
-		-- C todavia no esta poblado cuando se construye el panel.
+
+
 		if C and C.PanelWidth and C.PanelHeight then
 			mainFrame:SetWidth(C.PanelWidth);
 			mainFrame:SetHeight(C.PanelHeight);
 		end
-		-- Recorte de seguridad: un tamano guardado invalido (mas grande que
-		-- la pantalla) se corrige solo al abrir, sin tocar nada a mano.
+
+
 		ClampPanelSize();
 		EnsureOnScreen();
 		if K._UpdateBagPackVisibility then K._UpdateBagPackVisibility(); end
@@ -238,7 +238,7 @@ local function CreateMainFrame()
 
 	mainFrame:SetScript("OnHide", StopSizing);
 
-	-- Default backdrop (will be overridden by ThemeManager on first show)
+
 	mainFrame:SetBackdrop({
 		bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
 		edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -246,7 +246,7 @@ local function CreateMainFrame()
 		insets   = {left=11, right=12, top=12, bottom=11},
 	});
 
-	-- ── Title Box (DarkGold y ArcaneBlue usan su backdrop; Classic lo hace transparente) ──
+
 	local titleBox = CreateFrame("Frame", nil, mainFrame);
 	titleBox:SetSize(500, 32);
 	titleBox:SetPoint("TOP", mainFrame, "TOP", 0, 6);
@@ -259,41 +259,41 @@ local function CreateMainFrame()
 	});
 	titleBox:SetBackdropColor(0.10, 0.10, 0.10, 1.0);
 
-	-- Título: hijo de titleBox para heredar su FrameLevel (siempre visible)
+
 	local title = titleBox:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge");
 	title:SetPoint("CENTER", titleBox, "CENTER", 0, 1);
 	title:SetText(L["PANEL_TITLE"]);
 
-	-- ── Title Header Texture (Classic solamente) ──────────────
-	-- Textura gris metalica nativa de Blizzard. Se muestra encima del titleBox
-	-- cuando el tema es Classic (el backdrop de titleBox queda transparente).
+
+
+
 	local titleHeaderTex = mainFrame:CreateTexture(nil, "ARTWORK");
 	titleHeaderTex:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Header");
 	titleHeaderTex:SetWidth(500);
 	titleHeaderTex:SetHeight(64);
 	titleHeaderTex:SetPoint("TOP", mainFrame, "TOP", 0, 14);
-	titleHeaderTex:Hide(); -- ThemeManager lo muestra solo en Classic
+	titleHeaderTex:Hide();
 
-	-- Save references for ThemeManager
+
 	titleBoxRef               = titleBox;
 	mainFrame._titleHeaderTex = titleHeaderTex;
 
-	-- Version label
+
 	local version = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 	version:SetPoint("TOPRIGHT", -40, -16);
 	version:SetText(L["PANEL_VERSION"]);
 
-	-- Subtitle
+
 	local subtitle = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 	subtitle:SetPoint("TOP", titleBox, "BOTTOM", 0, -4);
 	subtitle:SetText("|cffAAAAAA" .. (L["PANEL_SUBTITLE"] or "") .. "|r");
 
-	-- Close button
+
 	local closeButton = CreateFrame("Button", nil, mainFrame, "UIPanelCloseButton");
 	closeButton:SetPoint("TOPRIGHT", -5, -5);
 	closeButton:SetScript("OnClick", function() mainFrame:Hide(); end);
 
-	-- Tab bar container
+
 	local tabBar = CreateFrame("Frame", nil, mainFrame);
 	tabBar:SetPoint("TOPLEFT",  18, -48);
 	tabBar:SetPoint("TOPRIGHT", -18, -48);
@@ -303,7 +303,7 @@ local function CreateMainFrame()
 	mainFrame.TabBar = tabBar;
 	tabBarRef = tabBar;
 
-	-- Bottom separator (sits above the two-row footer)
+
 	local sepBottom = mainFrame:CreateTexture(nil, "ARTWORK");
 	sepBottom:SetTexture(1, 1, 1, 0.08);
 	sepBottom:SetPoint("BOTTOMLEFT",  mainFrame, "BOTTOMLEFT",  20, 78);
@@ -313,9 +313,9 @@ local function CreateMainFrame()
 	return mainFrame;
 end
 
--- ────────────────────────────────────────────────────────────────────────────
--- SelectTab  (theme-aware)
--- ────────────────────────────────────────────────────────────────────────────
+
+
+
 local function SelectTab(id)
 	currentTab = id;
 
@@ -327,11 +327,11 @@ local function SelectTab(id)
 	local native = theme and theme.nativeTabs;
 
 	for i, tab in ipairs(tabs) do
-		-- Las pestanas de Blizzard se pintan solas. SelectTab las hunde Y
-		-- LAS DESHABILITA, que es por que no se puede clickear la que ya
-		-- estas mirando; DeselectTab las levanta y las vuelve a habilitar.
-		-- Va con pcall: si alguna vez el template cambia, se pierde el
-		-- resaltado pero el panel sigue abriendose.
+
+
+
+
+
 		if native and tab.native then
 			local fn = (i == id) and PanelTemplates_SelectTab
 			                     or  PanelTemplates_DeselectTab;
@@ -362,25 +362,25 @@ local function SelectTab(id)
 	end
 end
 
--- ────────────────────────────────────────────────────────────────────────────
--- CreateTabs
--- ────────────────────────────────────────────────────────────────────────────
--- =========================================================
--- LAS PESTANAS SE ACOMODAN AL ANCHO DE LA VENTANA
---
--- La barra de pestanas esta anclada a los dos costados, asi que SI se
--- estira y se encoge con la ventana. Las pestanas de adentro, no: su ancho
--- se calculaba UNA vez, al crearlas, y despues quedaba fijo. Achicabas la
--- ventana y se salian por la derecha; la agrandabas y quedaba un hueco.
---
--- Esto lo reparte de nuevo cada vez que la barra cambia de tamano. Como la
--- barra sigue a la ventana, alcanza con escucharla a ella y no hay que
--- meterse con el arrastre del agarre de la esquina.
---
--- Y EL TEXTO TAMBIEN. Repartir el ancho sin mas dejaba "Interface" saliendo
--- de su propia pestana en cuanto la ventana se ponia angosta. Se prueba la
--- fuente de mayor a menor y se toma la primera que entra: asi el texto se
--- achica solo en vez de desbordar.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local TAB_FONT_STEPS = { 12, 11, 10, 9, 8 };
 
 local function LayoutTabs()
@@ -394,8 +394,8 @@ local function LayoutTabs()
 	if visible == 0 then return; end
 
 	local barW = bar:GetWidth();
-	-- Durante el primer cuadro el ancho todavia puede ser 0: repartirlo
-	-- daria pestanas de ancho cero y no se veria ninguna.
+
+
 	if not barW or barW <= 1 then return; end
 
 	local tabW = barW / visible;
@@ -407,7 +407,7 @@ local function LayoutTabs()
 			local lbl = t.label;
 			if lbl then
 				local path, _, flags = lbl:GetFont();
-				local avail = tabW - 10;      -- un respiro a cada lado
+				local avail = tabW - 10;
 				for _, size in ipairs(TAB_FONT_STEPS) do
 					lbl:SetFont(path, size, flags);
 					if (lbl:GetStringWidth() or 0) <= avail then break; end
@@ -417,30 +417,30 @@ local function LayoutTabs()
 	end
 end
 
--- Las de Blizzard (tema Classic) no entran aca a proposito: van pegadas a
--- la izquierda y miden lo que mide su texto, igual que en la ventana
--- Interface del juego. Estirarlas seria dejarlas distintas de las de
--- Blizzard, que es justo lo que ese tema no quiere.
+
+
+
+
 
 local function CreateTabs()
-	-- 5 pestañas. "Modules" paso a llamarse "Addons", "Extra" quedo solo
-	-- como Profiles, y PvP dejo de ser pestaña: ahora son dos secciones
-	-- dentro de Interface (PvP + el nombre de tu clase).
-	-- PESTAÑAS VISIBLES Y PESTAÑAS DE FONDO.
-	--
-	-- Profiles y About tienen su panel como cualquier otra pestaña, pero NO
-	-- ocupan lugar en la barra de arriba: se llega a ellas desde los botones
-	-- del pie. Son cosas que se abren de vez en cuando — elegir un perfil,
-	-- mirar la version — y estaban comiendo el mismo espacio que Interface o
-	-- Arena, que se usan todo el tiempo.
-	--
-	-- About ademas dejo de ser una ventana flotante aparte: es un panel mas,
-	-- asi que hereda el tema y el tamaño del resto y no tapa nada.
+
+
+
+
+
+
+
+
+
+
+
+
+
 	local tabNames = {
 		L["TAB_GENERAL"], L["TAB_FRAMES"], L["TAB_ARENA"],
 		L["TAB_ADDONS"] or "Addons",
-		L["TAB_PROFILES"] or "Profiles",     -- 5: solo desde el pie
-		L["TAB_ABOUT"] or "About",           -- 6: solo desde el pie
+		L["TAB_PROFILES"] or "Profiles",
+		L["TAB_ABOUT"] or "About",
 	};
 	local HIDDEN_TABS = { [5] = true, [6] = true };
 
@@ -463,8 +463,8 @@ local function CreateTabs()
 		tab:SetSize(tabWidth, 28);
 
 		if HIDDEN_TABS[i] then
-			-- Existe (SelectTab y el ThemeManager recorren la lista entera)
-			-- pero no se dibuja ni ocupa lugar en la barra.
+
+
 			tab:SetPoint("BOTTOMLEFT", mainFrame.TabBar, "BOTTOMLEFT", 0, 2);
 			tab:Hide();
 			tab._nufHidden = true;
@@ -488,7 +488,7 @@ local function CreateTabs()
 		label:SetText(name);
 		tab.label = label;
 
-		-- Hover scripts (theme-aware)
+
 		tab:SetScript("OnEnter", function(self)
 			if self.selected then return; end
 			local theme = K.GetActiveTheme and K.GetActiveTheme();
@@ -510,28 +510,28 @@ local function CreateTabs()
 			end
 		end);
 
-		-- Default (unselected) colors
+
 		tab:SetBackdropColor(0.1, 0.1, 0.1, 0.6);
 		tab:SetBackdropBorderColor(0.4, 0.4, 0.4, 0.8);
 		tab.selected = false;
 
 		tab:SetScript("OnClick", function(self) SelectTab(self:GetID()); end);
 
-		-- ── LA MISMA PESTANA, EN VERSION BLIZZARD ──
-		--
-		-- OptionsFrameTabButtonTemplate es la pestana de verdad del juego:
-		-- la lenguetita redondeada, la activa hundida y deshabilitada. No
-		-- hay que adivinar rutas de textura, el template trae la suya.
-		--
-		-- Se crea SIEMPRE, la use el tema o no. Armarla recien al elegir
-		-- Blizzard obligaria a recalcular anclajes en caliente; asi las dos
-		-- versiones estan hechas desde el arranque y el ThemeManager solo
-		-- decide cual se muestra.
-		--
-		-- A lo ancho NO se estiran como las dibujadas a mano: las de
-		-- Blizzard van pegadas a la izquierda y miden lo que mide su texto,
-		-- que es como se ven en la ventana Interface. El -14 es el solape
-		-- que llevan entre si.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		local nat = CreateFrame("Button", mainFrame:GetName().."NativeTab"..i,
 			mainFrame.TabBar, "OptionsFrameTabButtonTemplate");
 		nat:SetID(i);
@@ -554,7 +554,7 @@ local function CreateTabs()
 
 		tabs[i] = tab;
 
-		-- Content panel
+
 		local panel = CreateFrame("Frame", "NidhausUFTabPanel"..i, mainFrame);
 		panel:SetPoint("TOPLEFT",     22,  -82);
 		panel:SetPoint("BOTTOMRIGHT", -22,  88);
@@ -567,21 +567,21 @@ local function CreateTabs()
 
 	SelectTab(1);
 
-	-- Y a partir de aca, cada vez que la barra cambie de ancho.
+
 	mainFrame.TabBar:SetScript("OnSizeChanged", LayoutTabs);
 	LayoutTabs();
 
-	-- Los botones del pie necesitan poder saltar a las pestañas de fondo.
+
 	K.SelectPanelTab = SelectTab;
 
-	-- La llama el ThemeManager despues de cambiar de tema: recien ahi se
-	-- sabe cual de las dos versiones de la pestana quedo a la vista.
+
+
 	K.RefreshPanelTabs = function() SelectTab(currentTab or 1); end;
 end
 
--- ────────────────────────────────────────────────────────────────────────────
--- CreateCheckBox
--- ────────────────────────────────────────────────────────────────────────────
+
+
+
 local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 	checkboxCount = checkboxCount + 1;
 	local checkboxName = "NidhausUFCheckBox"..checkboxCount;
@@ -618,9 +618,9 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 	end;
 	check:refresh();
 
-	-- Registrar el checkbox para que, si el mismo setting aparece en otra
-	-- seccion (ej: Hide Macros en General y en Barras de accion), al tocar
-	-- uno se refresque el otro. SaveConfig llama RefreshSettingCheckboxes.
+
+
+
 	if K.RegisterSettingCheckbox then K.RegisterSettingCheckbox(setting, check); end
 
 	check:SetScript("OnClick", function(self)
@@ -631,23 +631,23 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 		if not success then self:refresh(); return; end
 
 		if setting == "UnifyActionBars" or setting == "MiniBarEnabled" then
-			-- ═══════════════════════════════════════════════════════════
-			-- Cambiar de modo de barras, EN CALIENTE (sin recargar).
-			--
-			-- Antes esto forzaba un ReloadUI. El motivo era que cada modo
-			-- sacaba su propia foto del "antes" al activarse: si el otro ya
-			-- habia corrido y habia revertido de forma incompleta, la foto
-			-- salia contaminada y la basura se acumulaba en cada cambio.
-			--
-			-- Ahora hay UNA foto compartida del estado limpio de Blizzard
-			-- (Core/BarBaseline.lua) y los dos modos vuelven siempre a ella
-			-- antes de aplicar lo suyo. El punto de partida es identico en
-			-- cada cambio, asi que ya no hay deriva y la recarga sobra.
-			-- ═══════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
+
+
+
 			local other = (setting == "UnifyActionBars") and "MiniBarEnabled" or "UnifyActionBars";
 
 			if boolValue then
-				-- Excluyentes: apagar el otro, tanto en la config como en el panel.
+
 				K.SaveConfig(other, false);
 				C[other] = false;
 				for _, cb in ipairs(checkboxes) do
@@ -655,26 +655,26 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 				end
 			end
 
-			-- UNA SOLA LLAMADA. Ver Core/LayoutCore.lua.
-			--
-			-- Aca habia tres caminos distintos segun el caso: apagar esto,
-			-- apagar aquello, prender uno u otro, y si no quedaba ninguno
-			-- reponer la foto a mano. Tres caminos son tres formas de que
-			-- algo quede a medias, y de ahi salian los bugs de alternar.
-			--
-			-- Ahora el panel no decide nada: guarda la opcion y pide un
-			-- rearmado. Quien mira que modo corresponde es el core, y lo
-			-- hace SIEMPRE con la misma secuencia -- foto de fabrica, modo,
-			-- posiciones guardadas -- venga de un checkbox, de un /reload,
-			-- de un reset o de salir de combate.
+
+
+
+
+
+
+
+
+
+
+
+
 			if K.LayoutRebuild then
 				K.LayoutRebuild("cambio de modo de barras");
 			end
 
 			if K._UpdateBagPackVisibility then K._UpdateBagPackVisibility(); end
 			if K._UpdateHideTexVisibility then K._UpdateHideTexVisibility(); end
-			-- El slider de separacion solo existe con un modo de barras
-			-- puesto, y hay que reaplicarlo al entrar a ese modo.
+
+
 			if K._UpdateButtonSpaceVisibility then K._UpdateButtonSpaceVisibility(); end
 			if K._UpdateMiniBgVisibility then K._UpdateMiniBgVisibility(); end
 			if K.ApplyActionBarButtonSpace then K.ApplyActionBarButtonSpace(); end
@@ -693,38 +693,38 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 		elseif setting == "CastBarPWEnabled" then
 			if K.ApplyCastBarPW then K.ApplyCastBarPW(); end
 			if K._UpdateCastBarVisibility then K._UpdateCastBarVisibility(); end
-			-- El contador se coloca distinto segun la barra: con la custom va
-			-- fuera, a la derecha, porque dentro no cabe junto al nombre. Hay
-			-- que recolocarlo aqui o se queda con el reparto de la otra.
+
+
+
 			if K.RefreshCastingTimerLayout then K.RefreshCastingTimerLayout(); end
 		elseif setting == "CastBarPWIcon" or setting == "CastBarPWDark"
 			or setting == "CastBarPWTarget" or setting == "CastBarPWFocus" then
-			-- Solo tienen sentido con la barra custom puesta; re-aplicar
-			-- vuelve a estilar las tres barras con el valor nuevo.
-			-- Los de objetivo y foco tambien pasan por aca: al destildarlos,
-			-- ApplyCastBarPW les devuelve el aspecto de Blizzard en el acto.
+
+
+
+
 			if K.ApplyCastBarPW then K.ApplyCastBarPW(); end
 			if K._UpdateCastBarVisibility then K._UpdateCastBarVisibility(); end
 		elseif setting == "BigStatusText" or setting == "BigTextCustomSize" then
-			-- Texto grande: reacomoda nombre / numero / tamano en el acto y
-			-- abre o cierra las opciones que cuelgan de la casilla.
+
+
 			if K.ApplyBigStatusText then K.ApplyBigStatusText(); end
 			if K._RefreshBigTextBody then K._RefreshBigTextBody(); end
 		elseif setting == "ShowCurrentValueOnly" then
-			-- Excluyente con el texto abreviado: si se prende esta, la otra
-			-- se apaga sola (formatean el mismo texto y se pisaban).
+
+
 			if boolValue and K.IsModuleEnabled and K.IsModuleEnabled("AbbreviatedStatus") then
 				if K.SetModuleEnabled then K.SetModuleEnabled("AbbreviatedStatus", false); end
 				if K.RefreshModuleCheckbox then K.RefreshModuleCheckbox("AbbreviatedStatus"); end
 			end
 			if K._SyncStatusTextExclusive then K._SyncStatusTextExclusive(); end
 			if K.ApplyHealthTextFormat then K.ApplyHealthTextFormat(); end
-			-- Y limpiar los anclajes del abreviado: si venias de tenerlo
-			-- activo, los textos podian quedar corridos.
+
+
 			if K.InvalidateAbbrevAnchors then K.InvalidateAbbrevAnchors(); end
 		elseif setting == "UnitFrameCustomTexture" then
-			-- Misma lista que el desplegable de tema: prender o apagar el
-			-- skin cambia lo mismo que cambiar de tema.
+
+
 			if K.ApplyUnitFrameTheme then K.ApplyUnitFrameTheme(); end
 			if K._UpdateThemeVisibility then K._UpdateThemeVisibility(); end
 		elseif setting == "ArenaFrameOn" then
@@ -738,10 +738,10 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 					end
 				end
 			end
-			-- OJO: antes esto llamaba a K.ToggleArenaFrames, que no existe en
-			-- ningun archivo. Al estar dentro de un "if K.X then" no tiraba
-			-- error: simplemente no hacia nada. Los nombres reales son estos
-			-- dos, los mismos que usa la pestana Arena.
+
+
+
+
 			if boolValue then
 				if K.EnableArenaFrameMod then K.EnableArenaFrameMod(); end
 			else
@@ -776,7 +776,7 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 				if K.ApplyArenaCustomPosition then K.ApplyArenaCustomPosition(false); end
 			end
 		elseif setting == "LockPositions" then
-			-- dragHintText removed; hint is in the static alert box
+
 		elseif setting == "PartyIndividualMove" then
 			if boolValue then
 				if K.ApplyIndividualPartyPositions then K.ApplyIndividualPartyPositions(); end
@@ -802,9 +802,9 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 	return check;
 end
 
--- ────────────────────────────────────────────────────────────────────────────
--- CreateSlider
--- ────────────────────────────────────────────────────────────────────────────
+
+
+
 local function FormatSliderValue(step, value)
 	if step >= 1 then      return string.format("%d",   value);
 	elseif step >= 0.1 then return string.format("%.1f", value);
@@ -844,9 +844,9 @@ local function CreateSlider(parent, labelText, setting, minVal, maxVal, step, xO
 	if sliderLow  then sliderLow:SetText(minVal); end
 	if sliderHigh then sliderHigh:SetText(maxVal); end
 
-	-- Este FontString es el valor "viejo" del slider. UIKit le pone encima
-	-- una cajita editable en el mismo lugar, asi que queda marcado para que
-	-- UIKit lo esconda: si no, se ven los dos numeros superpuestos.
+
+
+
 	local valueText = slider:CreateFontString(nil, "ARTWORK", "GameFontHighlight");
 	valueText:SetPoint("TOP", slider, "BOTTOM", 0, -5);
 	valueText:SetText(FormatSliderValue(step, slider:GetValue()));
@@ -855,13 +855,13 @@ local function CreateSlider(parent, labelText, setting, minVal, maxVal, step, xO
 	slider:SetScript("OnValueChanged", function(self, value)
 		if not value or value < minVal or value > maxVal then return; end
 		valueText:SetText(FormatSliderValue(step, value));
-		-- Puesta al dia desde afuera (Ctrl + rueda, un reset): el numero ya
-		-- esta guardado y aplicado, solo hay que mostrarlo.
+
+
 		if self._nufRefreshing then return; end
 		K.SaveConfig(setting, value);
 		if setting == "ActionBarScale" then
-			-- EL MAESTRO DE LAS TRES BARRAS: lo que cada una tuviera de
-			-- Ctrl + rueda se borra, si no esa no seguia al slider.
+
+
 			if K.ClearBarOwnScales then K.ClearBarOwnScales(); end
 			if K.ApplyActionBarScale then K.ApplyActionBarScale(value); end
 		end
@@ -871,9 +871,9 @@ local function CreateSlider(parent, labelText, setting, minVal, maxVal, step, xO
 	return slider;
 end
 
--- Pone los sliders de este panel al numero guardado (uno o todos). Lo
--- llama "Mover todo" al escalar con Ctrl + rueda, y los resets: antes el
--- de Action Bar Scale se quedaba en el numero viejo hasta cerrar y abrir.
+
+
+
 function K.RefreshPanelSliders(setting)
 	for _, s in ipairs(sliders) do
 		if s.setting and (not setting or s.setting == setting) then
@@ -887,9 +887,9 @@ function K.RefreshPanelSliders(setting)
 	end
 end
 
--- ────────────────────────────────────────────────────────────────────────────
--- DROPDOWN HELPER
--- ────────────────────────────────────────────────────────────────────────────
+
+
+
 local dropdownCount = 0;
 
 local function CreateDropdown(parent, labelText, setting, options, xOffset, yOffset, onChangeCallback)
@@ -908,12 +908,12 @@ local function CreateDropdown(parent, labelText, setting, options, xOffset, yOff
 	dd:SetPoint("TOPLEFT", -16, -16);
 	UIDropDownMenu_SetWidth(dd, 140);
 
-	-- EL CUADRO MUESTRA LA ETIQUETA, NO EL VALOR.
-	--
-	-- Antes ponia btn.value, que es la clave interna. Mientras clave y
-	-- etiqueta coincidian no se notaba, pero en espa�ol ya no coinciden
-	-- (y con la lista de fuentes el valor es un numero, asi que se
-	-- hubiera leido "10" en vez del nombre).
+
+
+
+
+
+
 	local function TextFor(value)
 		for _, opt in ipairs(options) do
 			if opt.value == value then return opt.text; end
@@ -947,11 +947,11 @@ local function CreateDropdown(parent, labelText, setting, options, xOffset, yOff
 	return container;
 end
 
--- ────────────────────────────────────────────────────────────────────────────
--- CreateThemeSwitcher
--- Builds the 3 pill-buttons that sit in the footer of the panel.
--- Returns a table of {id -> button} for ThemeManager registration.
--- ────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
 local function CreateThemeSwitcher()
 	if not K.GetPanelThemes then return {}; end
 	local THEMES, THEME_ORDER = K.GetPanelThemes();
@@ -962,17 +962,17 @@ local function CreateThemeSwitcher()
 	local gap  = 6;
 	local totalW = (#THEME_ORDER * btnW) + ((#THEME_ORDER - 1) * gap);
 
-	-- FILA DE ARRIBA DEL PIE, PEGADA A LA DERECHA.
-	--
-	-- Estaba centrada y dejaba los dos costados de esa fila sin usar,
-	-- mientras abajo los botones se pisaban por falta de ancho. Contra la
-	-- derecha libera toda la mitad izquierda, que ahora ocupan Profiles y
-	-- About.
+
+
+
+
+
+
 	local container = CreateFrame("Frame", nil, mainFrame);
 	container:SetSize(totalW + 14, btnH + 10);
 	container:SetPoint("BOTTOMRIGHT", mainFrame, "BOTTOMRIGHT", -20, 50);
 
-	-- Optional: dim label to the left
+
 	local label = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 	label:SetPoint("RIGHT", container, "LEFT", -6, 0);
 	label:SetText("|cff888888" .. (L["PANEL_STYLE"] or "Style") .. "|r");
@@ -982,10 +982,10 @@ local function CreateThemeSwitcher()
 		local btn = CreateFrame("Button", nil, container);
 		btn:SetSize(btnW, btnH);
 
-		-- Position relative to container left edge
+
 		btn:SetPoint("LEFT", container, "LEFT", (i-1) * (btnW + gap), 0);
 
-		-- Backdrop for pill shape
+
 		btn:SetBackdrop({
 			bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
 			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -996,7 +996,7 @@ local function CreateThemeSwitcher()
 		btn:SetBackdropBorderColor(
 			t.accent[1]*0.38, t.accent[2]*0.38, t.accent[3]*0.38, 0.55);
 
-		-- Colored dot (small circle indicator)
+
 		local dot = btn:CreateTexture(nil, "ARTWORK");
 		dot:SetSize(8, 8);
 		dot:SetPoint("LEFT", btn, "LEFT", 7, 0);
@@ -1005,20 +1005,20 @@ local function CreateThemeSwitcher()
 			t.accent[1]*0.48, t.accent[2]*0.48, t.accent[3]*0.48, 0.65);
 		btn.dot = dot;
 
-		-- Label text
+
 		local fs = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 		fs:SetPoint("LEFT", dot, "RIGHT", 5, 0);
 		fs:SetText(t.label);
 		fs:SetTextColor(0.48, 0.48, 0.48);
 		btn.labelFS = fs;
 
-		-- Hover
+
 		btn:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_TOP");
 			GameTooltip:SetText(t.label, t.accent[1], t.accent[2], t.accent[3]);
 			GameTooltip:AddLine(L["TIP_PANEL_THEME"] or "Switch panel theme", 0.7, 0.7, 0.7);
 			GameTooltip:Show();
-			-- Brighten border slightly on hover
+
 			if NidhausUnitFramesDB and NidhausUnitFramesDB.PanelTheme ~= id then
 				self:SetBackdropBorderColor(
 					t.accent[1]*0.65, t.accent[2]*0.65, t.accent[3]*0.65, 0.75);
@@ -1026,7 +1026,7 @@ local function CreateThemeSwitcher()
 		end);
 		btn:SetScript("OnLeave", function(self)
 			GameTooltip:Hide();
-			-- Restore dim (ThemeManager will set the correct state)
+
 			if NidhausUnitFramesDB and NidhausUnitFramesDB.PanelTheme ~= id then
 				self:SetBackdropBorderColor(
 					t.accent[1]*0.38, t.accent[2]*0.38, t.accent[3]*0.38, 0.55);
@@ -1043,12 +1043,12 @@ local function CreateThemeSwitcher()
 	return themeButtons;
 end
 
--- ────────────────────────────────────────────────────────────────────────────
--- Helpers compartidos por las secciones
--- ────────────────────────────────────────────────────────────────────────────
 
--- Checkbox que prende/apaga un MODULO (no un setting de C).
--- Se registra para que los espejos en otras secciones se sincronicen solos.
+
+
+
+
+
 local function CreateModuleCB(parent, label, moduleId, x, y, tip)
 	if not (K.Modules and K.Modules[moduleId]) then return nil; end
 	checkboxCount = checkboxCount + 1;
@@ -1079,7 +1079,7 @@ local function CreateModuleCB(parent, label, moduleId, x, y, tip)
 	return cb;
 end
 
--- Encabezado dorado de sub-bloque dentro de una seccion
+
 local function SectionHeader(parent, text, x, y)
 	local fs = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 	fs:SetPoint("TOPLEFT", x, y);
@@ -1087,7 +1087,7 @@ local function SectionHeader(parent, text, x, y)
 	return fs;
 end
 
--- Nota gris explicativa
+
 local function SectionNote(parent, text, x, y, width)
 	local fs = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
 	fs:SetPoint("TOPLEFT", x, y);
@@ -1097,20 +1097,20 @@ local function SectionNote(parent, text, x, y, width)
 	return fs;
 end
 
--- ────────────────────────────────────────────────────────────────────────────
--- PopulateTabs
--- ────────────────────────────────────────────────────────────────────────────
+
+
+
 local function PopulateTabs()
 
-	-- ══════════════════════════════════════════════════════════════════
-	-- PESTAÑA 1: INTERFACE
-	-- Lista lateral: General Settings / Action Bars / Minimap / Chat /
-	-- Mover Todo.
-	-- ══════════════════════════════════════════════════════════════════
+
+
+
+
+
 	local panel1 = tabPanels[1];
 
-	-- El ultimo item lleva el nombre de TU clase (Mago, Cazador, ...):
-	-- ahi van los modulos que solo esa clase puede usar.
+
+
 	local className = (K.GetClassSectionName and K.GetClassSectionName())
 		or (L["SIDE_CLASSOPT"] or "Class Options");
 
@@ -1121,44 +1121,44 @@ local function PopulateTabs()
 		{ name = L["SIDE_CHAT"]       or "Chat" },
 		{ name = L["SIDE_CASTBAR"]    or "Cast Bar" },
 		{ name = L["SIDE_TOOLTIP"]    or "Tooltip" },
-		-- Separador: de aca para abajo es todo de combate
+
 		{ separator = true },
 		{ name = L["TAB_PVP"] or "PvP" },
 		{ name = className },
-		-- MOVE EVERYTHING NO VA EN LA COLUMNA.
-		--
-		-- No es una seccion de ajustes como las de arriba: es una
-		-- herramienta que se abre, se acomodan los marcos y se cierra.
-		-- Su panel existe igual, pero se llega desde el boton del pie,
-		-- al lado de Reload UI y Reset Defaults, que es donde estan las
-		-- otras acciones.
+
+
+
+
+
+
+
 		{ name = L["SIDE_MOVEALL"] or "Move Everything", hidden = true },
 	});
 	panel1.sideList = sideUI;
 
-	-- Ojo con los indices: los separadores NO cuentan (ver CreateSideList),
-	-- asi que son correlativos con el orden de los items con nombre.
+
+
 	local paneGen, paneBars, paneMap, paneChat, paneCast, paneTip, panePvP, paneClass, paneMove =
 		sideUI[1], sideUI[2], sideUI[3], sideUI[4], sideUI[5], sideUI[6], sideUI[7],
 		sideUI[8], sideUI[9];
 
 	local xL = 16;
 
-	-- ── 1.1 GENERAL SETTINGS ──────────────────────────────────────
-	-- DOS COLUMNAS: antes era una sola tira vertical y habia que scrollear
-	-- media pantalla para llegar a lo de abajo. Ahora entra todo de una.
-	--   izquierda (xL) -> Appearance, Name Color, Utility
-	--   derecha  (xR) -> Action Bars, Unit Frames, Status Text
+
+
+
+
+
 	local xR = 300;
-	local gY = -14;   -- cursor de la columna izquierda
-	local rY = -14;   -- cursor de la columna derecha
+	local gY = -14;
+	local rY = -14;
 
 	SectionHeader(paneGen, L["HEADER_APPEARANCE"] or "Appearance", xL, gY);
 
 	gY = gY - 24;
 	CreateCheckBox(paneGen, L["CB_UNITFRAME_CUSTOM_TEX"], "UnitFrameCustomTexture", xL, gY);
 
-	-- Tema visual: solo tiene sentido con el skin custom encendido
+
 	gY = gY - 30;
 	local themeLabel = paneGen:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 	themeLabel:SetPoint("TOPLEFT", xL + 22, gY - 5);
@@ -1170,10 +1170,10 @@ local function PopulateTabs()
 		{text = L["THEME_OPT_ASURI"] or "Asuri", value = "Asuri"},
 		{text = L["THEME_OPT_PW"]    or "Compact", value = "Compact"},
 	};
-	-- Asuri es un tema aparte, no una variante de color: por eso tiene su
-	-- propio flag y gana sobre darkFrames cuando esta puesto.
-	-- Los tres flags son excluyentes; el orden decide quien gana si por
-	-- alguna razon quedaran dos puestos a la vez.
+
+
+
+
 	local currentTheme = C.AsuriFrames and "Asuri"
 		or (C.pwFrames and "Compact")
 		or (C.darkFrames and "Dark")
@@ -1194,23 +1194,23 @@ local function PopulateTabs()
 				UIDropDownMenu_SetText(themeDD, btn.value);
 				currentTheme = btn.value;
 
-				-- Se guardan los TRES, siempre. Poner solo el elegido dejaba
-				-- el anterior en true y quedaban dos temas compitiendo.
+
+
 				K.SaveConfig("darkFrames",  btn.value == "Dark");
 				K.SaveConfig("AsuriFrames", btn.value == "Asuri");
 				K.SaveConfig("pwFrames",    btn.value == "Compact");
 				if K._UpdateThemeVisibility then K._UpdateThemeVisibility(); end
 
-				-- TODOS los que leen el tema, no dos de seis. Ver
-				-- K.ApplyUnitFrameTheme en Core/API.lua: ahi esta la lista y
-				-- el por que este panel pedia /reload.
+
+
+
 				if K.ApplyUnitFrameTheme then
 					K.ApplyUnitFrameTheme();
 				else
 					if K.ApplyPlayerFrameSkin then K.ApplyPlayerFrameSkin(); end
 					if K.ApplyTargetFrameSkin then K.ApplyTargetFrameSkin(); end
 				end
-				-- Y sin cartel: el cambio se ve solo, no hay nada que avisar.
+
 			end;
 			info.checked = (opt.value == currentTheme);
 			UIDropDownMenu_AddButton(info, level);
@@ -1236,12 +1236,12 @@ local function PopulateTabs()
 	CreateCheckBox(paneGen, L["CB_CLASS_COLOR"],    "classColor",        xL, gY); gY = gY - 27;
 	CreateCheckBox(paneGen, L["CB_BACKDROP"],       "statusbarBackdrop", xL, gY); gY = gY - 27;
 	CreateCheckBox(paneGen, L["CB_HEALTH_PCT"],     "HealthPercentage",  xL, gY); gY = gY - 27;
-	-- El contador de segundos se fue a la seccion Cast Bar, que es donde
-	-- esta todo lo de la barra de casteo.
+
+
 	CreateCheckBox(paneGen, L["CB_ERROR_HIDE"] or "Hide Errors in Combat",
 		"ErrorHideInCombat", xL, gY);
 
-	-- ── Color de nombres ──
+
 	gY = gY - 40;
 	SectionHeader(paneGen, L["HEADER_NAME_COLOR"] or "Name Color", xL, gY);
 
@@ -1308,7 +1308,7 @@ local function PopulateTabs()
 		RefreshNameButtons();
 	end
 
-	-- ── Submenu: borde/contorno del nombre (se despliega debajo del color) ──
+
 	do
 		local borderOpts = {
 			{ value = "None",    text = L["NAME_BORDER_NONE"]    or "None" },
@@ -1350,13 +1350,13 @@ local function PopulateTabs()
 		UIDropDownMenu_SetText(borderDD, OptText(C.UnitNameBorder or "None"));
 	end
 
-	-- NOTA: aca habia un espejo de las 3 opciones de Action Bars.
-	-- Se saco: ya viven en su propia seccion del sidebar y tener el mismo
-	-- checkbox en dos lados solo confunde.
 
-	-- ══ COLUMNA IZQUIERDA (sigue) ════════════════════════════════
-	-- ── Contorno del color de clase (adaptado de RougeUI) ──
-	local coBody;   -- lo usa la seccion Utility de abajo para anclarse
+
+
+
+
+
+	local coBody;
 	if K.Modules and K.Modules["ClassOutline"] then
 		gY = gY - 44;
 		SectionHeader(paneGen, L["HEADER_CLASS_INDICATORS"] or "Class Colored Indicators", xL, gY);
@@ -1384,9 +1384,9 @@ local function PopulateTabs()
 		end);
 		if K.RegisterModuleCheckbox then K.RegisterModuleCheckbox("ClassOutline", coCB); end
 
-		-- Cuerpo desplegable: el slider del tamaño solo aparece con el
-		-- modulo encendido, y al cerrarse Utility sube solo (va anclado
-		-- al cuerpo, no a una coordenada).
+
+
+
 		gY = gY - 30;
 		coBody = K.UI.Collapsible(paneGen, xL + 8, gY, 210, 46, function()
 			return K.IsModuleEnabled and K.IsModuleEnabled("ClassOutline");
@@ -1411,9 +1411,9 @@ local function PopulateTabs()
 		coCB:HookScript("OnClick", function() coBody:Refresh(); end);
 	end
 
-	-- ── Automatizaciones (mudadas desde Extra Options) ──
-	-- Anclado al cuerpo de arriba cuando existe: asi acompaña el colapso
-	-- en vez de dejar el hueco.
+
+
+
 	local utilHdr = paneGen:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 	if coBody then
 		utilHdr:SetPoint("TOPLEFT", coBody, "BOTTOMLEFT", -8, -26);
@@ -1436,13 +1436,13 @@ local function PopulateTabs()
 		"TabBinderEnabled", 0, -78);
 	gY = gY - 140;
 
-	-- ══ COLUMNA DERECHA ══════════════════════════════════════════
-	-- ── Marcos (espejo de Frames) ──
-	-- Van PRIMERAS: son las dos que mas se tocan.
+
+
+
 	SectionHeader(paneGen, L["HEADER_FRAMES_MIRROR"] or "Unit Frames", xR, rY);
 
-	-- "Use Custom Positions" va PRIMERO: es la que habilita todo lo demas
-	-- de posicionamiento, asi que tenerla arriba del modo 3v3 se lee mejor.
+
+
 	rY = rY - 28;
 	if K.CreateCustomPosCheckbox then
 		K.CreateCustomPosCheckbox(paneGen, xR, rY);
@@ -1477,14 +1477,14 @@ local function PopulateTabs()
 		if K.ScheduleGlobalPositionReapply then K.ScheduleGlobalPositionReapply(); end
 	end);
 
-	-- ── Texto de vida/mana abreviado (AbbreviatedStatus) ──
-	-- El modulo se prende aca; el boton "Abrir" lleva a SU propio menu
-	-- (panel del addon en las Opciones de Interfaz de Blizzard).
+
+
+
 	rY = rY - 44;
 	SectionHeader(paneGen, L["HEADER_STATUS_TEXT"] or "Status Text", xR, rY);
 	rY = rY - 26;
-	-- Vida Completa (portado de ZyrokofArenaFrames): "33401" en vez de
-	-- "33401 / 33401". Vive aca porque es del mismo tema que el abreviado.
+
+
 	local fullValueCB = CreateCheckBox(paneGen, L["CB_FULL_VALUE"] or "Current value only (no /max)",
 		"ShowCurrentValueOnly", xR, rY);
 	K._FullValueCB = fullValueCB;
@@ -1494,12 +1494,12 @@ local function PopulateTabs()
 		"AbbreviatedStatus", xR, rY, L["TIP_ABBREV_STATUS"]);
 	local abbrevBody;
 	if abbrevCB then
-		-- El boton "Abrir" solo existe con el modulo prendido: apagado no hay
-		-- nada que configurar y el menu que abria quedaba huerfano.
-		-- Va en un cuerpo desplegable, igual que el resto del panel, asi que
-		-- ademas no deja el hueco al ocultarse.
-		--
-		-- El boton va DEBAJO de la casilla: en columna angosta no entra al lado.
+
+
+
+
+
+
 		abbrevBody = K.UI.Collapsible(paneGen, xR + 26, rY - 22, 200, 24, function()
 			return (K.IsModuleEnabled and K.IsModuleEnabled("AbbreviatedStatus")) or false;
 		end);
@@ -1509,9 +1509,9 @@ local function PopulateTabs()
 		abbrevBtn:SetPoint("TOPLEFT", 0, 0);
 		abbrevBtn:SetText(L["BTN_MODULE_OPEN"] or "Open");
 		abbrevBtn:SetScript("OnClick", function()
-			-- Segunda guarda: el boton ya esta escondido con el modulo
-			-- apagado, pero si alguna vez se lo llama desde otro lado que no
-			-- sea este click, que no abra un menu sin sentido.
+
+
+
 			if not (K.IsModuleEnabled and K.IsModuleEnabled("AbbreviatedStatus")) then return; end
 			if K.OpenAbbreviatedStatusMenu then K.OpenAbbreviatedStatusMenu(); end
 		end);
@@ -1519,24 +1519,24 @@ local function PopulateTabs()
 	end
 	K._AbbrevCB = abbrevCB;
 
-	-- Las dos formatean el MISMO texto de las barras. Con las dos activas se
-	-- pisan entre si y los numeros quedan corridos o a medio formatear, asi
-	-- que son excluyentes: una, la otra, o ninguna.
+
+
+
 	local function SyncStatusTextExclusive()
 		local full   = C.ShowCurrentValueOnly and true or false;
 		local abbrev = (K.IsModuleEnabled and K.IsModuleEnabled("AbbreviatedStatus")) or false;
 		local fv, ab = K._FullValueCB, K._AbbrevCB;
 		if fv then
-			-- EL TILDE, ADEMAS DE HABILITAR/DESHABILITAR.
-			--
-			-- Aca estaba el bug del toggle. Al prender el abreviado, su
-			-- onEnable apaga "Current value only" por dentro (son excluyentes)
-			-- pero NADIE destildaba la casilla. Quedaba marcada mintiendo:
-			-- el usuario la clickeaba para apagar algo que ya estaba apagado,
-			-- no pasaba nada visible, y parecia que se habia trabado.
-			--
-			-- Sincronizar el tilde con el estado real arregla los dos sentidos
-			-- de una, sin importar por que camino se haya cambiado.
+
+
+
+
+
+
+
+
+
+
 			fv:SetChecked(full);
 			if abbrev then fv:Disable(); else fv:Enable(); end
 			fv:SetAlpha(abbrev and 0.4 or 1);
@@ -1546,10 +1546,10 @@ local function PopulateTabs()
 			if full then ab:Disable(); else ab:Enable(); end
 			ab:SetAlpha(full and 0.4 or 1);
 		end
-		-- Mostrar u ocultar el boton "Abrir" segun el modulo. Se hace aca
-		-- porque esta funcion ya la llaman los dos caminos que pueden
-		-- cambiar el estado: el click en la casilla y el excluyente de
-		-- "Current value only".
+
+
+
+
 		if abbrevBody then abbrevBody:Refresh(); end
 	end
 	K._SyncStatusTextExclusive = SyncStatusTextExclusive;
@@ -1558,15 +1558,15 @@ local function PopulateTabs()
 	SyncStatusTextExclusive();
 	rY = rY - 6;
 
-	-- ── Texto grande (nombre arriba del marco) ──
-	-- Solo existe con el Custom Skin en Light, Dark o Compact: esos tres ya
-	-- son marcos gruesos, y lo unico que les falta es sacar el nombre de la
-	-- barra. Con Asuri o sin skin el bloque entero desaparece (lo guardado
-	-- se conserva y vuelve a valer al volver a uno de los tres).
-	--
-	--   [x] Big text (name above the frame)
-	--       [x] Custom text size
-	--           Health text [slider]   Mana text [slider]
+
+
+
+
+
+
+
+
+
 	local function BigThemeOK()
 		return C.UnitFrameCustomTexture == true and not C.AsuriFrames;
 	end
@@ -1587,7 +1587,7 @@ local function PopulateTabs()
 		"BigTextManaSize", 8, 16, 1, 146, 0);
 	for _, s in ipairs({ bigHP, bigMP }) do
 		s:SetWidth(122);
-		-- CreateSlider ya guarda el valor; esto lo aplica en el momento.
+
 		s:HookScript("OnValueChanged", function()
 			if K.RefreshBigStatusFonts then K.RefreshBigStatusFonts(); end
 		end);
@@ -1600,8 +1600,8 @@ local function PopulateTabs()
 	end
 	K._RefreshBigTextBody = RefreshBigTextBody;
 
-	-- Cambiar de tema (desplegable o Custom Skin) muestra u oculta el bloque.
-	-- Los dos caminos ya llaman a K._UpdateThemeVisibility.
+
+
 	local prevThemeVis = K._UpdateThemeVisibility;
 	K._UpdateThemeVisibility = function(...)
 		if prevThemeVis then prevThemeVis(...); end
@@ -1610,10 +1610,10 @@ local function PopulateTabs()
 	RefreshBigTextBody();
 	rY = rY - 156;
 
-	-- El alto scrolleable es el de la columna mas larga
+
 	sideUI.SetContentHeight(1, math.min(gY, rY) - 40);
 
-	-- ── 1.2 ACTION BARS ───────────────────────────────────────────
+
 	local bY = -14;
 	SectionHeader(paneBars, L["HEADER_BAR_STYLE"] or "Bar Style", xL, bY);
 
@@ -1645,7 +1645,7 @@ local function PopulateTabs()
 	local hideTexCB = CreateModuleCB(paneBars, L["CB_HIDE_BAR_TEXTURES"] or "Hide Action Bar Textures",
 		"HideActionBarTextures", xL, bY, L["TIP_HideBarTextures"]);
 
-	-- Con Unify o MiniBar activos, esos modos ya manejan las texturas.
+
 	local function UpdateHideTexVisibility()
 		if not hideTexCB then return; end
 		local anyBarActive = (C.UnifyActionBars == true) or (C.MiniBarEnabled == true);
@@ -1654,9 +1654,9 @@ local function PopulateTabs()
 	K._UpdateHideTexVisibility = UpdateHideTexVisibility;
 	UpdateHideTexVisibility();
 
-	-- ── Separacion entre botones ──
-	-- Solo tiene sentido con alguno de los dos modos de barras puesto: con
-	-- las barras de Blizzard sin tocar, el addon no reubica los botones.
+
+
+
 	bY = bY - 46;
 	local btnSpaceSlider = CreateSlider(paneBars, L["SLIDER_BUTTON_SPACE"] or "Buttons space",
 		"ActionBarButtonSpace", 0, 20, 1, xL + 4, bY);
@@ -1671,10 +1671,10 @@ local function PopulateTabs()
 	K._UpdateButtonSpaceVisibility = UpdateButtonSpaceVisibility;
 	UpdateButtonSpaceVisibility();
 
-	-- ── Textos y feedback ──
-	-- COLUMNA DERECHA: la izquierda tenia todo apilado y sobraba media
-	-- pantalla a la derecha. Asi Size y Position suben y entra todo sin
-	-- scroll. bT es el cursor de esta columna, independiente de bY.
+
+
+
+
 	local xBarR = 300;
 	local bT = -14;
 	SectionHeader(paneBars, L["HEADER_BAR_TEXT"] or "Text and Feedback", xBarR, bT);
@@ -1687,7 +1687,7 @@ local function PopulateTabs()
 	bT = bT - 26;
 	CreateCheckBox(paneBars, L["CB_HIDE_MACRO"] or "Hide Macro Names", "HideMacroText", xBarR, bT);
 
-	-- Barras laterales solo al pasar el mouse
+
 	bT = bT - 26;
 	do
 		CreateCheckBox(paneBars, L["CB_SIDEBARS_HOVER"] or "Show side bars on mouseover",
@@ -1707,7 +1707,7 @@ local function PopulateTabs()
 		cb:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 	end
 
-	-- Vuelve a la columna IZQUIERDA, justo debajo de Bar Style.
+
 	bY = bY - 46;
 	SectionHeader(paneBars, L["HEADER_BAR_SIZE"] or "Size", xL, bY);
 	bY = bY - 34;
@@ -1716,13 +1716,13 @@ local function PopulateTabs()
 		"ActionBarScale", 0.65, 1.14, 0.01, xL, bY);
 	abScaleSlider:SetWidth(210);
 
-	-- ── Mover las barras de accion ──
-	-- Usa el mismo modo mover que "Move Everything", pero acotado al grupo
-	-- "extra" (barras + cast bar), para no llenar la pantalla de cajas.
+
+
+
 	bY = bY - 60;
 	SectionHeader(paneBars, L["HEADER_BAR_MOVE"] or "Position", xL, bY);
 	bY = bY - 20;
-	-- Ancho recortado: la columna derecha empieza en 300.
+
 	SectionNote(paneBars, L["NOTE_BAR_MOVE"]
 		or "Turns on move mode: drag the blue box to place the action bars. Click again to lock and save.",
 		xL + 2, bY, 262);
@@ -1745,23 +1745,23 @@ local function PopulateTabs()
 	barResetBtn:SetSize(100, 22);
 	barResetBtn:SetText(L["BTN_MOVE_RESET"] or "Reset");
 	barResetBtn:SetScript("OnClick", function()
-		-- TODA la secuencia vive en Core/ResetManager.lua.
-		--
-		-- Antes estaba escrita aca, y otra parecida en la consola de Move
-		-- Everything. Se parecian pero no eran iguales: esta borraba los datos
-		-- y reponia escalas, pero no deshacia el aplanado de la pila, asi que
-		-- en pantalla no volvia nada a su lugar. Cada arreglo en una dejaba a
-		-- la otra a medio camino.
-		--
-		-- Los dos botones piden ahora lo mismo; este, acotado a las barras.
+
+
+
+
+
+
+
+
+
 		if K.ResetActionBars then K.ResetActionBars(); end
 	end);
 
-	-- La columna mas larga manda: si no, con la derecha mas alta que la
-	-- izquierda el scroll cortaba las ultimas opciones.
+
+
 	sideUI.SetContentHeight(2, math.min(bY, bT) - 60);
 
-	-- ── 1.3 MINIMAP ───────────────────────────────────────────────
+
 	local mmY = -14;
 	SectionHeader(paneMap, L["HEADER_MINIMAP_SHAPE"] or "Shape", xL, mmY);
 
@@ -1812,8 +1812,8 @@ local function PopulateTabs()
 				K.SaveConfig("MinimapSquare", self.value);
 				RefreshShape();
 				if K.ApplyMinimapSettings then K.ApplyMinimapSettings(); end
-				-- El Light Border solo vale en cuadrado, asi que el aviso
-				-- debajo del selector cambia con la forma.
+
+
 				if K._UpdateBorderNote then K._UpdateBorderNote(); end
 			end);
 			table.insert(shapeButtons, b);
@@ -1821,7 +1821,7 @@ local function PopulateTabs()
 		RefreshShape();
 	end
 
-	-- Checkbox de adornos: al tocarlos hay que reaplicar en caliente
+
 	local function MinimapCB(label, setting, y, tip)
 		CreateCheckBox(paneMap, label, setting, xL, y, tip);
 		local cb = checkboxes[#checkboxes];
@@ -1831,11 +1831,11 @@ local function PopulateTabs()
 		return cb;
 	end
 
-	-- ESTILO DE BORDE.
-	--
-	-- Va justo debajo del selector de forma porque es lo mismo: el aspecto
-	-- del marco del mapa. Son opciones excluyentes, asi que van en un
-	-- desplegable.
+
+
+
+
+
 	mmY = mmY - 40;
 	SectionHeader(paneMap, L["HEADER_MINIMAP_BORDER"] or "Border", xL, mmY);
 
@@ -1847,31 +1847,31 @@ local function PopulateTabs()
 			{ text = L["MINIMAP_BORDER_TOOLTIP"]  or "Tooltip",  value = "Tooltip"  },
 			{ text = L["MINIMAP_BORDER_THIN"]     or "Thin",     value = "Thin"     },
 			{ text = L["MINIMAP_BORDER_FLAT"]     or "Flat",     value = "Flat"     },
-			-- "Blizzard" se fue: era la misma que Default en las dos
-			-- formas -- el aro dorado en redondo, el borde de fabrica en
-			-- cuadrado -- asi que hacia elegir entre lo mismo y lo mismo.
-			--
-			-- En su lugar entra Lorti UI, que SI se ve distinto: oscurece
-			-- el aro en vez de reemplazarlo.
+
+
+
+
+
+
 			{ text = L["MINIMAP_BORDER_LORTI"] or "Lorti UI", value = "Lorti" },
 		};
 
-		-- Si Lorti tiene el minimapa prendido, el desplegable arranca
-		-- mostrando "Lorti UI": son la MISMA opcion en dos lugares y tienen
-		-- que decir lo mismo.
-		-- La regla vive en MinimapStyle (K.SyncLortiMinimap), que la aplica
-		-- tambien al cargar y en cada cambio; aca solo se la pide antes de
-		-- dibujar el desplegable.
+
+
+
+
+
+
 		if K.SyncLortiMinimap then pcall(K.SyncLortiMinimap); end
 
 		local borderDD = CreateDropdown(paneMap, L["DD_MINIMAP_BORDER"] or "Border style",
 			"MinimapBorderStyle", opts, xL, mmY, function(value)
-				-- SINCRONIZADO CON LORTI UI.
-				--
-				-- El borde de Lorti no es una textura de este modulo: lo
-				-- pinta el modulo Lorti UI desde su propia casilla. Elegirlo
-				-- aca prende esa casilla, y elegir cualquier otro la apaga,
-				-- para que no queden los dos dibujando a la vez.
+
+
+
+
+
+
 				local wantLorti = (value == "Lorti");
 				if (C.LortiUI_Minimap == true) ~= wantLorti then
 					C.LortiUI_Minimap = wantLorti;
@@ -1883,8 +1883,8 @@ local function PopulateTabs()
 				if K._UpdateBorderNote then K._UpdateBorderNote(); end
 			end);
 
-		-- El Light Border es un marco cuadrado: con la forma redonda no se
-		-- dibuja. En vez de sacarlo de la lista, se avisa aca.
+
+
 		mmY = mmY - 46;
 		local note = SectionNote(paneMap, "", xL + 2, mmY, 260);
 		local function UpdateBorderNote()
@@ -1901,8 +1901,8 @@ local function PopulateTabs()
 		K._UpdateBorderNote = UpdateBorderNote;
 		UpdateBorderNote();
 
-		-- Para que la casilla "Minimap" de Lorti UI (pestana Addons) pueda
-		-- mover este desplegable: son la misma opcion.
+
+
 		K.RefreshMinimapBorderDropdown = function()
 			local dd = borderDD and borderDD.dropdown;
 			if not dd then return; end
@@ -1928,30 +1928,30 @@ local function PopulateTabs()
 	MinimapCB(L["CB_MINIMAP_HIDE_WORLDMAP"] or "Hide World Map",      "MinimapHideWorldMap", mmY); mmY = mmY - 26;
 	MinimapCB(L["CB_MINIMAP_WHEEL"]         or "Mouse Wheel Zoom",    "MinimapWheelZoom",    mmY);
 
-	-- ── COLUMNA DERECHA ──
-	--
-	-- Forma, borde y adornos ocupaban una sola columna y dejaban media
-	-- pantalla vacia a la derecha, con la ultima seccion cayendose abajo
-	-- del scroll. Iconos y tamaño se mudan a la segunda columna: entra
-	-- todo de una y no hace falta scrollear.
+
+
+
+
+
+
 	local mmR = -14;
 	SectionHeader(paneMap, L["HEADER_MINIMAP_ICONS"] or "Addon Icons", xR, mmR);
 
 	mmR = mmR - 26;
 	do
-		-- TRES CASILLAS EXCLUYENTES.
-		--
-		-- Cuando se ven los iconos es UNA pregunta con tres respuestas, no
-		-- tres ajustes sueltos: por eso al marcar una se destildan las otras
-		-- dos y siempre queda exactamente una puesta. Antes eran casillas
-		-- independientes y se podian dejar en combinaciones que se
-		-- contradecian.
-		--
-		-- Se arman a mano y no con CreateCheckBox porque ese ayudante da por
-		-- sentado que el ajuste es un booleano, y este guarda un texto.
-		--
-		-- MIGRACION: quien tenia "ocultar iconos" tildado arranca en Nunca,
-		-- y quien tenia el hover prendido arranca en Con el mouse.
+
+
+
+
+
+
+
+
+
+
+
+
+
 		if C.MinimapAddonIcons == nil or C.MinimapAddonIcons == "" then
 			local v = "Always";
 			if C.MinimapIconsOnHover == true then v = "Hover";
@@ -1976,8 +1976,8 @@ local function PopulateTabs()
 			if fs then fs:SetText(label); end
 			cb.value = value;
 			cb:SetScript("OnClick", function(self)
-				-- Volver a apretar la que ya estaba no la apaga: siempre hay
-				-- una elegida, y RefreshIconBoxes la vuelve a marcar.
+
+
 				if K.SaveConfig then K.SaveConfig("MinimapAddonIcons", self.value); end
 				C.MinimapAddonIcons = self.value;
 				RefreshIconBoxes();
@@ -1992,9 +1992,9 @@ local function PopulateTabs()
 		RefreshIconBoxes();
 	end
 
-	-- El boton es un CONTROL, no un estado: sirva cual sirva el modo de
-	-- arriba, es la forma de esconderlos sin abrir este panel. Por eso va
-	-- suelto y no colgando de nada.
+
+
+
 	mmR = mmR - 36;
 	CreateModuleCB(paneMap, L["MOD_MINIMAP_TOGGLE"] or "Minimap Icon Toggle",
 		"MinimapIconToggle", xR, mmR, L["MOD_MINIMAP_TOGGLE_DESC"]);
@@ -2018,10 +2018,10 @@ local function PopulateTabs()
 		if K.ApplyMinimapScale then K.ApplyMinimapScale(); end
 	end);
 
-	-- Manda la columna mas larga, si no el scroll corta la de abajo.
+
 	sideUI.SetContentHeight(3, math.min(mmY, mmR) - 60);
 
-	-- ── 1.4 CHAT ──────────────────────────────────────────────────
+
 	local cY = -14;
 	SectionHeader(paneChat, L["HEADER_CHAT"] or "Chat", xL, cY);
 
@@ -2041,9 +2041,9 @@ local function PopulateTabs()
 
 	sideUI.SetContentHeight(4, cY - 40);
 
-	-- ── 1.5 CAST BAR ──────────────────────────────────────────────
-	-- Todo lo de la barra de casteo junto. Antes el contador de segundos
-	-- estaba perdido en General, entre cosas que no tienen nada que ver.
+
+
+
 	local kY = -14;
 	SectionHeader(paneCast, L["HEADER_CASTBAR"] or "Cast Bar", xL, kY);
 
@@ -2053,7 +2053,7 @@ local function PopulateTabs()
 	kY = kY - 34;
 	K.UI.Separator(paneCast, xL, kY, 440);
 
-	-- ── Barra custom (port de pw_unitframes) ──
+
 	kY = kY - 18;
 	local castPWCB = CreateCheckBox(paneCast, L["CB_CASTBAR_PW"] or "Custom Cast Bar",
 		"CastBarPWEnabled", xL, kY);
@@ -2069,8 +2069,8 @@ local function PopulateTabs()
 	local castDarkCB = CreateCheckBox(paneCast, L["CB_CASTBAR_PW_DARK"] or "Dark border",
 		"CastBarPWDark", xL + 16, kY);
 
-	-- A que barras se les aplica el estilo custom. La del jugador va
-	-- siempre; estas dos se pueden dejar con el aspecto de Blizzard.
+
+
 	kY = kY - 26;
 	local castTargetCB = CreateCheckBox(paneCast, L["CB_CASTBAR_PW_TARGET"] or "Apply to target",
 		"CastBarPWTarget", xL + 16, kY);
@@ -2086,12 +2086,12 @@ local function PopulateTabs()
 		if K.ApplyCastBarPW then K.ApplyCastBarPW(); end
 	end);
 
-	-- La del foco vino de Frames > General. Alla estaba entre las escalas
-	-- de los MARCOS, y es una barra de casteo. Ahora las dos escalas de
-	-- barras de casteo estan juntas, que es donde uno las busca.
-	--
-	-- Ojo: esta NO depende del modo custom, funciona con la barra de
-	-- Blizzard igual. Por eso queda afuera del grupo que se apaga.
+
+
+
+
+
+
 	kY = kY - 56;
 	local focusBarSlider = CreateSlider(paneCast, L["SLIDER_FOCUS_SPELLBAR"] or "Focus Cast Bar Scale",
 		"FocusSpellBarScale", 0.5, 1.5, 0.05, xL + 20, kY);
@@ -2103,15 +2103,15 @@ local function PopulateTabs()
 	local castScaleSlider = CreateSlider(paneCast, L["SLIDER_CASTBAR_PW_SCALE"] or "Cast Bar Scale",
 		"CastBarPWScale", 0.5, 2.0, 0.05, xL + 20, kY);
 	castScaleSlider:HookScript("OnValueChanged", function(self, value)
-		-- Ojo: NO llamamos a SetScale desde aca. La escala de la barra del
-		-- jugador la guarda Move Everything, y si la escribieramos por
-		-- afuera el proximo login volveria al valor viejo y pareceria que
-		-- el slider no guarda nada.
+
+
+
+
 		if K.ApplyCastBarPWScale then K.ApplyCastBarPWScale(value); end
 	end);
 
-	-- Ctrl + rueda sobre la barra en el modo mover cambia el mismo numero:
-	-- que el slider lo muestre al toque, sin tener que cerrar y abrir.
+
+
 	function K.RefreshCastBarScaleSlider()
 		local v = C.CastBarPWScale;
 		if type(v) ~= "number" then return; end
@@ -2120,8 +2120,8 @@ local function PopulateTabs()
 		end
 	end
 
-	-- Los tres controles de abajo son del modo custom: sin el puesto no
-	-- hacen nada, asi que se apagan en vez de quedar clickeables al pedo.
+
+
 	local function UpdateCastBarVisibility()
 		local on = C.CastBarPWEnabled and true or false;
 		for _, obj in ipairs({ castIconCB, castDarkCB, castTargetCB, castFocusCB,
@@ -2129,7 +2129,7 @@ local function PopulateTabs()
 			if on then obj:Enable(); else obj:Disable(); end
 			obj:SetAlpha(on and 1 or 0.4);
 		end
-		-- El tamaño del icono solo importa si el icono se muestra.
+
 		if on and C.CastBarPWIcon == false then
 			castIconSlider:Disable();
 			castIconSlider:SetAlpha(0.4);
@@ -2138,15 +2138,15 @@ local function PopulateTabs()
 	K._UpdateCastBarVisibility = UpdateCastBarVisibility;
 	UpdateCastBarVisibility();
 
-	-- El checkbox maestro tambien tiene que repintar a los hijos: el
-	-- despachador lo llama, pero si algun dia se lo saltea, esto lo cubre.
+
+
 	castPWCB:HookScript("OnClick", UpdateCastBarVisibility);
 
 	sideUI.SetContentHeight(5, kY - 70);
 
-	-- ── 1.6 TOOLTIP ───────────────────────────────────────────────
-	-- Tres agregados al tooltip. La logica esta en
-	-- Modules2/TooltipExtras.lua; aca solo estan los interruptores.
+
+
+
 	local tY = -14;
 	SectionHeader(paneTip, L["HEADER_TOOLTIP"] or "Tooltip", xL, tY);
 
@@ -2179,7 +2179,7 @@ local function PopulateTabs()
 
 	sideUI.SetContentHeight(6, tY - 60);
 
-	-- ── 1.6 MOVER TODO ────────────────────────────────────────────
+
 	local vY = -14;
 	SectionHeader(paneMove, L["HEADER_MOVE_ALL"] or "Move Everything", xL, vY);
 
@@ -2206,15 +2206,15 @@ local function PopulateTabs()
 	unlockAllReset:SetSize(120, 24);
 	unlockAllReset:SetText(L["BTN_MOVE_RESET"] or "Reset");
 	unlockAllReset:SetScript("OnClick", function()
-		-- Por ResetManager, igual que los otros botones de reset: la
-		-- secuencia completa vive en un solo lugar.
+
+
 		if K.ResetEverything then K.ResetEverything();
 		elseif K.ResetGlobalPositions then K.ResetGlobalPositions(); end
 	end);
 
-	-- ── Cuadricula ──
-	-- Tres botones en vez de un slider: son tres valores y nada mas, y asi
-	-- se ve de un vistazo cual esta puesto.
+
+
+
 	vY = vY - 34;
 	local gridLbl = paneMove:CreateFontString(nil, "ARTWORK", "GameFontHighlight");
 	gridLbl:SetPoint("TOPLEFT", xL + 2, vY);
@@ -2231,7 +2231,7 @@ local function PopulateTabs()
 	local function RefreshGridButtons()
 		local cur = (C and C.MoveGridStep) or 10;
 		for step, b in pairs(gridBtns) do
-			-- El elegido queda hundido; los otros, normales.
+
 			if step == cur then b:LockHighlight(); else b:UnlockHighlight(); end
 		end
 	end
@@ -2243,9 +2243,9 @@ local function PopulateTabs()
 		b:SetSize(52, 22);
 		b:SetText("x" .. step);
 		b:SetScript("OnClick", function()
-			-- Mismo comportamiento que los botones de la consola del modo
-			-- mover: el que ya esta puesto se apaga y queda movimiento
-			-- libre. Son los mismos tres botones en dos lugares.
+
+
+
 			local cur  = (C and C.MoveGridStep) or 10;
 			local want = (cur == step) and 0 or step;
 			if K.SaveConfig then K.SaveConfig("MoveGridStep", want); end
@@ -2266,15 +2266,15 @@ local function PopulateTabs()
 	RefreshGridButtons();
 	K._RefreshMoveGridButtons = RefreshGridButtons;
 
-	-- Espejos utiles: se tocan mucho junto con el modo mover
+
 	vY = vY - 92;
 	K.UI.Separator(paneMove, xL, vY + 12, 440);
 
-	-- "Use Custom Positions" VA PRIMERO.
-	--
-	-- No es solo orden visual: el modo 3v3 depende de ella (mira
-	-- K.Update3v3Enabled), asi que leerla despues del efecto que habilita
-	-- confundia. Arriba la causa, abajo la consecuencia.
+
+
+
+
+
 	vY = vY - 8;
 	if K.CreateCustomPosCheckbox then
 		K.CreateCustomPosCheckbox(paneMove, xL, vY);
@@ -2309,40 +2309,40 @@ local function PopulateTabs()
 		if K.ScheduleGlobalPositionReapply then K.ScheduleGlobalPositionReapply(); end
 	end);
 
-	-- Move Everything paso a ser el ultimo item de la lista (9).
+
 	sideUI.SetContentHeight(9, vY - 50);
 
-	-- ── 1.6 PVP  (comun a todas las clases) ───────────────────────
+
 	if K.BuildPvPSection then
 		sideUI.SetContentHeight(7, K.BuildPvPSection(panePvP) - 30);
 	end
 
-	-- ── 1.7 <CLASE DETECTADA> ─────────────────────────────────────
+
 	if K.BuildClassSection then
 		sideUI.SetContentHeight(8, K.BuildClassSection(paneClass) - 30);
 	end
 
-	-- ══════════════════════════════════════════════════════════════════
-	-- PESTAÑA 2: FRAMES
-	-- ══════════════════════════════════════════════════════════════════
+
+
+
 	if K.PopulateFramesTab then K.PopulateFramesTab(tabPanels[2]); end
 
-	-- ══════════════════════════════════════════════════════════════════
-	-- PESTAÑA 3: ARENA
-	-- ══════════════════════════════════════════════════════════════════
+
+
+
 	if K.PopulateArenaTab then
 		showArenaBtn = K.PopulateArenaTab(tabPanels[3]);
 	end
 
-	-- ══════════════════════════════════════════════════════════════════
-	-- PESTAÑA 4: ADDONS  (antes "Modules")
-	-- Agrupados por categoria en la lista lateral, en vez de una lista
-	-- plana de 12 modulos donde no se encuentra nada.
-	-- ══════════════════════════════════════════════════════════════════
+
+
+
+
+
 	local panel4 = tabPanels[4];
 
-	-- UNA sola lista, sin submenu lateral: el usuario no quiere categorias.
-	-- El orden y que entra lo decide K.GetAddonTabIds (Core/ModuleManager).
+
+
 	local allIds = (K.GetAddonTabIds and K.GetAddonTabIds()) or {};
 
 	local addonScroll = CreateFrame("ScrollFrame", "NidhausAddonsScroll", panel4, "UIPanelScrollFrameTemplate");
@@ -2380,11 +2380,11 @@ local function PopulateTabs()
 				local container = CreateFrame("Frame", "NidhausModuleContainer_"..id, pane);
 				container:SetWidth(548);
 
-				-- Linea fina arriba de cada fila (menos la primera).
-				--
-				-- La lista era un bloque de texto corrido: nombre, descripcion,
-				-- nombre, descripcion... y no se veia donde terminaba un modulo
-				-- y empezaba el otro. La linea cuesta un pixel y ordena todo.
+
+
+
+
+
 				if prevContainer then
 					local sep = container:CreateTexture(nil, "ARTWORK");
 					sep:SetTexture(1, 1, 1, 0.07);
@@ -2437,17 +2437,17 @@ local function PopulateTabs()
 
 				if mod.configFunc then
 					local cfgBtn = CreateFrame("Button", nil, container, "UIPanelButtonTemplate");
-					-- PEGADO A LA DERECHA, no a 290 px del checkbox.
-					--
-					-- Con el offset fijo el boton caia en medio de la fila y
-					-- se le montaba a la descripcion de los modulos de nombre
-					-- largo. Anclado al borde derecho queda una columna prolija
-					-- de botones y la descripcion tiene todo el ancho restante.
+
+
+
+
+
+
 					cfgBtn:SetSize(90, 20);
 					cfgBtn:SetPoint("TOPRIGHT", container, "TOPRIGHT", -10, -1);
 					cfgBtn:SetText(mod.configLabel or (L["BTN_MODULE_CONFIG"] or "Configure"));
-					-- Para que el modulo pueda cambiarle el texto segun su estado
-					-- (Mover / Bloquear). Ver K.SetModuleConfigLabel.
+
+
 					if K.RegisterModuleConfigButton then K.RegisterModuleConfigButton(id, cfgBtn); end
 					cfgBtn:SetScript("OnClick", function()
 						local ok, err = pcall(mod.configFunc);
@@ -2470,20 +2470,20 @@ local function PopulateTabs()
 						"GameFontHighlightSmall");
 					descText:SetPoint("TOPLEFT", check, "BOTTOMLEFT", 26, 2);
 					descText:SetText("|cff888888"..mod.desc.."|r");
-					-- El ancho llega hasta antes de la columna de botones.
+
 					descText:SetWidth(mod.configFunc and 400 or 500);
 					descText:SetJustifyH("LEFT");
 
-					-- ALTO MEDIDO, NO ADIVINADO.
-					--
-					-- Estaba fijo en 40, que alcanza para una linea de
-					-- descripcion. Los modulos con descripcion larga (DTSU,
-					-- Dungeon Finder Roles) ocupan dos o tres, y se le metian
-					-- encima a la fila de abajo o al slider de escala.
-					--
-					-- GetStringHeight devuelve el alto REAL despues de partir
-					-- el texto al ancho de arriba, asi que la fila mide lo que
-					-- tiene que medir sea cual sea el largo.
+
+
+
+
+
+
+
+
+
+
 					local h = descText:GetStringHeight() or 12;
 					baseHeight = 26 + h + 6;
 					if baseHeight < 40 then baseHeight = 40; end
@@ -2494,13 +2494,13 @@ local function PopulateTabs()
 				local subUIHeight = 0;
 				container._collapsed = false;
 
-				-- ESCALA AUTOMATICA: si el modulo se registro con
-				-- K.RegisterScalable, el panel le dibuja el slider solo.
-				-- Asi no hay que escribir UI a mano para cada uno.
-				-- OJO: el alto de este slider NO se suma a baseHeight. Antes si,
-				-- y por eso el slider quedaba siempre a la vista aunque el
-				-- modulo estuviera apagado (el caso de DTSU). Ahora lo maneja
-				-- UpdateContainerState junto con el resto de sub-opciones.
+
+
+
+
+
+
+
 				local autoScaleH = 0;
 				if K.IsScalable and K.IsScalable(id) and K.UI and K.UI.ScaleSlider then
 					local sc = K.UI.ScaleSlider(container, id, 30, -baseHeight - 14, 180);
@@ -2604,8 +2604,8 @@ local function PopulateTabs()
 						end
 					end
 
-					-- El slider de escala se despliega con el checkbox, igual que
-					-- el resto de las opciones del modulo.
+
+
 					local scaleH = 0;
 					if container._autoScale then
 						if on and not container._collapsed then
@@ -2641,27 +2641,27 @@ local function PopulateTabs()
 
 	UpdateModulesScrollHeight();
 
-	-- ══════════════════════════════════════════════════════════════════
-	-- PESTAÑA 5: PROFILES
-	-- ══════════════════════════════════════════════════════════════════
+
+
+
 	if K.PopulateExtraTab then K.PopulateExtraTab(tabPanels[5]); end
-	-- Panel 6: About. Mismo contenido que tenia la ventana flotante, pero
-	-- dentro del panel, asi hereda el tema y el tamaño.
+
+
 	if K.PopulateAboutTab then K.PopulateAboutTab(tabPanels[6]); end
 end
 
--- ────────────────────────────────────────────────────────────────────────────
--- CreateBottomButtons
--- ────────────────────────────────────────────────────────────────────────────
+
+
+
 local function CreateBottomButtons()
-	-- Left buttons
-	-- Footer: solo Close mantiene el tamaño completo; el resto son
-	-- acciones secundarias, mas chicas y atenuadas para no competir.
-	-- El 0.75 lo pone el TEMA, no este archivo.
-	--
-	-- El boton de Blizzard ya viene atenuado por su propio arte, y
-	-- bajarle el alfa encima lo dejaba lavado y rojizo. El tema Blizzard
-	-- pide 1.0; los otros tres siguen en 0.75.
+
+
+
+
+
+
+
+
 	local function FooterAlpha()
 		local t = K.GetActiveTheme and K.GetActiveTheme();
 		return (t and t.footerAlpha) or 0.75;
@@ -2690,36 +2690,36 @@ local function CreateBottomButtons()
 	end);
 	MakeSecondary(resetButton);
 
-	-- ══ PIE, DOS FILAS ═══════════════════════════════════════════
-	--
-	--   fila de arriba:  [ Move Everything ]              [ Estilo ]
-	--   fila de abajo:   Reload UI  Reset Defaults  Profiles  About ... Close
-	--
-	-- Move Everything sube solo a la fila de arriba: es la accion que mas
-	-- se usa desde aca y compartir fila con Reload UI y Reset Defaults la
-	-- dejaba perdida entre botones que se aprietan una vez cada tanto.
 
-	-- Right buttons
+
+
+
+
+
+
+
+
+
 	local closeButton = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate");
 	closeButton:SetPoint("BOTTOMRIGHT", -20, 18);
 	closeButton:SetSize(120, 25);
 	closeButton:SetText(L["BTN_CLOSE"]);
 	closeButton:SetScript("OnClick", function() mainFrame:Hide(); end);
 
-	-- "Show Config" ya no esta.
-	--
-	-- Volcaba las ~200 opciones guardadas por el chat, comparandolas contra
-	-- los valores en memoria. Es una herramienta de diagnostico, no algo de
-	-- uso diario, y ocupaba un lugar caro del pie. Sigue disponible con
-	-- /nufconfig db para cuando haga falta.
 
-	-- ── Fila de abajo: siguen a Reload UI y Reset Defaults ──
+
+
+
+
+
+
+
 	local profilesButton = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate");
 	profilesButton:SetPoint("LEFT", resetButton, "RIGHT", 8, 0);
 	profilesButton:SetText(L["TAB_PROFILES"] or "Profiles");
-	-- Ancho segun el texto y no 100 fijos: "Profiles / MySlot" no entra,
-	-- y en ingles y en espanol no miden lo mismo. El boton de About cuelga
-	-- de este, asi que se corre solo.
+
+
+
 	do
 		local fs = profilesButton:GetFontString();
 		local w  = (fs and fs:GetStringWidth() or 0) + 26;
@@ -2731,12 +2731,12 @@ local function CreateBottomButtons()
 		if K.SelectPanelTab then K.SelectPanelTab(5); end
 	end);
 
-	-- About vuelve a ser una PESTAÑA, no una ventana flotante.
-	--
-	-- Como ventana aparte se dibujaba encima del panel, con su propio
-	-- backdrop y sin heredar el tema: quedaba fuera de tono y tapaba lo que
-	-- estabas mirando. Ahora salta al panel 6, que existe pero no ocupa
-	-- lugar en la barra de arriba.
+
+
+
+
+
+
 	local aboutButton = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate");
 	aboutButton:SetPoint("LEFT", profilesButton, "RIGHT", 8, 0);
 	aboutButton:SetSize(100, 22);
@@ -2746,16 +2746,16 @@ local function CreateBottomButtons()
 		if K.SelectPanelTab then K.SelectPanelTab(6); end
 	end);
 
-	-- ── MOVE EVERYTHING ──────────────────────────────────────────
-	--
-	-- Recuadro propio en vez de UIPanelButtonTemplate, con el mismo look
-	-- que el "Lock frame" de EquippedWeapons: fondo azul oscuro y borde
-	-- de 1 px. En 3.3.5a los Button no aceptan SetBackdrop, asi que el
-	-- borde son cuatro texturas WHITE8X8 de un pixel.
-	--
-	-- Abre el modo mover y cierra el panel: antes solo saltaba a su
-	-- seccion y ahi habia que apretar otro boton mas, con el panel
-	-- tapando justo los marcos que ibas a acomodar.
+
+
+
+
+
+
+
+
+
+
 	local moveBox = CreateFrame("Button", "NUF_MoveEverythingBox", mainFrame);
 	moveBox:SetPoint("BOTTOMLEFT", mainFrame, "BOTTOMLEFT", 20, 50);
 	moveBox:SetSize(158, 24);
@@ -2815,7 +2815,7 @@ local function CreateBottomButtons()
 		if K.ToggleGlobalUnlock then K.ToggleGlobalUnlock(); end
 	end);
 
-	-- ── Popup dialogs ─────────────────────────────────────────
+
 	StaticPopupDialogs["NIDHAUS_RESET_CONFIRM"] = {
 		text           = L["RESET_CONFIRM"],
 		button1        = L["RESET_BTN_YES"],
@@ -2846,17 +2846,17 @@ local function CreateBottomButtons()
 	};
 end
 
--- ────────────────────────────────────────────────────────────────────────────
--- InitializePanel
--- ────────────────────────────────────────────────────────────────────────────
+
+
+
 local function InitializePanel()
 	CreateMainFrame();
 	CreateTabs();
 
-	-- DIFERIDO: el contenido de las pestañas se arma la PRIMERA vez que se
-	-- abre el panel, no al loguear. Construir TODO en PLAYER_LOGIN es lo que
-	-- estaba colgando el juego al entrar. Asi el login queda liviano y, si el
-	-- bug esta en el panel, recien aparece al abrirlo (no al jugar).
+
+
+
+
 	local built = false;
 	mainFrame:HookScript("OnShow", function()
 		if built then return; end
@@ -2865,9 +2865,9 @@ local function InitializePanel()
 		if not ok then
 			print("|cffFF0000NUF:|r error armando el panel: " .. tostring(err));
 		end
-		-- Todos los sliders del addon reciben la cajita con el valor debajo.
-		-- Se hace en UNA pasada al final en vez de slider por slider: son 17
-		-- repartidos en 9 archivos y varios se crean dentro de submenus.
+
+
+
 		if K.UI and K.UI.RestyleSliders then
 			pcall(K.UI.RestyleSliders, mainFrame);
 		end
@@ -2876,7 +2876,7 @@ local function InitializePanel()
 
 	CreateBottomButtons();
 
-	-- ── Build theme switcher and register frames with ThemeManager ──
+
 	local themeButtons = CreateThemeSwitcher();
 
 	if K.RegisterThemeFrames then
@@ -2891,24 +2891,24 @@ local function InitializePanel()
 		});
 	end
 
-	-- ── Apply the saved (or default) panel theme ─────────────
+
 	if K.LoadSavedTheme then
 		K.LoadSavedTheme();
 	end
 end
 
--- ────────────────────────────────────────────────────────────────────────────
--- Initialization trigger
--- ────────────────────────────────────────────────────────────────────────────
--- DOS CAMINOS, PORQUE ESTE ADDON PUEDE CARGAR DESPUES DEL LOGIN.
---
--- Antes esto esperaba PLAYER_LOGIN y listo. Ahora el panel es LoadOnDemand:
--- cuando lo pedis con /nuf, ese evento YA PASO y no va a volver a dispararse,
--- asi que la ventana no se construia nunca.
---
--- IsLoggedIn() responde justamente eso: si ya estamos adentro, se arma en el
--- acto; si el addon se cargo antes (por ejemplo si alguien lo deja activado a
--- mano), se espera al evento como toda la vida.
+
+
+
+
+
+
+
+
+
+
+
+
 if IsLoggedIn and IsLoggedIn() then
 	InitializePanel();
 else
@@ -2930,7 +2930,7 @@ SlashCmdList["NUFCONFIG"] = function(msg)
 	if msg == "db" or msg == "database" then
 		K.ShowConfig();
 	elseif msg == "reset" or msg == "size" then
-		-- Rescate: devuelve la ventana a 820x620 y al centro de la pantalla.
+
 		if K.ResetOptionsPanelSize then
 			K.ResetOptionsPanelSize();
 			print("|cff4FC3F7NUF:|r " .. (L["PANEL_SIZE_RESET"]

@@ -4,14 +4,14 @@ local K, C, L = unpack(ns);
 local _G, unpack = _G, unpack;
 local hooksecurefunc = hooksecurefunc;
 
--- ── Fuente "Blizzard" ─────────────────────────────────────────
--- Copia la fuente y los flags REALES del FontObject TextStatusBarText,
--- el que usan los numeros de las barras de vida y mana.
---
--- Nada se hardcodea a proposito: primero se asumio que ese texto solo
--- llevaba sombra y ningun flag de contorno, y el resultado se veia como
--- un sombreado, nada que ver con el borde negro del original. Leyendo el
--- FontObject sale igual, sea cual sea la definicion del cliente.
+
+
+
+
+
+
+
+
 local BLIZZ_FONT, BLIZZ_FLAGS;
 local function BlizzStatusFont()
 	if BLIZZ_FONT then return BLIZZ_FONT, BLIZZ_FLAGS; end
@@ -29,37 +29,37 @@ local NidhausPartyFrame;
 local Path;
 local isInitialized = false;
 
---	Party frame
+
 local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 	local partyFrame = _G["PartyMemberFrame"..id];
 	if not partyFrame then return; end
 	
-	-- ── Escala ───────────────────────────────────────────────────
-	-- El modo 3v3 tiene su PROPIA escala por miembro (1.5 para los dos
-	-- primeros, 1.3 para los otros). Aplicar C.PartyFrameScale a ciegas la
-	-- pisaba, y como esta funcion la llama K.RestylePartyFrames — o sea el
-	-- desplegable de contorno y el slider de tamaño de texto — tocar la
-	-- FUENTE te achicaba los marcos del grupo.
-	--
-	-- Es el mismo problema que ya tenia el bloque de posicion aca abajo: la
-	-- funcion de ESTILO no puede decidir cosas que son de otro modo. Se
-	-- respeta la misma precedencia.
+
+
+
+
+
+
+
+
+
+
 	local scale = C.PartyFrameScale;
 	if C.PartyMode3v3 and K.Get3v3Scale then
 		scale = K.Get3v3Scale(id);
 	end
-	-- EN COMBATE NO. PartyMemberFrame es un marco protegido: cambiarle la
-	-- escala peleando lo corta el juego ("An action was blocked in combat
-	-- because of taint from Nidhaus_UnitFrames - PartyMemberFrame1:SetScale()"
-	-- en el taint.log, al recargar en un BG). RestylePartyFrames la vuelve a
-	-- pedir al terminar la pelea.
+
+
+
+
+
 	if type(scale) == "number" and scale > 0 and scale <= 3 and not InCombatLockdown() then
 		partyFrame:SetScale(scale);
 	end
-	-- OJO CON EL ORDEN: los estilos "New" e "Improved" ponen SU PROPIA
-	-- textura. Si la de NUF se aplicara siempre, al reestilar los frames
-	-- (cambio de estilo) le pisaria la textura al modulo y el marco volvia
-	-- al de Blizzard. Por eso solo se aplica en el estilo Default.
+
+
+
+
 	local pstyle = (K.GetPartyFrameStyle and K.GetPartyFrameStyle()) or "Default";
 	if pstyle == "Default" then
 		_G["PartyMemberFrame"..id.."Texture"]:SetTexture(Path.."UI-PartyFrame");
@@ -69,8 +69,8 @@ local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 	local mpTxt = _G["PartyMemberFrame"..id.."ManaBarText"];
 	local nameTxt = _G["PartyMemberFrame"..id.."Name"];
 
-	-- Se guarda UNA vez como venian de Blizzard (fuente y anclaje), para
-	-- poder volver exacto cuando el estilo es "Blizzard".
+
+
 	if hpTxt and not hpTxt._nufOrig then
 		local f, sz, fl = hpTxt:GetFont();
 		hpTxt._nufOrig = { font = { f, sz, fl }, pts = { hpTxt:GetPoint(1) } };
@@ -80,12 +80,12 @@ local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 		mpTxt._nufOrigFont = { f, sz, fl };
 	end
 
-	-- La fuente/posicion propias SOLO se aplican con un estilo custom.
-	-- Antes se forzaba PartyFrameFont (tamaño 9) siempre, y por eso en modo
-	-- Blizzard los textos se veian mas chicos que los originales.
-	-- "Improved" tambien queda afuera: su marco es grande y con la fuente
-	-- chica de NUF los numeros de vida/mana se veian diminutos. Va con la
-	-- fuente y el anclaje originales de Blizzard, igual que el modo Default.
+
+
+
+
+
+
 	local style = pstyle;
 	if style ~= "Default" and style ~= "Improved" then
 		if hpTxt then
@@ -95,7 +95,7 @@ local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 		end
 		if mpTxt then mpTxt:SetFont(unpack(C.PartyFrameFont)); end
 	else
-		-- Volver EXACTO al default de Blizzard
+
 		if hpTxt and hpTxt._nufOrig then
 			local o = hpTxt._nufOrig;
 			if o.font[1] then hpTxt:SetFont(o.font[1], o.font[2], o.font[3]); end
@@ -111,32 +111,32 @@ local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 		end
 	end
 	
-	-- ── Fuente del grupo ──────────────────────────────────────────
-	-- VA AL FINAL a proposito: la rama de arriba restaura la fuente
-	-- original, asi que si esto corriera antes lo pisaria.
-	--
-	-- Con el estilo "Blizzard" NO se toca nada: queda el default del juego.
-	-- Por eso el panel esconde esta seccion cuando ese estilo esta activo.
-	--
-	-- Reparto: el CONTORNO es solo para el nombre; el TAMAÑO es solo para
-	-- vida y mana. Antes los dos se aplicaban a los tres textos por igual.
+
+
+
+
+
+
+
+
+
 	local isCustomStyle = (pstyle == "New" or pstyle == "Improved");
 	if isCustomStyle then
 		local outline = C.PartyFontOutline;
 		if outline == "" or outline == "Blizz" then outline = nil; end
 
-		-- 0 = automatico. Por debajo de 6 el texto es ilegible y ademas
-		-- otros modulos le restan puntos, quedando en 0 (SetFont tira
-		-- error con altura 0).
+
+
+
 		local fsize = tonumber(C.PartyFontSize) or 0;
 		if fsize > 0 and fsize < 6 then fsize = 6; end
 
-		-- Modo "Blizz": misma fuente y sombra que el texto de vida/mana.
+
 		local blizzMode = (C.PartyFontOutline == "Blizz");
 		local bFont, bFlags;
 		if blizzMode then bFont, bFlags = BlizzStatusFont(); end
 
-		-- Guarda el tamaño y la fuente de fabrica de cada texto, una vez.
+
 		local function Base(fs)
 			if not fs._nufBaseSize then
 				local f0, sz0 = fs:GetFont();
@@ -146,14 +146,14 @@ local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 			return fs._nufBaseFont, fs._nufBaseSize;
 		end
 
-		-- NOMBRE: solo el contorno. El tamaño lo sigue poniendo el estilo.
+
 		if nameTxt then
 			local bf, bs = Base(nameTxt);
 			local f, sz = nameTxt:GetFont();
 			if blizzMode and bFont then
-				-- bFlags sale del propio FontObject: si el cliente le pone
-				-- contorno, se copia el contorno. Poner solo sombra a mano
-				-- daba un sombreado que no se parecia al original.
+
+
+
 				pcall(nameTxt.SetFont, nameTxt, bFont, sz or bs, bFlags);
 				pcall(nameTxt.SetShadowOffset, nameTxt, 1, -1);
 				pcall(nameTxt.SetShadowColor, nameTxt, 0, 0, 0, 1);
@@ -162,8 +162,8 @@ local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 			end
 		end
 
-		-- VIDA Y MANA: solo el tamaño. El contorno queda como lo dejo el
-		-- estilo, para no pisarle el look a New Party / Improved.
+
+
 		for _, fs in ipairs({ hpTxt, mpTxt }) do
 			if fs then
 				local bf, bs = Base(fs);
@@ -174,22 +174,22 @@ local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 		end
 	end
 
-	-- ── Posicion del PartyMemberFrame ────────────────────────────
-	-- OJO: esta funcion la llama K.RestylePartyFrames, y a esa la llaman
-	-- el desplegable de contorno y el slider de tamaño de texto. O sea que
-	-- tocar la FUENTE terminaba REUBICANDO los frames.
-	--
-	-- Eso rompia el modo 3v3: Apply3v3PartyMode cuelga los frames de
-	-- UIParent en posiciones propias, y este bloque los volvia a colgar de
-	-- NidhausPartyFrame en fila. Cambiabas el contorno y el grupo se te iba
-	-- a otro lado. Lo mismo con los frames movidos a mano.
-	--
-	-- La precedencia correcta ya esta escrita en K.ApplyPartyFrameSpacing:
-	-- 3v3 manda sobre el layout en fila, y el movimiento individual manda
-	-- sobre los dos. Aca se replican esos dos cortes en vez de posicionar
-	-- a ciegas.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	if not C.SetPositions then return; end;
-	-- Mover un marco protegido en combate tambien lo corta el juego.
+
 	if InCombatLockdown() then return; end;
 	if not NidhausPartyFrame then return; end;
 	if C.PartyMode3v3 then return; end;
@@ -200,7 +200,7 @@ local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 	if id == 1 then
 		partyFrame:SetPoint("TOPLEFT", NidhausPartyFrame, "TOPLEFT");
 	else
-		-- FIX: - en vez de + para que valores positivos expandan
+
 		partyFrame:SetPoint("TOPLEFT", _G["PartyMemberFrame"..(id - 1).."PetFrame"], "BOTTOMLEFT", -23, -10 - C.PartyMemberFrameSpacing);
 	end;
 end;
@@ -217,35 +217,35 @@ local function partyPvpIcon(self)
 	end
 end;
 
--- PetFrame;
+
 local function Nidhaus_UnitFrames_PartyMemberFrame_UpdatePet(self, id)
 	if id then return; end;
 	_G[self:GetName().."PetFrameTexture"]:SetTexture(Path.."UI-PartyFrame");
-	-- Si el usuario apago las mascotas del grupo, se ocultan de nuevo aca:
-	-- Blizzard las vuelve a mostrar en cada update del miembro.
+
+
 	if C.PartyShowPetFrames == false then
-		-- Por ApplyPartyPetFrames, que en combate lo deja para despues y
-		-- solo llama a Hide si hace falta. Aca llamaba Hide directo: en
-		-- combate el juego lo cortaba (el marco de mascota es protegido).
+
+
+
 		if K.ApplyPartyPetFrames then K.ApplyPartyPetFrames(); end
 	end
 end;
 
--- Muestra / oculta los marcos de mascota de los COMPAÑEROS (no el tuyo).
--- Ojo: no se tocan los anclajes; los marcos ocultos conservan su posicion,
--- asi que el espaciado entre miembros no se mueve.
--- OJO: los PartyMemberFrameNPetFrame son marcos PROTEGIDOS (cuelgan de los
--- party frames, que heredan SecureUnitButtonTemplate), asi que Show y Hide
--- sobre ellos estan vedados en combate.
---
--- Y esto se dispara con UNIT_PET, que en 3.3.5a no se puede filtrar por
--- unidad: salta por CADA unidad en rango. En un BG eso son decenas de
--- llamadas por pelea, todas cortadas por el cliente. Dos cambios:
---   1) en combate se anota y se aplica al salir;
---   2) solo se llama a Show/Hide cuando el estado CAMBIA de verdad. Antes
---      se llamaba siempre, aunque el marco ya estuviera como corresponde,
---      y una llamada que no hace nada igual se cuenta como accion
---      bloqueada.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local petPending = false;
 
 function K.ApplyPartyPetFrames()
@@ -256,8 +256,8 @@ function K.ApplyPartyPetFrames()
 	for i = 1, 4 do
 		local pf = _G["PartyMemberFrame" .. i .. "PetFrame"];
 		if pf then
-			-- Solo se muestra si ese compañero TIENE mascota; si no,
-			-- apareceria un marco vacio.
+
+
 			local want = show and UnitExists("partypet" .. i) and true or false;
 			if want and not pf:IsShown() then
 				pf:Show();
@@ -271,30 +271,30 @@ end
 local function InitializePartyFrames()
 	if isInitialized then return; end
 	
-	-- Determinar path de texturas
+
 	if C.darkFrames then 
 		Path = "Interface\\AddOns\\"..AddOnName.."\\Media\\Dark\\";
 	else
 		Path = "Interface\\AddOns\\"..AddOnName.."\\Media\\Light\\";
 	end
 	
-	-- Crear frame contenedor solo si SetPositions está activo Y no existe aún
+
 	if C.SetPositions and not NidhausPartyFrame then
 		NidhausPartyFrame = CreateFrame("Frame", nil, UIParent);
 		NidhausPartyFrame:SetSize(10, 10);
-		-- FIX: PartyMemberFrame1 puede no existir aún en este punto
+
 		if PartyMemberFrame1 then
 			NidhausPartyFrame:SetFrameStrata(PartyMemberFrame1:GetFrameStrata());
 		end
 		K.NidhausPartyFrame = NidhausPartyFrame;
 	end
 	
-	-- Aplicar estilos a cada party frame
+
 	for i = 1, MAX_PARTY_MEMBERS do
 		Nidhaus_UnitFrames_Style_PartyMemberFrame(i);
 	end
 	
-	-- Registrar hooks solo una vez
+
 	hooksecurefunc("PartyMemberFrame_UpdatePvPStatus", partyPvpIcon);
 	hooksecurefunc("PartyMemberFrame_UpdatePet", Nidhaus_UnitFrames_PartyMemberFrame_UpdatePet);
 	
@@ -303,21 +303,21 @@ end
 
 K.InitializePartyFrames = InitializePartyFrames;
 
--- La llama PartyFrameStyle al cambiar de estilo, para que los textos se
--- adapten (fuente propia con estilos custom, default con Blizzard).
+
+
 function K.RestylePartyFrames()
 	if not isInitialized then return; end
-	-- En combate se aplica lo que se puede (fuentes y texturas) y la escala
-	-- y el lugar, que el juego no deja tocar peleando, se completan solos
-	-- al terminar la pelea con una pasada entera.
+
+
+
 	if InCombatLockdown() and K.AfterCombat then
 		K.AfterCombat("RestylePartyFrames", K.RestylePartyFrames);
 	end
-	-- TEXTO ABREVIADO: el estilo reancla y cambia la fuente del numero de
-	-- vida. Antes de eso el abreviado suelta sus anclajes (devuelve el
-	-- texto a su lugar), y despues vuelve a aplicarse sobre lo nuevo. Si
-	-- no, el numero quedaba donde lo ponia el estilo y el porcentaje donde
-	-- lo ponia el abreviado, encimados, hasta el proximo cambio de vida.
+
+
+
+
+
 	if K.ReleaseAbbrevAnchors then pcall(K.ReleaseAbbrevAnchors, "PartyMemberFrame"); end
 	for i = 1, MAX_PARTY_MEMBERS do
 		Nidhaus_UnitFrames_Style_PartyMemberFrame(i);
@@ -337,22 +337,22 @@ function K.ApplyPartyFrameScale(scale)
 	end
 end
 
--- FIX: Aplicar spacing en tiempo real
+
 function K.ApplyPartyFrameSpacing()
 	if not isInitialized then return; end
 	
 	local spacing = C.PartyMemberFrameSpacing;
 	if type(spacing) ~= "number" then spacing = 0; end
 	
-	-- FIX: Do NOT re-apply 3v3 positions if PartyIndividualMove is active.
-	-- The user dragged frames individually — re-applying 3v3 wipes those positions.
-	-- Mismo criterio que el modulo del 3v3: no se le suma SetPositions.
+
+
+
 	if K.Is3v3Active and K.Is3v3Active() and not C.PartyIndividualMove and K.Apply3v3PartyMode then
 		K.Apply3v3PartyMode();
 		return;
 	end
 	
-	-- If PartyIndividualMove is active, don't touch positions at all
+
 	if C.PartyIndividualMove then return; end
 	
 	for i = 2, MAX_PARTY_MEMBERS do
@@ -378,30 +378,30 @@ end);
 K.RegisterConfigEvent("CONFIG_CHANGED", function()
 	if not isInitialized then return; end
 	
-	-- FIX: Do NOT apply generic PartyFrameScale when 3v3 mode is active.
-	-- 3v3 mode sets per-frame scales (1.5 for frames 1-2, 1.3 for 3-4).
-	-- Applying the generic scale here would overwrite those to 1.0.
-	-- ACA ESTABA EL BUG DE LA ESCALA DEL 3v3.
-	--
-	-- La guarda pedia SetPositions ADEMAS de PartyMode3v3, pero el modulo
-	-- del 3v3 hace rato que no exige SetPositions. Con las posiciones
-	-- custom apagadas, esta condicion daba true con el 3v3 puesto y le
-	-- aplicaba C.PartyFrameScale a los cuatro marcos, pisando el
-	-- 1.5 / 1.5 / 1.3 / 1.3 del modo. Ahora los dos preguntan lo mismo.
+
+
+
+
+
+
+
+
+
+
 	if not (K.Is3v3Active and K.Is3v3Active()) then
 		if C.PartyFrameScale then
 			K.ApplyPartyFrameScale(C.PartyFrameScale);
 		end
 	end
 	
-	-- Only apply spacing if user hasn't individually moved party frames.
+
 	if not C.PartyIndividualMove then
 		K.ApplyPartyFrameSpacing();
 	end
 end);
 
--- Reaplicar cuando cambia el grupo o aparece/desaparece una mascota:
--- Blizzard vuelve a mostrar los marcos por su cuenta en esos momentos.
+
+
 local petEvents = CreateFrame("Frame");
 petEvents:RegisterEvent("PLAYER_ENTERING_WORLD");
 petEvents:RegisterEvent("PARTY_MEMBERS_CHANGED");

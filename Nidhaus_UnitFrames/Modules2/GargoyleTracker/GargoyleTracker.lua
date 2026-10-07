@@ -1,37 +1,37 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- GargoyleTracker.lua  (integrado a NUF)
--- CAMBIOS respecto del addon suelto:
---   * Es un modulo de NUF: se prende/apaga desde el panel y el combat log
---     (evento caro) solo se registra con el modulo activo.
---   * La barra de duracion ahora DECRECE de derecha a izquierda.
---   * Filtro de donde mostrarse: arena / BG / duelo / mundo abierto.
---   * Modo test y selector blizzard/custom expuestos al panel.
---   * Arreglados los textos encimados del modo custom.
 
--- GargoyleTracker.lua  (WotLK 3.3.5 / Warmane)
--- v20 - Frame 256x128 (proporcion natural, circulo no-oval), posiciones finales
--- /gt test   -> simula gargoyle 30s
--- /gt mode   -> alterna modo (blizzard / custom)
--- /gt center -> recentra
--- /gt cal    -> modo calibracion (barras visibles para ajustar posicion)
--- /gt icon X Y -> mueve el icono a TOPLEFT(X,Y) en vivo
--- /gt bars X W -> mueve las barras a x=X con ancho W en vivo
--- /gt cast X Y -> mueve la castbar a TOPLEFT(X,Y) en vivo
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local GARGOYLE_SPELLID       = 49206
-local GARGOYLE_NAME          = "Ebon Gargoyle"   -- respaldo, ver GargName()
-local GARGOYLE_CAST_NAME     = "Gargoyle Strike" -- respaldo, ver GargCastName()
+local GARGOYLE_NAME          = "Ebon Gargoyle"
+local GARGOYLE_CAST_NAME     = "Gargoyle Strike"
 local GARGOYLE_DURATION      = 30
 local GARGOYLE_CAST_FALLBACK = 1.5
 
 local MODE_BLIZZARD = "blizzard"
 local MODE_CUSTOM   = "custom"
 
--- ---------------------------------------------------------
--- Opciones (guardadas en la DB de NUF)
--- ---------------------------------------------------------
+
+
+
 local function GTDB()
   if not NidhausUnitFramesDB then NidhausUnitFramesDB = {} end
   local db = NidhausUnitFramesDB.GargoyleTracker
@@ -47,36 +47,36 @@ local function GTDB()
   return db
 end
 
--- =====================================================
--- LOS NOMBRES, EN EL IDIOMA DEL CLIENTE
---
--- El modulo arranca bien en cualquier idioma: el disparador es el ID del
--- hechizo (49206) y eso no se traduce. Pero despues hay cuatro cosas que
--- se buscaban comparando contra el texto "Ebon Gargoyle":
---
---   * la placa de nombre, de donde sale la barra de vida
---   * la barra de casteo de la gargola
---   * el CC sobre la gargola cuando no tenemos su GUID
---   * el cartel con el nombre
---
--- En un cliente en espanol la criatura se llama "Gargola de ebano", asi
--- que esas cuatro fallaban en silencio: salia el reloj y nada mas.
---
--- No hay API que de el nombre de una criatura por ID en 3.3.5a, y una
--- tabla de traducciones se rompe con cada idioma nuevo. Asi que el nombre
--- SE APRENDE: el SPELL_SUMMON del registro de combate trae el nombre de la
--- criatura invocada ya traducido, y UnitName() lo confirma cuando la
--- tenemos a la vista. Se guarda en la DB, asi que se aprende una sola vez
--- y despues ya esta desde el primer segundo.
---
--- Lo mismo con "Gargoyle Strike", que se aprende del SPELL_CAST_START.
--- =====================================================
--- Se guarda POR IDIOMA, no en un campo suelto.
---
--- Si guardaramos un solo nombre, aprender "Gargola de ebano" jugando en
--- espanol dejaria roto el cliente en ingles hasta que apareciera otra
--- gargola, y viceversa. Con una entrada por idioma cada cliente usa la
--- suya y las dos quedan aprendidas para siempre.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function GTNames()
   local db = GTDB()
   if type(db.names) ~= "table" then db.names = {} end
@@ -101,14 +101,14 @@ end
 
 local currentMode = GTDB().mode or MODE_BLIZZARD
 
--- Devuelve true si en la zona actual corresponde mostrarlo.
--- En 3.3.5a: GetInstanceInfo() -> name, type ("arena","pvp","party",...)
+
+
 local function ZoneAllowed()
   local db = GTDB()
   local _, itype = GetInstanceInfo()
   if itype == "arena" then return db.inArena end
   if itype == "pvp"   then return db.inBG end
-  -- Duelo: no hay tipo de instancia, se detecta por el flag de duelo
+
   if db.inDuel and _G.DuelOutOfBoundsTimer then return true end
   return db.inWorld
 end
@@ -123,9 +123,9 @@ local function dbg(msg)
   if GT_DEBUG then DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00GT|r: "..tostring(msg)) end
 end
 
--- =====================================================
--- HELPERS
--- =====================================================
+
+
+
 local function MakeStatusBar(parent, level, tex, r, g, b)
   local bar = CreateFrame("StatusBar", nil, parent)
   bar:SetFrameLevel(level)
@@ -159,22 +159,22 @@ local function MakeBorder(parent, r, g, b, a)
   end
 end
 
--- =====================================================
--- MODO BLIZZARD
---
--- UI-TargetingFrame es 512x128 atlas, renderizado a 256x96.
--- Flip horizontal (TexCoord 1,0,0,1):
---   - Portrait circulo en lado DERECHO, centro ~(219, 34)
---   - Area de barras a la izquierda: x=108..183, ancho ~75px
---
--- CLAVE: el icono usa SetPortraitToTexture para recorte circular real
---   -> no depende del alpha del overlay, el icono es redondo por si mismo
---
--- Las barras van en la zona izquierda con frameLevel 4 (encima del overlay)
---   Nombre:    x=108, y=-6,  w=75, h=14
---   HP bar:    x=108, y=-23, w=75, h=10
---   Dur bar:   x=108, y=-36, w=75, h=10
--- =====================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local BFW, BFH = 256, 128
 
 local uiBlizz = CreateFrame("Frame", "GT_Blizzard", UIParent)
@@ -189,13 +189,13 @@ uiBlizz:SetFrameStrata("HIGH")
 uiBlizz:SetFrameLevel(2)
 uiBlizz:Hide()
 
--- -------------------------------------------------------
--- ICONO (frameLevel 1 = DETRAS del overlay)
--- Usamos SetPortraitToTexture para recorte circular real
--- Flipped: portrait original esta en ~(5,-6) 64x64
--- Espejado: x = 256 - 5 - 64 = 187 -> usamos 60x60 centrado
--- TOPLEFT(189, -8) para centrar dentro del aro
--- -------------------------------------------------------
+
+
+
+
+
+
+
 local bIconH = CreateFrame("Frame", nil, uiBlizz)
 bIconH:SetFrameLevel(1)
 bIconH:SetSize(60, 60)
@@ -205,7 +205,7 @@ local bIconTex = bIconH:CreateTexture(nil, "ARTWORK")
 bIconTex:SetAllPoints(bIconH)
 SetPortraitToTexture(bIconTex, "Interface\\Icons\\Spell_Shadow_RaiseDead")
 
--- Glow de cast (encima del overlay, siempre visible)
+
 local bIconGlow = CreateFrame("Frame", nil, uiBlizz)
 bIconGlow:SetFrameLevel(5)
 bIconGlow:SetSize(86, 86)
@@ -216,7 +216,7 @@ bIconGlowTex:SetTexture("Interface\\SpellActivationOverlay\\IconAlert")
 bIconGlowTex:SetBlendMode("ADD")
 bIconGlowTex:SetVertexColor(0.6, 0.2, 1, 0)
 
--- Nivel 80 dentro del portrait (esquina inferior, encima del overlay)
+
 local bLevelF = CreateFrame("Frame", nil, uiBlizz)
 bLevelF:SetFrameLevel(5)
 bLevelF:SetSize(22, 14)
@@ -229,11 +229,11 @@ bLevelTxt:SetShadowOffset(1, -1)
 bLevelTxt:SetShadowColor(0, 0, 0, 1)
 bLevelTxt:SetText("80")
 
--- -------------------------------------------------------
--- OVERLAY Blizzard (frameLevel 3 = encima del icono)
--- El alpha circular del overlay crea el efecto de portrait circular
--- Flip horizontal -> portrait en lado DERECHO
--- -------------------------------------------------------
+
+
+
+
+
 local bOvH = CreateFrame("Frame", nil, uiBlizz)
 bOvH:SetAllPoints(uiBlizz)
 bOvH:SetFrameLevel(3)
@@ -241,12 +241,12 @@ bOvH:SetFrameLevel(3)
 local bOverlay = bOvH:CreateTexture(nil, "ARTWORK")
 bOverlay:SetAllPoints(bOvH)
 bOverlay:SetTexture("Interface\\TargetingFrame\\UI-TargetingFrame")
-bOverlay:SetTexCoord(1, 0, 0, 1)   -- flip horizontal
+bOverlay:SetTexCoord(1, 0, 0, 1)
 
--- -------------------------------------------------------
--- NOMBRE + TIEMPO (frameLevel 2, DETRAS del overlay)
--- Posicion final: x=108, y=-23
--- -------------------------------------------------------
+
+
+
+
 local bNameF = CreateFrame("Frame", nil, uiBlizz)
 bNameF:SetFrameLevel(2)
 bNameF:SetSize(118, 14)
@@ -268,10 +268,10 @@ bTimeTxt:SetShadowOffset(1, -1)
 bTimeTxt:SetShadowColor(0, 0, 0, 1)
 bTimeTxt:SetText("")
 
--- -------------------------------------------------------
--- BARRA HP (frameLevel 2, DETRAS del overlay)
--- Posicion final: x=108, y=-40, w=118, h=10
--- -------------------------------------------------------
+
+
+
+
 local bHpH = CreateFrame("Frame", nil, uiBlizz)
 bHpH:SetFrameLevel(2)
 bHpH:SetSize(118, 10)
@@ -282,12 +282,12 @@ local bHpBar = MakeStatusBar(bHpH, 2,
 bHpBar:SetAllPoints(bHpH)
 bHpBar:SetMinMaxValues(0, 1)
 
--- (sin etiqueta, se ve como el target frame real)
 
--- -------------------------------------------------------
--- BARRA DURACION (frameLevel 2, DETRAS del overlay)
--- Posicion final: x=108, y=-53, w=118, h=10
--- -------------------------------------------------------
+
+
+
+
+
 local bDurH = CreateFrame("Frame", nil, uiBlizz)
 bDurH:SetFrameLevel(2)
 bDurH:SetSize(118, 10)
@@ -298,38 +298,38 @@ local bDurBar = MakeStatusBar(bDurH, 2,
 bDurBar:SetAllPoints(bDurH)
 bDurBar:SetMinMaxValues(0, GARGOYLE_DURATION)
 
--- (sin etiqueta, se ve como el target frame real)
 
--- -------------------------------------------------------
--- CASTBAR estilo Blizzard enemigo
--- frameLevel 6 para estar ENCIMA de todo
--- -------------------------------------------------------
+
+
+
+
+
 local bCastH = CreateFrame("Frame", nil, uiBlizz)
 bCastH:SetFrameLevel(6)
 bCastH:SetSize(150, 16)
 bCastH:SetPoint("TOPLEFT", uiBlizz, "TOPLEFT", 65, -80)
 
--- Fondo oscuro
+
 local bCastBg = bCastH:CreateTexture(nil, "BACKGROUND")
 bCastBg:SetAllPoints(bCastH)
 bCastBg:SetTexture(0, 0, 0, 0.2)
 
--- StatusBar (amarillo dorado brillante)
+
 local bCastBar = MakeStatusBar(bCastH, 5,
   "Interface\\TargetingFrame\\UI-StatusBar", 1.0, 1.0, 0.5)
 bCastBar:SetPoint("TOPLEFT",     bCastH, "TOPLEFT",     2, -2)
 bCastBar:SetPoint("BOTTOMRIGHT", bCastH, "BOTTOMRIGHT", -2,  2)
 bCastBar:SetMinMaxValues(0, GARGOYLE_CAST_FALLBACK)
--- Quitar el doble fondo oscuro de MakeStatusBar
+
 bCastBar.bg:SetTexture(0, 0, 0, 0)
 
--- Borde Blizzard (UI-CastingBar-Border-Small)
+
 local bCastBorder = bCastH:CreateTexture(nil, "OVERLAY")
 bCastBorder:SetTexture("Interface\\CastingBar\\UI-CastingBar-Border-Small")
 bCastBorder:SetSize(bCastH:GetWidth() + 48, 48)
 bCastBorder:SetPoint("CENTER", bCastH, "CENTER", 0, 0)
 
--- 5) Icono del spell mas pequeño (18x18) a la izquierda
+
 local bCastIconH = CreateFrame("Frame", nil, uiBlizz)
 bCastIconH:SetFrameLevel(7)
 bCastIconH:SetSize(18, 18)
@@ -345,15 +345,15 @@ bCastIconTex:SetPoint("BOTTOMRIGHT", bCastIconH, "BOTTOMRIGHT", -1, 1)
 bCastIconTex:SetTexCoord(0.06, 0.94, 0.06, 0.94)
 bCastIconTex:SetTexture("Interface\\Icons\\Spell_Shadow_ShadowBolt")
 
--- Texto de la castbar - en un frame separado con frameLevel alto
--- para que quede POR ENCIMA del borde
+
+
 local bCastTxtF = CreateFrame("Frame", nil, uiBlizz)
 bCastTxtF:SetFrameLevel(8)
 bCastTxtF:SetAllPoints(bCastH)
 
 bCastBar.txt:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
 
--- Nombre del spell a la izquierda (en el frame de texto alto)
+
 local bCastSpellTxt = bCastTxtF:CreateFontString(nil, "OVERLAY")
 bCastSpellTxt:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
 bCastSpellTxt:SetPoint("LEFT", bCastH, "LEFT", 4, 0)
@@ -362,7 +362,7 @@ bCastSpellTxt:SetShadowOffset(1, -1)
 bCastSpellTxt:SetShadowColor(0, 0, 0, 1)
 bCastSpellTxt:SetText("")
 
--- Timer a la derecha (en el frame de texto alto)
+
 local bCastTimeTxt = bCastTxtF:CreateFontString(nil, "OVERLAY")
 bCastTimeTxt:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
 bCastTimeTxt:SetPoint("RIGHT", bCastH, "RIGHT", -4, 0)
@@ -371,10 +371,10 @@ bCastTimeTxt:SetShadowOffset(1, -1)
 bCastTimeTxt:SetShadowColor(0, 0, 0, 1)
 bCastTimeTxt:SetText("")
 
--- Reasignar: el OnUpdate usa castBar.txt para el timer
+
 bCastBar.txt = bCastTimeTxt
 
--- Flash de completado - brillo ALREDEDOR de la barra
+
 local bCastFlashF = CreateFrame("Frame", nil, uiBlizz)
 bCastFlashF:SetFrameLevel(9)
 bCastFlashF:SetSize(bCastH:GetWidth() + 30, bCastH:GetHeight() + 30)
@@ -386,14 +386,14 @@ bCastFlash:SetBlendMode("ADD")
 bCastFlash:SetVertexColor(1, 0.9, 0.5, 0)
 bCastFlash:SetAlpha(0)
 
--- Spark (la chispa que avanza con la barra)
+
 local bCastSpark = bCastH:CreateTexture(nil, "OVERLAY")
 bCastSpark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
 bCastSpark:SetSize(16, 32)
 bCastSpark:SetBlendMode("ADD")
 bCastSpark:SetPoint("CENTER", bCastBar, "RIGHT", 0, 0)
 
--- Referencias para el OnUpdate
+
 bCastBar.spellTxt = bCastSpellTxt
 bCastBar.iconTex  = bCastIconTex
 bCastBar.iconH    = bCastIconH
@@ -404,15 +404,15 @@ bCastBar.holder   = bCastH
 bCastBar.iconHolder = bCastIconH
 bCastBar.txtHolder  = bCastTxtF
 
--- Ocultar castbar por defecto - solo aparece cuando la gargoyle castea
+
 bCastH:Hide()
 bCastIconH:Hide()
 bCastTxtF:Hide()
 bCastFlashF:Hide()
 
--- =====================================================
--- MODO CUSTOM
--- =====================================================
+
+
+
 local FW     = 270
 local ICON_SC= 58
 local PAD    = 5
@@ -485,8 +485,8 @@ cNameF:SetPoint("TOPLEFT", uiCustom, "TOPLEFT", CBAR_X, -PAD)
 local cNameTxt = cNameF:CreateFontString(nil, "OVERLAY")
 cNameTxt:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
 cNameTxt:SetPoint("LEFT", cNameF, "LEFT", 2, 0)
--- Ancho acotado + corte con "...": antes el nombre crecia libre y se metia
--- debajo del contador de tiempo, que va pegado a la derecha.
+
+
 cNameTxt:SetWidth(CBAR_W - 52)
 cNameTxt:SetJustifyH("LEFT")
 if cNameTxt.SetWordWrap then cNameTxt:SetWordWrap(false) end
@@ -494,9 +494,9 @@ cNameTxt:SetTextColor(1, 0.82, 0, 1)
 cNameTxt:SetShadowOffset(1, -1)
 cNameTxt:SetText(GargName())
 
--- Aprender el nombre. Va aca abajo y no arriba porque necesita los dos
--- carteles ya creados: si el nombre cambia con la ventana ya dibujada,
--- seguirian diciendo el viejo.
+
+
+
 local function LearnGargName(n)
   if type(n) ~= "string" or n == "" then return end
   local t = GTNames()
@@ -528,8 +528,8 @@ cDurBar:SetMinMaxValues(0, GARGOYLE_DURATION)
 
 local cDurLbl = cDurH:CreateFontString(nil, "OVERLAY")
 cDurLbl:SetFont("Fonts\\FRIZQT__.TTF", 7)
-cDurLbl:SetPoint("LEFT", cDurH, "LEFT", 3, 0)   -- DENTRO de la barra: antes iba
-  -- encima y pisaba la barra de arriba
+cDurLbl:SetPoint("LEFT", cDurH, "LEFT", 3, 0)
+
 cDurLbl:SetTextColor(0.7, 0.6, 0.3, 0.85)
 cDurLbl:SetText(L["GT_DUR"] or "Dur")
 
@@ -548,8 +548,8 @@ cHpBar:SetMinMaxValues(0, 1)
 
 local cHpLbl = cHpH:CreateFontString(nil, "OVERLAY")
 cHpLbl:SetFont("Fonts\\FRIZQT__.TTF", 7)
-cHpLbl:SetPoint("LEFT", cHpH, "LEFT", 3, 0)   -- DENTRO de la barra: antes iba
-  -- encima y pisaba la barra de arriba
+cHpLbl:SetPoint("LEFT", cHpH, "LEFT", 3, 0)
+
 cHpLbl:SetTextColor(0.3, 0.65, 0.25, 0.85)
 cHpLbl:SetText(L["GT_HP"] or "HP")
 
@@ -578,27 +578,27 @@ cCastLbl:SetPoint("LEFT", cCastH, "LEFT", 4, 0)
 cCastLbl:SetTextColor(0.75, 0.7, 0.75, 0.75)
 cCastLbl:SetText(L["GT_CAST"] or "Cast")
 
--- =====================================================
--- CC EN LA CARA DE LA GARGOLA  (estilo LoseControl)
---
--- Le tiran un miedo o la encadenan y la gargola deja de pegar. Eso es
--- justo lo que uno quiere ver de un vistazo, y hasta ahora no se veia en
--- ningun lado: habia que mirarle la placa.
---
--- El icono del CC va ENCIMA de la cara, con la ruedita de cooldown
--- corriendo arriba, que es como lo muestra LoseControl. Se elige la cara y
--- no un huequito al costado a proposito: es donde ya estas mirando.
---
--- Nivel de marco: en modo blizzard el aro del retrato lo dibuja el overlay
--- (nivel 3) y su alfa circular es lo que hace que la cara se vea redonda.
--- El CC va en el nivel 2 -- encima del icono, DEBAJO del aro -- asi el aro
--- lo sigue recortando y no queda un cuadrado tapando el marco. Por eso el
--- icono del CC tambien pasa por SetPortraitToTexture: si fuera cuadrado se
--- verian las esquinas asomando fuera del circulo.
---
--- La textura del icono va en la capa BORDER porque la ruedita de cooldown
--- se dibuja en ARTWORK: al reves, el icono taparia la ruedita.
--- =====================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local bCC = CreateFrame("Cooldown", nil, uiBlizz)
 bCC:SetFrameLevel(2)
 bCC:SetAllPoints(bIconH)
@@ -617,12 +617,12 @@ cCCTex:SetPoint("TOPLEFT",     cCC, "TOPLEFT",      1, -1)
 cCCTex:SetPoint("BOTTOMRIGHT", cCC, "BOTTOMRIGHT", -1,  1)
 cCCTex:SetTexCoord(0.06, 0.94, 0.06, 0.94)
 
--- =====================================================
--- REFERENCIAS ACTIVAS
--- =====================================================
--- Alias del glow para el modo activo
-local bIconGlowActive = bIconGlowTex   -- modo blizzard
-local cIconGlowActive = cIconGlowTex   -- modo custom
+
+
+
+
+local bIconGlowActive = bIconGlowTex
+local cIconGlowActive = cIconGlowTex
 
 local ui, iconTex, iconGlow, durBar, hpBar, castBar, nameTxt, timeTxt
 local ccCD, ccTex
@@ -661,9 +661,9 @@ end
 
 SetActiveMode(currentMode)
 
--- =====================================================
--- ESTADO
--- =====================================================
+
+
+
 local GT_CALIBRATING = false
 local state = {
   active=false, tStart=0, tEnd=0,
@@ -674,78 +674,78 @@ local state = {
   ccName=nil, ccIcon=nil, ccStart=0, ccEnd=0,
 }
 
--- =====================================================
--- QUE CUENTA COMO CC
---
--- La lista va por ID BASE y al cargar se traduce a NOMBRE con
--- GetSpellInfo. Dos razones, las dos importantes:
---
---   * los rangos. "Miedo" tiene tres IDs distintos y "Grito psiquico"
---     cuatro; el nombre es uno solo, asi que una entrada cubre todos.
---   * el idioma. El combat log manda el nombre en el idioma del cliente,
---     y GetSpellInfo tambien: coinciden solos, sin tabla de traduccion.
---
--- El numero es la duracion contra un NPC, y es un PLAN B: si podemos ver
--- la unidad de verdad (ver ResolveGargUnit) se usa la duracion real y
--- este numero no se toca. Un cero significa "mostra el icono pero no
--- inventes una cuenta regresiva" -- preferimos no decir nada antes que
--- decir un tiempo equivocado.
---
--- Ojo con una cosa: la gargola es NO-MUERTA. Por eso Encadenar no-muerto
--- y Alejar al malvado si le entran, y Polimorfia, Embrujo o Desterrar no
--- -- no tiene sentido tenerlos aca.
--- =====================================================
--- DOS NUMEROS POR HECHIZO, NO UNO.  { contra NPC, contra jugador }
---
--- ACA ESTABA EL "DICE 20s Y SON 10s", Y LO METI YO.
---
--- Habia UN solo numero por hechizo, el de PvE. Pero casi todo dura menos
--- contra algo manejado por un jugador, y LA GARGOLA SIEMPRE LO ES: es el
--- guardian de un DK. O sea que la columna que este tracker usa en la vida
--- real es siempre la segunda, y yo estaba mostrando la primera.
---
--- Turn Evil es el ejemplo exacto que me diste: 20 segundos sobre un bicho
--- del mundo, 10 sobre cualquier cosa que maneje un jugador. Y no hay que
--- descubrirlo: Modules2/PaladinAuras.lua ya lo tenia resuelto hace rato,
--- con estos mismos dos numeros y mirando la misma bandera del combat log.
--- Es de ahi que esta copiada la regla, para que los dos digan lo mismo.
---
--- UN CERO EN LA SEGUNDA COLUMNA NO ES "CERO SEGUNDOS": es "no se cuanto
--- dura esto contra un jugador". En ese caso se muestra el icono y NINGUNA
--- cuenta regresiva. Preferible antes que volver a inventar un numero --
--- que es justamente lo que hizo falta arreglar.
---
--- Y cuando la gargola esta a la vista (target, foco, arenapetN) nada de
--- esto se usa: manda la duracion real del debuff. Ver RefreshCCFromUnit.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local CC_SPELLS = {
-  -- Miedos. Los tres de 8 ya estaban topados, no cambian.
-  [5782]  = { 20, 8 },   -- Fear (brujo)
-  [5484]  = {  8, 8 },   -- Howl of Terror
-  [8122]  = {  8, 8 },   -- Psychic Scream
-  [5246]  = {  8, 8 },   -- Intimidating Shout
-  [10326] = { 20, 10 },  -- Turn Evil  <- el que me marcaste
-  [6789]  = {  3, 3 },   -- Death Coil (brujo)
-  -- Encadenar / incapacitar
-  [9484]  = { 50, 0 },   -- Shackle Undead    (topado, no se cuanto: icono solo)
-  [3355]  = { 20, 0 },   -- Freezing Trap     (idem)
-  -- Aturdimientos: los stuns no se topan distinto, valen igual.
-  [853]   = {  6, 6 },   -- Hammer of Justice
-  [44572] = {  5, 5 },   -- Deep Freeze
-  [12809] = {  5, 5 },   -- Concussion Blow
-  [46968] = {  4, 4 },   -- Shockwave
-  [5211]  = {  4, 4 },   -- Bash
-  [33786] = {  6, 6 },   -- Cyclone
-  [49203] = { 10, 10 },  -- Hungering Cold
-  -- Raices y ralentizaciones
-  [122]   = {  8, 8 },   -- Frost Nova
-  [339]   = { 27, 0 },   -- Entangling Roots  (topado, no se cuanto)
-  [45524] = {  8, 8 },   -- Chains of Ice
-  -- Silencios
-  [47476] = {  5, 5 },   -- Strangulate
-  [15487] = {  5, 5 },   -- Silence (sacerdote)
+
+  [5782]  = { 20, 8 },
+  [5484]  = {  8, 8 },
+  [8122]  = {  8, 8 },
+  [5246]  = {  8, 8 },
+  [10326] = { 20, 10 },
+  [6789]  = {  3, 3 },
+
+  [9484]  = { 50, 0 },
+  [3355]  = { 20, 0 },
+
+  [853]   = {  6, 6 },
+  [44572] = {  5, 5 },
+  [12809] = {  5, 5 },
+  [46968] = {  4, 4 },
+  [5211]  = {  4, 4 },
+  [33786] = {  6, 6 },
+  [49203] = { 10, 10 },
+
+  [122]   = {  8, 8 },
+  [339]   = { 27, 0 },
+  [45524] = {  8, 8 },
+
+  [47476] = {  5, 5 },
+  [15487] = {  5, 5 },
 }
 
--- La misma bandera y el mismo criterio que PaladinAuras.
+
 local CONTROL_PLAYER = COMBATLOG_OBJECT_CONTROL_PLAYER or 0x00000100
 
 local function CCDuration(cc, destFlags)
@@ -761,26 +761,26 @@ local ccByName = {}
 do
   for id, pair in pairs(CC_SPELLS) do
     local name, _, icon = GetSpellInfo(id)
-    -- Si el core no conoce el hechizo, GetSpellInfo devuelve nil. Se saltea
-    -- en vez de meter un [nil] en la tabla, que reventaria al indexar.
+
+
     if name then
       ccByName[name] = { pve = pair[1], pvp = pair[2], icon = icon }
     end
   end
 end
 
--- =====================================================
--- LA UNIDAD DE VERDAD, SI LA HAY
---
--- Con el GUID que nos dio SPELL_SUMMON podemos preguntar si la gargola es
--- alguna de las unidades que el juego nos deja mirar. Si lo es, UnitDebuff
--- da la duracion y el vencimiento EXACTOS y no hace falta adivinar nada.
---
--- Si no la tenemos a mano -- que es lo normal, nadie targetea la gargola
--- para verle el miedo -- se cae a la tabla de arriba. Por eso existe la
--- tabla: no como fuente principal, sino para el rato en que no se la puede
--- mirar.
--- =====================================================
+
+
+
+
+
+
+
+
+
+
+
+
 local GARG_UNITS = { "target", "focus", "mouseover", "targettarget",
   "arenapet1", "arenapet2", "arenapet3", "arenapet4", "arenapet5" }
 
@@ -788,8 +788,8 @@ local function ResolveGargUnit()
   if not state.gargGUID then return nil end
   for _, u in ipairs(GARG_UNITS) do
     if UnitExists(u) and UnitGUID(u) == state.gargGUID then
-      -- Tenerla delante es la fuente mas confiable del nombre: si el
-      -- SPELL_SUMMON se perdio, se aprende igual por aca.
+
+
       LearnGargName(UnitName(u))
       return u
     end
@@ -804,7 +804,7 @@ local function ClearCC()
   cCC:Hide()
 end
 
--- Pinta el CC que este puesto. Devuelve true si mostro algo.
+
 local function ShowCC(name, icon, start, dur)
   state.ccName  = name
   state.ccIcon  = icon
@@ -813,8 +813,8 @@ local function ShowCC(name, icon, start, dur)
 
   if not ccCD or not ccTex then return false end
 
-  -- Redondo en modo blizzard (lo recorta el aro del retrato), cuadrado en
-  -- el custom, que ya es una casilla.
+
+
   if ccCD == bCC then
     SetPortraitToTexture(ccTex, icon)
   else
@@ -825,16 +825,16 @@ local function ShowCC(name, icon, start, dur)
   if dur and dur > 0 then
     ccCD:SetCooldown(start, dur)
   else
-    -- Sin duracion confiable: se muestra el icono y NADA de ruedita. Una
-    -- cuenta regresiva inventada es peor que ninguna.
+
+
     ccCD:SetCooldown(0, 0)
   end
   return true
 end
 
--- Refresca desde la unidad real si la tenemos a la vista. Sirve para dos
--- cosas: arrancar con la duracion exacta, y darse cuenta de que el CC se
--- rompio antes de tiempo (un dano lo saco) sin esperar al combat log.
+
+
+
 local function RefreshCCFromUnit()
   local u = ResolveGargUnit()
   if not u then return false end
@@ -852,7 +852,7 @@ local function RefreshCCFromUnit()
   end
 
   if not best then
-    -- La vemos y NO tiene ningun CC: es la palabra final, se limpia.
+
     if state.ccName then ClearCC() end
     return true
   end
@@ -874,7 +874,7 @@ local function StopCast()
   cIconGlowTex:SetVertexColor(0.6, 0.2, 1, 0)
 end
 
--- Despierta el reloj (el OnUpdate de abajo). Se define junto a el.
+
 local WakeGTDriver
 
 local function StopAll()
@@ -901,12 +901,12 @@ local function StartCast(duration, targetName)
 end
 
 local function StartGargoyle(sourceName, isTest, gargGUID)
-  -- Filtro de zona: si en este tipo de pelea el usuario no lo quiere, ni se
-  -- muestra. El modo test lo saltea a proposito (para poder acomodarlo).
+
+
   if not isTest and not ZoneAllowed() then return end
-  -- El GUID sale del SPELL_SUMMON y es la forma SEGURA de reconocerla
-  -- despues: comparar por nombre depende del idioma del cliente y se
-  -- confunde si hay dos gargolas en pantalla.
+
+
+
   state.gargGUID   = gargGUID
   ClearCC()
   state.active     = true
@@ -923,8 +923,8 @@ local function StartGargoyle(sourceName, isTest, gargGUID)
   cIconTex:SetTexture(icon)
 
   durBar:SetMinMaxValues(0, GARGOYLE_DURATION)
-  -- Empieza LLENA: como la barra ahora es decreciente, el valor es el
-  -- tiempo que queda (al inicio, la duracion completa).
+
+
   durBar:SetValue(GARGOYLE_DURATION)
   durBar:SetStatusBarColor(1, 0.46, 0.18, 1)
   durBar.txt:SetText("")
@@ -941,9 +941,9 @@ local function StartGargoyle(sourceName, isTest, gargGUID)
   dbg("START: "..tostring(sourceName or "?"))
 end
 
--- =====================================================
--- NAMEPLATE SCAN
--- =====================================================
+
+
+
 local function FindGargoyleNameplate()
   for _, plate in ipairs({ WorldFrame:GetChildren() }) do
     if plate and plate.GetRegions and plate:IsShown() then
@@ -970,19 +970,19 @@ local function FindGargoyleNameplate()
   return nil, nil
 end
 
--- =====================================================
--- ONUPDATE
--- =====================================================
+
+
+
 local glowAlpha, glowDir = 0, 1
 local f = CreateFrame("Frame")
 
--- EL RELOJ SOLO CORRE CON UNA GARGOLA EN PANTALLA.
---
--- Antes este marco no se ocultaba nunca: el OnUpdate corria en cada frame
--- del juego, con o sin gargola, y hasta con el modulo apagado, solo para
--- salir en la segunda linea. Ahora arranca oculto, StartGargoyle lo
--- despierta y se vuelve a dormir solo cuando la gargola se termina.
--- Ocultarlo no le saca los eventos: un marco oculto los sigue recibiendo.
+
+
+
+
+
+
+
 f:Hide()
 WakeGTDriver = function() f:Show() end
 
@@ -994,8 +994,8 @@ f:SetScript("OnUpdate", function(self, elapsed)
   local rem = state.tEnd - now
   if rem <= 0 then StopAll() return end
 
-  -- DECRECIENTE: se pinta el tiempo que QUEDA, asi la barra se vacia de
-  -- derecha a izquierda a medida que se acaba (antes se llenaba al reves).
+
+
   durBar:SetValue(rem)
   if rem > 10 then
     durBar:SetStatusBarColor(1, 0.46, 0.18, 1)
@@ -1009,15 +1009,15 @@ f:SetScript("OnUpdate", function(self, elapsed)
   end
   timeTxt:SetText(string.format("%.1fs", rem))
 
-  -- CC sobre la gargola.
-  --
-  -- Primero se intenta la unidad real, que da el dato exacto. Si no esta a
-  -- la vista -- lo habitual -- se deja correr lo que se mostro desde el
-  -- combat log y se vence solo por tiempo.
-  --
-  -- El vencimiento por tiempo va AFUERA del "si no es test": en modo test
-  -- no hay unidad que mirar, y si el vencimiento tambien quedaba adentro,
-  -- el CC simulado con /gt cc no se apagaba nunca.
+
+
+
+
+
+
+
+
+
   local ccHandled = false
   if not state.testMode then
     ccHandled = RefreshCCFromUnit()
@@ -1056,7 +1056,7 @@ f:SetScript("OnUpdate", function(self, elapsed)
   end
 
   if state.castActive then
-    -- Mostrar castbar cuando la gargoyle castea
+
     if castBar.holder and not castBar.holder:IsShown() then
       castBar.holder:Show()
       if castBar.iconHolder then castBar.iconHolder:Show() end
@@ -1070,7 +1070,7 @@ f:SetScript("OnUpdate", function(self, elapsed)
       castBar.txt:SetText("")
       if castBar.spellTxt then castBar.spellTxt:SetText("") end
       if castBar.spark then castBar.spark:SetAlpha(0) end
-      -- Flash de completado
+
       if castBar.flash then
         castBar.flash:SetAlpha(1)
         state.flashAlpha = 1
@@ -1082,7 +1082,7 @@ f:SetScript("OnUpdate", function(self, elapsed)
       if castBar.spellTxt then
         castBar.spellTxt:SetText(GargCastName())
       end
-      -- Spark sigue el progreso de la barra
+
       if castBar.spark then
         local barW = castBar:GetWidth() or 150
         castBar.spark:ClearAllPoints()
@@ -1100,7 +1100,7 @@ f:SetScript("OnUpdate", function(self, elapsed)
     if castBar.spellTxt then castBar.spellTxt:SetText("") end
     if castBar.spark then castBar.spark:SetAlpha(0) end
     iconGlow:SetVertexColor(0.6, 0.2, 1, 0)
-    -- Ocultar castbar cuando no hay flash activo
+
     if (not state.flashAlpha or state.flashAlpha <= 0) then
       if castBar.holder and castBar.holder:IsShown() then
         castBar.holder:Hide()
@@ -1111,12 +1111,12 @@ f:SetScript("OnUpdate", function(self, elapsed)
     end
   end
 
-  -- Flash fade-out
+
   if state.flashAlpha and state.flashAlpha > 0 then
     state.flashAlpha = state.flashAlpha - elapsed * 2.5
     if state.flashAlpha <= 0 then
       state.flashAlpha = 0
-      -- Ocultar castbar despues del flash
+
       if castBar.holder then castBar.holder:Hide() end
       if castBar.iconHolder then castBar.iconHolder:Hide() end
       if castBar.txtHolder then castBar.txtHolder:Hide() end
@@ -1128,9 +1128,9 @@ f:SetScript("OnUpdate", function(self, elapsed)
   end
 end)
 
--- =====================================================
--- PLAYER_LOGIN
--- =====================================================
+
+
+
 local loginF = CreateFrame("Frame")
 loginF:RegisterEvent("PLAYER_LOGIN")
 loginF:SetScript("OnEvent", function(self)
@@ -1140,25 +1140,25 @@ loginF:SetScript("OnEvent", function(self)
   self:UnregisterAllEvents()
 end)
 
--- =====================================================
--- COMBAT LOG
--- =====================================================
--- El registro lo hace el modulo al prenderse (GT_SetEnabled). Antes se
--- enganchaba aca y escuchaba el combat log siempre, aun apagado.
+
+
+
+
+
 f:SetScript("OnEvent", function(self, event, ...)
   if event ~= "COMBAT_LOG_EVENT_UNFILTERED" then
-    -- FIN DE LA PELEA.
-    --
-    -- El marco solo se cerraba cuando se acababan los 30 segundos. Si la
-    -- arena terminaba antes (o salias de la zona), quedaba en pantalla
-    -- contando para una gargola que ya no existe.
+
+
+
+
+
     if not state.active then return end
     if event == "UPDATE_BATTLEFIELD_STATUS" then
-      -- Este aviso llega por muchas cosas (colas, invitaciones). Solo
-      -- cierra cuando hay ganador, que es cuando termina la arena o el BG.
+
+
       if GetBattlefieldWinner and GetBattlefieldWinner() then StopAll() end
     else
-      -- PLAYER_ENTERING_WORLD / ZONE_CHANGED_NEW_AREA: cambiaste de zona.
+
       StopAll()
     end
     return
@@ -1171,12 +1171,12 @@ f:SetScript("OnEvent", function(self, event, ...)
   if (subEvent == "SPELL_SUMMON" or subEvent == "SPELL_CAST_SUCCESS")
      and tonumber(spellId) == GARGOYLE_SPELLID
      and IsHostile(sourceFlags) then
-    -- En SPELL_SUMMON el destino ES la gargola, asi que ese GUID es el
-    -- suyo. En SPELL_CAST_SUCCESS el destino es otra cosa (o nada), y por
-    -- eso solo se guarda en el primer caso.
-    --
-    -- Y de paso, el destino tambien trae el NOMBRE de la criatura en el
-    -- idioma del cliente. Es la forma mas limpia de aprenderlo.
+
+
+
+
+
+
     if subEvent == "SPELL_SUMMON" then LearnGargName(destName) end
     StartGargoyle(sourceName, false,
       (subEvent == "SPELL_SUMMON") and destGUID or nil)
@@ -1184,8 +1184,8 @@ f:SetScript("OnEvent", function(self, event, ...)
   end
   if not state.active then return end
 
-  -- LA GARGOLA MURIO (o la sacaron): se cierra en el acto, sin esperar
-  -- a que se termine el tiempo.
+
+
   if subEvent == "UNIT_DIED" or subEvent == "UNIT_DESTROYED" or subEvent == "PARTY_KILL" then
     local dead = (state.gargGUID and destGUID == state.gargGUID)
                  or ((not state.gargGUID) and destName == GargName())
@@ -1193,28 +1193,28 @@ f:SetScript("OnEvent", function(self, event, ...)
     return
   end
 
-  -- CC SOBRE LA GARGOLA.
-  --
-  -- Se compara por GUID cuando lo tenemos (exacto, y no se confunde con la
-  -- gargola del otro DK) y por nombre cuando no, que es el mismo criterio
-  -- que ya usa el resto del archivo.
+
+
+
+
+
   local isGarg = (state.gargGUID and destGUID == state.gargGUID)
                  or ((not state.gargGUID) and destName == GargName())
   if isGarg then
     if subEvent == "SPELL_AURA_APPLIED" or subEvent == "SPELL_AURA_REFRESH" then
       local cc = spellName and ccByName[spellName]
       if cc then
-        -- La duracion de la tabla se recorta a lo que le queda de vida a la
-        -- gargola: un Encadenar de 50 segundos sobre un bicho que vive 30
-        -- mostraria una cuenta que nunca llega a cero.
-        -- destFlags es de la GARGOLA, que siempre es de un jugador: con
-        -- eso sale la columna de la derecha.
+
+
+
+
+
         local dur  = CCDuration(cc, destFlags)
         local left = state.tEnd - GetTime()
         if dur > left then dur = left end
         if dur < 0 then dur = 0 end
         ShowCC(spellName, cc.icon, GetTime(), dur)
-        -- Y si justo la tenemos a la vista, se pisa con el dato exacto.
+
         RefreshCCFromUnit()
       end
       return
@@ -1239,9 +1239,9 @@ f:SetScript("OnEvent", function(self, event, ...)
   end
 end)
 
--- =====================================================
--- SLASH COMMANDS
--- =====================================================
+
+
+
 SLASH_GT1 = "/gt"
 SlashCmdList.GT = function(msg)
   msg = (msg or ""):lower():match("^%s*(.-)%s*$")
@@ -1314,13 +1314,13 @@ SlashCmdList.GT = function(msg)
   elseif msg == "test" then
     StartGargoyle("TestDK", true)
     state.testMode = true
-    -- Simular HP visible
+
     hpBar:SetMinMaxValues(0, 1)
     hpBar:SetValue(1)
     hpBar:SetStatusBarColor(0.2, 0.9, 0.2, 1)
     hpBar.txt:SetText("24692 / 24692")
     print("GT: simulando 30s con casteos consecutivos")
-    -- Casteos consecutivos cada 2s con 1.5s de cast
+
     local te, castCount = 0, 0
     local tf = CreateFrame("Frame")
     tf:SetScript("OnUpdate", function(self, dt)
@@ -1330,7 +1330,7 @@ SlashCmdList.GT = function(msg)
         te = 0
         castCount = castCount + 1
         StartCast(1.5, "Jugador")
-        -- Simular daño gradual al HP
+
         local newPct = math.max(0.1, 1 - castCount * 0.08)
         hpBar:SetValue(newPct)
         local hp = math.floor(24692 * newPct + 0.5)
@@ -1353,7 +1353,7 @@ SlashCmdList.GT = function(msg)
       print("GT CAL: cerrado.")
       return
     end
-    -- Calibracion: muestra el frame con barras al 60% para ajustar posiciones
+
     GT_CALIBRATING = true
     SetActiveMode(MODE_BLIZZARD)
     ui:ClearAllPoints()
@@ -1390,12 +1390,12 @@ SlashCmdList.GT = function(msg)
   end
 end
 
--- =====================================================
--- INTEGRACION NUF
--- =====================================================
+
+
+
 local gtEnabled = false
 
--- Modo test on/off (lo usa el boton del panel)
+
 function K.ToggleGargoyleTest()
   if state.active and state.testMode then
     StopAll()
@@ -1414,12 +1414,12 @@ function K.IsGargoyleTestActive()
   return state.active and state.testMode
 end
 
--- Version ON/OFF para "Mover todo".
---
--- K.ToggleGargoyleTest alterna, y eso no sirve ahi: el modo mover necesita
--- PRENDER al desbloquear y APAGAR al bloquear. Con un toggle, si el estado
--- ya coincidia se invertia justo al reves y el marco no aparecia — que es
--- por lo que la caja de la gargola salia vacia y no habia nada que agarrar.
+
+
+
+
+
+
 function K.SetGargoylePreview(on)
   local active = K.IsGargoyleTestActive()
   if on and not active then
@@ -1429,7 +1429,7 @@ function K.SetGargoylePreview(on)
   end
 end
 
--- Modo visual: "blizzard" | "custom"
+
 function K.SetGargoyleMode(mode)
   if mode ~= MODE_BLIZZARD and mode ~= MODE_CUSTOM then return end
   local wasShown = ui and ui:IsShown()
@@ -1441,7 +1441,7 @@ function K.GetGargoyleMode()
   return currentMode
 end
 
--- Donde mostrarse
+
 function K.GetGargoyleZoneOption(key)
   return GTDB()[key] and true or false
 end
@@ -1461,15 +1461,15 @@ function K.ResetGargoylePosition()
   end
 end
 
--- Escala configurable desde el panel (Interface > PvP > Gargoyle Tracker).
---
--- El slider del panel ya estaba escrito, pero K.UI.ScaleSlider no dibuja
--- nada si el modulo no figura en el registro central, y aca nunca se
--- llamaba a RegisterScalable: por eso no aparecia.
---
--- Se registran LOS DOS marcos, el del modo blizzard y el del custom, asi
--- el slider vale para el modo que tengas puesto y no hay que acordarse de
--- ajustarlo dos veces al cambiar de modo.
+
+
+
+
+
+
+
+
+
 if K.RegisterScalable then
   K.RegisterScalable("GargoyleTracker", { uiBlizz, uiCustom }, 1.0)
 end
@@ -1479,13 +1479,13 @@ local function GT_SetEnabled(on)
   if on then
     SetActiveMode(GTDB().mode or MODE_BLIZZARD)
     f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-    -- Para cerrarlo cuando termina la arena o cambias de zona.
+
     f:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
     f:RegisterEvent("PLAYER_ENTERING_WORLD")
     f:RegisterEvent("ZONE_CHANGED_NEW_AREA")
   else
-    -- COMBAT_LOG_EVENT_UNFILTERED es de los eventos mas caros del juego:
-    -- con el modulo apagado no queda registrado.
+
+
     f:UnregisterAllEvents()
     StopAll()
     if uiBlizz then uiBlizz:Hide() end
@@ -1498,7 +1498,7 @@ K.RegisterModule("GargoyleTracker", {
   desc    = L["MOD_GARGOYLE_DESC"]
     or "Timer, cast bar and health of the enemy Ebon Gargoyle (Death Knight).",
   default = false,
-  hideFromModulesTab = true,   -- vive en Interface > PvP
+  hideFromModulesTab = true,
   onEnable  = function() GT_SetEnabled(true) end,
   onDisable = function() GT_SetEnabled(false) end,
 });

@@ -1,15 +1,15 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- PaladinICD.lua  (integrado a NUF, de NidhausTools)
--- CD interno visual de las defensivas de paladin (Divine Protection,
--- Escudo Divino, Mano de Proteccion, Ira Vengadora, Imposicion de Manos).
---
--- CAMBIOS respecto del addon suelto:
---   * Se prende/apaga como modulo de NUF; COMBAT_LOG solo se registra con
---     el modulo activo. Si no sos paladin, ni se crea ni aparece.
--- =========================================================
+
+
+
+
+
+
+
+
+
 
 local _, class = UnitClass("player")
 if class ~= "PALADIN" then return end
@@ -18,9 +18,9 @@ local DURATION = 30
 local ICON_DEFAULT = "Interface\\Icons\\Spell_Holy_AvengineWrath"
 local ICON_AVENGING_WRATH = "Interface\\Icons\\Spell_Holy_DivineIntervention"
 
--- nombres que ponen el CD en marcha via SPELL_AURA_APPLIED sobre uno mismo
--- (se agrego Avenging Wrath, que en el WeakAura original faltaba en esta lista
--- aunque tenia logica de icono para el - bug del autor)
+
+
+
 local WATCHED_SELF_BUFFS = {
     ["Divine Protection"] = true,
     ["Divine Shield"] = true,
@@ -30,8 +30,8 @@ local WATCHED_SELF_BUFFS = {
 
 local playerName = UnitName("player")
 
--- Mismo caso que DTSU: SavedVariables se carga DESPUES de este archivo, asi que
--- "X = X or {...}" no sirve si la tabla guardada viene vacia o incompleta.
+
+
 local ICD_DEFAULTS = { point = "CENTER", x = 0, y = -168 }
 
 PaladinICD_DB = PaladinICD_DB or {}
@@ -67,9 +67,9 @@ frame:Hide()
 frame.icon = frame:CreateTexture(nil, "ARTWORK")
 frame.icon:SetAllPoints()
 frame.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
--- MISMA LOGICA QUE PAB: mientras el cooldown corre el icono va en gris
--- (SetDesaturated(true)) y al quedar listo vuelve a color
--- (SetDesaturated(false)). Antes estaba fijo en gris siempre.
+
+
+
 frame.icon:SetDesaturated(true)
 frame.icon:SetVertexColor(0.45, 0.45, 0.45)
 
@@ -79,14 +79,14 @@ frame.border:SetPoint("BOTTOMRIGHT", frame.icon, 1, -1)
 frame.border:SetTexture("Interface\\Buttons\\WHITE8x8")
 frame.border:SetVertexColor(0, 0, 0, 1)
 
--- Cooldown nativo: sin numero/barra propios - lo maneja OmniCC (el usuario ya
--- tiene OmniCC para los numeros, aca solo damos el swipe/animacion estandar)
+
+
 frame.cooldown = CreateFrame("Cooldown", "PaladinICDCooldown", frame, "CooldownFrameTemplate")
 frame.cooldown:SetAllPoints(frame.icon)
 frame.cooldown:SetDrawEdge(false)
 frame.cooldown:SetReverse(true)
 
--- fondo verde para el modo mover
+
 frame.dragBg = frame:CreateTexture(nil, "BACKGROUND")
 frame.dragBg:SetAllPoints()
 frame.dragBg:SetTexture(0, 1, 0, 0.3)
@@ -106,11 +106,11 @@ end)
 
 local expire = 0
 
--- Gris de "en cooldown", igual que PAB.
--- SetDesaturated depende de que el cliente tenga los efectos de shader
--- activados: si estan apagados NO hace nada y el icono queda a color. Por eso
--- se combina con SetVertexColor, que oscurece siempre. Con shaders queda gris
--- puro; sin shaders, igual se ve apagado.
+
+
+
+
+
 local function SetIconGray(gray)
     if gray then
         frame.icon:SetDesaturated(true)
@@ -129,24 +129,24 @@ local function SetIconForName(name)
     end
 end
 
--- remaining: por si el relog necesita arrancar con menos tiempo restante que el DURATION completo
+
 local function StartCooldown(name, remaining)
     remaining = remaining or DURATION
     if remaining <= 0 then return end
     expire = GetTime() + remaining
     SetIconForName(name)
     frame.cooldown:SetCooldown(GetTime() - (DURATION - remaining), DURATION)
-    SetIconGray(true)                 -- en cooldown = gris (como PAB)
+    SetIconGray(true)
     frame:Show()
 end
 
 frame:SetScript("OnUpdate", function(self)
     if not self:IsShown() or self.dragMode then return end
     if expire - GetTime() <= 0 then
-        -- Cooldown terminado: vuelve a COLOR (logica de PAB). Si esta
-        -- activada la opcion de dejarlo a la vista, se queda mostrando el
-        -- icono a color para saber que ya lo tenes listo; si no, se oculta
-        -- como antes.
+
+
+
+
         SetIconGray(false)
         if not C.PaladinICDKeepVisible then
             self:Hide()
@@ -154,13 +154,13 @@ frame:SetScript("OnUpdate", function(self)
     end
 end)
 
--- El registro de eventos lo maneja el modulo (onEnable/onDisable): con el
--- modulo apagado no escucha COMBAT_LOG.
+
+
 local ev = CreateFrame("Frame")
 ev:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_ENTERING_WORLD" then
-        -- funcion de relog: si el buff ya esta activo cuando entras/recargas,
-        -- restauramos el icono con el tiempo restante real del buff
+
+
         for i = 1, 40 do
             local name, _, _, _, _, _, expirationTime = UnitBuff("player", i)
             if not name then break end
@@ -172,8 +172,8 @@ ev:SetScript("OnEvent", function(self, event, ...)
             end
         end
 
-        -- Lay on Hands no deja buff propio, pero si aplica el debuff Forbearance
-        -- lo usamos como aproximacion de que se uso alguna de las defensivas
+
+
         if not frame:IsShown() then
             for i = 1, 40 do
                 local name, _, _, _, _, _, expirationTime = UnitDebuff("player", i)
@@ -205,7 +205,7 @@ ev:SetScript("OnEvent", function(self, event, ...)
     end
 end)
 
--- ===== mover / reset (expuesto para el panel de NUF y el slash) =====
+
 function K.TogglePaladinICDMove()
     frame.dragMode = not frame.dragMode
     frame:EnableMouse(frame.dragMode)
@@ -221,9 +221,9 @@ function K.TogglePaladinICDMove()
     return frame.dragMode
 end
 
--- Preview para el modo "Mover todo": sin esto el icono esta oculto
--- mientras no corre ningun cooldown, y el recuadro azul apuntaba a un
--- frame invisible — no habia forma de ver donde lo estabas poniendo.
+
+
+
 function K.SetPaladinICDPreview(state)
     if state then
         frame.preview = true
@@ -253,13 +253,13 @@ SlashCmdList["PALADINICD"] = function()
         or "|cff00ff00PaladinICD|r: posicion fijada.")
 end
 
--- Muestra el icono "listo" (a color) cuando la opcion de dejarlo a la vista
--- esta activada y no hay ningun cooldown corriendo.
+
+
 function K.ApplyPaladinICDVisibility()
     local onCD = (expire - GetTime()) > 0
-    if onCD then return end          -- si corre el CD, no tocar nada
+    if onCD then return end
     if C.PaladinICDKeepVisible then
-        SetIconForName(nil)          -- icono por defecto
+        SetIconForName(nil)
         SetIconGray(false)
         frame.cooldown:SetCooldown(0, 0)
         frame:Show()
@@ -268,7 +268,7 @@ function K.ApplyPaladinICDVisibility()
     end
 end
 
--- ===== integracion NUF: on/off del modulo =====
+
 local function PICD_SetEnabled(on)
     if on then
         ev:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
@@ -285,7 +285,7 @@ K.RegisterModule("PaladinICD", {
     desc    = L["MOD_PALADIN_ICD_DESC"]
         or "Visual internal cooldown of your paladin defensives (Divine Protection, Divine Shield, Hand of Protection, Avenging Wrath, Lay on Hands). /paladinicd to move it.",
     default = false,
-    hideFromModulesTab = true,  -- vive en Interface > General > Paladin
+    hideFromModulesTab = true,
     onEnable  = function() PICD_SetEnabled(true) end,
     onDisable = function() PICD_SetEnabled(false) end,
 });

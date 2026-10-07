@@ -1,24 +1,24 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- CommandList.lua
---
--- LA LISTA DE TODOS LOS COMANDOS, EN UN SOLO LUGAR.
---
--- El addon tiene mas de cuarenta comandos repartidos en cuarenta archivos.
--- Hasta ahora la unica ayuda listaba cinco, y el resto habia que saberlos
--- de memoria o ir a buscarlos al codigo.
---
--- OJO: esta tabla es TEXTO, no el registro real. Los comandos siguen
--- viviendo en su modulo, como corresponde; esto solo los describe. Si
--- agregas uno nuevo, sumale la linea aca.
---
--- La columna 'mod' sirve para dos cosas: no listar comandos de modulos que
--- no existen (ShieldWatch esta fuera del load) y marcar en gris los de
--- modulos apagados, que es informacion util: si un comando "no hace nada",
--- casi siempre es porque su modulo esta destildado.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local GROUPS = {
 	{ title = L["CMDLIST_GENERAL"] or "General", cmds = {
@@ -86,7 +86,7 @@ function K.PrintCommandList()
 		print("|cffFFD100" .. group.title .. "|r");
 		for _, entry in ipairs(group.cmds) do
 			local cmd, desc, mod = entry[1], entry[2], entry.mod;
-			-- Un modulo que ni siquiera cargo no se lista: su comando no existe.
+
 			local show = true;
 			if mod and not ModuleExists(mod) then show = false; end
 			if show then

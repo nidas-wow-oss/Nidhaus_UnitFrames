@@ -1,41 +1,41 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- MinimapIconToggle.lua
--- Boton chiquito en la esquina superior del minimapa que oculta
--- o muestra TODOS los iconos: zoom, reloj, tracking, calendario,
--- correo, y los iconos que cuelgan los addons.
---
--- El estado se guarda, asi que se mantiene entre sesiones.
--- =========================================================
 
--- enabled     = el MODULO, que ahora es solo el boton del minimapa.
--- forceHidden = lo que decidio ese boton. Es un interruptor aparte del modo:
---               "escondelos ahora", sin importar que diga la configuracion.
---
--- El motor de mostrar y ocultar YA NO depende del modulo: lo maneja el modo
--- (Siempre / Con el mouse / Nunca) y corre este el boton puesto o no.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local enabled     = false;
 local forceHidden = false;
 local toggleBtn;
 
--- Declarados aca arriba a proposito.
---
--- El arranque los toca y esta ANTES, en el archivo, que el bloque donde
--- vivian. Un local declarado mas abajo NO lo ve una funcion escrita mas
--- arriba: se compila como global, y ahi el frame sale nil. Ya me paso con
--- los dos contadores; el frame se me escapo en la misma tanda.
---
--- El script del OnUpdate se le pone despues, cuando estan a la vista las
--- funciones que usa.
+
+
+
+
+
+
+
+
+
 local retryAcc, retryCount = 0, 0;
 local retry = CreateFrame("Frame");
 retry:Hide();
 
--- Cosas del cluster que NO hay que tocar nunca.
--- Ojo con la flecha del jugador y el borde del minimapa: si se tocan,
--- al volver a mostrar queda un aro dorado raro alrededor del personaje.
+
+
+
 local PROTECTED = {
 	["Minimap"]                = true,
 	["MinimapBackdrop"]        = true,
@@ -45,35 +45,35 @@ local PROTECTED = {
 	["MinimapNorthTag"]        = true,
 	["MinimapCompassTexture"]  = true,
 	["NUF_MinimapIconToggle"]  = true,
-	-- El borde del modo cuadrado. Es parte del MAPA, no un icono: al
-	-- ocultarlo con los demas el minimapa quedaba sin contorno, flotando
-	-- sobre el mundo, y al volver a mostrarlos ya no coincidia con nada.
+
+
+
 	["NUF_MinimapSquareBorder"] = true,
-	-- Y EL BORDE FINO (estilo Light). Mismo caso que el de arriba y por
-	-- eso el mismo remedio: es parte del MAPA, no un icono de addon.
-	--
-	-- Faltaba en esta lista, asi que el barrido de "ocultar iconos al
-	-- pasar el mouse" se lo llevaba puesto: se escondian los iconos y el
-	-- borde desaparecia con ellos.
+
+
+
+
+
+
 	["NUF_MinimapThinBorder"]   = true,
-	-- El reloj: siempre visible.
+
 	["TimeManagerClockButton"]  = true,
 	["TimeManagerClockTicker"]  = true,
-	-- Y el boton del propio NUF. Si se ocultara junto con los demas, el
-	-- unico acceso rapido al panel desaparece — y para recuperarlo habria
-	-- que acordarse del comando.
+
+
+
 	["NidhausUF_MinimapButton"] = true,
-	-- Los de la lista "Decorations" del panel: los maneja MinimapStyle segun
-	-- sus casillas, y este modulo no los toca ni para esconder ni para
-	-- mostrar. Si los tocara, al pasar el mouse reaparecerian aunque su
-	-- casilla diga que no.
+
+
+
+
 	["MinimapZoomIn"]        = true,
 	["MinimapZoomOut"]       = true,
-	["GameTimeFrame"]        = true,   -- calendario
-	["MiniMapWorldMapButton"]= true,   -- mapa del mundo
+	["GameTimeFrame"]        = true,
+	["MiniMapWorldMapButton"]= true,
 	["FeedbackUIButton"]     = true,
-	-- Blizzard maneja la visibilidad de estos segun el estado del juego.
-	-- Si los mostramos nosotros aparecen sin motivo (correo sin correo, etc.)
+
+
 	["MiniMapMailFrame"]           = true,
 	["MiniMapMailBorder"]          = true,
 	["MiniMapVoiceChatFrame"]      = true,
@@ -81,9 +81,9 @@ local PROTECTED = {
 	["MiniMapLFGFrame"]            = true,
 	["MiniMapInstanceDifficulty"]  = true,
 	["MinimapZoneTextButton"]      = true,
-	-- El boton de RASTREO (la lupa: buscar entrenadores, minerales, herbolaria...)
-	-- es una funcion del juego, no un icono de addon. Antes se ocultaba junto
-	-- con los demas y quedaba enterrado, sin forma de volver a sacarlo.
+
+
+
 	["MiniMapTrackingFrame"]       = true,
 	["MiniMapTracking"]            = true,
 	["MiniMapTrackingButton"]      = true,
@@ -93,28 +93,28 @@ local PROTECTED = {
 	["MiniMapTrackingBackground"]  = true,
 };
 
--- Iconos "fijos" de Blizzard que colgan del cluster o del minimapa
---
--- El RELOJ no esta aca: se mira todo el tiempo y ocultarlo con los iconos
--- de addons no tiene sentido. Ademas, quien quiera sacarlo tiene el
--- checkbox propio en Interfaz > Minimapa, que es donde corresponde.
--- LOS ICONOS DE BLIZZARD NO SON ASUNTO DE ESTA SECCION.
---
--- Antes se barrian junto con los de addon, y ahi estaba el error: la lista
--- "Decorations" del panel ya decide si se ve el zoom, el calendario, el
--- mapa del mundo y el reloj. Con las dos cosas tocando los mismos marcos,
--- el modo "con el mouse" los escondia y los volvia a mostrar al pasar el
--- cursor, pisando lo que decian esas casillas: tenias "Hide Calendar"
--- tildado y el calendario aparecia igual.
---
--- Esta seccion se llama Addon Icons y ahora hace exactamente eso. Cada
--- marco tiene un solo dueño.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local savedShown = {};
 
--- ---------------------------------------------------------
--- DB
--- ---------------------------------------------------------
+
+
+
 local function DB()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.MinimapIcons then
@@ -123,13 +123,13 @@ local function DB()
 	return NidhausUnitFramesDB.MinimapIcons;
 end
 
--- ---------------------------------------------------------
--- Recolectar todo lo ocultable
--- ---------------------------------------------------------
+
+
+
 local function CollectTargets()
 	local list = {};
 
-	-- Iconos de addons: normalmente son hijos del Minimap
+
 	if Minimap then
 		for _, child in ipairs({ Minimap:GetChildren() }) do
 			local n = child.GetName and child:GetName();
@@ -139,7 +139,7 @@ local function CollectTargets()
 		end
 	end
 
-	-- Algunos cuelgan del cluster
+
 	if MinimapCluster then
 		for _, child in ipairs({ MinimapCluster:GetChildren() }) do
 			local n = child.GetName and child:GetName();
@@ -152,24 +152,24 @@ local function CollectTargets()
 	return list;
 end
 
--- ---------------------------------------------------------
--- SOLO AL PASAR EL MOUSE
---
--- Los iconos son HIJOS del minimapa, asi que colgarse de su OnLeave no
--- sirve: apenas el cursor entra en un icono el minimapa recibe OnLeave,
--- todo se esconde, y el icono que ibas a apretar desaparece justo debajo
--- del cursor. Por eso se consulta la posicion del mouse en un OnUpdate y
--- cuenta como "encima" tanto el minimapa (con margen, que muchos iconos
--- viven en el borde o un poco afuera) como cualquier icono suelto.
---
--- Cinco veces por segundo alcanza de sobra para esto y no se nota.
--- ---------------------------------------------------------
-local hoverOver     = false;   -- lo que dice el mouse ahora
-local hoverTargets  = nil;     -- cache de iconos, para no recolectar en cada tick
+
+
+
+
+
+
+
+
+
+
+
+
+local hoverOver     = false;
+local hoverTargets  = nil;
 local HOVER_MARGIN  = 24;
 
--- Un solo estado de tres valores en vez de dos casillas sueltas que se
--- contradecian. Todo lo que decide cuando se ven los iconos vive aca.
+
+
 local function Mode()
 	local m = C.MinimapAddonIcons;
 	if m == "Never" or m == "Hover" then return m; end
@@ -180,9 +180,9 @@ local function HoverMode()
 	return Mode() == "Hover";
 end
 
--- El boton solo puede ESCONDER, nunca revelar: asi quiere decir lo mismo en
--- los tres modos y no hay que adivinar que hace segun cual este puesto. Con
--- "Nunca" no tiene nada que hacer, y esta bien que asi sea.
+
+
+
 local function DesiredVisible()
 	if Mode() == "Never" then return false; end
 	if forceHidden then return false; end
@@ -192,9 +192,9 @@ end
 
 local function ApplyState()
 	if not DesiredVisible() then
-		-- Ocultar: guardamos SOLO los que estaban visibles.
-		-- Los que ya estaban ocultos (correo sin correo, voice chat apagado,
-		-- battlefield sin cola) ni los tocamos, asi no reaparecen despues.
+
+
+
 		local targets = CollectTargets();
 		for _, f in ipairs(targets) do
 			if f:IsShown() and savedShown[f] == nil then
@@ -203,16 +203,16 @@ local function ApplyState()
 			end
 		end
 	else
-		-- Mostrar: SOLO lo que nosotros ocultamos. No volvemos a recolectar,
-		-- porque eso hacia aparecer iconos que Blizzard tenia ocultos a proposito.
+
+
 		for f in pairs(savedShown) do
 			if f.Show then f:Show(); end
 		end
 		wipe(savedShown);
 	end
 
-	-- El icono del boton refleja el interruptor MANUAL, no lo que el mouse
-	-- este haciendo en este instante: si no, parpadearia al pasar por encima.
+
+
 	if toggleBtn then
 		if forceHidden then
 			toggleBtn.icon:SetTexture("Interface\\Buttons\\UI-PlusButton-Up");
@@ -227,8 +227,8 @@ local function MouseIsNearMinimap()
 	if MouseIsOver(Minimap, HOVER_MARGIN, -HOVER_MARGIN, -HOVER_MARGIN, HOVER_MARGIN) then
 		return true;
 	end
-	-- Los que quedan mas lejos del borde se preguntan uno por uno. Solo los
-	-- visibles: sobre un icono escondido no se puede tener el cursor.
+
+
 	if hoverTargets then
 		for _, f in ipairs(hoverTargets) do
 			if f.IsShown and f:IsShown() and MouseIsOver(f) then return true; end
@@ -253,8 +253,8 @@ hoverDriver:SetScript("OnUpdate", function(self, elapsed)
 	end
 end);
 
--- La llama el desplegable del panel, y tambien MinimapStyle. Ya no exige
--- que el modulo del boton este prendido: el modo manda solo.
+
+
 function K.ApplyMinimapIconState()
 	if HoverMode() then
 		hoverTargets = CollectTargets();
@@ -267,12 +267,12 @@ function K.ApplyMinimapIconState()
 	ApplyState();
 end
 
--- Nombres viejos, por si algo los llama: MinimapStyle tenia el suyo y el
--- panel llamaba al de hover.
+
+
 K.ApplyMinimapAddonIcons  = function() K.ApplyMinimapIconState(); end
 K.ApplyMinimapIconsOnHover = function() K.ApplyMinimapIconState(); end
 
--- El motor arranca con el addon, no con el modulo.
+
 local bootstrap = CreateFrame("Frame");
 bootstrap:RegisterEvent("PLAYER_ENTERING_WORLD");
 bootstrap:SetScript("OnEvent", function()
@@ -288,9 +288,9 @@ local function SetHidden(state)
 	ApplyState();
 end
 
--- ---------------------------------------------------------
--- Boton
--- ---------------------------------------------------------
+
+
+
 local function CreateToggleButton()
 	if toggleBtn then return toggleBtn; end
 	if not Minimap then return nil; end
@@ -298,16 +298,16 @@ local function CreateToggleButton()
 	toggleBtn = CreateFrame("Button", "NUF_MinimapIconToggle", Minimap);
 	toggleBtn:SetSize(16, 16);
 
-	-- Fuera del minimapa, pegado al borde IZQUIERDO y arriba.
-	--
-	-- Estaba en la esquina superior derecha, que es justo donde el juego
-	-- pone el calendario y (en modo cuadrado) el mapa del mundo: los tres
-	-- encimados. Ese lado esta siempre ocupado; el izquierdo de arriba no.
-	--
-	-- Ademas va POR FUERA del mapa (offset negativo en x) para no taparlo.
-	-- y = +4 y no 0: en modo cuadrado el boton de RASTREO va sobre el borde
-	-- izquierdo, centrado 38px por debajo del centro, o sea unos 16 por
-	-- debajo del techo. Con el toggle a ras del techo se rozaban.
+
+
+
+
+
+
+
+
+
+
 	toggleBtn:SetPoint("TOPRIGHT", Minimap, "TOPLEFT", -4, 4);
 	toggleBtn:SetFrameStrata("MEDIUM");
 	toggleBtn:SetFrameLevel(Minimap:GetFrameLevel() + 10);
@@ -338,16 +338,16 @@ local function CreateToggleButton()
 	return toggleBtn;
 end
 
--- ---------------------------------------------------------
--- Eventos: los addons cuelgan sus iconos tarde
--- ---------------------------------------------------------
+
+
+
 retry:SetScript("OnUpdate", function(self, elapsed)
 	retryAcc = retryAcc + elapsed;
 	if retryAcc < 1 then return; end
 	retryAcc = 0;
 	retryCount = retryCount + 1;
-	-- Los addons cuelgan sus iconos tarde, asi que se vuelve a aplicar unas
-	-- veces mas. Ya no se pregunta por el modulo: el modo corre igual.
+
+
 	ApplyState();
 	if retryCount >= 5 then self:Hide(); end
 end);
@@ -369,24 +369,24 @@ SlashCmdList["NUFMINIMAP"] = function()
 	SetHidden(not forceHidden);
 end
 
--- ---------------------------------------------------------
--- Registro del modulo
--- ---------------------------------------------------------
+
+
+
 K.RegisterModule("MinimapIconToggle", {
 	name    = L["MOD_MINIMAP_TOGGLE"] or "Minimap Icon Toggle",
 	desc    = L["MOD_MINIMAP_TOGGLE_DESC"] or "Button on the minimap corner that hides or shows every minimap icon.",
 	default = false,
-	-- FUERA DE LA PESTANA DE MODULOS.
-	--
-	-- Ya tiene su casilla en Interface > Minimap, que es donde uno la
-	-- busca. Aparecer tambien en la lista de modulos era la misma opcion
-	-- dos veces, y dos lugares para lo mismo es un lugar de mas donde se
-	-- pueden contradecir.
+
+
+
+
+
+
 	hideFromModulesTab = true,
 	configLabel = L["BTN_MODULE_TOGGLE"] or "Toggle",
 	configFunc = function() SetHidden(not forceHidden); end,
-	-- El modulo es SOLO el boton. Prenderlo o apagarlo no toca los iconos:
-	-- de eso se encarga el modo, que vive aparte y corre siempre.
+
+
 	onEnable = function()
 		enabled = true;
 		CreateToggleButton();
@@ -397,8 +397,8 @@ K.RegisterModule("MinimapIconToggle", {
 		enabled = false;
 		events:UnregisterAllEvents();
 		if toggleBtn then toggleBtn:Hide(); end
-		-- Si se va el boton, se va con el lo que el boton habia escondido:
-		-- si no, quedarian iconos ocultos sin nada con que recuperarlos.
+
+
 		if forceHidden then SetHidden(false); end
 	end,
 });

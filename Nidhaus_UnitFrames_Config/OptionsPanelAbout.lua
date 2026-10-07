@@ -1,41 +1,41 @@
--- Este archivo vive en Nidhaus_UnitFrames_Config, un addon aparte que se
--- carga SOLO cuando abris el panel (LoadOnDemand). Por eso no recibe el
--- namespace por "...", que es privado de cada addon: lo toma de la global
--- que publica el addon principal en Core/Init.lua.
+
+
+
+
 local ns = _G.NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- OptionsPanelAbout.lua
--- Tab 6: About
--- Delegado desde OptionsPanel.lua
--- =========================================================
+
+
+
+
+
 
 function K.PopulateAboutTab(panel)
-	-- Logo / Nombre grande centrado
+
 	local aboutName = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge");
 	aboutName:SetPoint("TOP", 0, -20);
 	aboutName:SetText(L["ABOUT_ADDON_NAME"]);
 
-	-- Version debajo del nombre
+
 	local aboutVersion = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight");
 	aboutVersion:SetPoint("TOP", aboutName, "BOTTOM", 0, -6);
 	aboutVersion:SetText(L["ABOUT_VERSION"]);
 
-	-- Descripcion PVP
+
 	local aboutDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight");
 	aboutDesc:SetPoint("TOP", aboutVersion, "BOTTOM", 0, -14);
 	aboutDesc:SetWidth(500);
 	aboutDesc:SetJustifyH("CENTER");
 	aboutDesc:SetText(L["ABOUT_DESCRIPTION"]);
 
-	-- Separador 1
+
 	local aboutSep1 = panel:CreateTexture(nil, "ARTWORK");
 	aboutSep1:SetTexture(1, 1, 1, 0.15);
 	aboutSep1:SetPoint("TOP", aboutDesc, "BOTTOM", 0, -14);
 	aboutSep1:SetSize(400, 1);
 
-	-- Slash Commands header
+
 	local cmdHeader = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 	cmdHeader:SetPoint("TOP", aboutSep1, "BOTTOM", 0, -14);
 	cmdHeader:SetText(L["ABOUT_COMMANDS_HEADER"]);
@@ -56,13 +56,13 @@ function K.PopulateAboutTab(panel)
 		prevCmd = cmdLine;
 	end
 
-	-- Separador 2
+
 	local aboutSep2 = panel:CreateTexture(nil, "ARTWORK");
 	aboutSep2:SetTexture(1, 1, 1, 0.15);
 	aboutSep2:SetPoint("TOP", prevCmd, "BOTTOM", 0, -14);
 	aboutSep2:SetSize(400, 1);
 
-	-- ── GitHub copiable ──────────────────────────────
+
 	local githubLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 	githubLabel:SetPoint("TOP", aboutSep2, "BOTTOM", 0, -14);
 	githubLabel:SetText(L["ABOUT_GITHUB_LABEL"]);
@@ -99,11 +99,11 @@ function K.PopulateAboutTab(panel)
 	copyHint:SetPoint("TOP", githubBoxBorder, "BOTTOM", 0, -4);
 	copyHint:SetText(L["ABOUT_COPY_HINT"]);
 end
--- =========================================================
--- Ventana About independiente
--- About dejo de ser una pestaña; ahora se abre desde el
--- boton del footer del panel de opciones.
--- =========================================================
+
+
+
+
+
 local aboutWindow;
 
 function K.ShowAboutWindow()
@@ -134,7 +134,7 @@ function K.ShowAboutWindow()
 	closeBtn:SetPoint("TOPRIGHT", -5, -5);
 	closeBtn:SetScript("OnClick", function() aboutWindow:Hide(); end);
 
-	-- Contenedor con el mismo contenido que tenia la pestaña
+
 	local content = CreateFrame("Frame", nil, aboutWindow);
 	content:SetPoint("TOPLEFT", 14, -14);
 	content:SetPoint("BOTTOMRIGHT", -14, 14);

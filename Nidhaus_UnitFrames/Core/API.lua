@@ -4,7 +4,7 @@ local K, C, L = unpack(ns);
 local SecureUnitButton_OnLoad, ToggleDropDownMenu = SecureUnitButton_OnLoad, ToggleDropDownMenu;
 local unpack, tonumber, _G, ipairs, pairs, setmetatable = unpack, tonumber, _G, ipairs, pairs, setmetatable;
 
---	Create Backdrop (Player & Target Frames);
+
 function K.CreateBackdrop(Obj)
 	if Obj.Backdrop then return; end;
 	
@@ -22,7 +22,7 @@ function K.CreateBackdrop(Obj)
 	Obj.Backdrop = Backdrop;
 end;
 
---	Move Frames;
+
 function K.MoveFrame(Obj, NewFrameName, UnitId, xOffset, yOffset, ParentBossFrame)
 	CreateFrame("Button", NewFrameName, UIParent, "SecureUnitButtonTemplate");
 	local Frame = _G[NewFrameName];
@@ -45,7 +45,7 @@ function K.MoveFrame(Obj, NewFrameName, UnitId, xOffset, yOffset, ParentBossFram
 		Frame:SetScript(script, Obj:GetScript(script));
 	end;
 	
-	-- FIX: Solo llamar EnableMouse una vez
+
 	Obj:EnableMouse(false);
 	
 	setmetatable(Frame, {__index = Obj});
@@ -85,38 +85,38 @@ function K.MoveFrame(Obj, NewFrameName, UnitId, xOffset, yOffset, ParentBossFram
 	end;
 end;
 
---	Move Point;
+
 function K.SetOffset(Obj, x, y)
 	local point, relativeTo, relativePoint, xOffset, yOffset = Obj:GetPoint(1);
 	return point, relativeTo, relativePoint, xOffset + x, yOffset + y;
 end;
 
--- ═══════════════════════════════════════════════════════════
--- GetArenaPositionKey — composite key per style + mirror mode
--- Used by CastBarPositions and TrinketPositions to save/load
--- positions independently per arena style (Blizzard/Custom/Flat)
--- and per mirror mode (normal/mirror).
--- ═══════════════════════════════════════════════════════════
+
+
+
+
+
+
 function K.GetArenaPositionKey()
 	local style = C.ArenaFrameStyle or "Custom";
 	local mirror = C.ArenaMirrorMode and "mirror" or "normal";
 	return style .. "_" .. mirror;
 end
--- ═══════════════════════════════════════════════════════════
--- Skin state capture/restore (para el checkbox "Custom Skin").
--- Guarda UNA sola vez el estado original de un elemento (textura,
--- geometría de una statusbar, o el punto de anclaje de un texto)
--- la primera vez que se llama, y permite restaurarlo tal cual.
---
--- Por qué "una sola vez": la primera captura ocurre justo antes de
--- que el addon pise el valor por primera vez, así siempre agarra el
--- default real de Blizzard (sin importar el core ni el timing). Las
--- llamadas siguientes NO re-capturan, así que nunca se guarda un
--- valor ya modificado por el addon.
--- ═══════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
+
+
 local skinCapture = {};
 
--- Captura (una vez) y devuelve la textura original de una region.
+
 function K.CaptureTexture(region, id)
 	if not region then return; end
 	if skinCapture[id] == nil then
@@ -132,7 +132,7 @@ function K.RestoreTexture(region, id)
 	end
 end
 
--- Captura (una vez) la geometría original (point + size) de una statusbar.
+
 function K.CaptureBarGeometry(bar, id)
 	if not bar then return; end
 	if skinCapture[id] == nil then
@@ -160,9 +160,9 @@ function K.RestoreBarGeometry(bar, id)
 	if d.h and d.h > 0 then bar:SetHeight(d.h); end
 end
 
--- Captura (una vez) el/los anclaje(s) original(es) de un texto/region
--- y permite restaurarlos. Guarda TODOS los points (un texto puede tener
--- varios), para reproducir exactamente el anclaje default.
+
+
+
 function K.CaptureAnchors(region, id)
 	if not region then return; end
 	if skinCapture[id] == nil then
@@ -188,59 +188,59 @@ function K.RestoreAnchors(region, id)
 end
 
 
--- =========================================================
--- EL TEMA VISUAL, APLICADO ENTERO Y EN EL ACTO
---
--- POR QUE EL PANEL PEDIA /reload.
---
--- El desplegable de "Visual Theme" cambia tres banderas -- darkFrames,
--- AsuriFrames y pwFrames -- y despues llamaba SOLO a dos consumidores: el
--- skin del jugador y el del objetivo. Pero esas banderas las leen tambien
--- los marcos del GRUPO, los de JEFE y el borde de los trinkets de arena.
--- Esos tres se quedaban con el tema anterior.
---
--- O sea que el cartel no mentia del todo: el cambio se veia a medias, y
--- recargar era la unica forma de emparejarlo. Lo que estaba mal no era el
--- cartel sino que faltaba avisarle a la mitad de la casa.
---
--- Aca estan todos, en un solo lugar. Si manana aparece otro consumidor del
--- tema, se agrega en esta funcion y no hay que acordarse de tocar tambien
--- el desplegable -- que es exactamente como se llego a esto.
---
--- Los marcos de ARENA no estan: su estilo se rearma al entrar a la arena y
--- tienen su propio camino (UpdateFlatStyle), que ademas sale temprano si el
--- modo plano no esta puesto. Meterlos aca seria pelear con ese sistema.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function K.ApplyUnitFrameTheme()
 	if K.ApplyPlayerFrameSkin      then pcall(K.ApplyPlayerFrameSkin);      end
-	if K.ApplyTargetFrameSkin      then pcall(K.ApplyTargetFrameSkin);      end  -- objetivo Y foco
+	if K.ApplyTargetFrameSkin      then pcall(K.ApplyTargetFrameSkin);      end
 	if K.RestylePartyFrames        then pcall(K.RestylePartyFrames);        end
 	if K.RestyleBossFrames         then pcall(K.RestyleBossFrames);         end
 	if K.RefreshClassOutlines      then pcall(K.RefreshClassOutlines);      end
 	if K.UpdateTrinketBorderColors then pcall(K.UpdateTrinketBorderColors); end
-	-- El tamaño del texto grande depende del tema (solo Light/Dark/Compact).
+
 	if K.RefreshBigStatusFonts     then pcall(K.RefreshBigStatusFonts);     end
-	-- El skin del objetivo/foco reancla el texto de vida: que el abreviado
-	-- recapture la posicion buena (el del jugador ya lo pide solo).
+
+
 	if K.InvalidateAbbrevAnchors   then pcall(K.InvalidateAbbrevAnchors);   end
 end
 
--- =========================================================
--- TEXTO GRANDE  (Interface > General > Status Text > Big text)
---
--- Saca el nombre de adentro del marco y lo pone ARRIBA, como el modo de
--- marcos gruesos de RougeUI. Asi la barra de vida queda libre y el numero
--- puede ir centrado y mas grande (C.BigTextCustomSize + sliders).
---
--- Solo con el Custom Skin en Light, Dark o Compact: esos tres ya son
--- marcos gruesos (barra de vida alta, nombre encima de la barra). Asuri
--- tiene otro reparto y el marco de Blizzard tiene su lugar para el nombre.
--- En el jugador tampoco con el marco de hielo del mago, que tapa al tema.
---
--- unit: "player" | "target" | "focus" (o nil = sin mirar el hielo).
--- Vive aca, en Core, porque la consultan PlayerFrame, TargetFrame, el
--- texto abreviado y el modulo de tamaño, que cargan en ese orden.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function K.BigStatusTextOn(unit)
 	if not C.BigStatusText then return false; end
 	if C.UnitFrameCustomTexture ~= true then return false; end
@@ -249,27 +249,27 @@ function K.BigStatusTextOn(unit)
 	return true;
 end
 
--- Tamaño propio de los numeros: solo con el texto grande puesto.
+
 function K.BigStatusSizeOn(unit)
 	return (C.BigTextCustomSize and K.BigStatusTextOn(unit)) and true or false;
 end
 
--- =========================================================
--- DESPUES DEL COMBATE
---
--- Los marcos de arena, los del grupo y sus mascotas son PROTEGIDOS: en
--- combate el juego no deja moverlos, escalarlos, cambiarles el padre ni
--- mostrarlos u ocultarlos desde un addon. Cada intento se corta y queda
--- anotado en taint.log como "An action was blocked in combat". En una
--- noche de arenas eran unos 3.700.
---
---   if K.AfterCombat("clave", fn) then return; end
---
--- Fuera de combate devuelve false y el llamador sigue normal. En combate
--- anota fn, devuelve true y fn corre al terminar la pelea. Misma clave =
--- una sola vez (gana la ultima): doscientos avisos de ARENA_OPPONENT_UPDATE
--- en una pelea terminan en UNA pasada al final.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local afterCombat, afterCombatOrder = {}, {};
 local afterCombatFrame = CreateFrame("Frame");
 afterCombatFrame:RegisterEvent("PLAYER_REGEN_ENABLED");

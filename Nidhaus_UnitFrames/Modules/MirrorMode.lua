@@ -1,7 +1,7 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- MirrorMode
+
 
 local _G, unpack, pairs, type, tostring = _G, unpack, pairs, type, tostring;
 
@@ -12,7 +12,7 @@ local castBarHooked = {};
 local arenaFrameHooked = {};
 local arenaOrigState = {};
 
--- Encontrar la casting bar del arena frame
+
 local function FindCastBar(index)
 	if castBarCache[index] then return castBarCache[index]; end
 
@@ -20,7 +20,7 @@ local function FindCastBar(index)
 	local arenaFrame = _G[pre];
 	if not arenaFrame then return nil; end
 
-	-- Intentar nombres globales
+
 	local names = {
 		pre.."CastingBar",
 		pre.."SpellBar",
@@ -33,12 +33,12 @@ local function FindCastBar(index)
 		end
 	end
 
-	-- Intentar propiedades del frame
+
 	if arenaFrame.spellbar then castBarCache[index] = arenaFrame.spellbar; return arenaFrame.spellbar; end
 	if arenaFrame.castBar then castBarCache[index] = arenaFrame.castBar; return arenaFrame.castBar; end
 	if arenaFrame.CastingBar then castBarCache[index] = arenaFrame.CastingBar; return arenaFrame.CastingBar; end
 
-	-- Buscar entre hijos
+
 	for _, child in pairs({arenaFrame:GetChildren()}) do
 		local name = child:GetName() or "";
 		local nameLower = name:lower();
@@ -53,12 +53,12 @@ end
 
 local bgOrigPositions = {};
 
--- ═══════════════════════════════════════════════════════════
--- FIX 2+3+4 (Gladius pattern): SINGLE SOURCE OF TRUTH for cast bar positioning.
--- Every function that needs to position a cast bar calls this ONE function.
--- Reads current state: flat mode, mirror mode, saved positions.
--- This eliminates 18 scattered SetPoint calls competing with each other.
--- ═══════════════════════════════════════════════════════════
+
+
+
+
+
+
 function K.PositionArenaCastBar(index)
 	local castBar = FindCastBar(index);
 	local arenaFrame = _G["ArenaEnemyFrame"..index];
@@ -68,24 +68,24 @@ function K.PositionArenaCastBar(index)
 	local isMirror = C.ArenaMirrorMode;
 	local saved = K.GetSavedCastBarPos and K.GetSavedCastBarPos();
 
-	-- Priority: saved position > mirror default > normal default
+
 	if saved then
 		castBar:ClearAllPoints();
 		castBar:SetPoint(saved[1], arenaFrame, saved[2], saved[3], saved[4]);
-		-- Icon follows saved side
+
 		local icon = castBar.Icon or _G[castBar:GetName().."Icon"];
 		if icon then
 			icon:ClearAllPoints();
 			if saved[3] and saved[3] > 0 then
-				-- Cast bar is to the RIGHT → icon on right
+
 				icon:SetPoint("LEFT", castBar, "RIGHT", 2, 0);
 			else
-				-- Cast bar is to the LEFT → icon on left
+
 				icon:SetPoint("RIGHT", castBar, "LEFT", -2, 0);
 			end
 		end
 	elseif isMirror then
-		-- Mirror ON: cast bar RIGHT (opposite to trinket)
+
 		castBar:ClearAllPoints();
 		castBar:SetPoint("BOTTOMLEFT", arenaFrame, "BOTTOMRIGHT", 8, 6);
 		local icon = castBar.Icon or _G[castBar:GetName().."Icon"];
@@ -94,7 +94,7 @@ function K.PositionArenaCastBar(index)
 			icon:SetPoint("LEFT", castBar, "RIGHT", 2, 0);
 		end
 	elseif isFlat then
-		-- Flat + no mirror: cast bar LEFT
+
 		castBar:ClearAllPoints();
 		castBar:SetPoint("BOTTOMRIGHT", arenaFrame, "BOTTOMLEFT", -8, 6);
 		local icon = castBar.Icon or _G[castBar:GetName().."Icon"];
@@ -103,21 +103,21 @@ function K.PositionArenaCastBar(index)
 			icon:SetPoint("RIGHT", castBar, "LEFT", -2, 0);
 		end
 	else
-		-- Normal (ni flat ni espejo): devolver la barra a su lugar de fabrica.
-		--
-		-- DOS FUENTES, en este orden:
-		--
-		--   1. arenaOrigState, la foto que saca este archivo. OJO: solo se
-		--      saca al prender el modo espejo. Si nunca lo usaste, esta
-		--      vacia.
-		--   2. La foto de ArenaFrame.lua, que se saca SIEMPRE al estilar
-		--      los marcos.
-		--
-		-- La segunda es la que faltaba. Sin ella, para quien nunca prendio
-		-- el espejo esta rama no hacia absolutamente nada: el boton Reset
-		-- borraba las posiciones guardadas y despues no tenia con que
-		-- reemplazarlas, asi que la barra se quedaba donde la habias
-		-- arrastrado hasta el proximo /reload.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		local s = arenaOrigState[index];
 		local cbPoints, cbIconPoints = s and s.cbPoints, s and s.cbIconPoints;
 
@@ -141,36 +141,36 @@ function K.PositionArenaCastBar(index)
 	end
 end
 
--- ═══════════════════════════════════════════════════════════
--- Hook universal para cast bars: registra UNA SOLA VEZ por cast bar.
--- OnShow llama K.PositionArenaCastBar (single source of truth).
--- ═══════════════════════════════════════════════════════════
+
+
+
+
 local function HookCastBarOnShow(castBar, index)
 	if castBarHooked[index] then return; end
 	castBar:HookScript("OnShow", function(self)
-		-- FIX 3: Un solo hook, una sola llamada. No importa cuántas veces
-		-- se toggle mirror mode: siempre hay UN hook que lee el estado actual.
+
+
 		K.PositionArenaCastBar(index);
 	end);
 	castBarHooked[index] = true;
 end
 
--- ═══════════════════════════════════════════════════════════
--- FIX: Funciones de mirror para Flat mode, MISMO PATRÓN que
--- ApplyMirrorToFrame / ApplyNormalToFrame en Custom/Blizzard.
--- Manipulan cast bar y trinket DIRECTAMENTE via _G.
--- ═══════════════════════════════════════════════════════════
 
--- Flat + Mirror ON: trinket IZQUIERDA, cast bar DERECHA (lados opuestos)
+
+
+
+
+
+
 local function ApplyFlatMirrorToExtras(frame, index)
-	-- Trinket IZQUIERDA (Mirror ON). ArenaMirrorMode gana sobre savedPos.
+
 	local trinketBorder = _G["NidhausArenaTrinketBorder"..index];
 	if trinketBorder then
 		trinketBorder:ClearAllPoints();
 		trinketBorder:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", -8, 0);
 	end
 
-	-- Cast bar: posicionada por K.PositionArenaCastBar (single source of truth)
+
 	local castBar = FindCastBar(index);
 	if castBar then
 		HookCastBarOnShow(castBar, index);
@@ -178,9 +178,9 @@ local function ApplyFlatMirrorToExtras(frame, index)
 	end
 end
 
--- Flat + Mirror OFF: trinket DERECHA, cast bar IZQUIERDA (lados opuestos)
+
 local function ApplyFlatNormalToExtras(frame, index)
-	-- Trinket DERECHA (Mirror OFF). Respetar savedPos si existe.
+
 	local trinketBorder = _G["NidhausArenaTrinketBorder"..index];
 	if trinketBorder then
 		local savedT = K.GetSavedTrinketPos and K.GetSavedTrinketPos();
@@ -192,7 +192,7 @@ local function ApplyFlatNormalToExtras(frame, index)
 		end
 	end
 
-	-- Cast bar: posicionada por K.PositionArenaCastBar (single source of truth)
+
 	local castBar = FindCastBar(index);
 	if castBar then
 		HookCastBarOnShow(castBar, index);
@@ -210,12 +210,12 @@ local function MirrorPoint(point)
 	return point;
 end
 
--- Forward declarations (definidas más abajo, referenciadas en hooks)
+
 local ApplyMirrorToFrame;
 local ApplyMirrorToPet;
 local UpdateTrinketPositions;
 
--- FIX: Timer compartido para OnShow hooks (antes se creaba un frame por arena enemy)
+
 local mirrorPendingFrames = {};
 local mirrorTimerElapsed = 0;
 local sharedMirrorTimer = CreateFrame("Frame");
@@ -231,11 +231,11 @@ sharedMirrorTimer:SetScript("OnUpdate", function(self, dt)
 			end
 		end
 		UpdateTrinketPositions();
-		wipe(mirrorPendingFrames);  -- FIX PERF: Reuse table, avoid GC pressure
+		wipe(mirrorPendingFrames);
 	end
 end);
 
--- Capturar estado original (una sola vez, ANTES de modificar)
+
 local function CaptureArenaOriginals(frame, index)
 	if arenaOrigState[index] then return; end
 	local s = {};
@@ -282,7 +282,7 @@ ApplyMirrorToFrame = function(frame, index)
 	local isCustom = C.ArenaCustomTexture;
 	local Font = C.ArenaFrameFont or {"Fonts\\FRIZQT__.TTF", 7, "OUTLINE"};
 
-	-- Textura: voltear horizontalmente
+
 	local tex = _G["ArenaEnemyFrame"..index.."Texture"];
 	if tex then
 		tex:ClearAllPoints();
@@ -291,7 +291,7 @@ ApplyMirrorToFrame = function(frame, index)
 			tex:SetTexCoord(1.0, 0.09375, 0, 0.78125);
 			tex:SetSize(124, 48);
 		elseif s and s.texCoords then
-			-- Espejar cada anchor point de la textura original
+
 			for _, pt in ipairs(s.texPoints) do
 				local point, rel, relPoint, x, y = unpack(pt);
 				tex:SetPoint(MirrorPoint(point), rel, MirrorPoint(relPoint), -(x or 0), y or 0);
@@ -302,13 +302,13 @@ ApplyMirrorToFrame = function(frame, index)
 		end
 	end
 
-	-- Portrait: mover a la izquierda
+
 	frame.classPortrait:ClearAllPoints();
 	if isCustom then
 		frame.classPortrait:SetPoint("LEFT", frame, "LEFT", 0, 0);
 		frame.classPortrait:SetSize(34, 34);
 	elseif s then
-		-- Espejar posiciones originales del portrait
+
 		for _, pt in ipairs(s.portPoints) do
 			local point, rel, relPoint, x, y = unpack(pt);
 			frame.classPortrait:SetPoint(MirrorPoint(point), rel, MirrorPoint(relPoint), -(x or 0), y or 0);
@@ -321,7 +321,7 @@ ApplyMirrorToFrame = function(frame, index)
 		frame.healthbar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -6);
 		frame.healthbar:SetSize(62, 14);
 	elseif s then
-		-- Espejar posiciones originales de healthbar
+
 		frame.healthbar:ClearAllPoints();
 		for _, pt in ipairs(s.hbPoints) do
 			local point, rel, relPoint, x, y = unpack(pt);
@@ -368,7 +368,7 @@ ApplyMirrorToFrame = function(frame, index)
 		frame.manabar:SetStatusBarTexture(C.statusbarTexture);
 	end
 
-	-- Fondo negro
+
 	local bg = _G["ArenaEnemyFrame"..index.."Background"];
 	if bg then
 		if not bgOrigPositions[index] then
@@ -380,25 +380,25 @@ ApplyMirrorToFrame = function(frame, index)
 		bg:SetPoint("BOTTOMRIGHT", frame.manabar, "BOTTOMRIGHT", 0, 0);
 	end
 
-	-- Backdrop
+
 	if frame.Backdrop then
 		frame.Backdrop:ClearAllPoints();
 		frame.Backdrop:SetPoint("TOPLEFT", frame.healthbar, "TOPLEFT");
 		frame.Backdrop:SetPoint("BOTTOMRIGHT", frame.manabar, "BOTTOMRIGHT");
 	end
 
-	-- Castbar: posicionada por K.PositionArenaCastBar (single source of truth)
+
 	local castBar = FindCastBar(index);
 	if castBar then
 		HookCastBarOnShow(castBar, index);
 		K.PositionArenaCastBar(index);
 	end
 
-	-- Hook arena frame OnShow
+
 	if not arenaFrameHooked[index] then
 		frame:HookScript("OnShow", function(self)
 			if C.ArenaMirrorMode and not (K.IsFlatModeActive and K.IsFlatModeActive()) then
-				-- FIX: Usar timer compartido (antes se creaba un frame por arena enemy)
+
 				mirrorPendingFrames[index] = self;
 				mirrorTimerElapsed = 0;
 				sharedMirrorTimer:Show();
@@ -443,30 +443,30 @@ local function ApplyNormalToFrame(frame, index)
 		end
 	end
 
-	-- Restaurar fondo negro
+
 	local bg = _G["ArenaEnemyFrame"..index.."Background"];
 	if bg and bgOrigPositions[index] then
 		bg:ClearAllPoints();
 		for _, pt in pairs(bgOrigPositions[index]) do bg:SetPoint(unpack(pt)); end
 	end
 
-	-- Restaurar backdrop
+
 	if frame.Backdrop then
 		frame.Backdrop:ClearAllPoints();
 		frame.Backdrop:SetPoint("TOPLEFT", frame.healthbar, "TOPLEFT");
 		frame.Backdrop:SetPoint("BOTTOMRIGHT", frame.manabar, "BOTTOMRIGHT");
 	end
 
-	-- Restaurar castbar via single source of truth
+
 	local castBar = FindCastBar(index);
 	if castBar then
 		K.PositionArenaCastBar(index);
 	end
 end
 
--- Capturar estado original del pet frame (UNA SOLA VEZ, nunca re-capturar)
--- FIX: Renombrado de CaptureOriginals → CapturePetMirrorOriginals para evitar
--- confusión con funciones del mismo nombre en ArenaFrame.lua y Arenaflat.lua
+
+
+
 local function CapturePetMirrorOriginals(petFrame)
 	if petFrame._mirrorCaptured then return; end
 
@@ -539,7 +539,7 @@ ApplyMirrorToPet = function(index)
 
 	CapturePetMirrorOriginals(petFrame);
 
-	-- Borde via nombre global
+
 	local petTex = _G[pre.."Texture"];
 	if petTex then
 		if not petOrigTexCoords[index] then
@@ -549,7 +549,7 @@ ApplyMirrorToPet = function(index)
 		petTex:SetTexCoord(URx,URy, LRx,LRy, ULx,ULy, LLx,LLy);
 	end
 
-	-- Regiones (portrait, flash)
+
 	for _, entry in pairs(petFrame._mirrorRegions) do
 		if entry.texCoords then
 			local ULx,ULy, LLx,LLy, URx,URy, LRx,LRy = unpack(entry.texCoords);
@@ -558,22 +558,22 @@ ApplyMirrorToPet = function(index)
 		MirrorElement(entry.element, entry);
 	end
 
-	-- Children (healthbar, manabar)
+
 	for _, entry in pairs(petFrame._mirrorChildren) do
 		MirrorElement(entry.element, entry);
 	end
 
-	-- Hook OnShow: NO re-capturar, solo re-aplicar desde originales
+
 	if not petHooked[index] then
 		petFrame:HookScript("OnShow", function()
 			if C.ArenaMirrorMode and petFrame._mirrorCaptured then
-				-- Re-aplicar borde
+
 				local tex = _G[pre.."Texture"];
 				if tex and petOrigTexCoords[index] then
 					local ULx,ULy, LLx,LLy, URx,URy, LRx,LRy = unpack(petOrigTexCoords[index]);
 					tex:SetTexCoord(URx,URy, LRx,LRy, ULx,ULy, LLx,LLy);
 				end
-				-- Re-aplicar regiones
+
 				for _, entry in pairs(petFrame._mirrorRegions) do
 					if entry.texCoords then
 						local ULx,ULy, LLx,LLy, URx,URy, LRx,LRy = unpack(entry.texCoords);
@@ -581,7 +581,7 @@ ApplyMirrorToPet = function(index)
 					end
 					MirrorElement(entry.element, entry);
 				end
-				-- Re-aplicar children
+
 				for _, entry in pairs(petFrame._mirrorChildren) do
 					MirrorElement(entry.element, entry);
 				end
@@ -596,13 +596,13 @@ local function ApplyNormalToPet(index)
 	local petFrame = _G[pre];
 	if not petFrame then return; end
 
-	-- Restaurar borde
+
 	local petTex = _G[pre.."Texture"];
 	if petTex and petOrigTexCoords[index] then
 		petTex:SetTexCoord(unpack(petOrigTexCoords[index]));
 	end
 
-	-- Restaurar regiones
+
 	if petFrame._mirrorRegions then
 		for _, entry in pairs(petFrame._mirrorRegions) do
 			if entry.texCoords then
@@ -612,7 +612,7 @@ local function ApplyNormalToPet(index)
 		end
 	end
 
-	-- Restaurar children
+
 	if petFrame._mirrorChildren then
 		for _, entry in pairs(petFrame._mirrorChildren) do
 			RestoreElement(entry.element, entry);
@@ -628,7 +628,7 @@ UpdateTrinketPositions = function()
 		local arenaFrame = _G["ArenaEnemyFrame"..i];
 		if not arenaFrame then break; end
 
-		-- _G primero (más fiable), fallback a ns.ArenaFrame_Trinkets.frames
+
 		local border = _G["NidhausArenaTrinketBorder"..i];
 		if not border then
 			if trinketCore and trinketCore.frames and trinketCore.frames[i] then
@@ -638,24 +638,24 @@ UpdateTrinketPositions = function()
 
 		if border then
 			border:ClearAllPoints();
-			-- Posición guardada para el modo actual tiene prioridad
+
 			local saved = isFlat and K.GetSavedTrinketPos and K.GetSavedTrinketPos();
 			if saved then
 				border:SetPoint(saved[1], arenaFrame, saved[2], saved[3], saved[4]);
 			elseif C.ArenaMirrorMode then
-				-- Mirror ON default: trinket IZQUIERDA
+
 				border:SetPoint("BOTTOMRIGHT", arenaFrame, "BOTTOMLEFT", -8, 0);
 			else
-				-- Mirror OFF default: trinket DERECHA
+
 				border:SetPoint("BOTTOMLEFT", arenaFrame, "BOTTOMRIGHT", 8, 0);
 			end
 		end
 	end
 end
 
--- FIX: Reposicionar cast bars en Flat mode según mirror state
--- En Flat mode + Mirror ON: cast bars van al lado opuesto
--- En Flat mode + Mirror OFF: cast bars en posición guardada o default
+
+
+
 local function RepositionFlatCastBars()
 	for i = 1, (MAX_ARENA_ENEMIES or 5) do
 		local castBar = FindCastBar(i);
@@ -669,15 +669,15 @@ end
 function K.ApplyMirrorMode()
 	if not C.ArenaFrameOn then return; end
 
-	-- FIX MIRROR MODE FLAT: usar el MISMO PATRÓN que Custom/Blizzard.
-	-- En Custom/Blizzard, ApplyMirrorToFrame voltea TODO el frame (portrait, barras, texturas).
-	-- En Flat, K.ApplyFlatStyle ya lee C.ArenaMirrorMode para:
-	--   1) el layout del frame  (local mirrored = C.ArenaFlatMirrored or C.ArenaMirrorMode)
-	--   2) la posición del cast bar  (derecha / izquierda)
-	--   3) la posición del trinket   (derecha / izquierda)
-	-- Por eso el fix correcto es re-aplicar K.ApplyFlatStyle completo,
-	-- igual que se llama ApplyMirrorToFrame/ApplyNormalToFrame en Custom/Blizzard.
-	-- Antes solo se movían cast bar y trinket (ApplyFlatMirrorToExtras) sin voltear el layout.
+
+
+
+
+
+
+
+
+
 	if K.IsFlatModeActive and K.IsFlatModeActive() then
 		for i = 1, (MAX_ARENA_ENEMIES or 5) do
 			local frame = _G["ArenaEnemyFrame"..i];
@@ -685,19 +685,19 @@ function K.ApplyMirrorMode()
 				if K.ApplyFlatStyle then K.ApplyFlatStyle(frame, i); end
 			end
 		end
-		-- Re-aplicar pet frames (su layout también usa ArenaMirrorMode).
-		-- No depende de "Mostrar mascotas en el Test": esa casilla es solo
-		-- para el modo prueba, y en una arena de verdad las mascotas
-		-- tambien tienen que voltearse al cambiar el espejo.
+
+
+
+
 		if C.ArenaFlatPetStyle and K.ApplyFlatPetFrames then
 			K.ApplyFlatPetFrames();
 		end
-		-- UpdateTrinketPositions como fallback para trinkets via _G (por si ns.ArenaFrame_Trinkets
-		-- no estaba listo cuando se crearon los trinkets)
+
+
 		UpdateTrinketPositions();
-		-- FIX: Reposicionar castbars con posiciones guardadas del modo actual.
-		-- Sin esto, al toggle mirror mode los castbars quedaban en posición default
-		-- porque ApplyFlatStyle los posiciona con defaults y nadie los restauraba.
+
+
+
 		RepositionFlatCastBars();
 		return;
 	end
@@ -722,14 +722,14 @@ function K.ToggleMirrorMode(enabled)
 	K.ApplyMirrorMode();
 end
 
--- Resetear castbars a posición original (para cuando se cambia a Flat desde mirror)
+
 function K.ResetMirrorCastBars()
 	for i = 1, (MAX_ARENA_ENEMIES or 5) do
 		K.PositionArenaCastBar(i);
 	end
 end
 
--- Debug: listar TODAS las texturas y fondos del arena frame
+
 function K.DebugPetFrame()
 	local arenaFrame = _G["ArenaEnemyFrame1"];
 	if not arenaFrame then
@@ -742,12 +742,12 @@ function K.DebugPetFrame()
 	print("  .background = "..tostring(arenaFrame.background ~= nil));
 	print("  .nameBackground = "..tostring(arenaFrame.nameBackground ~= nil));
 
-	-- Healthbar info
+
 	local hb = arenaFrame.healthbar;
 	if hb then
 		local p,_,rp,x,y = hb:GetPoint(1);
 		print("  healthbar: "..tostring(p).."("..tostring(x)..","..tostring(y)..") "..math.floor(hb:GetWidth()+0.5).."x"..math.floor(hb:GetHeight()+0.5));
-		-- Healthbar regions
+
 		for ri, region in pairs({hb:GetRegions()}) do
 			local name = region:GetName() or "nil";
 			local w = math.floor(region:GetWidth()+0.5);
@@ -762,7 +762,7 @@ function K.DebugPetFrame()
 		end
 	end
 
-	-- ALL regions of the arena frame
+
 	print("|cff00FF00NUF Arena1 ALL regions:|r");
 	for ri, region in pairs({arenaFrame:GetRegions()}) do
 		local name = region:GetName() or "nil";

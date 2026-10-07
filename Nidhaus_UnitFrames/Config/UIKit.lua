@@ -1,36 +1,36 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- UIKit.lua
--- Piezas visuales compartidas del panel de opciones.
---
--- Objetivo: que todas las pestañas hablen el MISMO idioma visual.
--- Antes convivian verde para encabezados, amarillo para titulos de
--- slider, celeste para party features y blanco para checkboxes:
--- cuatro codigos de color distintos sin significado.
---
--- Ahora son dos:
---   DORADO  -> encabezado de seccion
---   BLANCO  -> texto de opcion
---   CELESTE -> valor / dato
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 K.UI = K.UI or {};
 
--- ── Paleta ────────────────────────────────────────────────
-K.UI.COLOR_HEADER = "|cffFFD100";   -- dorado, encabezados
-K.UI.COLOR_LABEL  = "|cffFFFFFF";   -- blanco, opciones
-K.UI.COLOR_VALUE  = "|cff8EC9FF";   -- celeste, valores
-K.UI.COLOR_DIM    = "|cff8A8A8A";   -- gris, descripciones
+
+K.UI.COLOR_HEADER = "|cffFFD100";
+K.UI.COLOR_LABEL  = "|cffFFFFFF";
+K.UI.COLOR_VALUE  = "|cff8EC9FF";
+K.UI.COLOR_DIM    = "|cff8A8A8A";
 
 function K.UI.Header(text) return K.UI.COLOR_HEADER .. (text or "") .. "|r"; end
 function K.UI.Label(text)  return K.UI.COLOR_LABEL  .. (text or "") .. "|r"; end
 function K.UI.Value(text)  return K.UI.COLOR_VALUE  .. (text or "") .. "|r"; end
 function K.UI.Dim(text)    return K.UI.COLOR_DIM    .. (text or "") .. "|r"; end
 
--- Saca cualquier codigo de color previo de un texto, para poder
--- reaplicar el nuestro sin que quede |cff...|cff... encadenado.
+
+
 function K.UI.Strip(text)
 	if type(text) ~= "string" then return text; end
 	text = string.gsub(text, "|c%x%x%x%x%x%x%x%x", "");
@@ -38,22 +38,22 @@ function K.UI.Strip(text)
 	return text;
 end
 
--- ── Caja de seccion ───────────────────────────────────────
--- Recuadro con borde tenue y titulo, para agrupar controles.
--- Es DECORATIVA: se dibuja detras del contenido, asi que se puede
--- agregar sin tocar la posicion de nada.
---
---   K.UI.SectionBox(parent, "Action Bars", x, y, width, height)
---
--- SIN recuadros: al usuario no le gustaron las cajas dentro del panel
--- (cuadro dentro de cuadro). Esta funcion ahora solo dibuja el TITULO de
--- la seccion, si lo hay, y devuelve un frame invisible para que todos los
--- llamadores existentes (Show/Hide, etc.) sigan funcionando sin cambios.
+
+
+
+
+
+
+
+
+
+
+
 function K.UI.SectionBox(parent, title, x, y, width, height)
 	local box = CreateFrame("Frame", nil, parent);
 	box:SetPoint("TOPLEFT", x, y);
 	box:SetSize(width or 10, height or 10);
-	-- sin backdrop: invisible
+
 
 	if title and title ~= "" then
 		local fs = box:CreateFontString(nil, "OVERLAY", "GameFontNormal");
@@ -65,7 +65,7 @@ function K.UI.SectionBox(parent, title, x, y, width, height)
 	return box;
 end
 
--- ── Separador fino ────────────────────────────────────────
+
 function K.UI.Separator(parent, x, y, width)
 	local sep = parent:CreateTexture(nil, "ARTWORK");
 	sep:SetTexture(1, 1, 1, 0.10);
@@ -74,43 +74,43 @@ function K.UI.Separator(parent, x, y, width)
 	return sep;
 end
 
--- ── Filas alternadas ──────────────────────────────────────
--- DESACTIVADO a pedido del usuario: las bandas claro/oscuro creaban el
--- efecto de "doble fondo" que no gustaba. Se deja la funcion vacia para
--- no romper a quien la llame.
+
+
+
+
 function K.UI.StripeRow(parent, index)
 	return nil;
 end
 
--- ---------------------------------------------------------
--- Slider de escala GENERICO, atado al registro de ScaleAPI.
--- Sirve para cualquier modulo que haya llamado K.RegisterScalable.
---
---   K.UI.ScaleSlider(parent, "DTSU", x, y)
---
--- Si el modulo no esta registrado devuelve nil y no dibuja nada, asi el
--- panel no se rompe si un modulo no soporta escala.
--- ---------------------------------------------------------
--- =========================================================
--- LOS TOPES DEL SLIDER
---
--- OptionsSliderTemplate trae tres FontString: el titulo (anclado arriba al
--- centro) y los dos topes, minimo y maximo, abajo en cada punta.
---
--- En todo el addon se los escondia a los tres de un saque, con un bucle
--- copiado en cuatro archivos, y los sliders quedaban sin referencia: la
--- perilla a media altura y vos adivinando entre que numeros se mueve.
---
--- Estos sliders NO tienen nombre (CreateFrame("Slider", nil, ...)), asi
--- que no se puede ir por _G[nombre.."Low"]. La unica marca estable es
--- donde esta anclado cada uno:
---
---     BOTTOM   -> titulo   (se esconde: cada panel dibuja el suyo)
---     TOPLEFT  -> minimo
---     TOPRIGHT -> maximo
---
--- Devuelve las dos FontStrings por si el llamador quiere reubicarlas.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function K.UI.SliderEnds(slider, minText, maxText)
 	if not slider or not slider.GetRegions then return; end
 	local low, high;
@@ -136,9 +136,9 @@ function K.UI.SliderEnds(slider, minText, maxText)
 	return low, high;
 end
 
--- Todos los sliders de escala de modulo, para poder ponerlos al dia
--- cuando la escala cambia por otro lado (Ctrl + rueda en "Mover todo",
--- un reset, la carga de la SavedVariables).
+
+
+
 local moduleScaleSliders = {};
 
 function K.RefreshModuleScaleSliders(id)
@@ -165,15 +165,15 @@ function K.UI.ScaleSlider(parent, moduleId, x, y, width, label)
 	local val = s:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 	val:SetPoint("BOTTOMRIGHT", s, "TOPRIGHT", 0, 2);
 
-	-- AttachSliderValue (mas abajo en este mismo archivo) le cuelga una
-	-- cajita editable con el valor a TODO slider del addon. Sin esta
-	-- marca quedaban los dos numeros: este de aca arriba a la derecha y
-	-- el de la cajita debajo. Se veia en el slider de escala de DTSU y
-	-- en el de cualquier modulo escalable.
-	--
-	-- La marca le dice a AttachSliderValue cual es "el nuestro" para que
-	-- lo esconda. Se sigue actualizando igual, asi que si algun dia se
-	-- saca la cajita este vuelve a aparecer al dia.
+
+
+
+
+
+
+
+
+
 	s._nufOwnValue = val;
 
 	local cur = K.GetModuleScale(moduleId);
@@ -182,7 +182,7 @@ function K.UI.ScaleSlider(parent, moduleId, x, y, width, label)
 	s._last = cur;
 
 	s:SetScript("OnValueChanged", function(self, v)
-		v = math.floor(v * 20 + 0.5) / 20;   -- pasos de 0.05
+		v = math.floor(v * 20 + 0.5) / 20;
 		if self._last == v then return; end
 		self._last = v;
 		val:SetText(string.format("%.2f", v));
@@ -196,7 +196,7 @@ function K.UI.ScaleSlider(parent, moduleId, x, y, width, label)
 		val:SetText(string.format("%.2f", c));
 	end
 
-	-- Al dia siempre: al cambiar por otro lado y cada vez que se muestra.
+
 	s._moduleId = moduleId;
 	table.insert(moduleScaleSliders, s);
 	s:HookScript("OnShow", function(self) self:Refresh(); end);
@@ -204,23 +204,23 @@ function K.UI.ScaleSlider(parent, moduleId, x, y, width, label)
 	return s;
 end
 
--- ─────────────────────────────────────────────────────────
--- SLIDERS: caja de valor debajo
---
--- OptionsSliderTemplate ya trae el titulo arriba y min/max en las
--- puntas, pero no muestra el valor actual. Cada slider del addon lo
--- resolvia a mano metiendo el numero DENTRO del titulo ("Escala: 1.2"),
--- lo que quedaba largo e inconsistente.
---
--- Aca se le cuelga una cajita editable centrada abajo con el valor, y
--- se le limpia al titulo el sufijo ": <numero>" si lo tenia. Ademas se
--- puede tipear el numero a mano.
---
--- No hay que tocar ningun slider existente: RestyleSliders() recorre el
--- panel y se los aplica a todos.
--- ─────────────────────────────────────────────────────────
 
--- Cuantos decimales mostrar segun el paso del slider
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function StepDecimals(slider)
 	local step = slider:GetValueStep() or 1;
 	if step >= 1 then return 0; end
@@ -234,8 +234,8 @@ local function FormatValue(slider, v)
 	return string.format("%." .. d .. "f", v);
 end
 
--- Le saca al titulo el ": 1.25" / ": 62" final que muchos sliders
--- agregaban a mano, para no repetir el numero arriba y abajo.
+
+
 local function StripTrailingValue(text)
 	if type(text) ~= "string" then return text; end
 	return (string.gsub(text, "%s*:%s*%-?%d+%.?%d*%s*$", ""));
@@ -245,10 +245,10 @@ function K.UI.AttachSliderValue(slider)
 	if not slider or slider._nufValueBox then return; end
 	if not slider.GetValueStep or not slider.GetMinMaxValues then return; end
 
-	-- Las barras de scroll TAMBIEN son objetos "Slider", asi que el recorrido
-	-- de RestyleSliders las agarraba y les colgaba una cajita con el valor:
-	-- aparecia un numero suelto al pie de cada scroll. Se descartan por
-	-- orientacion (las de opciones son horizontales) y por nombre.
+
+
+
+
 	if slider.GetOrientation and slider:GetOrientation() == "VERTICAL" then return; end
 	local sname = slider:GetName();
 	if sname and string.find(sname, "ScrollBar") then return; end
@@ -257,10 +257,10 @@ function K.UI.AttachSliderValue(slider)
 		return;
 	end
 
-	-- El titulo: con nombre sale directo; sin nombre (la mayoria de los
-	-- sliders del addon son anonimos) hay que buscarlo entre las regiones.
-	-- En OptionsSliderTemplate el titulo es el unico FontString anclado
-	-- por su BOTTOM (Low y High van por TOPLEFT / TOPRIGHT).
+
+
+
+
 	local name = slider:GetName();
 	local titleFS = name and _G[name .. "Text"];
 	if not titleFS then
@@ -272,13 +272,13 @@ function K.UI.AttachSliderValue(slider)
 		end
 	end
 
-	-- Varios sliders ya traian su propio FontString con el valor, justo
-	-- debajo. La cajita va en el mismo lugar, asi que hay que esconderlo o
-	-- se leen los dos numeros pisados (uno mas grande que el otro).
-	-- La pestaña Frames arma un layout compacto propio: titulo a la
-	-- izquierda y valor pegado arriba a la derecha (slider.ValueText). Con
-	-- la cajita debajo el numero quedaba DOS veces. Se esconde ese, que la
-	-- caja ya lo muestra y ademas es editable.
+
+
+
+
+
+
+
 	if slider.ValueText then
 		pcall(slider.ValueText.Hide, slider.ValueText);
 	end
@@ -334,8 +334,8 @@ function K.UI.AttachSliderValue(slider)
 	box:SetScript("OnEditFocusLost", Sync);
 
 	slider:HookScript("OnValueChanged", function(self)
-		-- El titulo lo reescribe el OnValueChanged propio de cada slider,
-		-- asi que hay que volver a limpiarlo DESPUES de que corra.
+
+
 		if titleFS then titleFS:SetText(StripTrailingValue(titleFS:GetText())); end
 		Sync();
 	end);
@@ -345,8 +345,8 @@ function K.UI.AttachSliderValue(slider)
 	return box;
 end
 
--- Cuelga el restilado del OnShow de una ventana propia (los menus de
--- modulo se arman cuando se abren, no al cargar el panel).
+
+
 function K.UI.AutoRestyle(frame)
 	if not frame or frame._nufAutoRestyle then return; end
 	frame._nufAutoRestyle = true;
@@ -358,8 +358,8 @@ function K.UI.AutoRestyle(frame)
 	if frame:IsShown() then pcall(K.UI.RestyleSliders, frame); end
 end
 
--- Recorre un frame y le pone la caja de valor a todos los sliders que
--- cuelguen de el, sin importar cuan anidados esten.
+
+
 function K.UI.RestyleSliders(root, depth)
 	if not root or (depth or 0) > 8 then return; end
 	local kids = { root:GetChildren() };
@@ -371,29 +371,29 @@ function K.UI.RestyleSliders(root, depth)
 	end
 end
 
--- ─────────────────────────────────────────────────────────
--- BLOQUE DESPLEGABLE
---
--- El problema: casi todo el panel se arma con coordenadas fijas
--- ("gY = gY - 27" y a otra cosa). Con ese esquema, esconder una opcion
--- deja el agujero, porque lo de abajo no sabe que la de arriba ya no
--- esta. Por eso cada desplegable se venia resolviendo a mano.
---
--- Esto lo generaliza. Devuelve un "cuerpo" vacio donde colgar las
--- sub-opciones (con parent = body y coordenadas locales), y el cuerpo
--- sabe medirse: colapsado vale 1px de alto, desplegado vale lo que le
--- pediste. Lo que sigue se ancla AL CUERPO, no a un numero, y entonces
--- sube y baja solo.
---
---   local body = K.UI.Collapsible(pane, x, y, 440, 104, function()
---       return K.IsModuleEnabled("ClassOutline");
---   end);
---   ... controles con parent = body ...
---   siguiente:SetPoint("TOPLEFT", body, "BOTTOMLEFT", 0, -18);
---
--- isOpen se vuelve a consultar en cada Refresh(), asi que alcanza con
--- llamar body:Refresh() desde el OnClick del checkbox.
--- ─────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function K.UI.Collapsible(parent, x, y, width, height, isOpen)
 	local body = CreateFrame("Frame", nil, parent);
 	body:SetPoint("TOPLEFT", x, y);
@@ -423,7 +423,7 @@ function K.UI.Collapsible(parent, x, y, width, height, isOpen)
 		return open;
 	end
 
-	-- Al reabrir el panel el estado pudo cambiar desde otro lado.
+
 	parent:HookScript("OnShow", function() body:Refresh(); end);
 	body:Refresh();
 	return body;

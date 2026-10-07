@@ -1,19 +1,19 @@
--- PartyBuffs
--- Muestra buffs/debuffs extendidos del grupo (slots 1-20)
--- Buffs y debuffs se prenden por separado (Frames > Party: "Party Buffs" y
--- "Party Debuffs"). El tipo que el modulo no maneja queda como Blizzard:
--- debuffs = los 4 de fabrica en su lugar; buffs = ninguno.
--- Posiciones independientes por modo: Blizzard / NewPartyFrame
--- Offsets guardados en espacio LOCAL del party frame (compatibles con 3v3)
---
--- Commands: /pbuffs (abre y cierra el menu) | /pbuffs reset
+
+
+
+
+
+
+
+
+
 
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
 PartyBuffsDB = PartyBuffsDB or {}
 
--- Migrar datos de GroupBuffsDB si existen
+
 if GroupBuffsDB and not PartyBuffsDB._migrated then
 	for k, v in pairs(GroupBuffsDB) do
 		if PartyBuffsDB[k] == nil then PartyBuffsDB[k] = v; end
@@ -21,9 +21,9 @@ if GroupBuffsDB and not PartyBuffsDB._migrated then
 	PartyBuffsDB._migrated = true;
 end
 
-------------------------------------------------------------------------
--- Defaults por modo (espacio LOCAL del frame — probados con Blizzard y NPF)
-------------------------------------------------------------------------
+
+
+
 local DEFAULTS_BLIZ = {
 	buffs   = { x = 48,  y = -32 },
 	debuffs = { x = -7,  y = 5   },
@@ -32,26 +32,26 @@ local DEFAULTS_NPF = {
 	buffs   = { x = 44,  y = -37 },
 	debuffs = { x = -7,  y = 5   },
 }
--- Improved tiene su propio juego. Arranca en el de Blizzard pero 2px mas
--- arriba: con esa textura los buffs quedaban pisando el borde del marco.
---
--- Antes ese ajuste era un "+2" que se sumaba al vuelo sobre la posicion de
--- Blizzard, y traia dos problemas: los dos estilos compartian el mismo
--- valor guardado (mover uno pisaba el otro) y ese bonus habia que acordarse
--- de restarlo al leer la posicion del mover — un olvido que ya causo un bug.
--- Con un juego propio, el ajuste es simplemente el default y desaparece la
--- asimetria.
+
+
+
+
+
+
+
+
+
 local DEFAULTS_IMP = {
 	buffs   = { x = 48,  y = -30 },
 	debuffs = { x = -7,  y = 5   },
 }
--- Compact (Big Blizzard) y Compact 2 tienen cada uno su juego propio.
---
--- Antes ninguno de los dos figuraba en StyleKey, asi que caian en la
--- ranura de Blizzard y compartian sus valores: acomodabas los buffs en
--- Compact 2 y le pisabas la posicion al estilo de Blizzard, y viceversa.
---
--- Los numeros de Compact 2 salen de dejarlos acomodados en el juego.
+
+
+
+
+
+
+
 local DEFAULTS_PW = {
 	buffs   = { x = 48,  y = -32 },
 	debuffs = { x = -7,  y = 5   },
@@ -67,39 +67,39 @@ local DEFAULTS_SHARED = {
 	maxDebuffs = 10,
 }
 
-------------------------------------------------------------------------
--- Estado en runtime
-------------------------------------------------------------------------
+
+
+
 local pbEnabled   = false
 local initialized = false
 local boot
 local auraEvts  = {}
 local movers    = {}
 
--- Anclajes ORIGINALES de Buff1/Debuff1, tal como los deja Blizzard, guardados
--- antes de tocarlos. Al apagar el modulo se vuelve a ESTOS.
---
--- Antes el apagado reponia unos valores escritos a mano como si fueran los de
--- Blizzard. Si no coincidian —y no coincidian— los iconos quedaban donde los
--- habia puesto PartyBuffs, y parecia que el modulo seguia activo hasta que
--- hacias /reload.
+
+
+
+
+
+
+
 local origAnchors = {}
 
--- Declarada adelantada: K.PartyBuffs_OnFramesMoved la usa mucho antes de
--- donde esta definida, y sin esto la referencia caeria en una global
--- inexistente en vez de en esta local.
+
+
+
 local UpdateMoverPositions
 local dragState = { debuffs = false, buffs = false }
 
-------------------------------------------------------------------------
--- Helpers
-------------------------------------------------------------------------
+
+
+
 local function CopyScale(src)
 	return { buffs = tonumber(src.buffs) or 1, debuffs = tonumber(src.debuffs) or 1 }
 end
 local function CopyPanel(src)
-	-- Copia tambien el tipo de punto, no solo x/y: desde que la ventana se
-	-- guarda relativa a UIParent, el punto es parte de la posicion.
+
+
 	src = src or {}
 	return {
 		point         = src.point,
@@ -112,9 +112,9 @@ local function IsNPFActive()
 	return K.IsNewPartyFrameActive and K.IsNewPartyFrameActive();
 end
 
--- Que juego de posiciones corresponde al estilo activo.
--- Son TRES, uno por estilo, para que mover los buffs en uno no pise a los
--- otros y puedas ir y venir sin perder nada.
+
+
+
 local function StyleKey()
 	local style = (K.GetPartyFrameStyle and K.GetPartyFrameStyle()) or nil;
 	if style == "Improved" then return "imp"; end
@@ -122,25 +122,25 @@ local function StyleKey()
 	if style == "PW" then return "pw"; end
 	if style == "PW2" then return "pw2"; end
 	if style == "Default" then return "bliz"; end
-	-- Sin el coordinador de estilos, caer en la deteccion vieja.
+
 	return IsNPFActive() and "npf" or "bliz";
 end
 local function GetPartyAnchor()
 	return _G["PartyMemberFrame1"]
 end
--- NOTA: aca vivia la funcion que devolvia la escala del marco de party. Se
--- usaba para convertir los offsets de los movers entre el espacio del marco
--- y el de la pantalla, y esa conversion era el origen del problema: los
--- movers eran hijos de UIParent, asi que el codigo restaba coordenadas de
--- dos espacios distintos y despues lo "corregia" con la escala PROPIA del
--- marco (que ademas ignora la escala global de la UI).
---
--- Ahora los movers son hijos del marco, igual que en Party Trinkets, y no
--- queda ninguna conversion que hacer.
 
-------------------------------------------------------------------------
--- ApplyDefaults — garantiza que todos los campos existen en la DB
-------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
 local function ApplyDefaults()
 	if not PartyBuffsDB.blizBuffs   then PartyBuffsDB.blizBuffs   = { x=DEFAULTS_BLIZ.buffs.x,   y=DEFAULTS_BLIZ.buffs.y   } end
 	if not PartyBuffsDB.blizDebuffs then PartyBuffsDB.blizDebuffs = { x=DEFAULTS_BLIZ.debuffs.x, y=DEFAULTS_BLIZ.debuffs.y } end
@@ -157,7 +157,7 @@ local function ApplyDefaults()
 	if not PartyBuffsDB.maxBuffs    then PartyBuffsDB.maxBuffs    = DEFAULTS_SHARED.maxBuffs   end
 	if not PartyBuffsDB.maxDebuffs  then PartyBuffsDB.maxDebuffs  = DEFAULTS_SHARED.maxDebuffs end
 
-	-- Migrar formato plano (legado) → formato separado por modo
+
 	if PartyBuffsDB.buffs and not PartyBuffsDB._storageMigrated then
 		PartyBuffsDB.blizBuffs.x  = PartyBuffsDB.buffs.x   or DEFAULTS_BLIZ.buffs.x;
 		PartyBuffsDB.blizBuffs.y  = PartyBuffsDB.buffs.y   or DEFAULTS_BLIZ.buffs.y;
@@ -169,9 +169,9 @@ local function ApplyDefaults()
 	end
 end
 
-------------------------------------------------------------------------
--- Getters según modo activo
-------------------------------------------------------------------------
+
+
+
 local BUFFS_BY_STYLE   = { bliz = "blizBuffs",   npf = "npfBuffs",   imp = "impBuffs",   pw = "pwBuffs",   pw2 = "pw2Buffs"   };
 local DEBUFFS_BY_STYLE = { bliz = "blizDebuffs", npf = "npfDebuffs", imp = "impDebuffs", pw = "pwDebuffs", pw2 = "pw2Debuffs" };
 local DEFAULTS_BY_STYLE = { bliz = DEFAULTS_BLIZ, npf = DEFAULTS_NPF, imp = DEFAULTS_IMP, pw = DEFAULTS_PW, pw2 = DEFAULTS_PW2 };
@@ -188,14 +188,14 @@ local function GetCurrentDefaults()
 	return DEFAULTS_BY_STYLE[StyleKey()] or DEFAULTS_BLIZ;
 end
 
--- NOTA: aca vivia ImprovedBuffYBonus(), que sumaba 2px al vuelo con el
--- estilo Improved. Ya no hace falta: ese estilo tiene su propio juego de
--- posiciones y el ajuste esta en su default (DEFAULTS_IMP).
---
--- Sumar un bonus solo al COLOCAR obligaba a restarlo al LEER la posicion del
--- mover, y olvidarse de eso hacia que el mover saltara en cada arrastre.
--- Sin bonus, colocar y leer son operaciones inversas y no hay nada que
--- desincronizar.
+
+
+
+
+
+
+
+
 local function GetMaxBuffs()
 	ApplyDefaults();
 	return tonumber(PartyBuffsDB.maxBuffs) or DEFAULTS_SHARED.maxBuffs;
@@ -205,14 +205,14 @@ local function GetMaxDebuffs()
 	return tonumber(PartyBuffsDB.maxDebuffs) or DEFAULTS_SHARED.maxDebuffs;
 end
 
--- Que tipos maneja el modulo. Sin valor guardado, los dos (como antes).
+
 local function ShowBuffs()   return PartyBuffsDB.showBuffs   ~= false; end
 local function ShowDebuffs() return PartyBuffsDB.showDebuffs ~= false; end
 
--- Devuelve Buff1 / Debuff1 al anclaje que tenian ANTES de que el modulo los
--- tocara (lo captura SetupFrames). Se usa al apagar el modulo y al apagar
--- uno de los dos tipos: desde ahi ese anclaje vuelve a ser de Blizzard o
--- del estilo de party, no de este modulo (un solo dueño por anclaje).
+
+
+
+
 local function RestoreOrigAnchor(i, f, which)
 	local o = origAnchors[i];
 	if which == "debuff" then
@@ -240,9 +240,9 @@ local function RestoreOrigAnchor(i, f, which)
 	end
 end
 
--- Crea los iconos que falten hasta el maximo actual (Debuff5..maxD y
--- Buff1..maxB) y los encadena. Antes se creaban solo al prender el modulo,
--- con el maximo de ese momento: subirlo despues no mostraba mas iconos.
+
+
+
 local function EnsureAuraFrames(f)
 	local maxB, maxD = GetMaxBuffs(), GetMaxDebuffs();
 	local dPrefix = f:GetName() .. "Debuff";
@@ -265,33 +265,33 @@ local function EnsureAuraFrames(f)
 	end
 end
 
--- ---------------------------------------------------------------------
--- LAS AURAS SE DIBUJAN ACA, SIN LLAMAR A BLIZZARD
---
--- Antes esto llamaba a RefreshBuffs / RefreshDebuffs de Blizzard desde el
--- addon. Esas funciones, ademas de pintar los iconos, ESCRIBEN en el marco
--- del grupo (hasDispellable, debuffTotal, debuffCountdown). Escrito desde
--- el addon, ese valor queda "manchado" (taint), y el OnUpdate de Blizzard
--- de cada marco del grupo lo lee en CADA cuadro: desde ahi el codigo del
--- grupo corria manchado todo el tiempo. En combate el juego corta lo que
--- corre manchado, y de ahi el cartel "Nidhaus_UnitFrames has been blocked
--- from an action only available to the Blizzard UI" (en el taint.log:
--- "reading PartyMemberFrame4Buff8 - RefreshBuffs() <- PartyBuffs.lua").
---
--- Ademas el modulo le sacaba el UNIT_AURA al marco de Blizzard, asi que
--- los debuffs de la mascota y el tooltip de auras del grupo tambien
--- pasaban por aca.
---
--- Ahora:
---   * El UNIT_AURA queda en el marco de Blizzard, como de fabrica: pinta
---     sus 4 debuffs, los de la mascota y el tooltip, sin nada nuestro.
---   * Justo DESPUES (hooksecurefunc sobre RefreshDebuffs, que no mancha a
---     Blizzard) se pinta lo del modulo: los debuffs de mas, los buffs, y
---     se esconde lo que pase del maximo.
---   * El dibujo es propio: textura, borde, cooldown y Show/Hide de cada
---     icono. Eso no mancha nada; no se escribe ningun campo en los marcos
---     de Blizzard.
--- ---------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function SetAuraCooldown(cd, expirationTime, duration)
 	if not cd then return; end
 	local start = (expirationTime or 0) - (duration or 0);
@@ -303,9 +303,9 @@ local function SetAuraCooldown(cd, expirationTime, duration)
 	end
 end
 
--- Debuffs first..last. useFilter: respeta la opcion del juego "solo los
--- que puedo disipar" (showDispelDebuffs), como hacia antes el modulo. Los
--- 4 de fabrica de Blizzard van sin filtro.
+
+
+
 local function DrawDebuffs(f, unit, first, last, useFilter)
 	local fname = f:GetName();
 	local filter;
@@ -333,7 +333,7 @@ local function DrawDebuffs(f, unit, first, last, useFilter)
 	end
 end
 
--- Buffs 1..last (filtro "los que puedo lanzar": showCastableBuffs).
+
 local function DrawBuffs(f, unit, last)
 	local fname = f:GetName();
 	local filter;
@@ -355,16 +355,16 @@ local function DrawBuffs(f, unit, last)
 	end
 end
 
--- Refresca las auras de un marco segun que tipos maneja el modulo. Lee el
--- maximo en el momento (antes quedaba fijo el de cuando se prendio).
---
--- afterBlizzard: viene del enganche a RefreshDebuffs, o sea que Blizzard
--- acaba de pintar sus 4 debuffs. Si el modulo no maneja debuffs, esos ya
--- estan bien y no se tocan. Desde el panel (sin afterBlizzard) se pintan
--- los 4 de fabrica aca mismo, igual que Blizzard.
---
--- La unidad es la del grupo ("party1".."party4"), la misma que usa
--- Blizzard para esos 4 debuffs, asi todo sale de la misma lista.
+
+
+
+
+
+
+
+
+
+
 local function RefreshFrameAuras(f, afterBlizzard, unitArg)
 	local unit = unitArg;
 	if type(unit) ~= "string" then
@@ -398,14 +398,14 @@ local function RefreshFrameAuras(f, afterBlizzard, unitArg)
 	end
 end
 
--- Los 4 marcos del grupo (para reconocerlos en el enganche).
+
 local partyFrameSet = {};
 local refreshHooked = false;
 
--- Despues de cada RefreshDebuffs de Blizzard sobre un marco del grupo (lo
--- hace en cada UNIT_AURA de ese compa y al actualizar el miembro) se pinta
--- lo del modulo. hooksecurefunc corre lo nuestro aparte: Blizzard no se
--- entera ni se mancha.
+
+
+
+
 local function HookBlizzardRefresh()
 	if refreshHooked or type(RefreshDebuffs) ~= "function" then return; end
 	refreshHooked = true;
@@ -423,9 +423,9 @@ local function RefreshAllAuras()
 	end
 end
 
-------------------------------------------------------------------------
--- ApplyScaleAll — aplica escala a todos los iconos visibles
-------------------------------------------------------------------------
+
+
+
 local function ApplyScaleAll(scaleTable)
 	ApplyDefaults()
 	local sb = tonumber(scaleTable and scaleTable.buffs)   or tonumber(PartyBuffsDB.scale.buffs)   or 1
@@ -443,14 +443,14 @@ local function ApplyScaleAll(scaleTable)
 	end
 end
 
-------------------------------------------------------------------------
--- ReanchorAll — ancla Buff1/Debuff1 en espacio LOCAL del frame
--- WoW 3.3.5: SetPoint offsets son en el espacio de coordenadas del padre
--- del frame que se ancla. Buff1/Debuff1 son hijos de PartyMemberFrame,
--- por lo que los offsets van en el espacio local de ese frame.
--- Al guardar offsetX=48, un frame en escala 1.5 lo muestra como 72px.
--- Esto es el comportamiento correcto probado en la versión "copia".
-------------------------------------------------------------------------
+
+
+
+
+
+
+
+
 local function ReanchorAll()
 	if not pbEnabled then return; end
 	ApplyDefaults()
@@ -466,8 +466,8 @@ local function ReanchorAll()
 		local f = _G["PartyMemberFrame" .. i]
 		if f then
 			EnsureAuraFrames(f)
-			-- El anclaje de Debuff1 / Buff1 solo se toca si ese tipo es del
-			-- modulo; si no, es de Blizzard o del estilo de party.
+
+
 			if doD then
 				local d1 = _G[f:GetName() .. "Debuff1"]
 				if d1 then
@@ -482,8 +482,8 @@ local function ReanchorAll()
 					b1:SetPoint("TOPLEFT", f, "TOPLEFT", buffs.x, buffs.y)
 				end
 			end
-			-- Ocultar iconos más allá del límite (o todos los buffs si el
-			-- modulo no los maneja; los debuffs de Blizzard son 4).
+
+
 			for j = (doB and maxB or 0) + 1, 20 do
 				local b = _G[f:GetName() .. "Buff"   .. j]
 				if b then b:Hide() end
@@ -496,9 +496,9 @@ local function ReanchorAll()
 	end
 end
 
-------------------------------------------------------------------------
--- Setup inicial de frames (ejecuta una sola vez)
-------------------------------------------------------------------------
+
+
+
 local function SetupFrames()
 	if not pbEnabled then return end
 	if initialized   then return end
@@ -515,16 +515,16 @@ local function SetupFrames()
 	for i = 1, 4 do
 		local f = _G["PartyMemberFrame" .. i]
 		if f then
-			-- El UNIT_AURA se le deja a Blizzard (antes se lo sacabamos y lo
-			-- atendia un marco nuestro). Lo del modulo se pinta despues de
-			-- Blizzard desde HookBlizzardRefresh. Por si una version vieja se
-			-- lo saco en esta sesion, se lo devolvemos.
+
+
+
+
 			f:RegisterEvent("UNIT_AURA")
 			partyFrameSet[f] = true
 
-			-- Guardar los anclajes de fabrica ANTES de moverlos. Solo la
-			-- primera vez: si se recapturara al re-activar, se guardarian
-			-- las posiciones propias del modulo y no habria vuelta atras.
+
+
+
 			if not origAnchors[i] then
 				local o = {}
 				local d0 = _G[f:GetName() .. "Debuff1"]
@@ -538,17 +538,17 @@ local function SetupFrames()
 				origAnchors[i] = o
 			end
 
-			-- Crear los iconos que faltan; el anclaje de Debuff1 / Buff1 y
-			-- el ocultar lo de mas lo hace ReanchorAll segun que tipos
-			-- maneja el modulo.
+
+
+
 			EnsureAuraFrames(f)
 		end
 	end
 end
 
-------------------------------------------------------------------------
--- Exports públicos
-------------------------------------------------------------------------
+
+
+
 function K.IsPartyBuffsActive()
 	return pbEnabled;
 end
@@ -560,30 +560,30 @@ K.PartyBuffs_ReanchorAll = function()
 	end
 end
 
--- Llamado desde Partymode3v3 después de reposicionar frames con nueva escala.
--- Re-ancla iconos y actualiza los movers si están visibles.
+
+
 K.PartyBuffs_OnFramesMoved = function()
 	if not pbEnabled then return end
 	ReanchorAll()
 	ApplyScaleAll(PartyBuffsDB.scale)
 
-	-- Antes esto repetia la cuenta de anclaje una TERCERA vez (y con el mismo
-	-- error de escala). Tener la formula copiada en varios lados es
-	-- justamente lo que hacia que se desincronizaran entre si.
+
+
+
 	if (movers.debuffs and movers.debuffs:IsShown())
 		or (movers.buffs and movers.buffs:IsShown()) then
 		UpdateMoverPositions()
 	end
 end
 
-------------------------------------------------------------------------
--- FullReset — resetea posiciones + escala + max. Sin abrir menús.
-------------------------------------------------------------------------
+
+
+
 local function FullReset()
 	ApplyDefaults()
 
-	-- Resetear TODOS los estilos siempre, no solo el activo: si no, el que
-	-- esta apagado se queda con la posicion vieja y reaparece al cambiar.
+
+
 	PartyBuffsDB.blizBuffs.x   = DEFAULTS_BLIZ.buffs.x;   PartyBuffsDB.blizBuffs.y   = DEFAULTS_BLIZ.buffs.y
 	PartyBuffsDB.blizDebuffs.x = DEFAULTS_BLIZ.debuffs.x; PartyBuffsDB.blizDebuffs.y = DEFAULTS_BLIZ.debuffs.y
 	PartyBuffsDB.npfBuffs.x    = DEFAULTS_NPF.buffs.x;    PartyBuffsDB.npfBuffs.y    = DEFAULTS_NPF.buffs.y
@@ -601,28 +601,28 @@ local function FullReset()
 	PartyBuffsDB.maxDebuffs = DEFAULTS_SHARED.maxDebuffs
 end
 
-------------------------------------------------------------------------
--- Movers
-------------------------------------------------------------------------
+
+
+
 local function CreateMoverFrame(name, label)
 	local m = _G[name]
 	if m then
 		if m.text then m.text:SetText(label) end
 		return m
 	end
-	-- HIJO DEL MARCO DE PARTY, no de UIParent.
-	--
-	-- Aca estaba el problema de raiz. Siendo hijo de UIParent, el mover vivia
-	-- en un sistema de coordenadas y el marco en otro, y el codigo restaba
-	-- mover:GetLeft() - f1:GetLeft() como si fueran comparables. Despues
-	-- intentaba arreglarlo dividiendo por f1:GetScale() — que ademas es la
-	-- escala PROPIA, no la efectiva, asi que ignoraba la escala de la UI.
-	--
-	-- Party Trinkets nunca tuvo este problema porque su icono es hijo del
-	-- marco: comparte coordenadas con el padre y la resta da directo el
-	-- offset, sin conversion ninguna. Los iconos de buff reales tambien se
-	-- anclan asi (sin escala). Ahora el mover vive en el mismo espacio que
-	-- las dos cosas que representa.
+
+
+
+
+
+
+
+
+
+
+
+
+
 	local parentFrame = GetPartyAnchor() or UIParent
 	m = CreateFrame("Frame", name, parentFrame)
 	m:SetSize(140, 16)
@@ -648,10 +648,10 @@ local function CreateMoverFrame(name, label)
 	return m
 end
 
--- Los movers se anclan EXACTAMENTE igual que los iconos que representan:
--- mismos puntos, mismos offsets, sin multiplicar por escala. Al ser hijos
--- del marco comparten su espacio de coordenadas, asi que el offset que se
--- guarda es el mismo numero que usa el icono.
+
+
+
+
 function UpdateMoverPositions()
 	local f1 = GetPartyAnchor()
 	if not f1 then return end
@@ -668,10 +668,10 @@ function UpdateMoverPositions()
 	end
 end
 
--- Lectura inversa exacta de UpdateMoverPositions.
--- El ancla es LEFT del mover contra RIGHT del marco; los dos puntos estan
--- centrados verticalmente, asi que el Y sale de la diferencia de centros.
--- Es la misma cuenta que hace Party Trinkets al soltar.
+
+
+
+
 local function ComputeDebuffOffsetsFromMover(mover)
 	local f1 = GetPartyAnchor()
 	if not f1 then local d = GetCurrentDefaults(); return d.debuffs.x, d.debuffs.y end
@@ -691,18 +691,18 @@ local function ComputeBuffOffsetsFromMover(mover)
 	local fl = f1:GetLeft()    or 0
 	local ft = f1:GetTop()     or 0
 
-	-- EL SALTO AL SOLTAR ESTABA ACA. UpdateMoverPositions vuelve a anclar
-	-- sumando ImprovedBuffYBonus():
-	--     SetPoint(..., (buffs.y) * scale)
-	-- pero esta funcion NO lo restaba al leer la posicion. Entonces cada
-	-- vez que soltabas, el offset guardado se corria ese extra y el mover
-	-- pegaba un salto: por eso se sentia "imantado".
-	--
-	-- Regla, la misma que usa Party Trinkets: hay que LEER con exactamente
-	-- los mismos puntos y correcciones con los que se va a VOLVER a anclar,
-	-- si no, no cierra el circuito.
-	-- El ancla es TOPLEFT contra TOPLEFT, y al colocar se suma
-	-- ImprovedBuffYBonus(), asi que al leer hay que restarlo.
+
+
+
+
+
+
+
+
+
+
+
+
 	return math.floor(ml - fl + 0.5),
 	       math.floor(mt - ft + 0.5)
 end
@@ -761,49 +761,49 @@ local function CreateMovers()
 end
 
 local function ShowMovers(show)
-	-- Solo el cuadro de arrastre del tipo que maneja el modulo: mover los
-	-- debuffs de Blizzard desde aca seria pelearle el anclaje al estilo.
+
+
 	local sd, sb = show and ShowDebuffs(), show and ShowBuffs()
 	if movers.debuffs then if sd then movers.debuffs:Show() else movers.debuffs:Hide() end end
 	if movers.buffs   then if sb then movers.buffs:Show()   else movers.buffs:Hide()   end end
 end
 
-------------------------------------------------------------------------
--- Panel Scale/Max — layout mejorado con botones bien separados
---
---  ┌─────────────────────────────────┐  ← drag header (18px)
---  │ Party Buffs  Scale / Max         │
---  ├─────────────────────────────────┤
---  │ Scale icons:                    │  y = -24
---  │  Buffs   [==========] 1.00      │  y = -40
---  │  Debuffs [==========] 1.00      │  y = -62
---  ├ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│  sep y = -84
---  │ Max icons:                      │  y = -90
---  │  Buffs   [==========] 8         │  y = -106
---  │  Debuffs [==========] 10        │  y = -128
---  ├─────────────────────────────────┤  sep y = -150
---  │ [ Reset ]         [ Save ]      │  bottom = 8
---  └─────────────────────────────────┘  altura total: 178px
-------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local scalePanel
 local runtimeScale
 local runtimePanel
 
--- La ventana de opciones se guarda a si misma, RELATIVA A UIParent.
---
--- Antes se guardaba como offset contra el marco de party y habia que
--- convertir de un espacio de coordenadas al otro. Esa conversion es la que
--- fallaba y hacia que la ventana no quedara donde la soltabas. Como es una
--- ventana de configuracion y no tiene por que seguir al marco, lo mas
--- simple es que se guarde su propio punto tal como quedo, igual que hacen
--- el resto de las ventanas movibles del addon.
+
+
+
+
+
+
+
+
 local function SavePanelPoint()
 	if not (scalePanel and runtimePanel) then return end
 	local point, _, relativePoint, x, y = scalePanel:GetPoint()
 	if not point then return end
-	-- Se guarda el PUNTO COMPLETO: StartMoving puede cambiar el tipo de
-	-- punto (de TOPLEFT a BOTTOMRIGHT, por ejemplo), asi que quedarse solo
-	-- con x/y perderia la referencia.
+
+
+
 	runtimePanel.point         = point
 	runtimePanel.relativePoint = relativePoint
 	runtimePanel.x             = x or 0
@@ -818,7 +818,7 @@ local function PlacePanelFrom(src)
 			src.x or 0, src.y or 0)
 		return
 	end
-	-- Sin posicion guardada: al costado del marco de party la primera vez.
+
 	local f1 = GetPartyAnchor()
 	if f1 then
 		scalePanel:SetPoint("TOPLEFT", f1, "TOPRIGHT", 12, 0)
@@ -836,21 +836,21 @@ local function EnsureScalePanel()
 	if scalePanel then return end
 
 	scalePanel = CreateFrame("Frame", "PB_ScalePanel", UIParent)
-	-- Cajita con el valor debajo de cada slider (UIKit).
+
 	if K.UI and K.UI.AutoRestyle then K.UI.AutoRestyle(scalePanel); end
 
-	-- Mas alto que antes (era 178): cada slider ahora muestra su valor en la
-	-- cajita editable que le cuelga ABAJO (la del resto del addon), asi que
-	-- las filas necesitan el doble de separacion.
+
+
+
 	scalePanel:SetSize(300, 268)
-	-- POR ENCIMA DEL PANEL DE NUF Y CON FONDO SOLIDO.
-	--
-	-- Estaba en "DIALOG", la misma capa que el panel principal: quien quedaba
-	-- arriba lo decidia el orden de dibujo, y el panel (que se abre antes y
-	-- es mas grande) la tapaba. Ademas el fondo tenia alfa 0.80, asi que los
-	-- botones del panel se veian a traves y se mezclaban con estos.
-	-- FULLSCREEN_DIALOG es una capa mas arriba, y SetToplevel la sube al
-	-- hacerle click. Mismo arreglo que la ventana de Party Targets.
+
+
+
+
+
+
+
+
 	scalePanel:SetFrameStrata("FULLSCREEN_DIALOG")
 	scalePanel:SetToplevel(true)
 	scalePanel:SetClampedToScreen(true)
@@ -860,7 +860,7 @@ local function EnsureScalePanel()
 
 	if scalePanel.SetBackdrop then
 		scalePanel:SetBackdrop({
-			bgFile   = "Interface\\Buttons\\WHITE8x8",   -- pixel liso: opaco de verdad
+			bgFile   = "Interface\\Buttons\\WHITE8x8",
 			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
 			tile = false, edgeSize = 12,
 			insets = { left=3, right=3, top=3, bottom=3 },
@@ -868,7 +868,7 @@ local function EnsureScalePanel()
 		scalePanel:SetBackdropColor(0.05, 0.06, 0.09, 1)
 	end
 
-	-- Header arrastrable
+
 	local header = CreateFrame("Frame", nil, scalePanel)
 	header:SetPoint("TOPLEFT", 0, 0)
 	header:SetPoint("TOPRIGHT", 0, 0)
@@ -876,16 +876,16 @@ local function EnsureScalePanel()
 	header:EnableMouse(true)
 	header:RegisterForDrag("LeftButton")
 	header:SetScript("OnDragStart", function()
-		-- ClearAllPoints antes de arrastrar: StartMoving puede cambiarle el
-		-- TIPO de punto al frame, y si quedan anclajes viejos mezclados el
-		-- panel pelea contra si mismo mientras lo movés.
+
+
+
 		scalePanel:ClearAllPoints()
 		scalePanel:StartMoving()
 	end)
 	header:SetScript("OnDragStop", function()
 		scalePanel:StopMovingOrSizing()
-		-- Se guarda tal cual quedo. Sin conversiones: no hay nada que
-		-- recalcular, asi que no hay nada que se pueda desfasar.
+
+
 		SavePanelPoint()
 	end)
 
@@ -893,19 +893,19 @@ local function EnsureScalePanel()
 	titleFS:SetPoint("TOPLEFT", 8, -4)
 	titleFS:SetText("|cff66CCFF" .. (L["PB_TITLE"] or "Party Buffs") .. "|r  " .. (L["PB_SCALEMAX"] or "Scale / Max"))
 
-	-- Separador bajo header
+
 	local sep0 = scalePanel:CreateTexture(nil, "ARTWORK")
 	sep0:SetTexture(1, 1, 1, 0.12)
 	sep0:SetPoint("TOPLEFT", 4, -18); sep0:SetPoint("TOPRIGHT", -4, -18); sep0:SetHeight(1)
 
-	-- Helper genérico de fila
+
 	local function MakeRow(yOff, labelTxt, sliderName, minV, maxV, step, isInt, onChangeFn)
 		local lbl = scalePanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 		lbl:SetPoint("TOPLEFT", 10, yOff)
 		lbl:SetText(labelTxt)
 		lbl:SetWidth(55)
 
-		-- Sin el numero a la derecha, el slider puede ser mas ancho.
+
 		local s = CreateFrame("Slider", sliderName, scalePanel, "OptionsSliderTemplate")
 		s:SetWidth(200); s:SetHeight(14)
 		s:SetPoint("TOPLEFT", 68, yOff + 1)
@@ -917,14 +917,14 @@ local function EnsureScalePanel()
 		if sH then sH:SetText("") sH:Hide() end
 		if sT then sT:SetText("") sT:Hide() end
 
-		-- ANTES habia DOS numeros por slider: este FontString a la derecha,
-		-- propio del modulo, y ademas la cajita editable que UIKit le cuelga
-		-- debajo a todos los sliders del addon (K.UI.AutoRestyle, mas arriba
-		-- en este mismo archivo). Como la cajita cae encima de la fila de
-		-- abajo, el resultado era el amontonamiento que se veia.
-		--
-		-- Queda solo la cajita: es la misma que en el resto del panel y
-		-- ademas se puede escribir el valor a mano.
+
+
+
+
+
+
+
+
 		s:SetScript("OnValueChanged", function(self, val)
 			val = math.floor(val / step + 0.5) * step
 			if isInt then
@@ -937,7 +937,7 @@ local function EnsureScalePanel()
 		return s
 	end
 
-	-- ── Sección Scale ──────────────────────────────────────────────────────
+
 	local lblScale = scalePanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	lblScale:SetPoint("TOPLEFT", 10, -24); lblScale:SetText("|cffaaaaaa" .. (L["PB_SCALE_ICONS"] or "Scale icons:") .. "|r")
 
@@ -946,12 +946,12 @@ local function EnsureScalePanel()
 	scalePanel.debuffSlider = MakeRow(-80, "Debuffs", "PB_DebuffScaleSlider", 0.5, 2.0, 0.1, false,
 		function(v) if runtimeScale then runtimeScale.debuffs = v; ApplyScaleAll(runtimeScale) end end)
 
-	-- Separador entre secciones
+
 	local sep1 = scalePanel:CreateTexture(nil, "ARTWORK")
 	sep1:SetTexture(1, 1, 1, 0.08)
 	sep1:SetPoint("TOPLEFT", 4, -120); sep1:SetPoint("TOPRIGHT", -4, -120); sep1:SetHeight(1)
 
-	-- ── Sección Max Icons ──────────────────────────────────────────────────
+
 	local lblMax = scalePanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	lblMax:SetPoint("TOPLEFT", 10, -128); lblMax:SetText("|cffaaaaaa" .. (L["PB_MAX_ICONS"] or "Max icons:") .. "|r")
 
@@ -960,12 +960,12 @@ local function EnsureScalePanel()
 	scalePanel.maxDebuffSlider = MakeRow(-186, "Debuffs", "PB_MaxDebuffSlider", 1, 20, 1, true,
 		function(v) ApplyDefaults(); PartyBuffsDB.maxDebuffs = v; ReanchorAll() end)
 
-	-- Separador antes de botones
+
 	local sep2 = scalePanel:CreateTexture(nil, "ARTWORK")
 	sep2:SetTexture(1, 1, 1, 0.12)
 	sep2:SetPoint("BOTTOMLEFT", 4, 38); sep2:SetPoint("BOTTOMRIGHT", -4, 38); sep2:SetHeight(1)
 
-	-- ── Botones: bien separados (izquierda y derecha del panel) ───────────
+
 	local resetBtn = CreateFrame("Button", nil, scalePanel, "UIPanelButtonTemplate")
 	resetBtn:SetSize(95, 22)
 	resetBtn:SetPoint("BOTTOMLEFT", 8, 8)
@@ -973,8 +973,8 @@ local function EnsureScalePanel()
 	resetBtn:SetScript("OnClick", function()
 		FullReset()
 		if runtimeScale then runtimeScale.buffs = DEFAULTS_SHARED.scale.buffs; runtimeScale.debuffs = DEFAULTS_SHARED.scale.debuffs end
-		-- Reset: se borra el punto guardado para que PlacePanelFrom vuelva
-		-- a colocar la ventana al costado del marco.
+
+
 		if runtimePanel then
 			runtimePanel.point = nil; runtimePanel.relativePoint = nil
 			runtimePanel.x = 0; runtimePanel.y = 0
@@ -998,8 +998,8 @@ local function EnsureScalePanel()
 		ApplyDefaults()
 		if runtimeScale then PartyBuffsDB.scale.buffs = runtimeScale.buffs; PartyBuffsDB.scale.debuffs = runtimeScale.debuffs end
 		if runtimePanel then
-			-- Guardar por las dudas la posicion actual, aunque no se haya
-			-- soltado el arrastre desde la ultima vez.
+
+
 			SavePanelPoint()
 			PartyBuffsDB.panel = CopyPanel(runtimePanel)
 		end
@@ -1010,8 +1010,8 @@ end
 
 local function PlaceScalePanelFromDB()
 	ApplyDefaults()
-	-- Con la ventana abierta manda lo que acabas de arrastrar; si no, lo
-	-- guardado.
+
+
 	PlacePanelFrom(runtimePanel or PartyBuffsDB.panel)
 end
 
@@ -1033,26 +1033,26 @@ local function ShowScalePanel(show)
 	scalePanel:Show()
 end
 
-------------------------------------------------------------------------
--- Slash commands
-------------------------------------------------------------------------
+
+
+
 SLASH_PARTYBUFFS1 = "/pbuffs"
 SLASH_PARTYBUFFS2 = "/partybuffs"
--- =====================================================================
--- /pbuffs  ->  abre el menu directamente.
---
--- Antes habia cuatro subcomandos (unlock, lock, reset, status) y escribir
--- /pbuffs solo, que es lo que uno escribe siempre, no hacia mas que
--- imprimir la lista. Ahora el comando pelado hace lo unico que se le
--- pide: abrir el menu, con sus cuadros de arrastre.
---
--- Y lo CIERRA si ya estaba abierto. Sin /pbuffs lock hace falta alguna
--- forma de cerrarlo desde el chat; el boton Save tambien lo cierra.
---
--- "status" se fue: escupia en el chat lo mismo que se ve en la ventana.
--- "reset" se queda, porque es la unica accion que no tiene boton propio
--- fuera del menu.
--- =====================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 SlashCmdList["PARTYBUFFS"] = function(msg)
 	msg = (msg or ""):lower():match("^%s*(.-)%s*$")
 
@@ -1066,11 +1066,11 @@ SlashCmdList["PARTYBUFFS"] = function(msg)
 		end
 
 	elseif msg == "reset" then
-		-- Reset silencioso: solo resetea datos y reaplica, SIN abrir ningún menú
+
 		FullReset()
 		ReanchorAll()
 		ApplyScaleAll(PartyBuffsDB.scale)
-		-- Si el panel está abierto, actualizar sus sliders (sin abrirlo si estaba cerrado)
+
 		if scalePanel and scalePanel:IsShown() then
 			if runtimeScale then
 				runtimeScale.buffs   = DEFAULTS_SHARED.scale.buffs
@@ -1091,9 +1091,9 @@ SlashCmdList["PARTYBUFFS"] = function(msg)
 	end
 end
 
-------------------------------------------------------------------------
--- Enable / Disable
-------------------------------------------------------------------------
+
+
+
 local function PB_Enable()
 	if pbEnabled then return end
 	pbEnabled = true
@@ -1152,20 +1152,20 @@ local function PB_Disable()
 				if d and d.SetScale then d:SetScale(1) end
 			end
 
-			-- Volver a los anclajes REALES que tenia Blizzard, no a numeros
-			-- puestos a ojo. El fallback solo entra si por algun motivo no
-			-- se llego a capturar (por ejemplo si nunca se activo el modulo).
+
+
+
 			RestoreOrigAnchor(i, f, "debuff")
 			RestoreOrigAnchor(i, f, "buff")
 
-			-- Los buffs del grupo no existen de fabrica: se esconden todos
-			-- (antes quedaban los 4 primeros con el ultimo icono pegado).
+
+
 			for j = 1, 4 do
 				local b = _G[f:GetName() .. "Buff" .. j]
 				if b then b:Hide() end
 			end
-			-- Y los 4 debuffs de fabrica se pintan como Blizzard, sin llamar
-			-- a Blizzard (ver DrawDebuffs).
+
+
 			local unit = "party" .. f:GetID()
 			if UnitExists(unit) then DrawDebuffs(f, unit, 1, 4, false) end
 		end
@@ -1175,40 +1175,40 @@ local function PB_Disable()
 	if K.UpdateNewPartyFrames then K.UpdateNewPartyFrames(); end
 end
 
-------------------------------------------------------------------------
--- Buffs y debuffs por separado (Frames > Party)
-------------------------------------------------------------------------
--- Para los estilos de party: de quien es el anclaje de Debuff1 / Buff1.
+
+
+
+
 function K.PartyBuffsOwnsDebuffs() return pbEnabled and ShowDebuffs(); end
 function K.PartyBuffsOwnsBuffs()   return pbEnabled and ShowBuffs();   end
 
--- Lo que muestran las dos casillas del panel.
+
 function K.PartyBuffs_GetShown()
 	local on = K.IsModuleEnabled and K.IsModuleEnabled("PartyBuffs");
 	return (on and ShowBuffs()) and true or false, (on and ShowDebuffs()) and true or false;
 end
 
--- Prende o apaga un tipo ("buffs" / "debuffs"). El modulo queda prendido
--- mientras maneje alguno de los dos.
+
+
 function K.PartyBuffs_SetShown(which, on)
 	on = on and true or false;
 	local key = (which == "buffs") and "showBuffs" or "showDebuffs";
 	local moduleOn = K.IsModuleEnabled and K.IsModuleEnabled("PartyBuffs");
 
 	if on and not moduleOn then
-		-- Desde apagado: solo el tipo que tocaste.
+
 		PartyBuffsDB.showBuffs   = (which == "buffs");
 		PartyBuffsDB.showDebuffs = (which ~= "buffs");
 		K.SetModuleEnabled("PartyBuffs", true);
 	elseif not on and moduleOn and not (key == "showBuffs" and ShowDebuffs() or key == "showDebuffs" and ShowBuffs()) then
-		-- Era el ultimo que quedaba: se apaga el modulo (vuelve todo a Blizzard).
+
 		PartyBuffsDB[key] = false;
 		K.SetModuleEnabled("PartyBuffs", false);
 	else
 		local was = PartyBuffsDB[key] ~= false;
 		PartyBuffsDB[key] = on;
 		if pbEnabled and was ~= on then
-			-- El tipo que se suelta vuelve a su anclaje de antes.
+
 			if not on then
 				for i = 1, 4 do
 					local f = _G["PartyMemberFrame" .. i];
@@ -1219,24 +1219,24 @@ function K.PartyBuffs_SetShown(which, on)
 			ApplyScaleAll(PartyBuffsDB.scale);
 			RefreshAllAuras();
 			if scalePanel and scalePanel:IsShown() then ShowMovers(true); end
-			-- Que el estilo de party retome (o suelte) los debuffs de fabrica.
+
 			if K.UpdateNewPartyFrames then K.UpdateNewPartyFrames(); end
 		end
 	end
 	if K.RefreshModuleCheckbox then K.RefreshModuleCheckbox("PartyBuffs"); end
 end
 
-------------------------------------------------------------------------
--- Opciones del juego que filtran las auras del grupo
--- (Interface > Buffs and Debuffs). Viven en la CVar: el panel del juego y
--- el de NUF muestran lo mismo, y tildarla aca la tilda alla.
-------------------------------------------------------------------------
+
+
+
+
+
 local BLIZZ_FILTERS = {
 	buffs   = { cvar = "showCastableBuffs", uvar = "SHOW_CASTABLE_BUFFS",      event = "SHOW_CASTABLE_BUFFS_TEXT" },
 	debuffs = { cvar = "showDispelDebuffs", uvar = "SHOW_DISPELLABLE_DEBUFFS", event = "SHOW_DISPELLABLE_DEBUFFS_TEXT" },
 };
 
--- Existe esa opcion en este cliente? (si no, la casilla no se muestra)
+
 function K.PartyBuffs_HasBlizzFilter(which)
 	local info = BLIZZ_FILTERS[which];
 	return info and GetCVar(info.cvar) ~= nil or false;
@@ -1251,26 +1251,26 @@ function K.PartyBuffs_SetBlizzFilter(which, on)
 	local info = BLIZZ_FILTERS[which];
 	if not info or GetCVar(info.cvar) == nil then return false; end
 	local v = on and "1" or "0";
-	-- Con el evento del panel del juego, como lo hace el propio panel.
+
 	SetCVar(info.cvar, v, info.event);
-	-- Antes ademas se escribia a mano la copia en Lua de la opcion
-	-- (SHOW_CASTABLE_BUFFS / SHOW_DISPELLABLE_DEBUFFS). Son variables de
-	-- Blizzard: escritas desde el addon quedan manchadas. Y no hacia falta:
-	-- en 3.3.5a el dibujo de las auras lee la CVar directo (GetCVarBool).
-	-- Que se vea en el momento (el filtro solo lo usa este modulo).
+
+
+
+
+
 	if pbEnabled then
 		RefreshAllAuras();
 	end
 	return true;
 end
 
-------------------------------------------------------------------------
--- Registro del módulo
-------------------------------------------------------------------------
+
+
+
 K.RegisterModule("PartyBuffs", {
 	name    = "Party Buffs",
 	desc    = L["MOD_PARTYBUFFS_DESC"] or "Extended buffs and/or debuffs (1-20 icons) on party frames. /pbuffs | /pbuffs reset",
-	default = false,   -- viene apagado: se prende desde Frames > Party
+	default = false,
 	onEnable  = PB_Enable,
 	onDisable = PB_Disable,
 	hideFromModulesTab = true,

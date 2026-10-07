@@ -1,59 +1,59 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- PartyFramePW.lua  -  cuarto estilo de marco de grupo
---
--- Aspecto tomado de pw_unitframes (modules/party.lua). Dos cosas lo
--- distinguen de los otros tres estilos:
---
---   1. La textura del marco, copiada a Media\pw\UI-PartyFrame.blp
---   2. LA POSICION DE LOS TEXTOS. Blizzard pone los numeros de vida y
---      mana centrados en su propia barra; pw los corre al centro del
---      MARCO, a la derecha del retrato, y sube la barra de vida.
---
--- Lo segundo es lo que hace que se lea distinto, mas que la textura.
---
--- Numeros, tal cual salen de pw/modules/party.lua:
---
---     healthbar  TOPLEFT 46, -13    alto 12
---     manabar    TOPLEFT 46, -25
---     texto vida  CENTER del frame  18,  9
---     texto mana  CENTER del frame  18, -1
---
--- =========================================================
--- LA FOTO ORIGINAL SE SACA UNA SOLA VEZ
---
--- Igual que en SquareStyle, BarBaseline y los botones del minimapa: si
--- se recapturara al cambiar de estilo, la segunda vez guardariamos como
--- "original" lo que pusimos nosotros, y volver atras dejaria el marco
--- roto. Es el error que mas veces aparecio en este addon.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local MAX_PARTY = MAX_PARTY_MEMBERS or 4;
 
 local PW_DIR   = "Interface\\AddOns\\" .. AddOnName .. "\\Media\\pw\\";
 
--- DOS VARIANTES DEL MISMO TEMA
---
--- El tema pw trae dos juegos de marco de grupo:
---
---   UI-PartyFrame   -> "Compact"    (el que ya estaba)
---   UI-PartyFrame2  -> "Compact 2"  (el mismo dibujo que usa el tema
---                                    Compact del PlayerFrame)
---
--- La segunda estaba en la carpeta sin usarse. Como todo lo demas del
--- estilo es identico — anclajes, barras, nombre arriba — la unica
--- diferencia es que textura se carga, asi que en vez de duplicar el
--- modulo se elige aca segun el estilo activo.
+
+
+
+
+
+
+
+
+
+
+
+
 local function PWTex()
 	if K.GetPartyFrameStyle and K.GetPartyFrameStyle() == "PW2" then
-		-- LA MISMA TEXTURA QUE EL PLAYERFRAME EN MODO COMPACT.
-		--
-		-- PlayerFrame.lua, con C.pwFrames puesto, hace exactamente esto:
-		--     PlayerFrameTexture:SetTexture(ThemeDir() .. "UI-TargetingFrame")
-		-- donde ThemeDir() resuelve a Media\pw\. Asi el grupo queda con el
-		-- mismo marco que el jugador y no con una variante parecida.
+
+
+
+
+
+
 		return PW_DIR .. "UI-TargetingFrame";
 	end
 	return PW_DIR .. "UI-PartyFrame";
@@ -66,23 +66,23 @@ local function PWFlash()
 	return PW_DIR .. "UI-PARTYFRAME-FLASH";
 end
 
--- SIN TEÑIR.
---
--- pw le pone SetVertexColor(.22,.22,.22) desde config.global.framecolors,
--- su tema general. Lo habia copiado tal cual, pero dejaba el estilo
--- incoherente: los marcos del GRUPO salian oscuros y los de jugador y
--- objetivo — que usan la misma carpeta de texturas — con el brillo normal,
--- porque ahi solo se cambia la ruta y no se tiñe nada.
---
--- 1,1,1,1 es el neutro: la textura tal cual la dibujaron, igual que en el
--- resto del tema.
+
+
+
+
+
+
+
+
+
+
 local PW_COLOR = { 1, 1, 1, 1 };
 
--- ...SALVO QUE LORTI UI ESTE PUESTO.
---
--- Lorti oscurece los marcos del grupo, y este estilo le pisaba el color
--- con el blanco de arriba: prendias Lorti y en Compact no pasaba nada.
--- Ahora se le pregunta antes de teñir.
+
+
+
+
+
 local function TintFrame(tex)
 	if not tex then return; end
 	if not (K.ApplyLortiTint and K.ApplyLortiTint(tex, "LortiUI_Party")) then
@@ -97,105 +97,105 @@ local LAYOUT = {
 	manaTxt   = { x = 18, y = -1 },
 };
 
--- ---------------------------------------------------------
--- AJUSTE DE COMPACT 2
---
--- UI-TargetingFrame esta dibujada para el marco del jugador, que es mas
--- grande y con otras proporciones que el de un compañero. Puesta tal cual
--- en el marco de grupo, el arte quedaba corto y las barras se salian por
--- la derecha.
---
--- Estos numeros la reacomodan. Son los UNICOS que hay que tocar si algo
--- queda corrido: el resto del estilo no cambia.
---
---   tex   = tamaño y posicion del arte del marco
---   bars  = ancho de las barras de vida y mana, y donde arrancan
---   ring  = tamaño y posicion del retrato, para que caiga dentro del aro
--- ---------------------------------------------------------
--- LA RECETA SALE DE ARENA.
---
--- UI-TargetingFrame es el arte del marco grande. Los marcos de arena
--- la usan en un espacio chico y se ve bien porque la RECORTAN antes de
--- dibujarla (ArenaFrame.lua):
---
---     tex:SetTexCoord(0.09375, 1.0, 0, 0.78125)
---     tex:SetSize(124, 48)
---
--- Sin ese recorte la imagen entra entera en un marco chico y queda
--- apretada; forzandole un tamaño mayor, se estira. Recortada y con el
--- tamaño correcto, se dibuja en su proporcion.
---
--- Aca ademas va espejada, porque el retrato del marco de grupo va a la
--- izquierda: invertir el primer par de coordenadas (1.0 y 0.09375 al
--- reves) da vuelta la imagen sin tocar el recorte.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local PW2 = {
 	crop = { 1.0, 0.09375, 0, 0.78125 },
-	-- CORRIMIENTO DE TODO EL BLOQUE.
-	--
-	-- Se suma al X del marco, del retrato y de las barras a la vez, asi
-	-- que mueve el conjunto sin desarmar el encuadre entre ellos.
-	--
-	-- Existe porque el icono de PvP no lo toca este estilo: queda donde
-	-- lo ancla Blizzard, pegado al borde izquierdo del marco, y el resto
-	-- del contenido quedaba corrido a la derecha con un hueco en medio.
-	-- Negativo = a la izquierda.
+
+
+
+
+
+
+
+
+
 	blockX = -17,
 	tex  = { w = 121, h = 52, x = 0, y = 0 },
-	-- hh / mh = ALTO de la barra de vida y de la de mana.
+
 	bars = { w = 61,  x = 57, hy = -13, my = -27, hh = 14, mh = 6 },
-	-- Retrato: lado del cuadrado y donde arranca respecto de la esquina
-	-- superior izquierda del marco. De fabrica el del grupo mide 37x37.
+
+
 	portrait = { size = 30, x = 25, y = -8 },
-	-- FONDO: el que YA TRAE el marco, no uno nuevo.
-	--
-	-- El marco de grupo viene con su propia textura de fondo detras de
-	-- las barras. Al principio yo le agregaba una segunda encima, y
-	-- terminabas con dos fondos. Ahora se busca la de fabrica y se le
-	-- cambian estos numeros:
-	--
-	--   x / y  = corrimiento respecto de donde la deja el juego
-	--   w / h  = tamaño (0 = dejarlo como viene)
-	--   alpha  = opacidad de 0 a 100
-	-- Medido a mano sobre los marcos, con la ventana de /nufpw2. Con x=12 y
-	-- w=45 el fondo arrancaba a la derecha del retrato y le dejaba el
-	-- hueco a la vista. Corrido 17 a la izquierda y ensanchado 16, el
-	-- borde derecho queda donde estaba y el retrato deja de sobresalir.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	bg = { x = -5, y = -2, w = 61, h = 21, alpha = 94 },
 };
 
--- Cuanto bajan los buffs y debuffs de Blizzard, en pixeles.
---
--- Compact sube la barra de vida y la de mana (mira LAYOUT: -13 y -25,
--- contra el -19 y -32 de Blizzard), pero los iconos de aura se quedan
--- donde estaban y terminan pisando el borde de abajo del marco.
---
--- El corrimiento se calcula SIEMPRE contra el anclaje de fabrica
--- guardado en la foto, nunca contra donde esta el icono ahora. Si se
--- hiciera "posicion actual - 2", cada vez que Blizzard actualiza al
--- compañero el icono bajaria dos pixeles mas, y en un rato estaria
--- abajo de todo.
+
+
+
+
+
+
+
+
+
+
+
 local AURA_DROP = -2;
 
--- Compact 2 usa un arte mas alto (62 contra los ~49 del marco normal),
--- asi que sus iconos de aura tienen que bajar bastante mas o quedan
--- pisando el borde de abajo del marco.
+
+
+
 local AURA_DROP_PW2 = -63;
 
--- TEXTOS DE VIDA Y MANA COMO LOS DE ARENA.
---
--- Los marcos de arena escriben los numeros CENTRADOS EN SU BARRA y con
--- una fuente chica (ArenaFrame.lua):
---
---     healthbar.TextString:SetPoint("CENTER", healthbar)
---     manabar.TextString:SetPoint("CENTER", manabar)
---     SetFont(unpack(C.ArenaFrameFont or {"Fonts\\FRIZQT__.TTF", 7, "OUTLINE"}))
---
--- pw en cambio los apila los dos en el centro del MARCO (LAYOUT.healthTxt
--- y manaTxt), que con el marco angosto de Compact 2 los dejaba encimados
--- y con la fuente grande de Blizzard.
---
--- Compact 2 usa la receta de arena, y la MISMA config: si cambias la
--- fuente de los marcos de arena, el grupo la sigue.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function ArenaTextFont()
 	return C.ArenaFrameFont or { "Fonts\\FRIZQT__.TTF", 7, "OUTLINE" };
 end
@@ -207,12 +207,12 @@ local function AuraDrop()
 	return AURA_DROP;
 end
 
-local orig = {};      -- [frameName] = foto de fabrica
+local orig = {};
 local applied = false;
 
--- ---------------------------------------------------------
--- Foto / restauracion
--- ---------------------------------------------------------
+
+
+
 local function SnapPoint(region)
 	if not region then return nil; end
 	local point, relTo, relPoint, x, y = region:GetPoint(1);
@@ -231,9 +231,9 @@ local function RestorePoint(region, s)
 	if s.h and s.h > 0 and region.SetHeight then region:SetHeight(s.h); end
 end
 
--- Busca la textura de fondo del marco: primero por el nombre que usa
--- Blizzard, y si no aparece, la primera textura cuyo archivo diga
--- "background". Se cachea en el propio frame.
+
+
+
 local function FindFrameBG(f, fn)
 	if f.nufBGRegion then return f.nufBGRegion; end
 
@@ -266,15 +266,15 @@ local function Capture(i)
 		mana      = SnapPoint(mp),
 		healthTxt = hp and SnapPoint(hp.TextString) or nil,
 		manaTxt   = mp and SnapPoint(mp.TextString) or nil,
-		-- Compact 2 les cambia la fuente, asi que hay con que volver.
+
 		healthFont = (hp and hp.TextString) and { hp.TextString:GetFont() } or nil,
 		manaFont   = (mp and mp.TextString) and { mp.TextString:GetFont() } or nil,
-		-- El nombre se mueve ARRIBA del marco en este estilo, asi que hay
-		-- que guardar de donde venia para poder devolverlo.
+
+
 		name      = SnapPoint(_G[fn .. "Name"]),
 		texPath   = tex and tex:GetTexture() or nil,
-		-- Compact 2 cambia tamaño y anclaje del arte, y el ancho de las
-		-- barras: sin esto no habia con que volver atras.
+
+
 		texSize   = tex and { tex:GetWidth(), tex:GetHeight() } or nil,
 		texPoint  = SnapPoint(tex),
 		hpW       = hp and hp:GetWidth() or nil,
@@ -291,13 +291,13 @@ local function Capture(i)
 	};
 end
 
--- ---------------------------------------------------------
--- Bajar un icono de aura respecto de su anclaje de fabrica
---
--- Se salta los que Blizzard encadeno a OTRO icono: ese otro ya se
--- movio y volver a bajar este lo bajaria dos veces. Asi la funcion
--- no depende de como esten encadenados los cuatro buffs entre si.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
 local function DropAura(fn, suffix, s)
 	if not s then return; end
 	local r = _G[fn .. suffix];
@@ -308,64 +308,64 @@ local function DropAura(fn, suffix, s)
 	r:SetPoint(s.point, s.relTo, s.relPoint, s.x, s.y + AuraDrop());
 end
 
--- =========================================================
--- EN VEHICULO, EL MARCO ES DE BLIZZARD. PUNTO.
---
--- ERA EL BUG DEL CANON Y EL DEMOLEDOR, y estuve buscandolo en el lugar
--- equivocado dos veces.
---
--- El marco de grupo tiene DOS texturas de fondo:
---
---     PartyMemberFrame{i}Texture         el marco normal
---     PartyMemberFrame{i}VehicleTexture  el marco de vehiculo
---
--- Cuando el compa se sube a algo, Blizzard OCULTA la primera y MUESTRA la
--- segunda, que es mas grande y tiene otra forma. Este estilo re-texturaba
--- solo la primera -- la que en ese momento esta escondida -- asi que en
--- pantalla quedaba el marco de vehiculo de Blizzard con las barras del
--- estilo Compact encima: por eso la vida parecia salirse del fondo.
---
--- La salida NO es pintar tambien la de vehiculo. El arte de vehiculo tiene
--- otras proporciones y otro lugar para el retrato: cualquier medida que le
--- pongamos es una medida mas que mantener sincronizada, y es asi como se
--- desfasan estas cosas.
---
--- La salida es no meterse: mientras este arriba de algo, el marco vuelve
--- entero a como lo trae el juego -- fondo, barras y tamanos -- y cuando se
--- baja se le devuelve el estilo. Es un caso raro y corto; que se vea como
--- Blizzard lo hizo es exactamente lo correcto.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function InPartyVehicle(i)
 	local f = _G["PartyMemberFrame" .. i];
-	-- Blizzard deja marcado el estado en el propio marco al cambiarle el
-	-- arte. Es la senal mas fiel porque es la MISMA que decide que textura
-	-- se muestra; UnitInVehicle es el respaldo por si un core no la pusiera.
+
+
+
 	if f and f.state == "vehicle" then return true; end
 	if UnitInVehicle and UnitInVehicle("party" .. i) then return true; end
 	return false;
 end
 
--- Se llaman entre si: StyleOne devuelve el marco cuando hay vehiculo, y
--- RestoreOne esta mas abajo. Declaradas aca para que las dos se vean.
+
+
 local StyleOne, RestoreOne;
 
--- ---------------------------------------------------------
--- Aplicar
--- ---------------------------------------------------------
+
+
+
 function StyleOne(i)
 	local fn = "PartyMemberFrame" .. i;
 	local f  = _G[fn];
 	if not f then return; end
 
 	if InPartyVehicle(i) then
-		-- OJO CON LA FOTO DE FABRICA.
-		--
-		-- Si es la primera vez que vemos este marco y YA esta en vehiculo
-		-- (entraste al BG montado, que es como pasa en Isla), Capture
-		-- guardaria las medidas del arte de vehiculo como si fueran las
-		-- normales. Al bajarse restauraria a eso y el marco quedaria roto
-		-- para siempre. Sin foto, no se toca nada y listo: Blizzard ya lo
-		-- esta dibujando bien.
+
+
+
+
+
+
+
+
 		if orig[fn] then RestoreOne(i); end
 		return;
 	end
@@ -377,19 +377,19 @@ function StyleOne(i)
 		tex:SetTexture(PWTex());
 		TintFrame(tex);
 
-		-- COMPACT 2 VA ESPEJADA.
-		--
-		-- UI-TargetingFrame esta dibujada para el marco del OBJETIVO, con
-		-- el retrato a la derecha. El PlayerFrame la usa dada vuelta: eso
-		-- lo hace Blizzard en el XML de ese marco, no la textura.
-		--
-		-- El marco de grupo no la voltea, asi que salia al reves —
-		-- el aro dorado del retrato caia del lado de las barras.
-		-- Invertir la coordenada horizontal (1,0 en vez de 0,1) la deja
-		-- igual que la del jugador.
+
+
+
+
+
+
+
+
+
+
 		local isPW2 = (K.GetPartyFrameStyle and K.GetPartyFrameStyle() == "PW2");
 		if isPW2 then
-			-- Recortada y espejada, igual que en arena (ver PW2 arriba).
+
 			tex:SetTexCoord(unpack(PW2.crop));
 			tex:ClearAllPoints();
 			tex:SetPoint("TOPLEFT", f, "TOPLEFT", PW2.tex.x + PW2.blockX, PW2.tex.y);
@@ -402,9 +402,9 @@ function StyleOne(i)
 	local fl = _G[fn .. "Flash"];
 	if fl then fl:SetTexture(PWFlash()); end
 
-	-- A la mascota no le cambiamos la textura: es otra distinta y ponerle
-	-- la del grupo desalinearia el marco chico. Solo la dejamos en neutro
-	-- por si venia teñida de otro estilo.
+
+
+
 	local petTex = _G[fn .. "PetFrameTexture"];
 	TintFrame(petTex);
 
@@ -433,44 +433,44 @@ function StyleOne(i)
 		end
 	end
 
-	-- TEXTURA DE LAS BARRAS: LA MISMA QUE ARENA.
-	--
-	-- Los marcos de arena usan C.statusbarTexture cuando C.statusbarOn
-	-- esta puesto (ArenaFrame.lua). Compact 2 hace lo mismo para que el
-	-- grupo y los enemigos se vean del mismo material, en vez de mezclar
-	-- la barra de Blizzard con la del addon.
+
+
+
+
+
+
 	if isPW2b and C.statusbarOn and C.statusbarTexture then
 		if hp then hp:SetStatusBarTexture(C.statusbarTexture); end
 		local mpBar = _G[fn .. "ManaBar"];
 		if mpBar then mpBar:SetStatusBarTexture(C.statusbarTexture); end
 	end
 
-	-- NOMBRE ARRIBA DEL MARCO
-	--
-	-- Mismo anclaje que usa el estilo Custom de arena en ArenaFrame.lua:
-	--     frame.name:SetPoint("BOTTOM", frame.healthbar, "TOP", 0, 1)
-	--
-	-- En el estilo compacto el marco es angosto y el nombre encima de la
-	-- barra de vida se comia los numeros. Sacandolo arriba se leen las dos
-	-- cosas, y ademas queda igual que los marcos de arena, que es como se
-	-- ve el conjunto cuando tenes party y arena en pantalla a la vez.
+
+
+
+
+
+
+
+
+
 	local nameFS = _G[fn .. "Name"];
 	if nameFS and hp then
 		nameFS:ClearAllPoints();
-		-- +2 y no el +1 de pw: con el nombre ARRIBA del marco un pixel de
-		-- aire mas lo despega del borde superior de la barra de vida.
+
+
 		nameFS:SetPoint("BOTTOM", hp, "TOP", 0, 2);
 	end
 
-	-- FONDO DEL MARCO
-	--
-	-- El que ya trae el marco de grupo, no uno agregado. Se lo busca por
-	-- nombre y, si ese no existe, recorriendo las texturas del frame:
-	-- asi funciona sin depender de como se llame en cada version.
-	--
-	-- Se guarda su posicion de fabrica la primera vez, asi los
-	-- corrimientos son SIEMPRE contra ese punto y no se van acumulando
-	-- cada vez que se re-estila el marco.
+
+
+
+
+
+
+
+
+
 	local bg = FindFrameBG(f, fn);
 	if bg and isPW2b then
 		if not bg.nufBase then
@@ -500,7 +500,7 @@ function StyleOne(i)
 		bg:SetAlpha(b.alpha or 1);
 	end
 
-	-- Retrato: solo en Compact 2, que es el que cambia el marco de lugar.
+
 	local port = _G[fn .. "Portrait"];
 	if port and isPW2b then
 		port:ClearAllPoints();
@@ -530,13 +530,13 @@ function StyleOne(i)
 		end
 	end
 
-	-- Los buffs y debuffs de Blizzard, un par de pixeles mas abajo.
-	--
-	-- Solo cuando el modulo PartyBuffs esta APAGADO. Con el prendido
-	-- esos anclajes son suyos (los reparte el, guarda los de fabrica y
-	-- los devuelve al apagarse); moverlos desde aca seria el problema
-	-- de siempre, dos duenos del mismo numero peleandose.
-	-- Por tipo: PartyBuffs puede manejar solo los buffs o solo los debuffs.
+
+
+
+
+
+
+
 	local pbBuffs, pbDebuffs;
 	if K.PartyBuffsOwnsBuffs then
 		pbBuffs, pbDebuffs = K.PartyBuffsOwnsBuffs(), K.PartyBuffsOwnsDebuffs();
@@ -556,14 +556,14 @@ function RestoreOne(i)
 	local tex = _G[fn .. "Texture"];
 	if tex then
 		if s.texPath then tex:SetTexture(s.texPath); end
-		-- Compact 2 la deja espejada: al salir del estilo hay que devolver
-		-- las coordenadas o el marco de Blizzard queda al reves.
+
+
 		tex:SetTexCoord(0, 1, 0, 1);
 		if s.texSize then tex:SetSize(s.texSize[1], s.texSize[2]); end
 		RestorePoint(tex, s.texPoint);
-		-- Neutro por las dudas. Hoy Compact ya no tiñe, pero el color no
-		-- forma parte de la foto de fabrica, asi que si algun dia otro
-		-- estilo lo tocara esto lo deja limpio igual.
+
+
+
 		tex:SetVertexColor(1, 1, 1);
 	end
 
@@ -579,11 +579,11 @@ function RestoreOne(i)
 	if hp and s.hpTex then hp:SetStatusBarTexture(s.hpTex); end
 
 
-	-- EL FONDO VUELVE A COMO VENIA.
-	--
-	-- Importa para el estilo Blizzard: ahi no se toca absolutamente nada
-	-- del marco, asi que si Compact 2 le habia movido el fondo, hay que
-	-- devolverlo antes de soltarlo.
+
+
+
+
+
 	local pf = _G[fn];
 	local bgR = pf and FindFrameBG(pf, fn);
 	if bgR and bgR.nufBase then
@@ -605,7 +605,7 @@ function RestoreOne(i)
 		hp.TextString:SetFont(unpack(s.healthFont));
 	end
 
-	-- El nombre vuelve adentro del marco.
+
 	RestorePoint(_G[fn .. "Name"], s.name);
 
 	local mp = _G[fn .. "ManaBar"];
@@ -617,14 +617,14 @@ function RestoreOne(i)
 		mp.TextString:SetFont(unpack(s.manaFont));
 	end
 
-	-- Las auras vuelven a su anclaje de fabrica, sin el corrimiento.
+
 	RestorePoint(_G[fn .. "Buff1"], s.buff1);
 	RestorePoint(_G[fn .. "Debuff1"], s.debuff1);
 end
 
--- ---------------------------------------------------------
--- API para el coordinador de estilos
--- ---------------------------------------------------------
+
+
+
 function K.EnablePartyFramePW()
 	applied = true;
 	for i = 1, MAX_PARTY do StyleOne(i); end
@@ -640,55 +640,55 @@ function K.IsPartyFramePWActive()
 	return applied;
 end
 
--- ---------------------------------------------------------
--- Reaplicar
---
--- Blizzard repinta el marco y reposiciona las barras en cada
--- actualizacion del miembro del grupo y al entrar o salir de vehiculo.
--- Sin estos hooks, el estilo se pierde en cuanto alguien recibe un
--- golpe. Es lo mismo que ya hacen NewPartyFrame y Improved.
--- ---------------------------------------------------------
+
+
+
+
+
+
+
+
 local function Reapply()
 	if not applied then return; end
 	if InCombatLockdown() then return; end
 	for i = 1, MAX_PARTY do StyleOne(i); end
 end
 
--- ---------------------------------------------------------
--- LAS TRANSICIONES DE VEHICULO SI PASAN EN COMBATE
---
--- Y ese corte de arriba era la otra mitad del bug: subirse a un canon en
--- medio de una pelea es LO NORMAL, no la excepcion. Con Reapply cortandose
--- en combate, el marco se quedaba mal toda la pelea y recien se acomodaba
--- al terminar -- justo cuando ya no importa. Por eso parecia que arreglar
--- el enganche a ToVehicleArt no habia servido de nada.
---
--- Por que este camino puede correr en combate y el otro no: no es que uno
--- sea mas seguro que el otro, es CUANTAS VECES corre cada uno. Reapply
--- cuelga de PartyMemberFrame_UpdateMember, que se dispara con cada golpe
--- que recibe cualquiera del grupo; si algun dia una de estas escrituras
--- ensucia algo, va a ser por ese camino. Subirse o bajarse de un vehiculo
--- son dos eventos sueltos y contados.
---
--- (El vecino NewPartyFrame mueve estas mismas barras sin ningun corte por
--- combate, incluido desde UpdateMember, y funciona. O sea que el corte de
--- arriba es prudencia, no una necesidad demostrada. Lo dejo igual: no
--- estoy tocando lo que anda.)
---
--- SOLO CUANDO EL ESTADO CAMBIA DE VERDAD.
---
--- ToVehicleArt y ToPlayerArt no son eventos sueltos como yo suponia:
--- PartyMemberFrame_UpdateArt llama a una o a la otra en CADA
--- UpdateMember, o sea con cada golpe que recibe cualquiera del grupo.
--- Colgarse ahi sin filtro seria re-estilar los cuatro marcos decenas de
--- veces por segundo en plena pelea.
---
--- Con este filtro da igual cuantas veces las llamen: se trabaja unicamente
--- en la transicion, cuando alguien se sube o se baja. Eso son dos veces
--- por canon, y por eso se puede hacer en combate sin culpa.
---
--- La red por si acaso: si algo quedo a medias por estar peleando, se
--- rehace al salir de combate.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local pwVehiclePending = false;
 local pwVehState       = {};
 
@@ -712,55 +712,55 @@ local function ReapplyVehicle(force)
 	if InCombatLockdown() then pwVehiclePending = true; end
 end
 
--- =========================================================
--- EL NOMBRE SE VOLVIA SOLO A SU LUGAR DE FABRICA
---
--- SINTOMA. En algun momento de la pelea el nombre del compañero "se
--- desliza" hacia abajo y queda pegado sobre la barra de vida, y ya no
--- vuelve a su lugar hasta un /reload.
---
--- QUE PASA. Blizzard llama a PartyMemberFrame_UpdateArt dentro de CADA
--- UpdateMember -- o sea con cada golpe que recibe cualquiera del grupo --
--- y esa funcion re-ancla el nombre a la posicion de fabrica, porque el
--- arte de vehiculo lo lleva en otro lado. Reapply cuelga justo de ahi y lo
--- volveria a poner en su sitio... salvo que Reapply SE CORTA EN COMBATE.
---
--- Resultado: el primer golpe de la pelea lo baja y se queda asi el resto
--- del combate. Por eso parecia pasar "en cualquier momento" y no se podia
--- atar a ninguna accion concreta: no era minimizar el juego, era entrar en
--- combate.
---
--- POR QUE NO SE SACA EL CORTE DE COMBATE DE Reapply. Reapply re-estila los
--- cuatro marcos ENTEROS y, colgada de UpdateMember, corre decenas de veces
--- por segundo en pelea. El corte esta para evitar justo eso, y con razon.
---
--- Lo que hace falta es muchisimo mas barato: reponer SOLO el anclaje del
--- nombre. Es un SetPoint sobre un FontString -- no es un marco protegido y
--- no toca nada de acciones -- y encima solo se ejecuta si de verdad se
--- movio, asi que en el caso normal no hace absolutamente nada.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function PinName(i)
 	if not applied then return; end
 	local fn = "PartyMemberFrame" .. i;
 	local f  = _G[fn];
 	if not f or not f:IsShown() then return; end
-	-- Con vehiculo el marco vuelve entero al de Blizzard (ver StyleOne), y
-	-- ahi el nombre tambien es suyo: no se toca.
+
+
 	if InPartyVehicle(i) then return; end
 
 	local nameFS = _G[fn .. "Name"];
 	local hp     = _G[fn .. "HealthBar"];
 	if not nameFS or not hp then return; end
 
-	-- Si ya esta donde lo queremos, no se escribe nada. Esto es lo que hace
-	-- que se pueda llamar sin miedo desde un camino que corre a cada rato.
-	--
-	-- CON UN SOLO ANCLAJE. Al salir de un BG el nombre quedaba unos pixeles
-	-- mas abajo, pisando el borde de arriba del marco, y solo un /reload lo
-	-- arreglaba. Blizzard le vuelve a poner su anclaje de fabrica SIN
-	-- borrar el nuestro: el nombre queda con DOS anclajes, el primero sigue
-	-- siendo el nuestro, y esta comprobacion (que solo miraba el primero)
-	-- creia que estaba todo bien y no lo tocaba. Con mas de uno, se rehace.
+
+
+
+
+
+
+
+
+
 	local point, rel, relPoint, _, y = nameFS:GetPoint(1);
 	if (nameFS:GetNumPoints() or 0) == 1 and point == "BOTTOM" and rel == hp
 		and relPoint == "TOP" and y == 2 then
@@ -778,60 +778,60 @@ end
 if type(PartyMemberFrame_UpdateMember) == "function" then
 	hooksecurefunc("PartyMemberFrame_UpdateMember", function()
 		Reapply();
-		-- Sin corte por combate: ver el bloque de arriba.
+
 		PinNames();
 	end);
 end
 if type(PartyMemberFrame_ToPlayerArt) == "function" then
-	-- La VUELTA. Va por el mismo camino filtrado y por el mismo motivo: si
-	-- se cortara en combate, te bajabas del canon peleando y el marco se
-	-- quedaba con el aspecto de Blizzard hasta que terminara la pelea.
+
+
+
 	hooksecurefunc("PartyMemberFrame_ToPlayerArt", function()
 		ReapplyVehicle();
 		PinNames();
 	end);
 end
 
--- Y AL SUBIRSE A UN VEHICULO.
---
--- Cuando un compa�ero se sube a algo, Blizzard llama a
--- PartyMemberFrame_ToVehicleArt: esconde la textura normal del marco y
--- muestra la de vehiculo, que es mas grande y tiene otra forma. Al bajarse
--- llama a ToPlayerArt y las vuelve a cambiar.
---
--- QUE CREI QUE ERA, Y QUE ERA. Lo dejo escrito porque me equivoque dos
--- veces seguidas en el mismo bug.
---
---   1er intento: "falta engancharse a ToVehicleArt". Se agrego el hook y
---      no cambio nada. Era necesario, pero reaplicaba el estilo sobre
---      PartyMemberFrame{i}Texture -- la que en vehiculo esta ESCONDIDA.
---      Pintabamos con todo cuidado algo que nadie estaba viendo.
---
---   2do intento: "entonces hay que pintar tambien la de vehiculo". Habria
---      andado, pero es la solucion equivocada: el arte de vehiculo tiene
---      otras proporciones y otro lugar para el retrato, asi que serian
---      medidas nuevas que mantener sincronizadas con las otras. Justo la
---      clase de duplicado del que salen todos los desfasajes de este
---      addon.
---
---   Lo que quedo: mientras haya vehiculo, el marco vuelve entero a como lo
---      trae el juego y no lo tocamos. Ver el bloque grande en StyleOne.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 if type(PartyMemberFrame_ToVehicleArt) == "function" then
-	-- Cierre y no la funcion pelada: hooksecurefunc reenvia los argumentos
-	-- del original, y el primero (el marco) caeria en 'force' -- que es
-	-- truthy y desactivaria justo el filtro que acabamos de poner.
+
+
+
 	hooksecurefunc("PartyMemberFrame_ToVehicleArt", function() ReapplyVehicle(); end);
 end
 
--- RED DE SEGURIDAD POR EVENTO.
---
--- Los dos hooks de arriba cubren el camino normal. Pero al ENTRAR a un
--- battleground ya montado en el vehiculo -- que es como pasa en Isla de
--- la Conquista -- el marco se arma con el arte de vehiculo puesta de
--- entrada y esas funciones no llegan a correr.
---
--- Estos eventos avisan igual, y Reapply es idempotente: llamarla de mas
--- no cuesta nada, llamarla de menos deja el marco roto.
+
+
+
+
+
+
+
+
+
 local pwVehicle = CreateFrame("Frame");
 pwVehicle:RegisterEvent("UNIT_ENTERED_VEHICLE");
 pwVehicle:RegisterEvent("UNIT_EXITED_VEHICLE");
@@ -845,30 +845,30 @@ pwVehicle:SetScript("OnEvent", function(self, event, unit)
 		return;
 	end
 	if event == "PLAYER_ENTERING_WORLD" then
-		-- Al entrar al mundo no hay estado anterior con que comparar, asi
-		-- que se fuerza: puede que ya estes montado desde el principio.
+
+
 		ReapplyVehicle(true);
 		return;
 	end
-	-- Solo interesa si el que se subio es alguien del grupo.
+
 	if type(unit) ~= "string" or string.sub(unit, 1, 5) ~= "party" then return; end
 	ReapplyVehicle();
 end);
 
--- =========================================================
--- /nufpw2  -  ajuste en vivo de las medidas de Compact 2
---
--- Cambiar numeros a ojo, recargar, mirar, repetir, es lento y encima
--- hay que verlo en pantalla para saber si quedo bien. Con esto se
--- mueven en el momento y quedan guardados en la DB del addon, asi que
--- sobreviven al /reload sin tocar el archivo.
---
---   /nufpw2                      -> muestra los valores actuales
---   /nufpw2 tex 134 52 -4 3      -> ancho, alto, x, y del marco
---   /nufpw2 bars 76 46 -13 -25   -> ancho, x, y de vida, y de mana
---   /nufpw2 aura -16             -> cuanto bajan los iconos de aura
---   /nufpw2 reset                -> vuelve a los valores de fabrica
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local PW2_DEFAULTS = {
 	tex  = { PW2.tex.w, PW2.tex.h, PW2.tex.x, PW2.tex.y },
 	bars = { PW2.bars.w, PW2.bars.x, PW2.bars.hy, PW2.bars.my, PW2.bars.hh, PW2.bars.mh },
@@ -892,14 +892,14 @@ local function PW2Load()
 	if db.bars then
 		local w, x, hy, my, hh, mh = unpack(db.bars);
 		PW2.bars.w, PW2.bars.x, PW2.bars.hy, PW2.bars.my = w, x, hy, my;
-		-- hh y mh son mas nuevos: si vienen de una config vieja, no estan.
+
 		PW2.bars.hh = hh or PW2.bars.hh;
 		PW2.bars.mh = mh or PW2.bars.mh;
 	end
 	if db.aura then AURA_DROP_PW2 = db.aura; end
-	-- El fondo cambio de formato: antes eran 4 numeros (pad, alpha, x, y)
-	-- de la version que agregaba una textura propia. Los de 4 se descartan
-	-- para no leer un ancho o un alto que no significan nada.
+
+
+
 	if db.blockX then PW2.blockX = db.blockX; end
 	if db.bg and #db.bg >= 5 then
 		local bx, by, bw, bh, ba = unpack(db.bg);
@@ -933,9 +933,9 @@ SlashCmdList["NUFPW2"] = function(msg)
 	local cmd = string.lower(args[1] or "");
 
 	if cmd == "" then
-		-- Sin argumentos abre la ventana con botones, que es como se usa
-		-- esto en la practica. Los comandos de texto quedan para quien
-		-- prefiera tipear.
+
+
+
 		if K.TogglePW2Panel then K.TogglePW2Panel(); end
 		return;
 	end
@@ -996,7 +996,7 @@ SlashCmdList["NUFPW2"] = function(msg)
 	print("|cff4FC3F7NUF:|r /nufpw2 tex <w h x y> | bars <w x hy my> | portrait <lado x y> | aura <n> | reset");
 end
 
--- Los valores guardados se cargan al entrar, antes de aplicar el estilo.
+
 local pw2Init = CreateFrame("Frame");
 pw2Init:RegisterEvent("PLAYER_LOGIN");
 pw2Init:SetScript("OnEvent", function(self)
@@ -1005,14 +1005,14 @@ pw2Init:SetScript("OnEvent", function(self)
 	PW2Apply();
 end);
 
--- =========================================================
--- VENTANA DE AJUSTE  (/nufpw2)
---
--- Escribir numeros a mano para acomodar un marco es lento y a ciegas.
--- Esta ventana tiene una fila por valor, con botones de -5 -1 +1 +5:
--- se aprieta, se ve el resultado al instante sobre los cuatro marcos,
--- y queda guardado.
--- =========================================================
+
+
+
+
+
+
+
+
 local panel;
 
 local ROWS = {
@@ -1065,7 +1065,7 @@ local ROWS = {
 	  set = function(v) AURA_DROP_PW2 = v end, key = "aura" },
 };
 
--- Guarda en la DB el grupo que se acaba de tocar.
+
 local function PW2Save(key)
 	local db = PW2DB();
 	if key == "tex" then

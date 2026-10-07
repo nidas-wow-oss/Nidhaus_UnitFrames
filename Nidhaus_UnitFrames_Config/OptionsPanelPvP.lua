@@ -1,17 +1,17 @@
--- Este archivo vive en Nidhaus_UnitFrames_Config, un addon aparte que se
--- carga SOLO cuando abris el panel (LoadOnDemand). Por eso no recibe el
--- namespace por "...", que es privado de cada addon: lo toma de la global
--- que publica el addon principal en Core/Init.lua.
+
+
+
+
 local ns = _G.NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
--- Selector de estilo de borde: tres botones excluyentes con el activo
--- resaltado, el mismo patron que el selector de estilo de marco de grupo.
--- getFn devuelve el estilo actual, setFn lo cambia.
--- Selector de opciones excluyentes: una fila de botones donde el elegido
--- queda azul y los otros apagados. Nacio para los tres estilos de borde de
--- los timers; ahora tambien lo usa la posicion de las auras de la Power
--- Bar, asi que las opciones y el titulo vienen por parametro.
+
+
+
+
+
+
+
 local function ChoiceSelector(parent, px, py, labelText, opts, getFn, setFn, bw)
 	bw = bw or 88;
 	local bh, gap = 22, 4;
@@ -73,25 +73,25 @@ local function BorderStyleSelector(parent, px, py, getFn, setFn)
 	}, function() return getFn() or "Tooltip"; end, setFn);
 end
 
--- =========================================================
--- OptionsPanelPvP.lua
--- Pestaña PvP.
---
--- Secciones:
---   Class Options -> DETECTA la clase del personaje y muestra solo
---                    los modulos que esa clase puede usar. Un mago no
---                    tiene por que ver el contador de flechas.
---   Enemigos / Yo -> avisos y contadores pensados para arena.
---
--- Como se agrega una clase nueva: sumar una entrada a CLASS_MODULES
--- con sus checkboxes. No hay que tocar nada mas.
--- =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local checkboxCount = 0;
 
--- ---------------------------------------------------------
--- Helpers locales (mismos estilos que el resto del panel)
--- ---------------------------------------------------------
+
+
+
 local function Header(parent, text, x, y)
 	local fs = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 	fs:SetPoint("TOPLEFT", x, y);
@@ -108,7 +108,7 @@ local function Note(parent, text, x, y, width)
 	return fs;
 end
 
--- Checkbox de un setting de C
+
 local function SettingCB(parent, label, setting, x, y, tip, onChange)
 	checkboxCount = checkboxCount + 1;
 	local cbName = "NidhausPvPCB" .. checkboxCount;
@@ -143,7 +143,7 @@ local function SettingCB(parent, label, setting, x, y, tip, onChange)
 	return cb;
 end
 
--- Checkbox de un modulo
+
 local function ModuleCB(parent, label, moduleId, x, y, tip)
 	if not (K.Modules and K.Modules[moduleId]) then return nil; end
 	checkboxCount = checkboxCount + 1;
@@ -167,20 +167,20 @@ local function ModuleCB(parent, label, moduleId, x, y, tip)
 		cb:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 	end
 
-	-- LA DESCRIPCION, VISIBLE.
-	--
-	-- Antes solo salia en el tooltip, y por eso las pestañas de clase se
-	-- veian peladas al lado de la pestaña PvP: aquella usa ModuleBlock, que
-	-- si la dibuja. Los textos ya existian y ya estaban traducidos — no se
-	-- mostraban, nada mas.
-	--
-	-- Se devuelve el alto que ocupo para que quien llama sepa cuanto bajar:
-	-- las descripciones tienen largos distintos y un numero fijo dejaria
-	-- huecos en unas y superposiciones en otras.
-	--
-	-- Se ancla AL CHECKBOX, no a coordenadas fijas: hay llamadas que despues
-	-- reubican el checkbox (Paladin auras lo hace), y con coordenadas fijas
-	-- la descripcion se quedaba sola en el lugar viejo.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	local descH, descFS = 0, nil;
 	if tip and tip ~= "" then
 		descFS = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
@@ -200,21 +200,21 @@ local function ModuleCB(parent, label, moduleId, x, y, tip)
 	return cb, descH, descFS;
 end
 
--- ---------------------------------------------------------
--- BLOQUE DE MODULO (desplegable)
---
--- Cada addon/modulo vive en su propio bloque: una franja divisoria
--- arriba, el checkbox que lo prende, y un "cuerpo" con sus opciones que
--- SOLO se despliega cuando el modulo esta activo. Con el modulo apagado
--- el cuerpo se oculta y el bloque se achica, asi que los bloques de abajo
--- suben solos (van anclados uno al otro, no a coordenadas fijas).
---
--- Uso:
---   local blk, body = ModuleBlock(pane, prev, "PowerBar", "Power Bar", desc)
---   ... crear controles con parent = body ...
---   blk:SetBodyHeight(140)   -- alto del cuerpo desplegado
---   blk:Refresh()
--- ---------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local BLOCK_W = 470;
 
 local function ModuleBlock(pane, prev, moduleId, label, desc, tip)
@@ -226,7 +226,7 @@ local function ModuleBlock(pane, prev, moduleId, label, desc, tip)
 		blk:SetPoint("TOPLEFT", 16, -14);
 	end
 
-	-- Franja divisoria que separa este addon del anterior
+
 	local sep = blk:CreateTexture(nil, "ARTWORK");
 	sep:SetTexture(1, 1, 1, 0.13);
 	sep:SetPoint("TOPLEFT", 0, 0);
@@ -235,10 +235,10 @@ local function ModuleBlock(pane, prev, moduleId, label, desc, tip)
 
 	local headH = 26;
 
-	-- Checkbox del modulo
+
 	local cb = ModuleCB(blk, label, moduleId, 0, -10, tip);
 	if not cb then
-		-- El modulo no existe (no cargado): bloque vacio pero valido
+
 		blk:SetHeight(1);
 		blk.Refresh = function() end;
 		blk.SetBodyHeight = function() end;
@@ -255,7 +255,7 @@ local function ModuleBlock(pane, prev, moduleId, label, desc, tip)
 		headH = 34 + math.max(14, descFS:GetStringHeight() or 14) + 6;
 	end
 
-	-- Cuerpo desplegable
+
 	local body = CreateFrame("Frame", nil, blk);
 	body:SetPoint("TOPLEFT", 0, -headH);
 	body:SetWidth(BLOCK_W);
@@ -287,7 +287,7 @@ local function ModuleBlock(pane, prev, moduleId, label, desc, tip)
 	return blk, body;
 end
 
--- Bloque "solo texto" (encabezado de seccion), mismo sistema de anclaje
+
 local function HeaderBlock(pane, prev, title, note)
 	local blk = CreateFrame("Frame", nil, pane);
 	blk:SetWidth(BLOCK_W);
@@ -316,12 +316,12 @@ local function HeaderBlock(pane, prev, title, note)
 	return blk;
 end
 
--- NOTA: aca vivia SoonRow(), que dibujaba las filas de "coming soon".
--- Se borraron todas: la pestaña anuncia lo que hace, no lo que va a hacer.
 
--- ---------------------------------------------------------
--- Modulos por clase
--- ---------------------------------------------------------
+
+
+
+
+
 local CLASS_COLORS = {
 	MAGE        = "|cff69CCF0", HUNTER = "|cffABD473", ROGUE   = "|cffFFF569",
 	WARRIOR     = "|cffC79C6E", PRIEST = "|cffFFFFFF", WARLOCK = "|cff9482C9",
@@ -330,8 +330,8 @@ local CLASS_COLORS = {
 };
 
 
-	-- Picaro y druida comparten el mismo bloque: son las unicas dos
-	-- clases con puntos de combo, asi que la UI es identica.
+
+
 	local function ComboSection(pane, x, y)
 		Header(pane, L["PVP_COMBO"] or "Combo Points", x, y);
 		y = y - 24;
@@ -368,7 +368,7 @@ local CLASS_COLORS = {
 		return y - 44;
 	end
 
--- Cada entrada dibuja su bloque y devuelve el nuevo yPos.
+
 local CLASS_MODULES = {
 
 	ROGUE = function(pane, x, y)
@@ -399,16 +399,16 @@ local CLASS_MODULES = {
 			x, y, L["TIP_MageMirror"] or "30 second duration bar for Mirror Image.");
 		y = y - 34;
 
-		-- Las barras se arrastran solas con el boton izquierdo; esto solo
-		-- las fija cuando ya quedaron donde uno quiere (igual que el
-		-- "Lock Frames" del MageNuggets original).
+
+
+
 		SettingCB(pane, L["CB_LOCK_CLASS_BARS"] or "Lock the bars", "ClassTimersLocked",
 			x, y, L["TIP_ClassTimersLocked"]
 			or "While locked the bars ignore the mouse: you can click through them.",
 			function() if K.ApplyClassTimersLock then K.ApplyClassTimersLock(); end end);
 		y = y - 48;
 
-		-- Escala de las barras de clase
+
 		do
 			local cs = CreateFrame("Slider", nil, pane, "OptionsSliderTemplate");
 			cs:SetPoint("TOPLEFT", x + 2, y);
@@ -453,12 +453,12 @@ local CLASS_MODULES = {
 		end);
 		y = y - 44;
 
-		-- ── Apariencia: skin "Icy Portrait" del marco del jugador ──
+
 		Header(pane, L["PVP_MAGE_APPEARANCE"] or "Appearance", x, y);
 		y = y - 24;
-		-- El tooltip decia "necesita Custom Skin activado". Ya no: Icy es un
-		-- skin propio y se aplica solo. Dejarlo habria mandado a la gente a
-		-- prender una opcion que no hace falta.
+
+
+
 		SettingCB(pane, L["CB_MAGE_ICY"] or "Icy player frame", "MageIcyFrame",
 			x, y, L["TIP_MageIcy"]
 			or "Frost / ice skin for your player frame. Works on its own, no other option needed.",
@@ -477,8 +477,8 @@ local CLASS_MODULES = {
 			x, y, L["MOD_AUTOSHOT_DESC"]);
 		y = y - 26 - (asH or 0);
 
-		-- Cuerpo desplegable con la unica opcion de la barra: el borde,
-		-- que cicla entre tooltip, sin marco y barra de casteo.
+
+
 		local asBody = K.UI.Collapsible(pane, x, y, 440, 44, function()
 			return K.IsModuleEnabled and K.IsModuleEnabled("AutoShotTimer");
 		end);
@@ -494,7 +494,7 @@ local CLASS_MODULES = {
 			x, y, L["MOD_ARROWCOUNT_DESC"]);
 		y = y - 42 - (acH or 0);
 
-		-- ── Buffs de la mascota ──
+
 		Header(pane, L["PVP_HUNTER_PETSECTION"] or "Pet", x, y);
 		y = y - 24;
 
@@ -502,9 +502,9 @@ local CLASS_MODULES = {
 			x, y, L["MOD_PETBUFFS_DESC"]);
 		y = y - 26 - (pbH or 0);
 
-		-- Cuerpo desplegable: las opciones solo se ven con el modulo
-		-- encendido. Todo lo de adentro va con parent = pbBody y
-		-- coordenadas locales.
+
+
+
 		local pbBody = K.UI.Collapsible(pane, x, y, 440, 130, function()
 			return K.IsModuleEnabled and K.IsModuleEnabled("HunterPetBuffs");
 		end);
@@ -565,7 +565,7 @@ local CLASS_MODULES = {
 	end,
 
 	PALADIN = function(pane, x, y)
-		-- ── Defensivas: CD interno visual (de NidhausTools) ──
+
 		Header(pane, L["PVP_PALADIN_DEF"] or "Defensives", x, y);
 		y = y - 24;
 
@@ -573,16 +573,16 @@ local CLASS_MODULES = {
 			x, y, L["MOD_PALADIN_ICD_DESC"]);
 		y = y - 24 - (icdH or 0);
 
-		-- Sub-opciones dentro de un cuerpo desplegable: solo se ven con el
-		-- modulo encendido. Lo que sigue se ancla AL CUERPO, asi que al
-		-- colapsarlo (alto 1) sube solo en vez de dejar un hueco.
+
+
+
 		local body = CreateFrame("Frame", nil, pane);
 		body:SetPoint("TOPLEFT", x, y);
 		body:SetWidth(440);
 
-		-- Aca habia una segunda descripcion que repetia casi lo mismo que la
-		-- del modulo (incluida la lista de hechizos, dos veces) y ademas se
-		-- le superponia. Con la descripcion ya visible arriba, sobra.
+
+
+
 
 		SettingCB(body, L["CB_PALADIN_ICD_KEEP"] or "Keep it on screen when ready",
 			"PaladinICDKeepVisible", 22, -6, L["TIP_PaladinICDKeep"]
@@ -623,7 +623,7 @@ local CLASS_MODULES = {
 		pane:HookScript("OnShow", RefreshICD);
 		RefreshICD();
 
-		-- ── Auras portadas del grupo de WeakAuras "paladin wa" ──
+
 		local auraHdr = pane:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 		auraHdr:SetPoint("TOPLEFT", body, "BOTTOMLEFT", 0, -20);
 		auraHdr:SetText((K.UI and K.UI.Header(K.UI.Strip(L["PVP_PALADIN_AURAS"] or "Auras")))
@@ -636,17 +636,17 @@ local CLASS_MODULES = {
 			auraCB:SetPoint("TOPLEFT", auraHdr, "BOTTOMLEFT", 0, -6);
 		end
 
-		-- 34 de los botones + las casillas de "Mostrarlo en:" (dos filas).
+
 		local auraBody = K.UI.Collapsible(pane, x, 0, 440, 108, function()
 			return K.IsModuleEnabled and K.IsModuleEnabled("PaladinAuras");
 		end);
 		auraBody:ClearAllPoints();
-		-- Debajo de la DESCRIPCION si la hay; si no, del checkbox.
+
 		auraBody:SetPoint("TOPLEFT", auraDesc or auraCB or auraHdr, "BOTTOMLEFT",
 			auraDesc and -26 or 0, -6);
 		if auraCB then auraCB:HookScript("OnClick", function() auraBody:Refresh(); end); end
 
-		-- Idem: la descripcion del modulo ya dice esto mismo.
+
 
 		local paMove = CreateFrame("Button", nil, auraBody, "UIPanelButtonTemplate");
 		paMove:SetPoint("TOPLEFT", 2, -6);
@@ -667,8 +667,8 @@ local CLASS_MODULES = {
 			if K.ResetPaladinAurasPosition then K.ResetPaladinAurasPosition(); end
 		end);
 
-		-- Donde mostrarse (mismo esquema que el Gargoyle y la alerta de
-		-- hechizos): arena, battlegrounds, duelos y mundo abierto.
+
+
 		local paWhere = auraBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
 		paWhere:SetPoint("TOPLEFT", 4, -36);
 		paWhere:SetText((K.UI and K.UI.Label(L["GARG_WHERE"] or "Show it in:"))
@@ -694,14 +694,14 @@ local CLASS_MODULES = {
 			end);
 		end
 
-		-- Turn Evil es un modulo APARTE, no un sub-ajuste de Paladin auras:
-		-- rastrea otra cosa y tiene su propia posicion en pantalla.
-		--
-		-- Antes su checkbox vivia DENTRO de auraBody, y como auraBody se
-		-- pliega cuando Paladin auras esta destildado, Turn Evil desaparecia
-		-- con el. Quedaba imposible prenderlo sin prender el otro primero.
-		-- Ahora cuelga de "pane" igual que auraCB, asi que se ve siempre, y
-		-- lo unico que se pliega es su propio cuerpo de botones.
+
+
+
+
+
+
+
+
 		local teCB, _, teDesc = ModuleCB(pane, L["MOD_TURN_EVIL"] or "Turn Evil tracker",
 			"TurnEvil", x, 0, L["MOD_TURN_EVIL_DESC"]);
 		if teCB then
@@ -736,9 +736,9 @@ local CLASS_MODULES = {
 			if K.ResetTurnEvilPosition then K.ResetTurnEvilPosition(); end
 		end);
 
-		-- Sacred Shield sobre el objetivo (portado de la WeakAura "SS").
-		-- Mismo esquema que Turn Evil: checkbox siempre visible colgando de
-		-- "pane", y solo se pliega su propio cuerpo de botones.
+
+
+
 		local ssCB, _, ssDesc = ModuleCB(pane, L["MOD_SACREDSHIELD"] or "Sacred Shield (target)",
 			"SacredShield", x, 0, L["MOD_SACREDSHIELD_DESC"]);
 		if ssCB then
@@ -773,8 +773,8 @@ local CLASS_MODULES = {
 			if K.ResetSacredShieldPosition then K.ResetSacredShieldPosition(); end
 		end);
 
-		-- Sacred Shield sobre el GRUPO (portado del grupo de WeakAuras
-		-- "Sacred Shield Tracker"). Mismo esquema que los de arriba.
+
+
 		local sstCB, _, sstDesc = ModuleCB(pane, L["MOD_SS_TRACKER"] or "Sacred Shield tracker (group)",
 			"SacredShieldTracker", x, 0, L["MOD_SS_TRACKER_DESC"]);
 		if sstCB then
@@ -809,57 +809,57 @@ local CLASS_MODULES = {
 			if K.ResetSacredShieldTrackerPosition then K.ResetSacredShieldTrackerPosition(); end
 		end);
 
-		-- Aca habia un bloque "Planned" anunciando un aviso de Alas/Burbuja.
-		-- Se saco: anunciar algo que no existe solo ocupa lugar.
-		-- Alto del bloque de auras: encabezado + Paladin auras (checkbox,
-		-- descripcion y cuerpo) + Turn Evil (idem) + Sacred Shield (idem).
-		-- Cada uno ocupa su propio lugar, ninguno vive dentro del otro.
+
+
+
+
+
 		return y - BODY_H - 375;
 	end,
 
 	WARRIOR = function(pane, x, y)
-		-- El Melee Swing Timer no va aca: lo usan tambien picaro, cazador y
-		-- druida, asi que vive en la seccion PvP general.
+
+
 
 		return y;
 	end,
 };
 
--- ---------------------------------------------------------
--- Nombre de la clase para el item de la lista lateral
--- ---------------------------------------------------------
+
+
+
 function K.GetClassSectionName()
 	local class = (K.GetPlayerClass and K.GetPlayerClass()) or select(2, UnitClass("player"));
 	local localized = UnitClass("player");
 	return localized or class or (L["SIDE_CLASSOPT"] or "Class Options"), class;
 end
 
--- ---------------------------------------------------------
--- SECCION "PvP"  (lo que sirve para cualquier clase)
--- ---------------------------------------------------------
+
+
+
 function K.BuildPvPSection(pane)
 	local prev = nil;
 
-	-- ══════════ HUD DE COMBATE ══════════
+
 	prev = HeaderBlock(pane, nil, L["PVP_HUD"] or "Combat HUD",
 		L["PVP_HUD_NOTE"]
 		or "Bars that sit next to your character so you do not have to look at the unit frames.");
 
-	-- ── Power Bar ──
+
 	local pbBlk, pbBody = ModuleBlock(pane, prev, "PowerBar",
 		L["MOD_POWERBAR"] or "Power Bar", L["MOD_POWERBAR_DESC"]);
 	prev = pbBlk;
 	do
 		local by = 0;
-		-- LAS CASILLAS VAN EN DOS COLUMNAS.
-		--
-		-- Eran ocho apiladas y el bloque quedaba altisimo: para llegar a los
-		-- sliders habia que scrollear medio panel. En dos columnas ocupan la
-		-- mitad y entran de una con los sliders, que ya venian en dos.
-		--
-		-- Las etiquetas se acortaron para que entren en media fila. El
-		-- detalle no se perdio: esta en el tooltip de cada una, que es donde
-		-- corresponde. La del porcentaje no tenia y ahora si.
+
+
+
+
+
+
+
+
+
 		local COL_L, COL_R = 22, 250;
 
 		local pbRow = 0;
@@ -873,7 +873,7 @@ function K.BuildPvPSection(pane)
 		local function UpdBar()  if K.UpdatePowerBar then K.UpdatePowerBar(); end end
 		local function UpdHP()   if K.ApplyPowerBarHealth then K.ApplyPowerBarHealth(); end end
 
-		-- Emparejadas por tema: visibilidad, numeros, vida, color y auras.
+
 		PBCheck(L["CB_POWERBAR_COMBAT"] or "Only in combat", "PowerBarCombatOnly",
 			L["TIP_PowerBarCombatOnly"]
 			or "Hides the power bar out of combat so it does not clutter the screen.", UpdBar);
@@ -903,8 +903,8 @@ function K.BuildPvPSection(pane)
 			or "Two rows of small icons: buffs on top, debuffs below. Unlike the Blizzard frame it shows all of them, not a chosen few.",
 			function() if K.ApplyPowerBarAuraToggle then K.ApplyPowerBarAuraToggle(); end end);
 
-		-- Se baja por FILAS, no por casillas: dos por fila, redondeando para
-		-- arriba si alguna vez queda un numero impar.
+
+
 		by = by - math.ceil(pbRow / 2) * 26;
 
 		local function PBSlider(label, sx, sy, minV, maxV, step, getFn, setFn)
@@ -953,8 +953,8 @@ function K.BuildPvPSection(pane)
 			function() return (K.GetPowerBarAuraPerRow and K.GetPowerBarAuraPerRow()) or 8; end,
 			function(v) if K.SavePowerBarAuraPerRow then K.SavePowerBarAuraPerRow(v); end end);
 
-		-- Donde se cuelgan las dos filas. Botones angostos para que la fila
-		-- entera entre al lado de los sliders sin desbordar el cuerpo.
+
+
 		by = by - 42;
 		ChoiceSelector(pbBody, 26, by, L["BTN_AURAPOS_LABEL"] or "Auras:", {
 			{ value = "RIGHT",  text = L["AURAPOS_RIGHT"]  or "Right" },
@@ -969,7 +969,7 @@ function K.BuildPvPSection(pane)
 		pbBlk:Refresh();
 	end
 
-	-- ── Melee Swing Timer ──
+
 	local swBlk, swBody = ModuleBlock(pane, prev, "MeleeSwingTimer",
 		L["MOD_MELEESWING"] or "Melee Swing Timer", L["MOD_MELEESWING_DESC"]);
 	prev = swBlk;
@@ -1027,8 +1027,8 @@ function K.BuildPvPSection(pane)
 			RefreshSwingScale();
 		end);
 
-		-- Cicla entre los tres bordes: tooltip, sin marco (como arena) y
-		-- el de la barra de casteo de Blizzard.
+
+
 		BorderStyleSelector(swBody, 24, -84,
 			function() return (K.GetMeleeSwingBorderStyle and K.GetMeleeSwingBorderStyle()) or "Tooltip"; end,
 			function(v) if K.SetMeleeSwingBorderStyle then K.SetMeleeSwingBorderStyle(v); end end);
@@ -1037,9 +1037,9 @@ function K.BuildPvPSection(pane)
 		swBlk:Refresh();
 	end
 
-	-- ══════════ ENEMIGOS ══════════
-	-- Sin subtitulo: el encabezado ya dice de que va la seccion y cada modulo
-	-- trae su propia descripcion abajo.
+
+
+
 	prev = HeaderBlock(pane, prev, L["PVP_ENEMY_HEADER"] or "Enemy awareness");
 
 	local eaBlk, eaBody = ModuleBlock(pane, prev, "EnemySpellAlert",
@@ -1079,7 +1079,7 @@ function K.BuildPvPSection(pane)
 			if K.OpenEnemyAlertMenu then K.OpenEnemyAlertMenu(); end
 		end);
 
-		-- Donde mostrarse (mismo esquema que el Gargoyle)
+
 		local eaWhere = eaBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
 		eaWhere:SetPoint("TOPLEFT", 24, -62);
 		eaWhere:SetText((K.UI and K.UI.Label(L["GARG_WHERE"] or "Show it in:"))
@@ -1106,8 +1106,8 @@ function K.BuildPvPSection(pane)
 			end);
 		end
 
-		-- Escala del icono. Usa el slider comun del addon, que ya guarda y
-		-- aplica solo a traves de ScaleAPI.
+
+
 		if K.UI and K.UI.ScaleSlider then
 			K.UI.ScaleSlider(eaBody, "EnemySpellAlert", 26, -142, 200,
 				L["SLIDER_SCALE"] or "Scale");
@@ -1117,7 +1117,7 @@ function K.BuildPvPSection(pane)
 		eaBlk:Refresh();
 	end
 
-	-- ── Seduccion sobre ti (portado de WeakAuras) ──
+
 	local sdBlk, sdBody = ModuleBlock(pane, prev, "SeductionAlert",
 		L["MOD_SEDUCTION"] or "Seduction on you (arena)", L["MOD_SEDUCTION_DESC"]);
 	prev = sdBlk;
@@ -1150,12 +1150,12 @@ function K.BuildPvPSection(pane)
 		sdBlk:Refresh();
 	end
 
-	-- ── Gargoyle Tracker ──
+
 	local gtBlk, gtBody = ModuleBlock(pane, prev, "GargoyleTracker",
 		L["MOD_GARGOYLE"] or "Gargoyle Tracker", L["MOD_GARGOYLE_DESC"]);
 	prev = gtBlk;
 	do
-		-- Estilo: Blizzard / Custom
+
 		local styleLbl = gtBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
 		styleLbl:SetPoint("TOPLEFT", 24, -4);
 		styleLbl:SetText((K.UI and K.UI.Label(L["GARG_MODE"] or "Style"))
@@ -1203,7 +1203,7 @@ function K.BuildPvPSection(pane)
 		end
 		RefreshStyle();
 
-		-- Donde mostrarse
+
 		local whereLbl = gtBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
 		whereLbl:SetPoint("TOPLEFT", 24, -34);
 		whereLbl:SetText((K.UI and K.UI.Label(L["GARG_WHERE"] or "Show it in:"))
@@ -1230,7 +1230,7 @@ function K.BuildPvPSection(pane)
 			end);
 		end
 
-		-- Modo test + reset de posicion
+
 		local gtTest = CreateFrame("Button", nil, gtBody, "UIPanelButtonTemplate");
 		gtTest:SetPoint("TOPLEFT", 26, -106);
 		gtTest:SetSize(150, 22);
@@ -1250,7 +1250,7 @@ function K.BuildPvPSection(pane)
 			if K.ResetGargoylePosition then K.ResetGargoylePosition(); end
 		end);
 
-		-- Escala (registro central)
+
 		if K.UI and K.UI.ScaleSlider then
 			K.UI.ScaleSlider(gtBody, "GargoyleTracker", 26, -140, 200);
 		end
@@ -1259,20 +1259,20 @@ function K.BuildPvPSection(pane)
 		gtBlk:Refresh();
 	end
 
-	-- Aca habia dos bloques "Planned" anunciando cosas que no existen
-	-- (avisos de dispel, resurreccion, control de masas, DR, buffs). Se
-	-- sacaron junto con los de cada clase: anunciar lo que no esta hecho
-	-- solo ocupa lugar y hace parecer que falta algo.
 
-	-- Alto para el scroll. Se devuelve un valor generoso y fijo: los bloques
-	-- cambian de alto al desplegarse, y recalcularlo en vivo daria un scroll
-	-- que salta. Con este alto entra todo aunque esten todos desplegados.
+
+
+
+
+
+
+
 	return -1000;
 end
 
--- ---------------------------------------------------------
--- SECCION de la CLASE detectada
--- ---------------------------------------------------------
+
+
+
 function K.BuildClassSection(pane)
 	local x = 16;
 	local y = -14;
@@ -1281,7 +1281,7 @@ function K.BuildClassSection(pane)
 	local className = UnitClass("player") or class or "?";
 	local color = CLASS_COLORS[class] or "|cffFFFFFF";
 
-	-- Cartel de clase detectada
+
 	local banner = CreateFrame("Frame", nil, pane);
 	banner:SetPoint("TOPLEFT", x - 4, y);
 	banner:SetSize(440, 40);
