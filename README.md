@@ -36,6 +36,39 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 |:-:|:-:|:-:|
 | <img width="75" alt="NewPartyFrame" src="https://github.com/user-attachments/assets/79210886-68ca-4a54-adaf-a69cfa139953" /> | <img width="100" alt="PartyTargets" src="https://github.com/user-attachments/assets/6ac41efa-3557-4d9f-aeb2-bbe5dc4608d0" /> | <img width="200" alt="NiceDamage" src="https://github.com/user-attachments/assets/fcb8a2a1-1adb-40fc-be00-0c09d2f801ec" /> |
 
+## Arena: DR and DoTs
+
+Two trackers that sit next to the arena frames. Both are on out of the box, and both are set up
+in the panel under **Arena > DR** and **Arena > DoT** (Preview places them without being in a match;
+Shift + Alt + drag moves all five frames together).
+
+### Diminishing Returns
+
+<img src="images/arena-dr-panel.png" width="555" alt="DR options" /> <img src="images/arena-dr-ingame.png" width="316" alt="DR icons next to the arena frames" />
+
+One icon per DR category on each arena enemy, with a clock counting down to the reset: **1/2** means
+the next CC of that kind will last half, **1/4** a quarter, **X** that they are immune. DR is shared
+per category, so the hunter's trap shares it with Polymorph, Sap, Repentance and the rest.
+
+Out of the box: icons of 25 growing to the left, the clock on, no colored border and no
+"1/2 - 1/4 - X" text — the clock already tells you what you need mid-fight.
+
+<img src="images/arena-dr-categories.png" width="298" alt="DR categories" />
+
+Only **Stuns** and **Incapacitates** are shown. The other categories keep counting in the background,
+so ticking one later shows it already up to date. *All*, *My class* and *None* set the whole list
+at once.
+
+### DoTs
+
+<img src="images/arena-dot-panel.png" width="389" alt="DoT options" />
+
+The periodic damage you have running on each arena enemy, as small icons beside their frame, so you
+can see at a glance who is missing yours and when it is about to fall off.
+
+Out of the box: up to 3 icons of 14 with no gap, growing outward from the frame, without the "DoT"
+label or the red border.
+
 ## Installation
 
 1. Download **v4.3** from the [releases page](../../releases/latest).

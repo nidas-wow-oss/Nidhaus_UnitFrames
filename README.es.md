@@ -36,6 +36,40 @@ NUF combina y reescribe varios addons existentes — entre ellos Eazy Frames y s
 |:-:|:-:|:-:|
 | <img width="75" alt="NewPartyFrame" src="https://github.com/user-attachments/assets/79210886-68ca-4a54-adaf-a69cfa139953" /> | <img width="100" alt="PartyTargets" src="https://github.com/user-attachments/assets/6ac41efa-3557-4d9f-aeb2-bbe5dc4608d0" /> | <img width="200" alt="NiceDamage" src="https://github.com/user-attachments/assets/fcb8a2a1-1adb-40fc-be00-0c09d2f801ec" /> |
 
+## Arena: DR y DoTs
+
+Dos trackers que viven al lado de los marcos de arena. Los dos vienen prendidos de fábrica y se
+configuran en el panel, en **Arena > DR** y **Arena > DoT** (Vista previa los muestra sin estar en
+una partida; Shift + Alt + arrastrar mueve los cinco marcos juntos).
+
+### Diminishing Returns
+
+<img src="images/arena-dr-panel.png" width="555" alt="Opciones de DR" /> <img src="images/arena-dr-ingame.png" width="316" alt="Iconos de DR al lado de los marcos de arena" />
+
+Un icono por categoría de DR en cada enemigo de arena, con un reloj que cuenta hasta que se
+reinicia: **1/2** significa que el próximo CC de ese tipo dura la mitad, **1/4** un cuarto, **X**
+que es inmune. El DR es compartido por categoría, así que la trampa del cazador lo comparte con
+Polimorfia, Sap, Reprensión y las demás.
+
+De fábrica: iconos de 25 creciendo hacia la izquierda, el reloj prendido, sin borde de color y sin
+el texto "1/2 - 1/4 - X" — en plena pelea el reloj ya te dice lo que necesitás.
+
+<img src="images/arena-dr-categories.png" width="298" alt="Categorías de DR" />
+
+Solo se muestran **Aturdimientos** e **Incapacitaciones**. Las demás categorías siguen contando por
+detrás, así que si tildás una más tarde aparece ya al día. *Todas*, *Mi clase* y *Ninguna* cambian
+la lista entera de una.
+
+### DoTs
+
+<img src="images/arena-dot-panel.png" width="389" alt="Opciones de DoT" />
+
+El daño periódico que tenés puesto en cada enemigo de arena, en iconos chicos al lado de su marco,
+para ver de un vistazo a quién le falta el tuyo y cuándo está por caerse.
+
+De fábrica: hasta 3 iconos de 14 pegados entre sí, creciendo hacia afuera del marco, sin el texto
+"DoT" ni el borde rojo.
+
 ## Instalación
 
 1. Descargá la **v4.3** desde la [página de releases](../../releases/latest).
