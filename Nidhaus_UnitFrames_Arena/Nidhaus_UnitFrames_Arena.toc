@@ -1,0 +1,24 @@
+## Interface: 30300
+## Title: |cffffffffN|r|cffffffffi|r|cffffffffd|r|cffffffffh|r|cffffffffa|r|cffffffffu|r|cffffffffs|r|cff00ff00_|r|cff00ff00U|r|cff00ff00n|r|cff00ff00i|r|cff00ff00t|r|cff00ff00F|r|cff00ff00r|r|cff00ff00a|r|cff00ff00m|r|cff00ff00e|r|cff00ff00s|r|cff00ff00 |r|cff00ff00A|r|cff00ff00r|r|cff00ff00e|r|cff00ff00n|r|cff00ff00a|r
+## Notes: Marcos y herramientas de arena de Nidhaus UnitFrames. Se carga solo cuando entras a una arena (o cuando abris el panel / el modo mover).
+## Author: Nidhaus
+## Version: 4.3
+## Dependencies: Nidhaus_UnitFrames
+## LoadOnDemand: 1
+
+# El orden es el mismo que tenian dentro del addon principal.
+# La configuracion, los textos y el namespace ya estan cargados: esto
+# solo agrega los modulos de arena. Ver Core/ArenaLoader.lua.
+Modules\ArenaFramePositionSaver.lua
+UnitFrames\Arenaflat.lua
+UnitFrames\ArenaFrame.lua
+Modules\ArenaFrame_Trinkets.lua
+Modules\MirrorMode.lua
+Modules\ArenaMover.lua
+Modules2\ArenaCountDown.lua
+Modules2\ArenaDR.lua
+Modules2\ArenaDoTMark.lua
+Modules2\ArenaTargetOfTarget.lua
+Modules2\ArenaDalaranPipeTimer.lua
+Modules2\ArenaRoVPillarTimer.lua
+Modules2\ArenaEndTimer.lua

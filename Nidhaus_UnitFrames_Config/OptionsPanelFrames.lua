@@ -648,14 +648,17 @@ function K.PopulateFramesTab(panel)
 	local side = K.CreateSideList(panel, {
 		{ name = L["SIDE_PTF"]    or "Player, Target and Focus" },
 		{ name = L["SIDE_PARTY"]  or "Party" },
+		-- Las mascotas del grupo tienen tantas opciones que dentro de Party
+		-- eran media pantalla de scroll: van en su propia hoja, debajo.
+		{ name = L["SIDE_PARTY_PET"] or "Party pet" },
 		{ name = L["SIDE_AURAS"]  or "Buffs and Debuffs" },
 		{ name = L["SIDE_BOSS"]   or "Boss" },
 		{ name = L["SIDE_PET"]    or "Pet" },
 	});
 	panel.sideList = side;
 
-	local paneMain, paneParty, paneAuras, paneBoss, panePet =
-		side[1], side[2], side[3], side[4], side[5];
+	local paneMain, paneParty, panePartyPet, paneAuras, paneBoss, panePet =
+		side[1], side[2], side[3], side[4], side[5], side[6];
 
 	local x        = 20;
 	local sliderH  = 46;
@@ -1070,90 +1073,11 @@ function K.PopulateFramesTab(panel)
 		end);
 	end
 
-	-- Modulo: marco propio para la mascota del compa 1.
-	-- Va ARRIBA del checkbox de mostrar/ocultar mascotas: primero elegis
-	-- que marco usar, despues si se ve o no.
-	-- ── MASCOTAS ──
-	-- Antes las dos opciones de mascota flotaban sueltas entre el bloque de
-	-- texto y el de Mode, sin encabezado, asi que se leian como si fueran
-	-- parte de cualquiera de los dos.
-	local petSep = K.UI.Separator(paneParty, 0, 0, 440);
-	petSep:ClearAllPoints();
-	-- Colgaba de cbHide, que ahora esta arriba, al lado del slider. Cuelga
-	-- del bloque de fuente, que es lo que de verdad cierra esta seccion.
-	petSep:SetPoint("TOPLEFT", fontBody, "BOTTOMLEFT", -4, -10);
-
-	local petHeader = FHeader(paneParty, L["HEADER_PARTY_PETS"] or "Pets", 0, 0);
-	petHeader:ClearAllPoints();
-	petHeader:SetPoint("TOPLEFT", petSep, "BOTTOMLEFT", 4, -10);
-
-	local cbPPF;
-	do
-		cbPPF = CreateFrame("CheckButton", "NidhausParty1PetCB", paneParty, "UICheckButtonTemplate");
-		cbPPF:SetPoint("TOPLEFT", petHeader, "BOTTOMLEFT", 0, -10);
-		cbPPF.text = cbPPF:CreateFontString(nil, "ARTWORK", "GameFontHighlight");
-		cbPPF.text:SetPoint("LEFT", cbPPF, "RIGHT", 4, 0);
-		cbPPF.text:SetText(L["MOD_PARTYPETFRAME"] or "Party pet enhanced");
-		cbPPF:SetChecked(K.IsModuleEnabled and K.IsModuleEnabled("PartyPetFrame") or false);
-		if K.RegisterModuleCheckbox then K.RegisterModuleCheckbox("PartyPetFrame", cbPPF); end
-		cbPPF:SetScript("OnEnter", function(self)
-			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-			GameTooltip:SetText(L["MOD_PARTYPETFRAME"] or "Party pet enhanced", 1, 1, 1);
-			GameTooltip:AddLine(L["MOD_PARTYPETFRAME_DESC"] or "", nil, nil, nil, true);
-			GameTooltip:Show();
-		end);
-		cbPPF:SetScript("OnLeave", function() GameTooltip:Hide(); end);
-		cbPPF:SetScript("OnClick", function(self)
-			local v = (self:GetChecked() == 1 or self:GetChecked() == true);
-			if K.SetModuleEnabled then K.SetModuleEnabled("PartyPetFrame", v); end
-			if K.RefreshModuleCheckbox then K.RefreshModuleCheckbox("PartyPetFrame"); end
-		end);
-	end
-
-	-- ── Mascotas de los compañeros ──
-	local cbPet;
-	do
-		cbPet = CreateFrame("CheckButton", "NidhausPartyPetCB", paneParty, "UICheckButtonTemplate");
-		-- Al lado del anterior, no debajo: son dos opciones cortas y la
-		-- columna de la derecha estaba vacia.
-		cbPet:SetPoint("LEFT", cbPPF, "LEFT", 230, 0);
-		cbPet.text = cbPet:CreateFontString(nil, "ARTWORK", "GameFontHighlight");
-		cbPet.text:SetPoint("LEFT", cbPet, "RIGHT", 4, 0);
-		-- Redactado en NEGATIVO, como sus vecinos ("Hide health / mana
-		-- numbers"). Tres opciones seguidas donde una dice "Show" y las
-		-- otras "Hide" hacen dudar cada vez que tildas.
-		--
-		-- El setting guardado sigue siendo PartyShowPetFrames, en positivo:
-		-- lo lee ApplyPartyPetFrames y esta en los perfiles de la gente.
-		-- Darlo vuelta habria roto todo eso por un texto. La inversion vive
-		-- solo en la presentacion, marcada con nufInverted para que el
-		-- refresco central tampoco se confunda.
-		cbPet.text:SetText(L["CB_PARTY_PETS_HIDE"] or "Hide party pet frames");
-		cbPet.nufInverted = true;
-		cbPet:SetChecked(C.PartyShowPetFrames == false);
-		if K.RegisterSettingCheckbox then K.RegisterSettingCheckbox("PartyShowPetFrames", cbPet); end
-		cbPet:SetScript("OnEnter", function(self)
-			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-			GameTooltip:SetText(L["CB_PARTY_PETS_HIDE"] or "Hide party pet frames", 1, 1, 1);
-			GameTooltip:AddLine(L["TIP_PartyPets"]
-				or "The small frames of your party members' pets (hunter, warlock, DK...). Hiding them cleans up the screen in arena.",
-				nil, nil, nil, true);
-			GameTooltip:Show();
-		end);
-		cbPet:SetScript("OnLeave", function() GameTooltip:Hide(); end);
-		cbPet:SetScript("OnClick", function(self)
-			-- Tildado = OCULTAR, o sea PartyShowPetFrames en false.
-			local hide = (self:GetChecked() == 1 or self:GetChecked() == true);
-			if K.SaveConfig then K.SaveConfig("PartyShowPetFrames", not hide); end
-			if K.ApplyPartyPetFrames then K.ApplyPartyPetFrames(); end
-		end);
-	end
-
 	local modeSep = K.UI.Separator(paneParty, 0, 0, 440);
 	modeSep:ClearAllPoints();
-	-- Cuelga del checkbox de la IZQUIERDA: cbPet ahora esta en la segunda
-	-- columna y anclarse a el corria el separador media pantalla.
-	modeSep:SetPoint("TOPLEFT", cbPPF, "BOTTOMLEFT", -4, -14);
+	-- Cuelga del bloque de fuente: lo de las mascotas, que antes iba en el
+	-- medio, se mudo a su propia hoja (Party pet).
+	modeSep:SetPoint("TOPLEFT", fontBody, "BOTTOMLEFT", -4, -14);
 
 	local modeHeader = FHeader(paneParty, L["HEADER_PARTY_MODE"] or "Mode", 0, 0);
 	modeHeader:ClearAllPoints();
@@ -1288,9 +1212,13 @@ function K.PopulateFramesTab(panel)
 	local partyTailPy;   -- lo deja la cola de la seccion, mas abajo
 	local function UpdatePartyHeight()
 		if not partyTailPy then return; end
-		-- El -810 de abajo se calculo con Party Features de 116 de alto.
-		side.SetContentHeight(2, -810 - (featBox:GetHeight() - 116) + partyTailPy - 30);
+		-- El -714 de abajo se calculo con Party Features de 116 de alto.
+		-- (Era -810 cuando el bloque de mascotas vivia aca: son los 96 px
+		-- del separador, el encabezado "Pets", su casilla y el desplegable
+		-- cerrado, que ahora estan en la hoja "Party pet".)
+		side.SetContentHeight(2, -714 - (featBox:GetHeight() - 116) + partyTailPy - 30);
 	end
+	K._UpdatePartyPaneHeight = UpdatePartyHeight;
 	K.BuildPartyFeatureCheckboxes(featBox, 0, -26, function(rowsH)
 		featBox:SetHeight(26 + rowsH + 6);
 		UpdatePartyHeight();
@@ -1394,8 +1322,283 @@ function K.PopulateFramesTab(panel)
 	partyTailPy = py;
 	UpdatePartyHeight();
 
+	-- ======================================================
+	-- 3) MASCOTAS DEL GRUPO
+	--
+	-- Estaba al final de la hoja "Party", despues del tamaño del texto y
+	-- antes del modo 3v3. Con las opciones del marco propio desplegadas
+	-- ocupaba media pantalla de scroll y empujaba al 3v3 fuera de la
+	-- vista, asi que tiene hoja propia, justo debajo de Party.
+	-- ======================================================
+	local ppHeader = FHeader(panePartyPet, L["HEADER_PARTY_PETS_FULL"] or "Party pets", x, -14);
+	FNote(panePartyPet, L["NOTE_PARTY_PETS"]
+		or "The pets of your party members (hunter, warlock, DK...). The enhanced frame replaces Blizzard's small one with a portrait, health and mana, buffs, debuffs and a cast bar.",
+		x + 2, -36, 430);
+
+	local cbPPF;
+	local ppfBody;   -- desplegable con sus opciones (se arma mas abajo)
+	do
+		cbPPF = CreateFrame("CheckButton", "NidhausParty1PetCB", panePartyPet, "UICheckButtonTemplate");
+		cbPPF:SetPoint("TOPLEFT", ppHeader, "BOTTOMLEFT", 0, -34);
+		cbPPF.text = cbPPF:CreateFontString(nil, "ARTWORK", "GameFontHighlight");
+		cbPPF.text:SetPoint("LEFT", cbPPF, "RIGHT", 4, 0);
+		cbPPF.text:SetText(L["MOD_PARTYPETFRAME"] or "Party pet enhanced");
+		cbPPF:SetChecked(K.IsModuleEnabled and K.IsModuleEnabled("PartyPetFrame") or false);
+		if K.RegisterModuleCheckbox then K.RegisterModuleCheckbox("PartyPetFrame", cbPPF); end
+		cbPPF:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(L["MOD_PARTYPETFRAME"] or "Party pet enhanced", 1, 1, 1);
+			GameTooltip:AddLine(L["MOD_PARTYPETFRAME_DESC"] or "", nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		cbPPF:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+		cbPPF:SetScript("OnClick", function(self)
+			local v = (self:GetChecked() == 1 or self:GetChecked() == true);
+			if K.SetModuleEnabled then K.SetModuleEnabled("PartyPetFrame", v); end
+			if K.RefreshModuleCheckbox then K.RefreshModuleCheckbox("PartyPetFrame"); end
+		end);
+	end
+
+	-- ── Mascotas de los compañeros ──
+	local cbPet;
+	do
+		cbPet = CreateFrame("CheckButton", "NidhausPartyPetCB", panePartyPet, "UICheckButtonTemplate");
+		-- Al lado del anterior, no debajo: son dos opciones cortas y la
+		-- columna de la derecha estaba vacia.
+		cbPet:SetPoint("LEFT", cbPPF, "LEFT", 230, 0);
+		cbPet.text = cbPet:CreateFontString(nil, "ARTWORK", "GameFontHighlight");
+		cbPet.text:SetPoint("LEFT", cbPet, "RIGHT", 4, 0);
+		-- Redactado en NEGATIVO, como sus vecinos ("Hide health / mana
+		-- numbers"). Tres opciones seguidas donde una dice "Show" y las
+		-- otras "Hide" hacen dudar cada vez que tildas.
+		--
+		-- El setting guardado sigue siendo PartyShowPetFrames, en positivo:
+		-- lo lee ApplyPartyPetFrames y esta en los perfiles de la gente.
+		-- Darlo vuelta habria roto todo eso por un texto. La inversion vive
+		-- solo en la presentacion, marcada con nufInverted para que el
+		-- refresco central tampoco se confunda.
+		cbPet.text:SetText(L["CB_PARTY_PETS_HIDE"] or "Hide party pet frames");
+		cbPet.nufInverted = true;
+		cbPet:SetChecked(C.PartyShowPetFrames == false);
+		if K.RegisterSettingCheckbox then K.RegisterSettingCheckbox("PartyShowPetFrames", cbPet); end
+		cbPet:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(L["CB_PARTY_PETS_HIDE"] or "Hide party pet frames", 1, 1, 1);
+			GameTooltip:AddLine(L["TIP_PartyPets"]
+				or "The small frames of your party members' pets (hunter, warlock, DK...). Hiding them cleans up the screen in arena.",
+				nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		cbPet:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+		cbPet:SetScript("OnClick", function(self)
+			-- Tildado = OCULTAR, o sea PartyShowPetFrames en false.
+			local hide = (self:GetChecked() == 1 or self:GetChecked() == true);
+			if K.SaveConfig then K.SaveConfig("PartyShowPetFrames", not hide); end
+			if K.ApplyPartyPetFrames then K.ApplyPartyPetFrames(); end
+		end);
+	end
+
+	-- ── Opciones de "Party pet enhanced" ──
+	-- Desplegable debajo de su casilla: solo con el modulo prendido.
+	--
+	--   Mostrarlo en:                 Escala
+	--   [x] Arena                     [=====o=====]
+	--   [x] Campos de batalla         [Vista previa] [Reset]
+	--   [ ] Mundo abierto
+	--   Bordes de auras:  (o) Fino  ( ) Lorti  ( ) Blizzard
+	--   [x] Buffs                     [x] Barra de casteo
+	--   [x] Debuffs                   [x] Click para seleccionar
+	--   [x] Reloj en las auras        [x] Color de clase del dueno
+	--   [x] Resaltar lo que dispeleas [x] Atenuar fuera de rango
+	--
+	-- El CC en el retrato y sus segundos van siempre (sin casilla) y el
+	-- objetivo de la mascota se saco. "Duelos" tambien: en un duelo no hay
+	-- compas con mascota; mazmorras, bandas y duelos van con Mundo abierto.
+	local PPF_H = 226;
+	ppfBody = K.UI.Collapsible(panePartyPet, 0, 0, 440, PPF_H, function()
+		return (K.IsModuleEnabled and K.IsModuleEnabled("PartyPetFrame")) or false;
+	end);
+	ppfBody:ClearAllPoints();
+	ppfBody:SetPoint("TOPLEFT", cbPPF, "BOTTOMLEFT", 6, -4);
+	do
+		local function IsOn(self) return self:GetChecked() == 1 or self:GetChecked() == true; end
+		local function Tip(frame, title, text)
+			frame:SetScript("OnEnter", function(self)
+				GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+				GameTooltip:SetText(title, 1, 1, 1);
+				GameTooltip:AddLine(text, nil, nil, nil, true);
+				GameTooltip:Show();
+			end);
+			frame:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+		end
+
+		-- Donde se muestra: una columna de tres
+		local zl = ppfBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
+		zl:SetPoint("TOPLEFT", 0, 0);
+		zl:SetText((K.UI and K.UI.Label(L["GARG_WHERE"] or "Show it in:")) or (L["GARG_WHERE"] or "Show it in:"));
+		local zones = {
+			{ key = "inArena", text = L["GARG_ARENA"] or "Arena" },
+			{ key = "inBG",    text = L["GARG_BG"]    or "Battlegrounds" },
+			{ key = "inWorld", text = L["GARG_WORLD"] or "Open world",
+			  tip = L["PPF_TIP_WORLD"] or "Everywhere else: open world, dungeons, raids and duels." },
+		};
+		for row, z in ipairs(zones) do
+			checkboxCount = checkboxCount + 1;
+			local cbName = "NidhausPPFZoneCB" .. checkboxCount;
+			local cb = CreateFrame("CheckButton", cbName, ppfBody, "InterfaceOptionsCheckButtonTemplate");
+			cb:SetPoint("TOPLEFT", -2, -14 - (row - 1) * 24);
+			cb:SetHitRectInsets(0, 0, 0, 0);
+			local fs = _G[cbName .. "Text"];
+			if fs then fs:SetText(z.text); end
+			if z.tip then Tip(cb, z.text, z.tip); end
+			local function Sync() cb:SetChecked(K.GetModuleZone and K.GetModuleZone("PartyPetFrame", z.key)); end
+			Sync();
+			ppfBody:HookScript("OnShow", Sync);
+			cb:SetScript("OnClick", function(self)
+				if K.SetModuleZone then K.SetModuleZone("PartyPetFrame", z.key, IsOn(self)); end
+			end);
+		end
+
+		-- Escala de los cuatro marcos
+		if K.UI and K.UI.ScaleSlider then
+			K.UI.ScaleSlider(ppfBody, "PartyPetFrame", 232, -16, 180);
+		end
+
+		-- Vista previa + Reset
+		local prevBtn = CreateFrame("Button", nil, ppfBody, "UIPanelButtonTemplate");
+		prevBtn:SetSize(108, 22);
+		prevBtn:SetPoint("TOPLEFT", 230, -54);
+		local function SyncPrev()
+			local on = K.IsPartyPetPreview and K.IsPartyPetPreview();
+			prevBtn:SetText(on and (L["PPF_BTN_PREVIEW_STOP"] or "Stop preview") or (L["PPF_BTN_PREVIEW"] or "Preview"));
+		end
+		SyncPrev();
+		ppfBody:HookScript("OnShow", SyncPrev);
+		prevBtn:SetScript("OnClick", function()
+			if InCombatLockdown() then
+				UIErrorsFrame:AddMessage(L["PPF_PREVIEW_COMBAT"] or "Not in combat.", 1, 0.2, 0.2);
+				return;
+			end
+			if K.TogglePartyPetPreview then K.TogglePartyPetPreview(); end
+			SyncPrev();
+		end);
+		Tip(prevBtn, L["PPF_BTN_PREVIEW"] or "Preview", L["PPF_TIP_PREVIEW"]
+			or "Shows the four frames with sample data so you can place them and see the options outside an arena. While it is on you can drag the top frame. It turns off by itself when combat starts.");
+
+		local resetBtn = CreateFrame("Button", nil, ppfBody, "UIPanelButtonTemplate");
+		resetBtn:SetSize(74, 22);
+		resetBtn:SetPoint("LEFT", prevBtn, "RIGHT", 4, 0);
+		resetBtn:SetText(L["PPF_BTN_RESET"] or "Reset");
+		resetBtn:SetScript("OnClick", function()
+			if InCombatLockdown() then return; end
+			if K.ResetPartyPetFramePosition then K.ResetPartyPetFramePosition(); end
+			if K.ResetModuleScale then K.ResetModuleScale("PartyPetFrame"); end
+		end);
+		Tip(resetBtn, L["PPF_BTN_RESET"] or "Reset", L["PPF_TIP_RESET"] or "Puts the row back in its default place and size.");
+
+		-- Estilo de los bordes de buffs / debuffs: tres botones redondos (uno
+		-- solo marcado). Hechos a mano con la textura de los radio buttons de
+		-- Blizzard, que esta en todos los clientes.
+		local bl = ppfBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
+		bl:SetPoint("TOPLEFT", 0, -98);
+		bl:SetText((K.UI and K.UI.Label(L["PPF_BORDER_LABEL"] or "Aura borders:")) or (L["PPF_BORDER_LABEL"] or "Aura borders:"));
+		local radios = {};
+		local function SyncRadios()
+			local cur = K.GetPartyPetOption and K.GetPartyPetOption("borderStyle") or "fino";
+			for _, rb in ipairs(radios) do rb:SetChecked(rb.value == cur); end
+		end
+		local RADIO = "Interface\\Buttons\\UI-RadioButton";
+		local function Radio(x, value, text, tip)
+			local rb = CreateFrame("CheckButton", nil, ppfBody);
+			rb:SetSize(16, 16);
+			rb:SetPoint("TOPLEFT", x, -96);
+			rb:SetNormalTexture(RADIO);
+			rb:GetNormalTexture():SetTexCoord(0, 0.25, 0, 1);
+			rb:SetCheckedTexture(RADIO);
+			rb:GetCheckedTexture():SetTexCoord(0.25, 0.5, 0, 1);
+			rb:SetHighlightTexture(RADIO, "ADD");
+			rb:GetHighlightTexture():SetTexCoord(0.5, 0.75, 0, 1);
+			local fs = rb:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
+			fs:SetPoint("LEFT", rb, "RIGHT", 4, 0);
+			fs:SetText(text);
+			-- El texto tambien se puede clickear.
+			rb:SetHitRectInsets(0, -((fs:GetStringWidth() or 40) + 6), 0, 0);
+			rb.value = value;
+			rb:SetScript("OnClick", function()
+				if K.SetPartyPetOption then K.SetPartyPetOption("borderStyle", value); end
+				SyncRadios();
+			end);
+			Tip(rb, text, tip);
+			radios[#radios + 1] = rb;
+		end
+		Radio(118, "fino", L["PPF_BORDER_FINO"] or "Thin",
+			L["PPF_TIP_BORDER_FINO"] or "A 1 px black outline. Debuffs also get a ring in the color of their school.");
+		Radio(208, "lorti", L["PPF_BORDER_LORTI"] or "Lorti",
+			L["PPF_TIP_BORDER_LORTI"] or "The gloss and shadow of the Lorti UI buttons. The shadow takes the color of the \"Party pets\" row of Lorti UI, if it has one.");
+		Radio(298, "blizzard", L["PPF_BORDER_BLIZZ"] or "Blizzard",
+			L["PPF_TIP_BORDER_BLIZZ"] or "Like the target frame: buffs without a border, debuffs with their colored ring just outside the icon.");
+		SyncRadios();
+		ppfBody:HookScript("OnShow", SyncRadios);
+
+		-- Casillas de opciones: dos columnas de cuatro
+		local optCBs = {};
+		local function Opt(label, key, x, y, tip)
+			local cb = CreateFeatureCheckBox(ppfBody, label, x, y, tip);
+			local function Sync() cb:SetChecked(K.GetPartyPetOption and K.GetPartyPetOption(key) and true or false); end
+			Sync();
+			ppfBody:HookScript("OnShow", Sync);
+			cb:SetScript("OnClick", function(self)
+				if K.SetPartyPetOption then K.SetPartyPetOption(key, IsOn(self)); end
+				if optCBs.Refresh then optCBs.Refresh(); end
+			end);
+			optCBs[key] = cb;
+			return cb;
+		end
+		Opt(L["PPF_OPT_BUFFS"] or "Buffs", "showBuffs", 0, -118,
+			L["PPF_TIP_BUFFS"] or "The pet's buffs (above the portrait).");
+		Opt(L["PPF_OPT_DEBUFFS"] or "Debuffs", "showDebuffs", 0, -144,
+			L["PPF_TIP_DEBUFFS"] or "The pet's debuffs, with the color of their school.");
+		Opt(L["PPF_OPT_TIMERS"] or "Aura timers", "auraTimers", 0, -170,
+			L["PPF_TIP_TIMERS"] or "The clock sweep and the seconds left on each buff and debuff (red in the last 5 seconds), plus the stack count.");
+		Opt(L["PPF_OPT_DISPEL"] or "Highlight what you can dispel", "dispelGlow", 0, -196,
+			L["PPF_TIP_DISPEL"] or "A debuff your class can remove from the pet glows in the color of its school. Priest: magic and disease. Paladin: magic, poison and disease. Shaman: poison, disease and curse. Druid: curse and poison. Mage: curse. Warlock: magic (felhunter).");
+		Opt(L["PPF_OPT_CAST"] or "Cast bar", "showCast", 230, -118,
+			L["PPF_TIP_CAST"] or "The pet's cast bar (Spell Lock, Seduction, Gnaw...).");
+		Opt(L["PPF_OPT_CLICK"] or "Click to target", "clickable", 230, -144,
+			L["PPF_TIP_CLICK"] or "Left click on a frame targets that pet. Changes outside combat.");
+		Opt(L["PPF_OPT_OWNER"] or "Owner's class color", "ownerColor", 230, -170,
+			L["PPF_TIP_OWNER"] or "The pet's health bar takes the class color of its owner, so you know at a glance whose pet it is.");
+		Opt(L["PPF_OPT_RANGE"] or "Fade out of range", "rangeFade", 230, -196,
+			L["PPF_TIP_RANGE"] or "The frame turns see-through when the pet is far from you. Healers measure it with their heal; other classes, by the owner's distance.");
+
+		-- "Resaltar lo que dispeleas" depende de "Debuffs", y no sirve en
+		-- una clase que no saca nada.
+		optCBs.Refresh = function()
+			local sub = optCBs.dispelGlow;
+			if not sub then return; end
+			local can = (not K.PartyPetCanDispel) or K.PartyPetCanDispel();
+			local on = can and K.GetPartyPetOption and K.GetPartyPetOption("showDebuffs");
+			if on then sub:Enable(); sub:SetAlpha(1); else sub:Disable(); sub:SetAlpha(0.5); end
+		end
+		optCBs.Refresh();
+		ppfBody:HookScript("OnShow", optCBs.Refresh);
+	end
+	cbPPF:HookScript("OnClick", function()
+		ppfBody:Refresh();
+		if K._UpdatePartyPetPaneHeight then K._UpdatePartyPetPaneHeight(); end
+	end);
+
+	-- El alto de la hoja sigue al desplegable: cerrado mide 1 px.
+	local function UpdatePartyPetHeight()
+		local extra = (ppfBody and ((ppfBody:GetHeight() or 1) - 1)) or 0;
+		side.SetContentHeight(3, -150 - extra);
+	end
+	K._UpdatePartyPetPaneHeight = UpdatePartyPetHeight;
+	panePartyPet:HookScript("OnShow", UpdatePartyPetHeight);
+	UpdatePartyPetHeight();
+
 	-- ══════════════════════════════════════════════════════
-	-- 3) BUFFS Y DEBUFFS
+	-- 4) BUFFS Y DEBUFFS
 	-- ══════════════════════════════════════════════════════
 	local ay = -14;
 	FHeader(paneAuras, L["HEADER_AURAS"] or "Player Buffs and Debuffs", x, ay);
@@ -1549,10 +1752,10 @@ function K.PopulateFramesTab(panel)
 	ry = ry - 40;
 
 	-- Manda la columna mas larga: con la corta el scroll cortaba la otra.
-	side.SetContentHeight(3, math.min(ay, ry) - 30);
+	side.SetContentHeight(4, math.min(ay, ry) - 30);
 
 	-- ══════════════════════════════════════════════════════
-	-- 4) BOSS (PvE)
+	-- 5) BOSS (PvE)
 	-- ══════════════════════════════════════════════════════
 	local vy = -14;
 	FHeader(paneBoss, L["HEADER_BOSS"] or "Boss Frames (PvE)", x, vy);
@@ -1571,7 +1774,7 @@ function K.PopulateFramesTab(panel)
 	CreateSlider(paneBoss, L["SLIDER_BOSS_SPACING"], "BossTargetFrameSpacing", -50, 100, 5, x, vy);
 	vy = vy - sliderH;
 
-	side.SetContentHeight(4, vy - 40);
+	side.SetContentHeight(5, vy - 40);
 
 	-- ══════════════════════════════════════════════════════
 	-- 5) PET (mascota del jugador)
@@ -1678,20 +1881,23 @@ function K.PopulateFramesTab(panel)
 	-- El mismo modulo que en Addons, no una copia: el checkbox se anota en
 	-- RegisterModuleCheckbox, asi que prenderlo aca lo tilda alla y al
 	-- reves. Las opciones finas (bloquear, vista previa) siguen en Addons.
-	FHeader(panePet, L["MOD_PETBUFFS"] or "Pet Buffs", x, pv);
-	pv = pv - 26;
-	local petBuffsCB = CreateFeatureCheckBox(panePet,
-		L["MOD_PETBUFFS"] or "Pet Buffs", x, pv, L["MOD_PETBUFFS_DESC"]);
-	petBuffsCB:SetChecked(K.IsModuleEnabled and K.IsModuleEnabled("HunterPetBuffs") and true or false);
-	if K.RegisterModuleCheckbox then K.RegisterModuleCheckbox("HunterPetBuffs", petBuffsCB); end
-	petBuffsCB:SetScript("OnClick", function(self)
-		local v = self:GetChecked() == 1 or self:GetChecked() == true;
-		if K.SetModuleEnabled then K.SetModuleEnabled("HunterPetBuffs", v); end
-		if K.RefreshModuleCheckbox then K.RefreshModuleCheckbox("HunterPetBuffs"); end
-	end);
-	pv = pv - 40;
+	-- Solo para el cazador: en las demas clases el modulo ni se carga.
+	if K.Modules and K.Modules["HunterPetBuffs"] then
+		FHeader(panePet, L["MOD_PETBUFFS"] or "Pet Buffs", x, pv);
+		pv = pv - 26;
+		local petBuffsCB = CreateFeatureCheckBox(panePet,
+			L["MOD_PETBUFFS"] or "Pet Buffs", x, pv, L["MOD_PETBUFFS_DESC"]);
+		petBuffsCB:SetChecked(K.IsModuleEnabled and K.IsModuleEnabled("HunterPetBuffs") and true or false);
+		if K.RegisterModuleCheckbox then K.RegisterModuleCheckbox("HunterPetBuffs", petBuffsCB); end
+		petBuffsCB:SetScript("OnClick", function(self)
+			local v = self:GetChecked() == 1 or self:GetChecked() == true;
+			if K.SetModuleEnabled then K.SetModuleEnabled("HunterPetBuffs", v); end
+			if K.RefreshModuleCheckbox then K.RefreshModuleCheckbox("HunterPetBuffs"); end
+		end);
+		pv = pv - 40;
+	end
 
-	side.SetContentHeight(5, pv - 30);
+	side.SetContentHeight(6, pv - 30);
 
 	-- Compatibilidad: OptionsPanel.lua ya no dibuja nada aca, pero dejamos
 	-- los campos por si algun modulo viejo los consulta.

@@ -332,11 +332,21 @@ local function UpdateTickerState()
 	end
 end
 
+-- SOLO AL PASAR DE ACTIVO A "Default" se devuelven los colores y las
+-- fuentes. Antes, estando en Default (lo de fabrica), CADA cambio de
+-- cualquier opcion del panel llamaba a ResetUnitNameColor: capturaba la
+-- fuente que hubiera en pantalla la primera vez y la volvia a escribir
+-- despues, pisando la del estilo de grupo nuevo (el nombre chico del
+-- estilo Improved volvia aunque ya hubieras cambiado de estilo).
+local wasActive = false;
+
 local function ApplyNow()
 	if not IsActive() then
-		K.ResetUnitNameColor();
+		if wasActive then K.ResetUnitNameColor(); end
+		wasActive = false;
 	else
 		ApplyAll();
+		wasActive = true;
 	end
 	UpdateTickerState();
 end
@@ -351,6 +361,7 @@ local initFrame = CreateFrame("Frame");
 initFrame:RegisterEvent("PLAYER_LOGIN");
 initFrame:SetScript("OnEvent", function(self)
 	self:UnregisterAllEvents();
+	wasActive = IsActive();
 	UpdateTickerState();
 end);
 

@@ -1,6 +1,11 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
+-- SOLO CAZADOR. Para las demas clases el archivo termina aca, antes de crear
+-- nada: Lua descarta todo su codigo y el modulo no ocupa memoria. El panel,
+-- el modo mover y los comandos ya preguntan si el modulo existe.
+if select(2, UnitClass("player")) ~= "HUNTER" then return; end
+
 -- =========================================================
 -- HunterPetBuffs.lua
 -- Fila de iconos bajo el marco de la mascota con los buffs que
@@ -154,7 +159,15 @@ local function Build()
 	frame:SetScript("OnDragStop", function(self)
 		self:StopMovingOrSizing();
 		local db = DB();
-		local point, _, relativePoint, x, y = self:GetPoint();
+		local point, relTo, relativePoint, x, y = self:GetPoint();
+		-- Por defecto cuelga de PetFrame; la posicion guardada se repone
+		-- contra la pantalla, asi que se guarda contra la pantalla.
+		if relTo and relTo ~= UIParent and self:GetLeft() and self:GetTop() then
+			point, relativePoint = "TOPLEFT", "BOTTOMLEFT";
+			x, y = self:GetLeft(), self:GetTop();
+			self:ClearAllPoints();
+			self:SetPoint(point, UIParent, relativePoint, x, y);
+		end
 		db.point, db.relativePoint, db.x, db.y = point, relativePoint, x, y;
 	end);
 

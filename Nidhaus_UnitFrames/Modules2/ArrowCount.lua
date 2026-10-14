@@ -1,6 +1,11 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
+-- SOLO CAZADOR. Para las demas clases el archivo termina aca, antes de crear
+-- nada: Lua descarta todo su codigo y el modulo no ocupa memoria. El panel,
+-- el modo mover y los comandos ya preguntan si el modulo existe.
+if select(2, UnitClass("player")) ~= "HUNTER" then return; end
+
 -- =========================================================
 -- ArrowCount.lua  (portado a NUF)
 -- Muestra la cantidad de flechas / balas que tenes en las bolsas.

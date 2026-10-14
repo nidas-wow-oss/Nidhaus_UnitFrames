@@ -235,7 +235,7 @@ ticker:SetScript("OnUpdate", function(self, elapsed)
 				f:Hide();
 			else
 				f.bar:SetValue(remaining);
-				f.timeText:SetText(string.format("%d", math.ceil(remaining)));
+				f.timeText:SetFormattedText("%d", math.ceil(remaining));   -- sin basura
 				anyRunning = true;
 			end
 		end
@@ -333,6 +333,10 @@ if playerClass == "MAGE" then
 		if event == "PLAYER_ENTERING_WORLD" then
 			RestorePosition(WE);
 			RestorePosition(MI);
+			-- Las barras se arman al cargar el archivo, antes de que exista
+			-- la config guardada: nacian con escala 1 y sin el "Fijar".
+			for _, b in pairs(bars) do ApplySavedScale(b); end
+			if K.ApplyClassTimersLock then pcall(K.ApplyClassTimersLock); end
 			return;
 		end
 		if unit ~= "player" then return; end

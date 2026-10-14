@@ -195,7 +195,8 @@ function K.ResetPositionsAndScale()
 
 	-- Hide arena mover if shown
 	if K.ForceHideArenaMover then
-		K.ForceHideArenaMover();
+		-- Puede no existir: los modulos de arena se cargan a pedido.
+		if K.ForceHideArenaMover then K.ForceHideArenaMover(); end
 	end
 
 	-- NOTA: No se necesita disparar CONFIG_CHANGED aquí porque esta función

@@ -71,10 +71,11 @@ local function CastTimer_OnUpdate(self, secondsElapsed)
 	if elapsed < 0 then
 		if self.casting then
 			-- Casteo normal: tiempo RESTANTE = max - value
-			cd:SetText(format("(%.1fs)", max((self.maxValue or 0) - (self.value or 0), 0)));
+			-- SetFormattedText: mismo texto, sin crear un string de Lua (sin basura)
+			cd:SetFormattedText("(%.1fs)", max((self.maxValue or 0) - (self.value or 0), 0));
 		elseif self.channeling then
 			-- Canalizado: tiempo restante = value (cuenta hacia abajo)
-			cd:SetText(format("(%.1fs)", max(self.value or 0, 0)));
+			cd:SetFormattedText("(%.1fs)", max(self.value or 0, 0));
 		else
 			cd:SetText("");
 		end

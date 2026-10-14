@@ -626,6 +626,58 @@ local function RestoreOriginal(entry)
 	f._nufApplying = nil;
 end
 
+-- =========================================================
+-- UN SOLO DUEÑO POR POSICION
+--
+-- Habia DOS sistemas guardando la posicion del mismo marco:
+--
+--   * este modulo, en globalPos[clave], y ademas con un candado sobre
+--     SetPoint para que nadie se la corra;
+--   * el modulo de cada cosa (Sacred Shield, Seduction, los timers de
+--     arena, el tracker de la gargola...), en SU propia tabla, que es la
+--     que lee su boton "Mover" y la que borra su "Reset".
+--
+-- El que escribia ultimo ganaba, y como globalPos se aplica al entrar y
+-- ademas deja el candado puesto, ganaba siempre este. Resultado: una vez
+-- que movias un marco con "Mover todo", el Reset de su modulo no hacia
+-- nada y lo que acomodabas con su propio "Mover" volvia solo al
+-- reloguear. Fueron varios bugs distintos con la misma causa.
+--
+-- Ahora el dueño es UNO SOLO: si el modulo tiene tabla propia, manda el
+-- modulo. Este modulo te deja arrastrar el marco igual, pero al soltarlo
+-- le pasa el guardado al dueño y NO escribe globalPos ni pone candado.
+-- Al entrar, tampoco toca esos marcos: los repone su modulo.
+--
+-- Quien guarda:
+--   1) lo que el modulo haya dejado en K.FramePositionOwners[clave]
+--      (los que guardan al soltar el mouse, no al soltar el arrastre);
+--   2) si no, el propio OnDragStop del marco, que es el que ya corre
+--      cuando lo arrastras con Alt;
+--   3) si no hay ninguno de los dos, se guarda como antes -- asi una
+--      entrada nueva nunca se queda sin guardar por olvido.
+-- =========================================================
+-- type() y no "or {}": K tiene un indice por defecto en algunos
+-- entornos, y "or" no lo filtra.
+if type(K.FramePositionOwners) ~= "table" then K.FramePositionOwners = {}; end
+
+local OwnsItsPosition;   -- se define abajo, junto a OWN_STORES / OWN_GLOBALS
+
+-- Devuelve true si el guardado quedo en manos del modulo.
+local function SaveToOwner(entry, frame)
+	if not (entry and frame) then return false; end
+	local fn = K.FramePositionOwners[entry.key];
+	if type(fn) == "function" then
+		local ok = pcall(fn, frame);
+		if ok then return true; end
+	end
+	local drop = frame.GetScript and frame:GetScript("OnDragStop");
+	if type(drop) == "function" then
+		local ok = pcall(drop, frame);
+		if ok then return true; end
+	end
+	return false;
+end
+
 -- ---------------------------------------------------------
 -- DB
 -- ---------------------------------------------------------
@@ -886,8 +938,39 @@ local function SavePosition(entry, frame)
 		end
 	end
 
-	local point, _, relativePoint, x, y = frame:GetPoint();
+	local point, relTo, relativePoint, x, y = frame:GetPoint();
 	if not point then return; end
+
+	-- SI CUELGA DE OTRO MARCO, SE PASA A LA PANTALLA.
+	--
+	-- ESTE ERA EL BUG DE "la mascota a veces no guarda donde la deje".
+	--
+	-- El arrastre mueve el marco respecto de SU ancla de siempre, y la de
+	-- PetFrame no es la pantalla: cuelga de PlayerFrame (TOPLEFT +80,-60).
+	-- Aca se guardaban esos numeros pero SIN el marco de referencia, y al
+	-- reponerlos se aplicaban contra UIParent: la mascota aparecia
+	-- corrida, cerca de la esquina de arriba, en vez de donde la soltaste.
+	-- En la misma sesion no se notaba (seguia colgada de PlayerFrame);
+	-- se veia al reloguear, o en cuanto algo le llamaba SetPoint y el
+	-- candado le ponia "su" punto.
+	--
+	-- Y por eso era "a veces": si el marco ya venia anclado a la pantalla
+	-- (porque al entrar se le habia repuesto una posicion), el siguiente
+	-- arrastre si guardaba bien. Fallaba el primero despues de un reset.
+	--
+	-- Ahora, si el ancla no es UIParent, se guarda la esquina de abajo a
+	-- la izquierda medida contra la pantalla -- GetLeft/GetBottom ya
+	-- vienen en la escala del propio marco, que es en la que van los
+	-- offsets -- y se reancla en el acto, asi lo que ves es lo guardado.
+	if relTo and relTo ~= UIParent and frame:GetLeft() and frame:GetBottom() then
+		point, relativePoint = "BOTTOMLEFT", "BOTTOMLEFT";
+		x, y = frame:GetLeft(), frame:GetBottom();
+		frame._nufApplying = true;
+		frame:ClearAllPoints();
+		frame:SetPoint(point, UIParent, relativePoint, x, y);
+		frame._nufApplying = nil;
+	end
+
 	db[EntryKey(entry)].point         = point;
 	db[EntryKey(entry)].relativePoint = relativePoint;
 	db[EntryKey(entry)].x             = x;
@@ -983,6 +1066,7 @@ local MODULE_SCALE_ID = {
 	TurnEvil     = "TurnEvil",
 	SacredShield = "SacredShield",
 	SSTracker    = "SacredShieldTracker",
+	PaladinICD   = "PaladinICD",
 	Seduction    = "SeductionAlert",
 };
 
@@ -1153,10 +1237,36 @@ local function RestoreOne(entry)
 		end
 	end
 
+	-- CON DUEÑO PROPIO: NI SE APLICA NI SE GUARDA ACA.
+	--
+	-- La escala si (la rueda la sigue manejando este modulo), pero el
+	-- punto lo pone su modulo. Si quedo uno guardado de antes se borra:
+	-- si no, cada login volveria a pisar la posicion del modulo.
+	if OwnsItsPosition and OwnsItsPosition(entry.key) then
+		local f = ResolveFrame(entry);
+		if f and pos.scale and entry.scalable then pcall(f.SetScale, f, pos.scale); end
+		if pos.point then
+			pos.point, pos.relativePoint, pos.rel = nil, nil, nil;
+			pos.x, pos.y = nil, nil;
+			if not pos.scale then DB()[EntryKey(entry)] = nil; end
+			if f then UnlockFramePoint(f); end
+		end
+		return;
+	end
+
 	local frame = ResolveFrame(entry);
 	if not frame then return; end
 
-	if entry.protected and InCombatLockdown() then return; end
+	-- Marcos protegidos (las barras, y tambien PetFrame) no se pueden
+	-- mover en combate. Antes se salteaban y quedaban en el lugar de
+	-- fabrica hasta el proximo cambio de zona si entrabas o recargabas
+	-- peleando; ahora se reponen apenas termina el combate.
+	if InCombatLockdown() and (entry.protected or (frame.IsProtected and frame:IsProtected())) then
+		if K.AfterCombat then
+			K.AfterCombat("GU_Restore_" .. entry.key, function() pcall(RestoreOne, entry); end);
+		end
+		return;
+	end
 
 	-- Solo los movibles con Ctrl + rueda ("scalable") guardan escala aca.
 	-- Una escala guardada en cualquier otro es de una version vieja --
@@ -1920,6 +2030,22 @@ end
 		local moduleOwned = self.entry.partyIndex or self.entry.partyTarget
 			or self.entry.partyCast;
 
+		-- Los que tienen tabla propia guardan por su modulo (ver arriba).
+		if (not moduleOwned) and OwnsItsPosition and OwnsItsPosition(self.entry.key) then
+			if SaveToOwner(self.entry, self.target) then
+				UnlockFramePoint(self.target);
+				local pos = DB()[EntryKey(self.entry)];
+				if pos then
+					pos.point, pos.relativePoint, pos.rel = nil, nil, nil;
+					pos.x, pos.y = nil, nil;
+					if not pos.scale then DB()[EntryKey(self.entry)] = nil; end
+				end
+				moduleOwned = true;
+			end
+			-- Si el modulo no supo guardar, sigue de largo y se guarda aca
+			-- como siempre: mejor eso que perder la posicion.
+		end
+
 		if not moduleOwned then
 			SavePosition(self.entry, self.target);
 			local pos = DB()[EntryKey(self.entry)];
@@ -2345,6 +2471,9 @@ function K.RefreshGlobalUnlockOverlays()
 end
 
 function K.SetGlobalUnlock(state, scope)
+	-- Los timers de arena viven en el addon a pedido: sin el, sus
+	-- recuadros no aparecerian y no habria con que acomodarlos.
+	if state and K.LoadArenaModules then pcall(K.LoadArenaModules); end
 	unlocked = state and true or false;
 
 	-- Los modulos con modo mover PROPIO se fijan primero: si no, quedan dos
@@ -2509,6 +2638,15 @@ local OWN_GLOBALS = {
 	SSTracker    = "SacredShieldTrackerDB",
 	Seduction    = "SeductionAlertDB",
 };
+
+-- La lista de arriba es TAMBIEN la respuesta a "quien es el dueño de
+-- esta posicion": si una entrada figura ahi, su modulo manda y este
+-- modulo no escribe globalPos (ver "UN SOLO DUEÑO POR POSICION").
+function OwnsItsPosition(key)
+	if not key then return false; end
+	if K.FramePositionOwners[key] then return true; end
+	return (OWN_STORES[key] or OWN_GLOBALS[key]) and true or false;
+end
 
 -- Borra los campos de posicion de una tabla. Si al hacerlo la tabla
 -- queda VACIA, devuelve true para que el llamador la elimine entera.

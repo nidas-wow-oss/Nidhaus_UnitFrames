@@ -548,7 +548,7 @@ local function ApplyBar(self)
 	local pctShown = false;
 	if wantPct and pctFS then
 		if vmax and vmax > 0 and value > 0 then
-			pctFS:SetText(string.format("%d%%", value / vmax * 100 + 0.5));
+			pctFS:SetFormattedText("%d%%", value / vmax * 100 + 0.5);   -- sin basura
 			pctFS:Show();
 			pctShown = true;
 		else

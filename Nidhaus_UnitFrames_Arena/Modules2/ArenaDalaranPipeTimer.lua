@@ -1,21 +1,26 @@
-local AddOnName, ns = ...;
+local AddOnName = ...;
+-- Este addon se carga a pedido (ver Core/ArenaLoader.lua del addon
+-- principal), asi que el "..." de arriba NO trae el namespace de NUF: es el
+-- suyo propio. El de NUF se publica como global en Core/Init.lua.
+local ns = NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
 -- =========================================================
--- ArenaRoVPillarTimer.lua
--- Temporizador de los pilares de la Arena Circulo de Valor.
--- Los pilares cambian cada 25s, desde que arranca la partida.
+-- ArenaDalaranPipeTimer.lua
+-- Temporizador de la cascada de la Arena de Dalaran (Warmane).
+--
+-- CICLO REAL (verificado contra la WeakAura de Warmane):
+--   ciclo total = 70s, contado desde "The Arena battle has begun!"
+--     0s  - 30s  -> fase A (30s)  : cuenta 30 -> 0
+--     30s - 70s  -> fase B (40s)  : cuenta 40 -> 0
+--   y vuelve a empezar. Se repite toda la arena.
+--
 -- Mover: Alt + click izquierdo y arrastrar.
 -- =========================================================
 
--- CADA 25 SEGUNDOS, TAMBIEN EL PRIMERO.
---
--- Antes el primer ciclo era de 45s (el valor del codigo de TrinityCore) y
--- recien despues 25. En el servidor los pilares cambian cada 25s desde el
--- arranque, asi que el timer quedaba 20s corrido en todos los ciclos.
-local FIRST_CYCLE  = 25;
-local NEXT_CYCLE   = 25;
-local KEY          = "RoVPillars";
+local CYCLE_TOTAL = 70;
+local PHASE_A     = 30;
+local KEY         = "DalaranPipe";
 
 -- ---------------------------------------------------------
 -- Helpers
@@ -30,50 +35,35 @@ local function IsArenaStartMessage(msg)
 		or string.find(msg, "combate en la arena ha comenzado");
 end
 
--- Mismo criterio que el timer de fin de arena: tipo de instancia (no el
--- estado de la cola, que al salir sigue diciendo "activa" un momento) y
--- partida sin ganador.
-local function InArena()
-	local inInstance, instanceType = IsInInstance();
-	return inInstance and instanceType == "arena";
-end
-
-local function MatchOver()
-	return GetBattlefieldWinner and GetBattlefieldWinner() ~= nil;
-end
-
-local function IsRingOfValor()
+local function IsDalaranArena()
 	local zone = GetRealZoneText() or "";
-	return string.find(zone, "Ring of Valor") ~= nil
-		or string.find(zone, "Valor") ~= nil;
+	return string.find(zone, "Dalaran") ~= nil;
 end
 
 -- ---------------------------------------------------------
 -- Frame
 -- ---------------------------------------------------------
-local frame = CreateFrame("Frame", "NUF_RoVPillarTimer", UIParent);
+local frame = CreateFrame("Frame", "NUF_DalaranPipeTimer", UIParent);
 -- Escala configurable desde el panel (registro central en ScaleAPI).
-if K.RegisterScalable then K.RegisterScalable("ArenaRoVPillarTimer", frame, 1.0); end
-frame:SetSize(40, 40);
+if K.RegisterScalable then K.RegisterScalable("ArenaDalaranPipeTimer", frame, 1.0); end
+frame:SetSize(120, 42);
 frame:Hide();
 
-frame.texture = frame:CreateTexture(nil, "BORDER");
-frame.texture:SetAllPoints();
-frame.texture:SetTexture("Interface\\Icons\\Ability_Smash");
-frame.texture:SetTexCoord(0.07, 0.93, 0.07, 0.93);
+-- LA MISMA LETRA QUE EL OJO.
+--
+-- El cartel usaba GameFontNormal y el numero NumberFontNormalHuge: tres
+-- timers de arena con tres tipografias distintas. PVPInfoTextFont es la
+-- del timer del ojo (Vista de las Sombras), que es la que se queria.
+-- El tamano se repone con SetTextHeight, asi que se ven igual de grandes
+-- que antes.
+frame.label = frame:CreateFontString(nil, "OVERLAY", "PVPInfoTextFont");
+frame.label:SetPoint("TOP", frame, "TOP", 0, 0);
+frame.label:SetTextHeight(12);
+frame.label:SetText("WATERFALL");
 
-frame.border = frame:CreateTexture(nil, "BACKGROUND");
-frame.border:SetPoint("TOPLEFT", -1, 1);
-frame.border:SetPoint("BOTTOMRIGHT", 1, -1);
-frame.border:SetTexture(0, 0, 0, 1);
-
-frame.cooldown = CreateFrame("Cooldown", "NUF_RoVPillarTimerCD", frame);
-frame.cooldown:SetAllPoints();
-frame.cooldown:SetDrawEdge(true);
-
-frame.text = frame:CreateFontString(nil, "OVERLAY", "NumberFontNormalHuge");
-frame.text:SetPoint("CENTER", frame, "CENTER", 0, 0);
-frame.text:SetTextHeight(18);
+frame.text = frame:CreateFontString(nil, "OVERLAY", "PVPInfoTextFont");
+frame.text:SetPoint("TOP", frame.label, "BOTTOM", 0, -2);
+frame.text:SetTextHeight(24);
 
 -- ---------------------------------------------------------
 -- Posicion guardada / arrastre
@@ -106,7 +96,7 @@ local function RestorePosition()
 	if pos and pos.point then
 		frame:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y);
 	else
-		frame:SetPoint("CENTER", UIParent, "CENTER", -80, 120);
+		frame:SetPoint("CENTER", UIParent, "CENTER", 0, 180);
 	end
 end
 
@@ -115,7 +105,9 @@ frame:EnableMouse(true);
 frame:SetClampedToScreen(true);
 frame:RegisterForDrag("LeftButton");
 frame:SetScript("OnDragStart", function(self)
-	if IsAltKeyDown() then self:StartMoving(); end
+	-- Fijado desde el panel: no se mueve ni con Alt.
+	if K.ArenaTimersLocked then return; end
+	if IsAltKeyDown() or K.ArenaTimersUnlocked then self:StartMoving(); end
 end);
 frame:SetScript("OnDragStop", function(self)
 	self:StopMovingOrSizing();
@@ -123,63 +115,69 @@ frame:SetScript("OnDragStop", function(self)
 end);
 
 -- ---------------------------------------------------------
--- Logica
+-- Logica del ciclo
 -- ---------------------------------------------------------
-local endTime   = 0;
-local checkAcc  = 0;
+local startTime = nil;
 local testMode  = false;
+local checkAcc  = 0;
 
 local function Stop()
 	frame:Hide();
 	frame:SetScript("OnUpdate", nil);
 	frame.text:SetText("");
-	endTime  = 0;
-	checkAcc = 0;
-	testMode = false;
-end
-
-local function StartCycle(duration)
-	endTime = GetTime() + duration;
-	CooldownFrame_SetTimer(frame.cooldown, GetTime(), duration, 1);
+	startTime = nil;
+	testMode  = false;
+	checkAcc  = 0;
 end
 
 local function OnUpdate(self, elapsed)
+	if not startTime then Stop(); return; end
+
 	-- Salir si ya no estamos en arena (chequeo barato, 1x por segundo)
 	checkAcc = checkAcc + elapsed;
 	if checkAcc >= 1 then
 		checkAcc = 0;
-		if not testMode and (not InArena() or MatchOver()) then
-			Stop();
-			return;
-		end
+		if not testMode and not IsActiveBattlefieldArena() then Stop(); return; end
 	end
 
-	local remaining = endTime - GetTime();
-	if remaining <= 0 then
-		-- En la prueba (/nuftimers) no hay otro ciclo: al llegar a 0 se
-		-- esconden todos los timers de la prueba juntos.
-		if testMode then
-			if K.StopArenaTimerTests then K.StopArenaTimerTests(); else Stop(); end
-			return;
-		end
-		StartCycle(NEXT_CYCLE);
-		return;
+	local cycle = math.fmod(GetTime() - startTime, CYCLE_TOTAL);
+	local remaining, phaseA;
+
+	if cycle <= PHASE_A then
+		remaining = PHASE_A - cycle;
+		phaseA = true;
+	else
+		remaining = CYCLE_TOTAL - cycle;
+		phaseA = false;
 	end
-	self.text:SetText(string.format("%.0f", remaining));
+
+	self.text:SetFormattedText("%d", math.floor(remaining));   -- sin basura
+
+	-- Amarillo mientras falta, rojo en los ultimos 5 segundos
+	if remaining <= 5 then
+		self.text:SetTextColor(1, 0.25, 0.25);
+		self.label:SetTextColor(1, 0.25, 0.25);
+	elseif phaseA then
+		self.text:SetTextColor(1, 0.75, 0);
+		self.label:SetTextColor(1, 0.75, 0);
+	else
+		self.text:SetTextColor(0.4, 0.8, 1);
+		self.label:SetTextColor(0.4, 0.8, 1);
+	end
 end
 
-local function Start(duration, isTest)
-	testMode = isTest and true or false;
+local function Start(isTest)
+	testMode  = isTest and true or false;
+	startTime = GetTime();
+	checkAcc  = 0;
 	RestorePosition();
 	frame:Show();
-	StartCycle(duration or FIRST_CYCLE);
-	checkAcc = 0;
 	frame:SetScript("OnUpdate", OnUpdate);
 end
 
 K.ArenaTimerTests = K.ArenaTimerTests or {};
 K.ArenaTimerTests[KEY] = function()
-	if frame:IsShown() and testMode then Stop(); else Start(FIRST_CYCLE, true); end
+	if frame:IsShown() and testMode then Stop(); else Start(true); end
 end;
 
 -- /nuftimers: arrancar / cortar la prueba SIN tocar un timer de verdad
@@ -187,7 +185,7 @@ end;
 K.ArenaTimerTestStart = K.ArenaTimerTestStart or {};
 K.ArenaTimerTestStop  = K.ArenaTimerTestStop  or {};
 K.ArenaTimerTestStart[KEY] = function()
-	if not frame:IsShown() then Start(FIRST_CYCLE, true); end
+	if not frame:IsShown() then Start(true); end
 end;
 K.ArenaTimerTestStop[KEY] = function()
 	if testMode then Stop(); end
@@ -203,11 +201,11 @@ events:SetScript("OnEvent", function(self, event, ...)
 		return;
 	end
 
-	if not C.ArenaRoVPillarTimer then return; end
+	if not C.ArenaDalaranPipeTimer then return; end
 
 	local msg = select(1, ...);
-	if IsArenaStartMessage(msg) and InArena() and IsRingOfValor() then
-		Start(FIRST_CYCLE, false);
+	if IsArenaStartMessage(msg) and IsDalaranArena() then
+		Start(false);
 	end
 end);
 

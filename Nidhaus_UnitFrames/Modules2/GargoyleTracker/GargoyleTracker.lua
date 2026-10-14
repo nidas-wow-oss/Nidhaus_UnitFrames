@@ -109,7 +109,7 @@ local function ZoneAllowed()
   if itype == "arena" then return db.inArena end
   if itype == "pvp"   then return db.inBG end
   -- Duelo: no hay tipo de instancia, se detecta por el flag de duelo
-  if db.inDuel and _G.DuelOutOfBoundsTimer then return true end
+  if K.InDuel and K.InDuel() then return db.inDuel and true or false end
   return db.inWorld
 end
 
@@ -1007,7 +1007,7 @@ f:SetScript("OnUpdate", function(self, elapsed)
     durBar:SetStatusBarColor(1, 0.15, 0.15, 1)
     timeTxt:SetTextColor(1, 0.3, 0.3, 1)
   end
-  timeTxt:SetText(string.format("%.1fs", rem))
+  timeTxt:SetFormattedText("%.1fs", rem)   -- sin basura (cada cuadro)
 
   -- CC sobre la gargola.
   --
@@ -1040,7 +1040,7 @@ f:SetScript("OnUpdate", function(self, elapsed)
       if mx and mx > 0 then
         local pct = math.max(0, math.min(1, v / mx))
         hpBar:SetValue(pct)
-        hpBar.txt:SetText(string.format("%d / %d", math.floor(v + 0.5), math.floor(mx + 0.5)))
+        hpBar.txt:SetFormattedText("%d / %d", math.floor(v + 0.5), math.floor(mx + 0.5))
         if pct > 0.5 then
           hpBar:SetStatusBarColor(0.2, 0.9, 0.2, 1)
         elseif pct > 0.25 then
@@ -1078,7 +1078,7 @@ f:SetScript("OnUpdate", function(self, elapsed)
     else
       local progress = (now - state.castStart) / (state.castEnd - state.castStart)
       castBar:SetValue(now - state.castStart)
-      castBar.txt:SetText(string.format("%.1fs", crem))
+      castBar.txt:SetFormattedText("%.1fs", crem)
       if castBar.spellTxt then
         castBar.spellTxt:SetText(GargCastName())
       end

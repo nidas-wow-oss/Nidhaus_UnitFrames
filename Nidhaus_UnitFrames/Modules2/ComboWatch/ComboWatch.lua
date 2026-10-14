@@ -1,6 +1,14 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
+-- SOLO PICARO Y DRUIDA (los unicos con puntos de combo). Para las demas clases el archivo termina aca, antes de crear
+-- nada: Lua descarta todo su codigo y el modulo no ocupa memoria. El panel,
+-- el modo mover y los comandos ya preguntan si el modulo existe.
+do
+	local _, class = UnitClass("player");
+	if class ~= "ROGUE" and class ~= "DRUID" then return; end
+end
+
 -- =========================================================
 -- ComboWatch.lua  (integrado a NUF)
 -- Fuente: !ComboWatch 3.3.5

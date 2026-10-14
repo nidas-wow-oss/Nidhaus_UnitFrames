@@ -26,21 +26,24 @@ local K, C, L = unpack(ns);
 -- cada archivo. El comando que ve el usuario va al lado como referencia.
 local GUARDED = {
 	{ key = "ARENACALC",     module = "ArenaPointsCalc"      },  -- /apc, /arenapts
-	{ key = "NUFARROWCOUNT", module = "ArrowCount"           },  -- /arrowcount
-	{ key = "NUFAUTOSHOT",   module = "AutoShotTimer"        },  -- /nufshot
+	{ key = "NUFARROWCOUNT", module = "ArrowCount",     optional = true },  -- solo cazador  -- /arrowcount
+	{ key = "NUFAUTOSHOT",   module = "AutoShotTimer",  optional = true },  -- solo cazador  -- /nufshot
 	{ key = "HIDEACTIONBAR", module = "HideActionBarTextures"},  -- /hidebar
 	{ key = "HCB",           module = "HideChatButton"       },  -- /hcb
-	{ key = "NUFPETBUFFS",   module = "HunterPetBuffs"       },  -- /nufpetbuffs
+	{ key = "NUFPETBUFFS",   module = "HunterPetBuffs", optional = true },  -- solo cazador  -- /nufpetbuffs
 	{ key = "NUFSWING",      module = "MeleeSwingTimer"      },  -- /nufswing
 	{ key = "NUFMINIMAP",    module = "MinimapIconToggle"    },  -- /nufminimap
 	{ key = "PARTYBUFFS",    module = "PartyBuffs"           },  -- /pbuffs, /partybuffs
 	{ key = "NUFPOWERBAR",   module = "PowerBar"             },  -- /nufpower
-	{ key = "NUFCOMBO",      module = "ComboWatch"           },  -- /nufcombo
+	{ key = "NUFCOMBO",      module = "ComboWatch",     optional = true },  -- picaro / druida  -- /nufcombo
 	{ key = "GT",            module = "GargoyleTracker"      },  -- /gt
 	{ key = "NICEDAMAGE",    module = "NiceDamage"           },  -- /nicedamage, /nd
 	{ key = "DTSU",          module = "DTSU"                 },  -- /dtsu
-	{ key = "PALADINICD",    module = "PaladinICD"           },  -- /paladinicd
+	{ key = "PALADINICD",    module = "PaladinICD",     optional = true },  -- solo paladin  -- /paladinicd
 	{ key = "PARTYPETFRAME", module = "PartyPetFrame"        },  -- /ppf, /partypetframe
+	{ key = "NUFSACREDSHIELD", module = "SacredShield",        optional = true },  -- solo paladin  -- /ss
+	{ key = "NUFSSTRACKER",    module = "SacredShieldTracker", optional = true },  -- solo paladin  -- /sst
+	{ key = "NUFSEDUCTION",    module = "SeductionAlert",      optional = true },  -- /seduction
 	-- ShieldWatch esta sacado del XML (cuelga el cliente, causa sin
 	-- identificar). Al no cargarse tampoco registra su comando, asi que es
 	-- normal que no aparezca: por eso va como opcional y no se cuenta como
@@ -50,7 +53,7 @@ local GUARDED = {
 	-- /nufpal maneja DOS modulos (Paladin auras y Turn Evil). Alcanza con
 	-- que uno este prendido para que el comando tenga sentido, asi que se
 	-- pasa una lista en vez de un solo id.
-	{ key = "NUFPALAURAS",   module = { "PaladinAuras", "TurnEvil" } },  -- /nufpal
+	{ key = "NUFPALAURAS",   module = { "PaladinAuras", "TurnEvil" }, optional = true },  -- solo paladin  -- /nufpal
 };
 
 local function AnyEnabled(mod)

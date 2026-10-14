@@ -1,6 +1,11 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
+-- SOLO CAZADOR. Para las demas clases el archivo termina aca, antes de crear
+-- nada: Lua descarta todo su codigo y el modulo no ocupa memoria. El panel,
+-- el modo mover y los comandos ya preguntan si el modulo existe.
+if select(2, UnitClass("player")) ~= "HUNTER" then return; end
+
 local format, floor = string.format, math.floor;
 
 -- =========================================================
@@ -397,7 +402,7 @@ bar:SetScript("OnUpdate", function(self)
 	local decimas = floor((hi - now) * 10);
 	if decimas ~= self.lastDecimas then
 		self.lastDecimas = decimas;
-		textRight:SetText(format("%0.1f", hi - now));
+		textRight:SetFormattedText("%0.1f", hi - now);   -- sin basura (cada cuadro)
 	end
 end);
 
@@ -466,6 +471,15 @@ function K.SaveAutoShotScale(s)
 end
 
 -- Reset externo (boton del panel)
+-- "Mover todo" no dispara el OnMouseUp de este marco (arrastra el suyo),
+-- asi que se le deja aca el guardado: ver "UN SOLO DUEÑO POR POSICION"
+-- en GlobalUnlock.lua. Es una tabla y no una llamada porque este archivo
+-- carga ANTES que GlobalUnlock.
+-- type() y no "or {}": K tiene un indice por defecto en algunos
+-- entornos, y "or" no lo filtra.
+if type(K.FramePositionOwners) ~= "table" then K.FramePositionOwners = {}; end
+K.FramePositionOwners["AutoShot"] = function() SavePosition(); end
+
 function K.ResetAutoShotTimerPosition()
 	local db = DB();
 	db.x, db.y, db.scale = 0, 246, 1.0;
@@ -496,6 +510,9 @@ K.RegisterModule("AutoShotTimer", {
 	onDisable = function()
 		enabled = false;
 		events:UnregisterAllEvents();
+		-- Apagado con el modo mover puesto: fijarlo (guarda y saca el
+		-- recuadro "DRAG"), si no volvia asi al prenderlo de nuevo.
+		if unlocked then pcall(Lock); end
 		unlocked = false;
 		mover:Hide();
 	end,

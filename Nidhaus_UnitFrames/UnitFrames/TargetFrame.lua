@@ -4,10 +4,11 @@ local K, C, L = unpack(ns);
 -- Mismo caso que en PlayerFrame: el blanco que habia aca corria cada vez
 -- que se reaplica el skin y le borraba el tinte de Lorti UI.
 --
-local function TintBorder(tex)
+-- part: "Target" o "Focus" (la fila con color propio de cada uno).
+local function TintBorder(tex, part)
 	if not tex then return; end
 	if not (K.ApplyLortiTint and K.ApplyLortiTint(tex,
-		"LortiUI_PlayerTargetFocus")) then
+		"LortiUI_PlayerTargetFocus", part)) then
 		tex:SetVertexColor(1, 1, 1);
 	end
 end
@@ -216,7 +217,7 @@ local function Nidhaus_UnitFrames_Style_TargetFrame(self)
 			self.name:SetFontObject(self._nufNameFont);
 			self.name:SetShadowOffset(1, -1);
 		end
-		TintBorder(self.borderTexture);
+		TintBorder(self.borderTexture, keyBase);
 		-- Deshacer tambien lo que apaga Asuri
 		local bgD = _G[self:GetName() .. "Background"];
 		if bgD and bgD._nufOrig then
@@ -259,13 +260,21 @@ local function Nidhaus_UnitFrames_TargetFrame_CheckClassification(self, forceNor
 	local classification = UnitClassification(self.unit);
 
 	-- ASURI: un unico marco; elite/rare se marcan con la cadena dorada.
+	local part = (self == FocusFrame) and "Focus" or "Target";
 	if AsuriOn() then
 		self.borderTexture:SetTexture(ASURI.."AsuriFrame");
-		self.borderTexture:SetVertexColor(0.25, 0.25, 0.25);
+		-- Asuri tambien toma Lorti; sin Lorti, su gris de siempre.
+		local lr, lg, lb;
+		if K.LortiTint then lr, lg, lb = K.LortiTint("LortiUI_PlayerTargetFocus", part); end
+		if lr then
+			self.borderTexture:SetVertexColor(lr, lg, lb);
+		else
+			self.borderTexture:SetVertexColor(0.25, 0.25, 0.25);
+		end
 		return;
 	end
 
-	TintBorder(self.borderTexture);
+	TintBorder(self.borderTexture, part);
 
 	if classification == "worldboss" or classification == "elite" then
 		texture = Path.."UI-TargetingFrame-Elite";

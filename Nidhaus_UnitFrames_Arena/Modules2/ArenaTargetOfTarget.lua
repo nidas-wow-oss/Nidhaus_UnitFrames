@@ -3,8 +3,16 @@
 -- Features: draggable (Shift+Alt+Click), scale, class icon / portrait toggle.
 -- Position saved per arena style + mirror mode key.
 
-local AddOnName, ns = ...;
+local AddOnName = ...;
+-- Este addon se carga a pedido (ver Core/ArenaLoader.lua del addon
+-- principal), asi que el "..." de arriba NO trae el namespace de NUF: es el
+-- suyo propio. El de NUF se publica como global en Core/Init.lua.
+local ns = NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
+-- Las texturas y los sonidos NO se mudaron: siguen en la carpeta del addon
+-- principal. AddOnName, aca, es "Nidhaus_UnitFrames_Arena".
+local MEDIA_ADDON = "Nidhaus_UnitFrames";
+
 
 local MAX_ARENA_ENEMIES = MAX_ARENA_ENEMIES or 5;
 local MOVER_ARENA_COUNT = 3;
@@ -55,7 +63,7 @@ local SQ = {
 	name     = { w = 84 },
 };
 
-local TEXPATH       = "Interface\\AddOns\\" .. AddOnName .. "\\Textures\\";
+local TEXPATH       = "Interface\\AddOns\\" .. MEDIA_ADDON .. "\\Textures\\";
 local SQUARE_TEX    = TEXPATH .. "TargetOfTargetSquare.tga";
 local SQUARE_BAR    = TEXPATH .. "beige.tga";
 

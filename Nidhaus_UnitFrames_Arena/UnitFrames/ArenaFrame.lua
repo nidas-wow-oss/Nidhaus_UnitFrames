@@ -1,5 +1,13 @@
-local AddOnName, ns = ...;
+local AddOnName = ...;
+-- Este addon se carga a pedido (ver Core/ArenaLoader.lua del addon
+-- principal), asi que el "..." de arriba NO trae el namespace de NUF: es el
+-- suyo propio. El de NUF se publica como global en Core/Init.lua.
+local ns = NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
+-- Las texturas y los sonidos NO se mudaron: siguen en la carpeta del addon
+-- principal. AddOnName, aca, es "Nidhaus_UnitFrames_Arena".
+local MEDIA_ADDON = "Nidhaus_UnitFrames";
+
 local hooksecurefunc = hooksecurefunc;
 local _G, unpack = _G, unpack;
 local IsAddOnLoaded, LoadAddOn = IsAddOnLoaded, LoadAddOn;
@@ -88,12 +96,12 @@ local function GetArenaTexturePath()
 	-- Y aca NO hay que espejarla, a diferencia del marco de grupo: el de
 	-- arena ya lleva el retrato a la derecha, que es como esta dibujada.
 	if C.ArenaFrameStyle == "Compact2" then
-		return "Interface\\AddOns\\"..AddOnName.."\\Media\\pw\\UI-TargetingFrame";
+		return "Interface\\AddOns\\"..MEDIA_ADDON.."\\Media\\pw\\UI-TargetingFrame";
 	end
 	if C.darkFrames then
-		return "Interface\\AddOns\\"..AddOnName.."\\Media\\Dark\\UI-TargetingFrame";
+		return "Interface\\AddOns\\"..MEDIA_ADDON.."\\Media\\Dark\\UI-TargetingFrame";
 	else
-		return "Interface\\AddOns\\"..AddOnName.."\\Media\\Light\\UI-TargetingFrame";
+		return "Interface\\AddOns\\"..MEDIA_ADDON.."\\Media\\Light\\UI-TargetingFrame";
 	end
 end
 
@@ -449,6 +457,13 @@ local function ArenaFrames_OnLoad()
 	ApplyArenaTextures();
 	K.ApplyArenaSpacing();
 	if K.ApplyMirrorMode then K.ApplyMirrorMode(); end
+	-- "Custom cast bar": su escala y su ancho guardados. Antes solo se
+	-- aplicaban al tocar la casilla o los sliders, asi que despues de
+	-- reloguear las barras de arena volvian al tamano de Blizzard aunque
+	-- el panel mostrara la casilla tildada.
+	if C.ArenaCastBarEnable and K.ToggleArenaCastBar then
+		pcall(K.ToggleArenaCastBar, true);
+	end
 end
 
 K.ArenaFrames_OnLoad = ArenaFrames_OnLoad;

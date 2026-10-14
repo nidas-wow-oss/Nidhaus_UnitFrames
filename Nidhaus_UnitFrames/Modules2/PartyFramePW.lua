@@ -85,7 +85,7 @@ local PW_COLOR = { 1, 1, 1, 1 };
 -- Ahora se le pregunta antes de teñir.
 local function TintFrame(tex)
 	if not tex then return; end
-	if not (K.ApplyLortiTint and K.ApplyLortiTint(tex, "LortiUI_Party")) then
+	if not (K.ApplyLortiTint and K.ApplyLortiTint(tex, "LortiUI_Party", "Party")) then
 		tex:SetVertexColor(unpack(PW_COLOR));
 	end
 end

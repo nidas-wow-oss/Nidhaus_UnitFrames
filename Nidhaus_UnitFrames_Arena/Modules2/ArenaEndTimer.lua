@@ -1,4 +1,8 @@
-local AddOnName, ns = ...;
+local AddOnName = ...;
+-- Este addon se carga a pedido (ver Core/ArenaLoader.lua del addon
+-- principal), asi que el "..." de arriba NO trae el namespace de NUF: es el
+-- suyo propio. El de NUF se publica como global en Core/Init.lua.
+local ns = NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
 -- =========================================================
@@ -106,7 +110,9 @@ frame:EnableMouse(true);
 frame:SetClampedToScreen(true);
 frame:RegisterForDrag("LeftButton");
 frame:SetScript("OnDragStart", function(self)
-	if IsAltKeyDown() then self:StartMoving(); end
+	-- Fijado desde el panel: no se mueve ni con Alt.
+	if K.ArenaTimersLocked then return; end
+	if IsAltKeyDown() or K.ArenaTimersUnlocked then self:StartMoving(); end
 end);
 frame:SetScript("OnDragStop", function(self)
 	self:StopMovingOrSizing();
@@ -168,13 +174,17 @@ local function OnUpdate(self, elapsed)
 		return;
 	end
 
+	-- Un solo SetFormattedText: el texto se arma en C y no deja strings de
+	-- Lua sueltos (antes eran cuatro por vuelta, cinco veces por segundo).
 	local label = (L["ARENA_END_PREFIX"] or "Arena: ");
+	local secs = math.max(remaining, 0);
+	local mm, ss = math.floor(secs / 60), math.floor(secs % 60);
 	if remaining <= 60 then
-		self.text:SetText("|cffFF4444" .. label .. FormatTime(remaining) .. "|r");
+		self.text:SetFormattedText("|cffFF4444%s%02d:%02d|r", label, mm, ss);
 	elseif remaining <= 300 then
-		self.text:SetText("|cffFFAA00" .. label .. FormatTime(remaining) .. "|r");
+		self.text:SetFormattedText("|cffFFAA00%s%02d:%02d|r", label, mm, ss);
 	else
-		self.text:SetText(label .. FormatTime(remaining));
+		self.text:SetFormattedText("%s%02d:%02d", label, mm, ss);
 	end
 end
 
@@ -271,13 +281,74 @@ end
 
 -- Corta la prueba de todos los timers (lo llama tambien el de pilares al
 -- llegar a 0). Un timer de verdad, de una arena en curso, no se toca.
+-- =========================================================
+-- MOVER LOS TIMERS (boton "Mover" de Arena > Timers)
+--
+-- Lo mismo que /nuftimers, pero:
+--   * sin los 25 segundos: quedan a la vista hasta que apretas "Fijar";
+--   * se arrastran SIN Alt (K.ArenaTimersUnlocked lo miran los cuatro).
+-- Cuando el de pilares llega a 0 llama a StopArenaTimerTests: en este
+-- modo eso no los esconde, los vuelve a arrancar.
+-- =========================================================
+local moveMode = false;
+
+function K.IsArenaTimersMoving() return moveMode; end
+
+-- ---------------------------------------------------------
+-- FIJADO
+--
+-- Apretar "Fijar" tiene que dejarlos quietos de verdad: ni con Alt. Se
+-- guarda, asi sigue fijado despues de reloguear. De fabrica NO esta
+-- fijado, para no romperle el Alt + arrastrar a quien nunca toco el boton.
+-- ---------------------------------------------------------
+local function LockedDB(v)
+	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
+	if v ~= nil then NidhausUnitFramesDB.ArenaTimersLocked = v and true or false; end
+	return NidhausUnitFramesDB.ArenaTimersLocked and true or false;
+end
+
+function K.AreArenaTimersLocked() return K.ArenaTimersLocked and true or false; end
+
+-- La SavedVariable recien existe en ADDON_LOADED: de ahi se repone.
+local lockLoad = CreateFrame("Frame");
+lockLoad:RegisterEvent("ADDON_LOADED");
+lockLoad:SetScript("OnEvent", function(self, _, addon)
+	if addon ~= AddOnName then return; end
+	self:UnregisterEvent("ADDON_LOADED");
+	K.ArenaTimersLocked = LockedDB();
+end);
+
 function K.StopArenaTimerTests()
 	testTimer:Hide();
 	RunAll(K.ArenaTimerTestStop);
+	if moveMode then RunAll(K.ArenaTimerTestStart); end
+end
+
+function K.SetArenaTimersMoving(on)
+	on = on and true or false;
+	if on == moveMode then return moveMode; end
+	moveMode = on;
+	K.ArenaTimersUnlocked = on;
+	-- Mover = desbloquear; Fijar = bloquear (y se guarda).
+	K.ArenaTimersLocked = not on;
+	LockedDB(not on);
+	testTimer:Hide();
+	if on then
+		RunAll(K.ArenaTimerTestStart);
+	else
+		RunAll(K.ArenaTimerTestStop);
+	end
+	-- El boton del panel (si esta abierto) cambia de texto.
+	if K._OnArenaTimersMoving then pcall(K._OnArenaTimersMoving, on); end
+	return moveMode;
 end
 
 SLASH_NUFARENATIMERS1 = "/nuftimers";
 SlashCmdList["NUFARENATIMERS"] = function()
+	if moveMode then
+		K.SetArenaTimersMoving(false);
+		return;
+	end
 	if testTimer:IsShown() then
 		K.StopArenaTimerTests();
 		return;

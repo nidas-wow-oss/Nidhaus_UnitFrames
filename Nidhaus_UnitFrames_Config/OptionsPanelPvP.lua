@@ -565,256 +565,305 @@ local CLASS_MODULES = {
 	end,
 
 	PALADIN = function(pane, x, y)
-		-- ── Defensivas: CD interno visual (de NidhausTools) ──
-		Header(pane, L["PVP_PALADIN_DEF"] or "Defensives", x, y);
-		y = y - 24;
+		-- ORGANIZADO POR LO QUE HACE CADA MODULO, TODOS CON LA MISMA TARJETA.
+		--
+		-- Antes: un encabezado "Auras" que juntaba cosas que no son auras,
+		-- y cada modulo con cuatro renglones (casilla, descripcion y abajo
+		-- los botones Mover / Reset). El alto de la pagina era un numero a
+		-- mano, que se quedaba corto cada vez que se agregaba algo.
+		--
+		-- Ahora:
+		--   * Arriba, "Mover todos" y "Resetear todos" para los cinco.
+		--   * Grupos: Defensivas / Procs y debuffs / Control / Escudo sagrado.
+		--   * Cada tarjeta: casilla con Mover / Reset en el mismo renglon, la
+		--     descripcion, y plegado (solo con el modulo prendido) sus
+		--     opciones, "Mostrarlo en:" y el tamaño.
+		--   * El alto se calcula de lo que hay, y se recalcula al prender o
+		--     apagar un modulo.
+		local blocks = {};   -- { frame, gap } en orden de arriba a abajo
+		local cards  = {};   -- tarjetas con mover / reset
+		local bar, RefreshBar;
 
-		local icdCB, icdH = ModuleCB(pane, L["MOD_PALADIN_ICD"] or "Paladin ICD", "PaladinICD",
-			x, y, L["MOD_PALADIN_ICD_DESC"]);
-		y = y - 24 - (icdH or 0);
+		local function UpdateHeight()
+			local h = math.abs(y) + (bar and bar:GetHeight() or 0);
+			for _, b in ipairs(blocks) do
+				h = h + b.gap + (b.frame:GetHeight() or 0);
+			end
+			-- Mismo calculo que hace el panel con lo que devuelve esta
+			-- funcion (SetContentHeight(8, -h - 30) = h + 70).
+			pane:SetHeight(h + 70);
+			return h;
+		end
 
-		-- Sub-opciones dentro de un cuerpo desplegable: solo se ven con el
-		-- modulo encendido. Lo que sigue se ancla AL CUERPO, asi que al
-		-- colapsarlo (alto 1) sube solo en vez de dejar un hueco.
-		local body = CreateFrame("Frame", nil, pane);
-		body:SetPoint("TOPLEFT", x, y);
-		body:SetWidth(440);
+		local function Enabled(id) return K.IsModuleEnabled and K.IsModuleEnabled(id); end
+		local function Checked(cb) local c = cb:GetChecked(); return c == 1 or c == true; end
 
-		-- Aca habia una segunda descripcion que repetia casi lo mismo que la
-		-- del modulo (incluida la lista de hechizos, dos veces) y ademas se
-		-- le superponia. Con la descripcion ya visible arriba, sobra.
+		local function Tooltip(widget, title, text)
+			if not text then return; end
+			widget:SetScript("OnEnter", function(self)
+				GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+				GameTooltip:SetText(title, 1, 1, 1);
+				GameTooltip:AddLine(text, nil, nil, nil, true);
+				GameTooltip:Show();
+			end);
+			widget:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+		end
 
-		SettingCB(body, L["CB_PALADIN_ICD_KEEP"] or "Keep it on screen when ready",
-			"PaladinICDKeepVisible", 22, -6, L["TIP_PaladinICDKeep"]
-			or "Leaves the icon visible in color once the cooldown is over, so you can see at a glance that it is up. Otherwise it hides until you use it again.",
-			function() if K.ApplyPaladinICDVisibility then K.ApplyPaladinICDVisibility(); end end);
-
-		local moveBtn = CreateFrame("Button", nil, body, "UIPanelButtonTemplate");
-		moveBtn:SetPoint("TOPLEFT", 2, -38);
-		moveBtn:SetSize(150, 22);
-		moveBtn:SetText(L["BTN_MOVE_IT"] or "Move it");
-		moveBtn:SetScript("OnClick", function(self)
-			if not K.TogglePaladinICDMove then return; end
-			local on = K.TogglePaladinICDMove();
-			self:SetText(on and (L["BTN_LOCK_IT"] or "Lock it")
-				or (L["BTN_MOVE_IT"] or "Move it"));
-		end);
-
-		local resetBtn = CreateFrame("Button", nil, body, "UIPanelButtonTemplate");
-		resetBtn:SetPoint("LEFT", moveBtn, "RIGHT", 8, 0);
-		resetBtn:SetSize(100, 22);
-		resetBtn:SetText(L["BTN_MOVE_RESET"] or "Reset");
-		resetBtn:SetScript("OnClick", function()
-			if K.ResetPaladinICDPosition then K.ResetPaladinICDPosition(); end
-		end);
-
-		local BODY_H = 68;
-		local function RefreshICD()
-			local on = K.IsModuleEnabled and K.IsModuleEnabled("PaladinICD");
-			if on then
-				body:Show();
-				body:SetHeight(BODY_H);
-			else
-				body:Hide();
-				body:SetHeight(1);
+		-- "Mostrarlo en:" en dos columnas (Arena / Battlegrounds arriba,
+		-- Duelos / Mundo abajo), para que a la derecha entre el tamaño.
+		local function ZoneGrid(parent, id, px, py)
+			local lbl = parent:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
+			lbl:SetPoint("TOPLEFT", px, py);
+			lbl:SetText((K.UI and K.UI.Label(L["GARG_WHERE"] or "Show it in:"))
+				or (L["GARG_WHERE"] or "Show it in:"));
+			local zones = {
+				{ key = "inArena", text = L["GARG_ARENA"] or "Arena",         col = 0, row = 0 },
+				{ key = "inBG",    text = L["GARG_BG"]    or "Battlegrounds", col = 1, row = 0 },
+				{ key = "inDuel",  text = L["GARG_DUEL"]  or "Duels",         col = 0, row = 1 },
+				{ key = "inWorld", text = L["GARG_WORLD"] or "Open world",    col = 1, row = 1 },
+			};
+			for _, z in ipairs(zones) do
+				checkboxCount = checkboxCount + 1;
+				local cbName = "NidhausPalZoneCB" .. checkboxCount;
+				local cb = CreateFrame("CheckButton", cbName, parent, "InterfaceOptionsCheckButtonTemplate");
+				cb:SetPoint("TOPLEFT", px - 2 + z.col * 104, py - 14 - z.row * 26);
+				cb:SetHitRectInsets(0, 0, 0, 0);
+				local fs = _G[cbName .. "Text"];
+				if fs then fs:SetText(z.text); end
+				local function Sync() cb:SetChecked(K.GetModuleZone and K.GetModuleZone(id, z.key)); end
+				Sync();
+				cb:SetScript("OnClick", function(self)
+					if K.SetModuleZone then K.SetModuleZone(id, z.key, Checked(self)); end
+				end);
+				parent:HookScript("OnShow", Sync);
 			end
 		end
-		if icdCB then icdCB:HookScript("OnClick", RefreshICD); end
-		pane:HookScript("OnShow", RefreshICD);
-		RefreshICD();
 
-		-- ── Auras portadas del grupo de WeakAuras "paladin wa" ──
-		local auraHdr = pane:CreateFontString(nil, "ARTWORK", "GameFontNormal");
-		auraHdr:SetPoint("TOPLEFT", body, "BOTTOMLEFT", 0, -20);
-		auraHdr:SetText((K.UI and K.UI.Header(K.UI.Strip(L["PVP_PALADIN_AURAS"] or "Auras")))
-			or (L["PVP_PALADIN_AURAS"] or "Auras"));
+		-- Tarjeta de un modulo
+		local MOVE_W, RESET_W = 92, 76;
+		local function Card(prev, spec)
+			local blk, body = ModuleBlock(pane, prev, spec.id, spec.label, spec.desc);
+			blocks[#blocks + 1] = { frame = blk, gap = 10 };
+			if not blk.checkbox then return blk; end
 
-		local auraCB, _, auraDesc = ModuleCB(pane, L["MOD_PALADIN_AURAS"] or "Paladin tracker",
-			"PaladinAuras", x, 0, L["MOD_PALADIN_AURAS_DESC"]);
-		if auraCB then
-			auraCB:ClearAllPoints();
-			auraCB:SetPoint("TOPLEFT", auraHdr, "BOTTOMLEFT", 0, -6);
-		end
+			-- Mover / Reset a la derecha del checkbox
+			local moveBtn = CreateFrame("Button", nil, blk, "UIPanelButtonTemplate");
+			moveBtn:SetSize(MOVE_W, 22);
+			moveBtn:SetPoint("TOPLEFT", BLOCK_W - MOVE_W - RESET_W - 6, -12);
+			local resetBtn = CreateFrame("Button", nil, blk, "UIPanelButtonTemplate");
+			resetBtn:SetSize(RESET_W, 22);
+			resetBtn:SetPoint("LEFT", moveBtn, "RIGHT", 6, 0);
+			resetBtn:SetText(L["BTN_MOVE_RESET"] or "Reset");
 
-		-- 34 de los botones + las casillas de "Mostrarlo en:" (dos filas).
-		local auraBody = K.UI.Collapsible(pane, x, 0, 440, 108, function()
-			return K.IsModuleEnabled and K.IsModuleEnabled("PaladinAuras");
-		end);
-		auraBody:ClearAllPoints();
-		-- Debajo de la DESCRIPCION si la hay; si no, del checkbox.
-		auraBody:SetPoint("TOPLEFT", auraDesc or auraCB or auraHdr, "BOTTOMLEFT",
-			auraDesc and -26 or 0, -6);
-		if auraCB then auraCB:HookScript("OnClick", function() auraBody:Refresh(); end); end
-
-		-- Idem: la descripcion del modulo ya dice esto mismo.
-
-		local paMove = CreateFrame("Button", nil, auraBody, "UIPanelButtonTemplate");
-		paMove:SetPoint("TOPLEFT", 2, -6);
-		paMove:SetSize(150, 22);
-		paMove:SetText(L["BTN_MOVE_IT"] or "Move it");
-		paMove:SetScript("OnClick", function(self)
-			if not K.SetPaladinAurasPreview then return; end
-			local on = K.SetPaladinAurasPreview(not (K.IsPaladinAurasPreview and K.IsPaladinAurasPreview()));
-			self:SetText(on and (L["BTN_LOCK_IT"] or "Lock it")
-				or (L["BTN_MOVE_IT"] or "Move it"));
-		end);
-
-		local paReset = CreateFrame("Button", nil, auraBody, "UIPanelButtonTemplate");
-		paReset:SetPoint("LEFT", paMove, "RIGHT", 8, 0);
-		paReset:SetSize(100, 22);
-		paReset:SetText(L["BTN_MOVE_RESET"] or "Reset");
-		paReset:SetScript("OnClick", function()
-			if K.ResetPaladinAurasPosition then K.ResetPaladinAurasPosition(); end
-		end);
-
-		-- Donde mostrarse (mismo esquema que el Gargoyle y la alerta de
-		-- hechizos): arena, battlegrounds, duelos y mundo abierto.
-		local paWhere = auraBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
-		paWhere:SetPoint("TOPLEFT", 4, -36);
-		paWhere:SetText((K.UI and K.UI.Label(L["GARG_WHERE"] or "Show it in:"))
-			or (L["GARG_WHERE"] or "Show it in:"));
-		local paZones = {
-			{ key = "inArena", text = L["GARG_ARENA"] or "Arena",         x = 4,   y = -52 },
-			{ key = "inBG",    text = L["GARG_BG"]    or "Battlegrounds", x = 128, y = -52 },
-			{ key = "inDuel",  text = L["GARG_DUEL"]  or "Duels",         x = 278, y = -52 },
-			{ key = "inWorld", text = L["GARG_WORLD"] or "Open world",    x = 4,   y = -78 },
-		};
-		for _, z in ipairs(paZones) do
-			checkboxCount = checkboxCount + 1;
-			local cbName = "NidhausPalZoneCB" .. checkboxCount;
-			local cb = CreateFrame("CheckButton", cbName, auraBody, "InterfaceOptionsCheckButtonTemplate");
-			cb:SetPoint("TOPLEFT", z.x, z.y);
-			cb:SetHitRectInsets(0, 0, 0, 0);
-			local fs = _G[cbName .. "Text"];
-			if fs then fs:SetText(z.text); end
-			cb:SetChecked(K.GetPaladinAurasZone and K.GetPaladinAurasZone(z.key));
-			cb:SetScript("OnClick", function(self)
-				local v = (self:GetChecked() == 1 or self:GetChecked() == true);
-				if K.SetPaladinAurasZone then K.SetPaladinAurasZone(z.key, v); end
+			local card = { id = spec.id, isMoving = spec.isMoving, setMove = spec.setMove };
+			function card.RefreshMove()
+				local on = card.isMoving and card.isMoving();
+				moveBtn:SetText(on and (L["BTN_LOCK_IT"] or "Lock it")
+					or (L["BTN_MOVE_IT"] or "Move it"));
+			end
+			-- Reset = lugar Y tamaño de fabrica, en los cinco igual (antes
+			-- dos devolvian tambien el tamaño y tres no).
+			function card.Reset()
+				if spec.reset then spec.reset(); end
+				if K.ResetModuleScale then K.ResetModuleScale(spec.id); end
+			end
+			moveBtn:SetScript("OnClick", function()
+				if card.setMove then card.setMove(not (card.isMoving and card.isMoving())); end
+				card.RefreshMove();
+				if RefreshBar then RefreshBar(); end
 			end);
+			resetBtn:SetScript("OnClick", function() card.Reset(); end);
+			cards[#cards + 1] = card;
+
+			-- Cuerpo: opciones propias, despues "Mostrarlo en" | Tamaño
+			local by = -4;
+			if spec.options then by = spec.options(body, by); end
+			if K.HasModuleZones and K.HasModuleZones(spec.id) then
+				ZoneGrid(body, spec.id, 24, by);
+			end
+			if K.UI and K.UI.ScaleSlider then
+				K.UI.ScaleSlider(body, spec.id, 292, by - 16, 160);
+			end
+			by = by - 70;
+			blk:SetBodyHeight(-by);
+
+			-- Los botones siguen al modulo: apagado no hay nada que mover.
+			-- Si lo apagas mientras lo movias, se fija (si no quedaba a la
+			-- vista sin boton para fijarlo).
+			local baseRefresh = blk.Refresh;
+			blk.Refresh = function(self)
+				baseRefresh(self);
+				if Enabled(spec.id) then
+					moveBtn:Show(); resetBtn:Show();
+				else
+					moveBtn:Hide(); resetBtn:Hide();
+					if card.setMove and card.isMoving and card.isMoving() then
+						card.setMove(false);
+						if RefreshBar then RefreshBar(); end
+					end
+				end
+				card.RefreshMove();
+				UpdateHeight();
+			end
+			blk:Refresh();
+			return blk;
 		end
 
-		-- Turn Evil es un modulo APARTE, no un sub-ajuste de Paladin auras:
-		-- rastrea otra cosa y tiene su propia posicion en pantalla.
-		--
-		-- Antes su checkbox vivia DENTRO de auraBody, y como auraBody se
-		-- pliega cuando Paladin auras esta destildado, Turn Evil desaparecia
-		-- con el. Quedaba imposible prenderlo sin prender el otro primero.
-		-- Ahora cuelga de "pane" igual que auraCB, asi que se ve siempre, y
-		-- lo unico que se pliega es su propio cuerpo de botones.
-		local teCB, _, teDesc = ModuleCB(pane, L["MOD_TURN_EVIL"] or "Turn Evil tracker",
-			"TurnEvil", x, 0, L["MOD_TURN_EVIL_DESC"]);
-		if teCB then
-			teCB:ClearAllPoints();
-			teCB:SetPoint("TOPLEFT", auraBody, "BOTTOMLEFT", 0, -10);
+		local function Group(prev, title)
+			local blk = HeaderBlock(pane, prev, title);
+			blocks[#blocks + 1] = { frame = blk, gap = 14 };
+			return blk;
 		end
 
-		local teBody = K.UI.Collapsible(pane, x, 0, 440, 34, function()
-			return K.IsModuleEnabled and K.IsModuleEnabled("TurnEvil");
-		end);
-		teBody:ClearAllPoints();
-		teBody:SetPoint("TOPLEFT", teDesc or teCB or auraBody, "BOTTOMLEFT",
-			teDesc and -26 or 0, -6);
-		if teCB then teCB:HookScript("OnClick", function() teBody:Refresh(); end); end
+		-- ── Barra de arriba: mover / resetear todos ──
+		bar = CreateFrame("Frame", nil, pane);
+		bar:SetPoint("TOPLEFT", x, y);
+		bar:SetSize(BLOCK_W, 24);
 
-		local teMove = CreateFrame("Button", nil, teBody, "UIPanelButtonTemplate");
-		teMove:SetPoint("TOPLEFT", 2, -6);
-		teMove:SetSize(150, 22);
-		teMove:SetText(L["BTN_MOVE_IT"] or "Move it");
-		teMove:SetScript("OnClick", function(self)
-			if not K.SetTurnEvilPreview then return; end
-			local on = K.SetTurnEvilPreview(not (K.IsTurnEvilPreview and K.IsTurnEvilPreview()));
-			self:SetText(on and (L["BTN_LOCK_IT"] or "Lock it")
-				or (L["BTN_MOVE_IT"] or "Move it"));
-		end);
+		local moveAll = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate");
+		moveAll:SetPoint("TOPLEFT", 0, 0);
+		moveAll:SetSize(130, 22);
+		local resetAll = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate");
+		resetAll:SetPoint("LEFT", moveAll, "RIGHT", 8, 0);
+		resetAll:SetSize(130, 22);
+		resetAll:SetText(L["PAL_RESET_ALL"] or "Reset all");
+		Tooltip(moveAll, L["PAL_MOVE_ALL"] or "Move all", L["TIP_PAL_MOVE_ALL"]
+			or "Shows every paladin frame you have turned on so you can drag them all at once. Click again to lock them.");
+		Tooltip(resetAll, L["PAL_RESET_ALL"] or "Reset all", L["TIP_PAL_RESET_ALL"]
+			or "Puts every paladin frame back in its default place and size. Your other settings are kept.");
 
-		local teReset = CreateFrame("Button", nil, teBody, "UIPanelButtonTemplate");
-		teReset:SetPoint("LEFT", teMove, "RIGHT", 8, 0);
-		teReset:SetSize(100, 22);
-		teReset:SetText(L["BTN_MOVE_RESET"] or "Reset");
-		teReset:SetScript("OnClick", function()
-			if K.ResetTurnEvilPosition then K.ResetTurnEvilPosition(); end
-		end);
-
-		-- Sacred Shield sobre el objetivo (portado de la WeakAura "SS").
-		-- Mismo esquema que Turn Evil: checkbox siempre visible colgando de
-		-- "pane", y solo se pliega su propio cuerpo de botones.
-		local ssCB, _, ssDesc = ModuleCB(pane, L["MOD_SACREDSHIELD"] or "Sacred Shield (target)",
-			"SacredShield", x, 0, L["MOD_SACREDSHIELD_DESC"]);
-		if ssCB then
-			ssCB:ClearAllPoints();
-			ssCB:SetPoint("TOPLEFT", teBody, "BOTTOMLEFT", 0, -10);
+		local function AnyMoving()
+			for _, c in ipairs(cards) do
+				if c.isMoving and c.isMoving() then return true; end
+			end
+			return false;
 		end
-
-		local ssBody = K.UI.Collapsible(pane, x, 0, 440, 34, function()
-			return K.IsModuleEnabled and K.IsModuleEnabled("SacredShield");
-		end);
-		ssBody:ClearAllPoints();
-		ssBody:SetPoint("TOPLEFT", ssDesc or ssCB or teBody, "BOTTOMLEFT",
-			ssDesc and -26 or 0, -6);
-		if ssCB then ssCB:HookScript("OnClick", function() ssBody:Refresh(); end); end
-
-		local ssMove = CreateFrame("Button", nil, ssBody, "UIPanelButtonTemplate");
-		ssMove:SetPoint("TOPLEFT", 2, -6);
-		ssMove:SetSize(150, 22);
-		ssMove:SetText(L["BTN_MOVE_IT"] or "Move it");
-		ssMove:SetScript("OnClick", function(self)
-			if not K.SetSacredShieldMove then return; end
-			local on = K.SetSacredShieldMove(not (K.IsSacredShieldMoving and K.IsSacredShieldMoving()));
-			self:SetText(on and (L["BTN_LOCK_IT"] or "Lock it")
-				or (L["BTN_MOVE_IT"] or "Move it"));
-		end);
-
-		local ssReset = CreateFrame("Button", nil, ssBody, "UIPanelButtonTemplate");
-		ssReset:SetPoint("LEFT", ssMove, "RIGHT", 8, 0);
-		ssReset:SetSize(100, 22);
-		ssReset:SetText(L["BTN_MOVE_RESET"] or "Reset");
-		ssReset:SetScript("OnClick", function()
-			if K.ResetSacredShieldPosition then K.ResetSacredShieldPosition(); end
-		end);
-
-		-- Sacred Shield sobre el GRUPO (portado del grupo de WeakAuras
-		-- "Sacred Shield Tracker"). Mismo esquema que los de arriba.
-		local sstCB, _, sstDesc = ModuleCB(pane, L["MOD_SS_TRACKER"] or "Sacred Shield tracker (group)",
-			"SacredShieldTracker", x, 0, L["MOD_SS_TRACKER_DESC"]);
-		if sstCB then
-			sstCB:ClearAllPoints();
-			sstCB:SetPoint("TOPLEFT", ssBody, "BOTTOMLEFT", 0, -10);
+		RefreshBar = function()
+			moveAll:SetText(AnyMoving() and (L["PAL_LOCK_ALL"] or "Lock all")
+				or (L["PAL_MOVE_ALL"] or "Move all"));
 		end
-
-		local sstBody = K.UI.Collapsible(pane, x, 0, 440, 34, function()
-			return K.IsModuleEnabled and K.IsModuleEnabled("SacredShieldTracker");
+		moveAll:SetScript("OnClick", function()
+			-- Si alguno se esta moviendo, se fijan todos; si no, se ponen a
+			-- mover los que esten prendidos.
+			local fix = AnyMoving();
+			for _, c in ipairs(cards) do
+				if c.setMove then
+					if fix then
+						c.setMove(false);
+					elseif Enabled(c.id) then
+						c.setMove(true);
+					end
+				end
+				c.RefreshMove();
+			end
+			RefreshBar();
 		end);
-		sstBody:ClearAllPoints();
-		sstBody:SetPoint("TOPLEFT", sstDesc or sstCB or ssBody, "BOTTOMLEFT",
-			sstDesc and -26 or 0, -6);
-		if sstCB then sstCB:HookScript("OnClick", function() sstBody:Refresh(); end); end
-
-		local sstMove = CreateFrame("Button", nil, sstBody, "UIPanelButtonTemplate");
-		sstMove:SetPoint("TOPLEFT", 2, -6);
-		sstMove:SetSize(150, 22);
-		sstMove:SetText(L["BTN_MOVE_IT"] or "Move it");
-		sstMove:SetScript("OnClick", function(self)
-			if not K.SetSacredShieldTrackerMove then return; end
-			local on = K.SetSacredShieldTrackerMove(not (K.IsSacredShieldTrackerMoving and K.IsSacredShieldTrackerMoving()));
-			self:SetText(on and (L["BTN_LOCK_IT"] or "Lock it")
-				or (L["BTN_MOVE_IT"] or "Move it"));
-		end);
-
-		local sstReset = CreateFrame("Button", nil, sstBody, "UIPanelButtonTemplate");
-		sstReset:SetPoint("LEFT", sstMove, "RIGHT", 8, 0);
-		sstReset:SetSize(100, 22);
-		sstReset:SetText(L["BTN_MOVE_RESET"] or "Reset");
-		sstReset:SetScript("OnClick", function()
-			if K.ResetSacredShieldTrackerPosition then K.ResetSacredShieldTrackerPosition(); end
+		resetAll:SetScript("OnClick", function()
+			for _, c in ipairs(cards) do c.Reset(); end
 		end);
 
-		-- Aca habia un bloque "Planned" anunciando un aviso de Alas/Burbuja.
-		-- Se saco: anunciar algo que no existe solo ocupa lugar.
-		-- Alto del bloque de auras: encabezado + Paladin auras (checkbox,
-		-- descripcion y cuerpo) + Turn Evil (idem) + Sacred Shield (idem).
-		-- Cada uno ocupa su propio lugar, ninguno vive dentro del otro.
-		return y - BODY_H - 375;
+		-- ── Defensivas ──
+		local prev = Group(bar, L["PVP_PALADIN_DEF"] or "Defensives");
+		prev = Card(prev, {
+			id = "PaladinICD",
+			label = L["MOD_PALADIN_ICD"] or "Paladin ICD",
+			desc = L["MOD_PALADIN_ICD_DESC"],
+			isMoving = function() return K.IsPaladinICDMoving and K.IsPaladinICDMoving(); end,
+			setMove  = function(v) if K.SetPaladinICDMove then K.SetPaladinICDMove(v); end end,
+			reset    = function() if K.ResetPaladinICDPosition then K.ResetPaladinICDPosition(); end end,
+			options  = function(body, by)
+				SettingCB(body, L["CB_PALADIN_ICD_KEEP"] or "Keep it on screen when ready",
+					"PaladinICDKeepVisible", 22, by, L["TIP_PaladinICDKeep"]
+					or "Leaves the icon visible in color once the cooldown is over, so you can see at a glance that it is up. Otherwise it hides until you use it again.",
+					function() if K.ApplyPaladinICDVisibility then K.ApplyPaladinICDVisibility(); end end);
+				return by - 28;
+			end,
+		});
+
+		-- ── Procs y debuffs ──
+		prev = Group(prev, L["PVP_PAL_PROCS"] or "Procs & debuffs");
+		prev = Card(prev, {
+			id = "PaladinAuras",
+			label = L["MOD_PALADIN_AURAS"] or "Paladin tracker",
+			desc = L["MOD_PALADIN_AURAS_DESC"],
+			isMoving = function() return K.IsPaladinAurasPreview and K.IsPaladinAurasPreview(); end,
+			setMove  = function(v) if K.SetPaladinAurasPreview then K.SetPaladinAurasPreview(v); end end,
+			reset    = function() if K.ResetPaladinAurasPosition then K.ResetPaladinAurasPosition(); end end,
+			-- Una casilla por icono: The Art of War, Holy Strength y la
+			-- reduccion de curacion se prenden y apagan por separado.
+			options  = function(body, by)
+				local cx = 22;
+				local icons = {
+					{ key = "showWar",  text = L["PAL_SHOW_WAR"]  or "The Art of War",
+					  tip = L["TIP_PAL_SHOW_WAR"] or "Icon while The Art of War is up: your next Exorcism or Flash of Light is instant." },
+					{ key = "showHoly", text = L["PAL_SHOW_HOLY"] or "Holy Strength",
+					  tip = L["TIP_PAL_SHOW_HOLY"] or "Icon while the Holy Strength proc (Crusader enchant) is up." },
+					{ key = "showHeal", text = L["PAL_SHOW_HEAL"] or "Healing reduction",
+					  tip = L["TIP_PAL_SHOW_HEAL"] or "Icon when anyone in your group has a healing reduction (Mortal Strike, Aimed Shot, Wound Poison...), with their name." },
+				};
+				for _, o in ipairs(icons) do
+					checkboxCount = checkboxCount + 1;
+					local cbName = "NidhausPalShowCB" .. checkboxCount;
+					local cb = CreateFrame("CheckButton", cbName, body, "InterfaceOptionsCheckButtonTemplate");
+					cb:SetPoint("TOPLEFT", cx, by);
+					cb:SetHitRectInsets(0, 0, 0, 0);
+					local fs = _G[cbName .. "Text"];
+					if fs then fs:SetText(o.text); end
+					local function Sync() cb:SetChecked(K.GetPaladinAurasShow and K.GetPaladinAurasShow(o.key)); end
+					Sync();
+					body:HookScript("OnShow", Sync);
+					Tooltip(cb, o.text, o.tip);
+					cb:SetScript("OnClick", function(self)
+						if K.SetPaladinAurasShow then K.SetPaladinAurasShow(o.key, Checked(self)); end
+					end);
+					local w = fs and fs.GetStringWidth and fs:GetStringWidth();
+					if type(w) ~= "number" or w <= 0 then w = 100; end
+					cx = cx + 26 + w + 18;
+				end
+				return by - 28;
+			end,
+		});
+
+		-- ── Control ──
+		prev = Group(prev, L["PVP_PAL_CONTROL"] or "Crowd control");
+		prev = Card(prev, {
+			id = "TurnEvil",
+			label = L["MOD_TURN_EVIL"] or "Turn Evil tracker",
+			desc = L["MOD_TURN_EVIL_DESC"],
+			isMoving = function() return K.IsTurnEvilPreview and K.IsTurnEvilPreview(); end,
+			setMove  = function(v) if K.SetTurnEvilPreview then K.SetTurnEvilPreview(v); end end,
+			reset    = function() if K.ResetTurnEvilPosition then K.ResetTurnEvilPosition(); end end,
+		});
+
+		-- ── Escudo sagrado: el del objetivo y el del grupo juntos ──
+		prev = Group(prev, L["PVP_PAL_SS"] or "Sacred Shield");
+		prev = Card(prev, {
+			id = "SacredShield",
+			label = L["MOD_SACREDSHIELD"] or "Sacred Shield (target)",
+			desc = L["MOD_SACREDSHIELD_DESC"],
+			isMoving = function() return K.IsSacredShieldMoving and K.IsSacredShieldMoving(); end,
+			setMove  = function(v) if K.SetSacredShieldMove then K.SetSacredShieldMove(v); end end,
+			reset    = function() if K.ResetSacredShieldPosition then K.ResetSacredShieldPosition(); end end,
+		});
+		prev = Card(prev, {
+			id = "SacredShieldTracker",
+			label = L["MOD_SS_TRACKER"] or "Sacred Shield tracker (group)",
+			desc = L["MOD_SS_TRACKER_DESC"],
+			isMoving = function() return K.IsSacredShieldTrackerMoving and K.IsSacredShieldTrackerMoving(); end,
+			setMove  = function(v) if K.SetSacredShieldTrackerMove then K.SetSacredShieldTrackerMove(v); end end,
+			reset    = function() if K.ResetSacredShieldTrackerPosition then K.ResetSacredShieldTrackerPosition(); end end,
+		});
+
+		-- Al abrir el panel, los botones al dia (/nufpal, /ss, /sst o
+		-- "Mover todo" pudieron cambiar el estado desde afuera).
+		pane:HookScript("OnShow", function()
+			for _, c in ipairs(cards) do c.RefreshMove(); end
+			RefreshBar();
+			UpdateHeight();
+		end);
+		RefreshBar();
+
+		return -UpdateHeight();
 	end,
 
 	WARRIOR = function(pane, x, y)
@@ -824,6 +873,9 @@ local CLASS_MODULES = {
 		return y;
 	end,
 };
+
+-- Clases cuya pagina arranca con su propia barra (sin el cartel de clase).
+local OWN_TOP_BAR = { PALADIN = true };
 
 -- ---------------------------------------------------------
 -- Nombre de la clase para el item de la lista lateral
@@ -1280,6 +1332,13 @@ function K.BuildClassSection(pane)
 	local class = (K.GetPlayerClass and K.GetPlayerClass()) or select(2, UnitClass("player"));
 	local className = UnitClass("player") or class or "?";
 	local color = CLASS_COLORS[class] or "|cffFFFFFF";
+
+	-- Las clases con la pagina nueva (barra de "Mover todos" arriba) no
+	-- llevan el cartel: la lista de la izquierda ya dice la clase, y el
+	-- cartel ocupaba el primer lugar de la pagina para repetirlo.
+	if OWN_TOP_BAR[class] and CLASS_MODULES[class] then
+		return CLASS_MODULES[class](pane, x, y);
+	end
 
 	-- Cartel de clase detectada
 	local banner = CreateFrame("Frame", nil, pane);

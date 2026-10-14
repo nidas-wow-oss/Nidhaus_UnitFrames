@@ -542,13 +542,18 @@ function K.PopulateArenaTab(panel)
 	resetBtn:SetSize(60, 22);
 	resetBtn:SetText(L["BTN_RESET_FLAT"] or "Reset");
 	resetBtn:SetScript("OnClick", function()
+		-- Los de fabrica salen de ConfigManager (antes el ancho decia 120 y
+		-- el de fabrica es 100).
 		local defs = {
-			ArenaFlatWidth = 120, ArenaFlatHealthBarHeight = 20,
+			ArenaFlatWidth = 100, ArenaFlatHealthBarHeight = 20,
 			ArenaFlatPowerBarHeight = 8, ArenaFlatHealthFontSize = 9,
 			ArenaFlatPowerFontSize = 9, ArenaFlatMirrored = false,
 			ArenaFlatStatusText = true,
 		};
-		for k, v in pairs(defs) do K.SaveConfig(k, v); C[k] = v; end
+		for k, v in pairs(defs) do
+			if K.GetConfigDefault and K.GetConfigDefault(k) ~= nil then v = K.GetConfigDefault(k); end
+			K.SaveConfig(k, v); C[k] = v;
+		end
 		for _, ctrl in ipairs(flatSubControls) do
 			if ctrl.SetValue and ctrl.setting and C[ctrl.setting] ~= nil then
 				ctrl:SetValue(C[ctrl.setting]);
@@ -556,7 +561,9 @@ function K.PopulateArenaTab(panel)
 					ctrl.ValueText:SetText(FormatSliderValue(ctrl:GetValueStep() or 1, C[ctrl.setting]));
 				end
 			end
-			if ctrl.SetChecked then ctrl:SetChecked(false); end
+			if ctrl.SetChecked then
+				ctrl:SetChecked((ctrl.flatSetting and C[ctrl.flatSetting]) and true or false);
+			end
 		end
 		if K.UpdateFlatStyle then K.UpdateFlatStyle(); end
 	end);
@@ -587,11 +594,13 @@ function K.PopulateArenaTab(panel)
 	fY = fY - 35;
 	local mirCB = CreateCheckBox(flatWrapper, L["CB_FLAT_MIRRORED_FULL"] or L["CB_FLAT_MIRRORED"],
 		"ArenaFlatMirrored", fCol1, fY);
+	mirCB.flatSetting = "ArenaFlatMirrored";
 	table.insert(flatSubControls, mirCB);
 
 	fY = fY - 30;
 	local statusTextCB = CreateCheckBox(flatWrapper, L["CB_FLAT_STATUS_TEXT"] or "Force Status Text",
 		"ArenaFlatStatusText", fCol1, fY);
+	statusTextCB.flatSetting = "ArenaFlatStatusText";
 	table.insert(flatSubControls, statusTextCB);
 
 	fY = fY - 30;
@@ -1015,6 +1024,40 @@ function K.PopulateArenaTab(panel)
 	local timH = paneTimers:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 	timH:SetPoint("TOPLEFT", 20, tY);
 	timH:SetText(L["HEADER_ARENA_TIMERS"] or "|cffFFD100Arena Timers|r");
+
+	-- MOVER TODOS LOS TIMERS
+	--
+	-- Antes solo se podia con /nuftimers y Alt + arrastrar. El boton los
+	-- muestra todos con datos de prueba y los deja arrastrar sin Alt; el
+	-- mismo boton los fija. Mientras esten a la vista no se esconden solos.
+	do
+		local mv = CreateFrame("Button", nil, paneTimers, "UIPanelButtonTemplate");
+		mv:SetSize(110, 22);
+		mv:SetPoint("TOPLEFT", 330, tY + 4);
+		local function Label()
+			local on = K.IsArenaTimersMoving and K.IsArenaTimersMoving();
+			mv:SetText(on and (L["BTN_MODULE_LOCK"] or "Lock") or (L["BTN_MODULE_MOVE"] or "Move"));
+		end
+		Label();
+		K._OnArenaTimersMoving = Label;
+		paneTimers:HookScript("OnShow", Label);
+		mv:SetScript("OnClick", function()
+			if K.SetArenaTimersMoving then
+				K.SetArenaTimersMoving(not (K.IsArenaTimersMoving and K.IsArenaTimersMoving()));
+			end
+			Label();
+		end);
+		mv:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(L["BTN_MODULE_MOVE"] or "Move", 1, 1, 1);
+			GameTooltip:AddLine(L["TIP_TIMERS_MOVE"]
+				or "Shows every arena timer with sample data so you can drag them without Alt. Press again to lock them.",
+				nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		mv:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+		if not K.SetArenaTimersMoving then mv:Disable(); end
+	end
 
 	tY = tY - 20;
 	local timHint = paneTimers:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");

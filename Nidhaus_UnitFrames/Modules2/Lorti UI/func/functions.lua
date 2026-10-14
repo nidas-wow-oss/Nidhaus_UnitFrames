@@ -11,6 +11,55 @@ local classcolor = RAID_CLASS_COLORS[select(2, UnitClass("player"))]
 -- (antes se llamaba K.IsModuleEnabled("LortiUI") decenas de veces por segundo en combate)
 local lortiEnabled = false;
 
+-- =========================================================
+-- EL CONTORNO DE LOS BOTONES, DEL COLOR ELEGIDO
+--
+-- Lo que lleva el color propio es la SOMBRA de alrededor de cada boton
+-- (el borde "outer_shadow" del fondo, negro en Lorti). Con la zona
+-- "Barras de accion" con "Lorti" y "Color" tildadas, ese contorno va de su
+-- color, como en el Lorti UI "frost". Con Unify o MiniBar el arte de la
+-- barra de Blizzard esta escondido, asi que esto es lo que se ve.
+--
+-- El borde de adentro del boton (el "gloss") queda negro, como siempre:
+-- hubo una version que lo pintaba a el y no era lo que se queria.
+-- =========================================================
+local function NormalColor()
+	return cfg.color.normal.r, cfg.color.normal.g, cfg.color.normal.b;
+end
+
+local function ShadowColor()
+	local C = ns[2];
+	local sc = cfg.background.shadowcolor;
+	if K.LortiZoneColor then
+		local r, g, b = K.LortiZoneColor("ActionBars");
+		if r then return r, g, b, sc.a or 0.9; end
+	end
+	return sc.r, sc.g, sc.b, sc.a;
+end
+
+local shadowButtons = {};   -- [boton] = true, los que tienen fondo/contorno
+
+-- =========================================================
+-- CONTORNO ROJO FUERA DE RANGO (Button Range > "Lorti UI red border")
+--
+-- Es el MISMO contorno que lleva el color de "Action Bars": un solo aro.
+-- Mientras el boton esta fuera de rango el rojo ocupa su lugar (no se
+-- dibuja otro aro encima) y al volver al rango se repone el color que
+-- corresponda en ese momento: el elegido o el negro de siempre.
+--
+-- rangeRed marca los botones que estan en rojo, para que cambiar el color
+-- de Lorti mientras tanto no les borre el rojo (K.ApplyLortiButtonColor
+-- los saltea) y para poder apagarlos todos de una (LortiRangeBorderReset).
+-- =========================================================
+local RANGE_RED = { 1, 0.1, 0.1, 1 };
+local rangeRed = {};   -- [boton] = true mientras su contorno esta en rojo
+
+local styledButtons = {};   -- [boton] = true, los que ya tienen el estilo
+-- Blizzard repone el borde a blanco y el gancho de abajo lo vuelve a
+-- pintar. Si el color elegido fuera justo blanco, el gancho se llamaria a
+-- si mismo sin fin: esto lo corta.
+local inHook = false;
+
 local function UpdateLortiCache()
 	lortiEnabled = K.IsModuleEnabled and K.IsModuleEnabled("LortiUI") or false;
 end
@@ -76,23 +125,27 @@ local function applyBackground(bu)
 			bu.bg:SetBackdropColor(cfg.background.backgroundcolor.r, cfg.background.backgroundcolor.g, cfg.background.backgroundcolor.b, cfg.background.backgroundcolor.a)
 		end
 		if cfg.background.showshadow then
-			bu.bg:SetBackdropBorderColor(cfg.background.shadowcolor.r, cfg.background.shadowcolor.g, cfg.background.shadowcolor.b, cfg.background.shadowcolor.a)
+			bu.bg:SetBackdropBorderColor(ShadowColor())
+			shadowButtons[bu] = true
 		end
 	end
 end
 
 local function ntSetVertexColorFunc(nt, r, g, b, a)
-	if nt then
-		local self = nt:GetParent()
-		local action = self.action
-		if r == 1 and g == 1 and b == 1 and action and IsEquippedAction(action) then
-			nt:SetVertexColor(cfg.color.equipped.r, cfg.color.equipped.g, cfg.color.equipped.b, 1)
-		elseif r == 0.5 and g == 0.5 and b == 1 then
-			nt:SetVertexColor(cfg.color.normal.r, cfg.color.normal.g, cfg.color.normal.b, 1)
-		elseif r == 1 and g == 1 and b == 1 then
-			nt:SetVertexColor(cfg.color.normal.r, cfg.color.normal.g, cfg.color.normal.b, 1)
-		end
+	if inHook or not nt then return end
+	inHook = true
+	local self = nt:GetParent()
+	local action = self.action
+	if r == 1 and g == 1 and b == 1 and action and IsEquippedAction(action) then
+		nt:SetVertexColor(cfg.color.equipped.r, cfg.color.equipped.g, cfg.color.equipped.b, 1)
+	elseif r == 0.5 and g == 0.5 and b == 1 then
+		local nr, ng, nb = NormalColor()
+		nt:SetVertexColor(nr, ng, nb, 1)
+	elseif r == 1 and g == 1 and b == 1 then
+		local nr, ng, nb = NormalColor()
+		nt:SetVertexColor(nr, ng, nb, 1)
 	end
+	inHook = false
 end
 
 local function rActionButtonStyler_AB_style(self)
@@ -173,7 +226,8 @@ local function rActionButtonStyler_AB_style(self)
 			nt:SetVertexColor(cfg.color.equipped.r, cfg.color.equipped.g, cfg.color.equipped.b, 1)
 		else
 			bu:SetNormalTexture(cfg.textures.normal)
-			nt:SetVertexColor(cfg.color.normal.r, cfg.color.normal.g, cfg.color.normal.b, 1)
+			local nr, ng, nb = NormalColor()
+			nt:SetVertexColor(nr, ng, nb, 1)
 		end
 
 		nt:SetAllPoints(bu)
@@ -188,6 +242,7 @@ local function rActionButtonStyler_AB_style(self)
 
 		if not bu.bg then applyBackground(bu) end
 
+		styledButtons[bu] = true
 		self.rABS_Styled = true
 	end
 end
@@ -225,7 +280,8 @@ local function rActionButtonStyler_AB_stylepet()
 		if nt2 then
 			nt2:SetTexture(cfg.textures.normal)
 			nt2:SetAllPoints(bu)
-			nt2:SetVertexColor(cfg.color.normal.r, cfg.color.normal.g, cfg.color.normal.b, 1)
+			local nr, ng, nb = NormalColor()
+			nt2:SetVertexColor(nr, ng, nb, 1)
 		end
 	end
 end
@@ -259,8 +315,68 @@ local function rActionButtonStyler_AB_styleshapeshift()
 		if nt then
 			nt:SetTexture(cfg.textures.normal)
 			nt:SetAllPoints(bu)
-			nt:SetVertexColor(cfg.color.normal.r, cfg.color.normal.g, cfg.color.normal.b, 1)
+			local nr, ng, nb = NormalColor()
+			nt:SetVertexColor(nr, ng, nb, 1)
 		end
+	end
+end
+
+-- Repinta en el acto el contorno de todos los botones ya estilizados (lo
+-- llama K.ApplyLortiColor al cambiar el color o la casilla). De paso deja
+-- el borde de adentro en su negro (por si quedo pintado de la version
+-- anterior, sin tener que hacer /reload).
+function K.ApplyLortiButtonColor()
+	if not lortiEnabled then return end
+	local sr, sg, sb, sa = ShadowColor()
+	for bu in pairs(shadowButtons) do
+		-- Los que estan fuera de rango siguen en rojo: el color nuevo les
+		-- llega solo al volver al rango.
+		if not rangeRed[bu] and bu.bg and bu.bg.SetBackdropBorderColor then
+			bu.bg:SetBackdropBorderColor(sr, sg, sb, sa)
+		end
+	end
+	local nr, ng, nb = NormalColor()
+	for bu in pairs(styledButtons) do
+		local name = bu:GetName()
+		local nt = name and _G[name.."NormalTexture"]
+		if nt and not (bu.action and IsEquippedAction(bu.action)) then
+			inHook = true
+			nt:SetVertexColor(nr, ng, nb, 1)
+			inHook = false
+		end
+	end
+	rActionButtonStyler_AB_styleshapeshift()
+	rActionButtonStyler_AB_stylepet()
+end
+
+-- Lo llama Button Range en cada chequeo de rango (cada 0.2 s por boton).
+-- out = true: fuera de rango -> contorno rojo. Devuelve true si el boton
+-- tiene contorno de Lorti y lo pinto (si no, Button Range sigue como
+-- siempre). out = false: si estaba en rojo, vuelve a su color.
+-- Solo se toca el contorno cuando el estado CAMBIA.
+function K.LortiRangeBorder(bu, out)
+	if not bu then return false end
+	if out then
+		local bg = bu.bg
+		if not (lortiEnabled and bg and shadowButtons[bu]) then return false end
+		if not rangeRed[bu] then
+			rangeRed[bu] = true
+			bg:SetBackdropBorderColor(RANGE_RED[1], RANGE_RED[2], RANGE_RED[3], RANGE_RED[4])
+		end
+		return true
+	end
+	if rangeRed[bu] then
+		rangeRed[bu] = nil
+		if bu.bg then bu.bg:SetBackdropBorderColor(ShadowColor()) end
+	end
+	return false
+end
+
+-- Apagar Button Range o su sub-opcion: todos los contornos a su color.
+function K.LortiRangeBorderReset()
+	for bu in pairs(rangeRed) do
+		rangeRed[bu] = nil
+		if bu.bg then bu.bg:SetBackdropBorderColor(ShadowColor()) end
 	end
 end
 

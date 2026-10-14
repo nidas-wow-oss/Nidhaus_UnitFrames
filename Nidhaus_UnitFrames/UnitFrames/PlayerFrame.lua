@@ -221,7 +221,15 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 		K.RestoreTexture(PlayerPVPIcon, "PlayerPVPIcon");
 	elseif C.AsuriFrames then
 		PlayerFrameTexture:SetTexture(ASURI.."AsuriFrame");
-		PlayerFrameTexture:SetVertexColor(0.25, 0.25, 0.25);
+		-- Asuri tambien toma Lorti (la casilla o la fila "Player" del
+		-- color); sin Lorti, su gris de siempre.
+		local lr, lg, lb;
+		if K.LortiTint then lr, lg, lb = K.LortiTint("LortiUI_PlayerTargetFocus", "Player"); end
+		if lr then
+			PlayerFrameTexture:SetVertexColor(lr, lg, lb);
+		else
+			PlayerFrameTexture:SetVertexColor(0.25, 0.25, 0.25);
+		end
 		PlayerPVPIcon:SetTexture("Interface\\TargetingFrame\\UI-PVP-FFA");
 	else
 		PlayerFrameTexture:SetTexture(ThemeDir() .. "UI-TargetingFrame");
@@ -246,7 +254,7 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 		PlayerFrameTexture:SetVertexColor(1, 1, 1);
 	elseif not C.AsuriFrames then
 		if not (K.ApplyLortiTint and K.ApplyLortiTint(PlayerFrameTexture,
-			"LortiUI_PlayerTargetFocus")) then
+			"LortiUI_PlayerTargetFocus", "Player")) then
 			PlayerFrameTexture:SetVertexColor(1, 1, 1);
 		end
 	end
@@ -406,7 +414,7 @@ local function Nidhaus_UnitFrames_PetFrame_Update(self, override)
 			-- el marco del jugador: con Lorti apagado ApplyLortiTint repone
 			-- el blanco.
 			if not (K.ApplyLortiTint and K.ApplyLortiTint(PetFrameTexture,
-				"LortiUI_PlayerTargetFocus")) then
+				"LortiUI_PlayerTargetFocus", "Player")) then
 				PetFrameTexture:SetVertexColor(1, 1, 1);
 			end
 		end;

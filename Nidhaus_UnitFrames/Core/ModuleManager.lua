@@ -6,6 +6,10 @@ local K, C, L = unpack(ns);
 K.Modules = {};
 K.ModuleOrder = {};
 
+-- true desde que corrio K.InitializeModules (PLAYER_LOGIN). Lo mira
+-- K.RegisterModule para prender en el acto a los que llegan tarde.
+local modulesInitialized = false;
+
 function K.RegisterModule(id, info)
 	if not id or not info then
 		print(L["MM_REGISTER_ERROR"]);
@@ -31,6 +35,24 @@ function K.RegisterModule(id, info)
 	};
 
 	table.insert(K.ModuleOrder, id);
+
+	-- REGISTRADO DESPUES DEL ARRANQUE.
+	--
+	-- K.InitializeModules corre en PLAYER_LOGIN y prende los que esten
+	-- tildados. Un modulo que llega despues (los de arena, que ahora se
+	-- cargan a pedido) se perdia esa pasada: quedaba registrado, el panel
+	-- lo mostraba tildado, y no hacia nada hasta el proximo /reload.
+	if modulesInitialized then
+		if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
+		if not NidhausUnitFramesDB.Modules then NidhausUnitFramesDB.Modules = {}; end
+		if NidhausUnitFramesDB.Modules[id] == nil then
+			NidhausUnitFramesDB.Modules[id] = K.Modules[id].default;
+		end
+		if NidhausUnitFramesDB.Modules[id] and K.Modules[id].onEnable then
+			local ok, err = pcall(K.Modules[id].onEnable);
+			if not ok then print((L["MM_ERROR_INIT"] or "") .. id .. ": " .. tostring(err)); end
+		end
+	end
 end
 
 -- ---------------------------------------------------------
@@ -157,6 +179,8 @@ function K.InitializeModules()
 			if C then C[key] = false; end
 		end
 	end
+
+	modulesInitialized = true;
 
 	for _, id in ipairs(K.ModuleOrder) do
 		local mod = K.Modules[id];
@@ -309,3 +333,102 @@ initFrame:SetScript("OnEvent", function(self, event)
 		K.InitializeModules();
 	end
 end);
+
+-- =========================================================
+-- DONDE SE MUESTRA UN MODULO  (Arena / Battlegrounds / Duelos / Mundo)
+--
+-- Las casillas "Mostrarlo en:" de los modulos de clase. Cada modulo dice
+-- en que tabla guarda las cuatro opciones y que hacer cuando cambian (o
+-- cuando cambias de zona):
+--
+--     K.RegisterModuleZones("TurnEvil", TeDB, RefreshTurnEvil)
+--
+-- y despues pregunta K.ModuleZoneAllowed("TurnEvil") antes de mostrarse.
+-- El panel usa K.GetModuleZone / K.SetModuleZone para las casillas.
+--
+-- De fabrica las cuatro tildadas: el modulo se ve en todos lados, como
+-- antes de que existiera la opcion.
+--
+-- El duelo cuenta como zona propia: con "Duelos" destildado no se ve
+-- mientras duelas, aunque "Mundo abierto" este tildado; y con solo
+-- "Duelos" tildado se ve unicamente en los duelos. Se sigue por los
+-- eventos del duelo y por StartDuel (el que desafia no recibe
+-- DUEL_REQUESTED).
+-- =========================================================
+local ZONE_KEYS = { "inArena", "inBG", "inDuel", "inWorld" };
+local zoneOwners = {};   -- id -> { db = funcion, onChange = funcion }
+local inDuel = false;
+
+function K.InDuel() return inDuel; end
+
+-- La tabla se pide cada vez, no se guarda: el Reset de posiciones de
+-- "Mover todo" puede reemplazar la tabla del modulo por otra.
+local function ZoneDB(id)
+	local o = zoneOwners[id];
+	local db = o and o.db and o.db();
+	if type(db) ~= "table" then return nil; end
+	for _, k in ipairs(ZONE_KEYS) do
+		if db[k] == nil then db[k] = true; end
+	end
+	return db;
+end
+
+function K.RegisterModuleZones(id, dbFn, onChange)
+	if not id or type(dbFn) ~= "function" then return; end
+	zoneOwners[id] = { db = dbFn, onChange = onChange };
+end
+
+function K.HasModuleZones(id) return zoneOwners[id] ~= nil; end
+
+function K.GetModuleZone(id, key)
+	local db = ZoneDB(id);
+	if not db then return true; end
+	return db[key] and true or false;
+end
+
+function K.SetModuleZone(id, key, v)
+	local db = ZoneDB(id);
+	if not db then return; end
+	db[key] = v and true or false;
+	local o = zoneOwners[id];
+	if o and o.onChange then pcall(o.onChange); end
+end
+
+function K.ModuleZoneAllowed(id)
+	local db = ZoneDB(id);
+	if not db then return true; end
+	local _, itype = GetInstanceInfo();
+	if itype == "arena" then return db.inArena and true or false; end
+	if itype == "pvp"   then return db.inBG and true or false; end
+	if inDuel then return db.inDuel and true or false; end
+	return db.inWorld and true or false;
+end
+
+local function ZonesChanged()
+	for _, o in pairs(zoneOwners) do
+		if o.onChange then pcall(o.onChange); end
+	end
+end
+
+local zoneWatch = CreateFrame("Frame");
+zoneWatch:RegisterEvent("PLAYER_ENTERING_WORLD");
+zoneWatch:RegisterEvent("ZONE_CHANGED_NEW_AREA");
+zoneWatch:RegisterEvent("DUEL_REQUESTED");
+zoneWatch:RegisterEvent("DUEL_INBOUNDS");
+zoneWatch:RegisterEvent("DUEL_OUTOFBOUNDS");
+zoneWatch:RegisterEvent("DUEL_FINISHED");
+zoneWatch:SetScript("OnEvent", function(self, event)
+	if event == "PLAYER_ENTERING_WORLD" or event == "DUEL_FINISHED" then
+		-- Un duelo no sobrevive a una pantalla de carga.
+		inDuel = false;
+	elseif event ~= "ZONE_CHANGED_NEW_AREA" then
+		inDuel = true;
+	end
+	ZonesChanged();
+end);
+if type(StartDuel) == "function" then
+	hooksecurefunc("StartDuel", function()
+		inDuel = true;
+		ZonesChanged();
+	end);
+end

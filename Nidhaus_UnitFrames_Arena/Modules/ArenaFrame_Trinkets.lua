@@ -1,5 +1,13 @@
-local AddOnName, ns = ...;
+local AddOnName = ...;
+-- Este addon se carga a pedido (ver Core/ArenaLoader.lua del addon
+-- principal), asi que el "..." de arriba NO trae el namespace de NUF: es el
+-- suyo propio. El de NUF se publica como global en Core/Init.lua.
+local ns = NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
+-- Las texturas y los sonidos NO se mudaron: siguen en la carpeta del addon
+-- principal. AddOnName, aca, es "Nidhaus_UnitFrames_Arena".
+local MEDIA_ADDON = "Nidhaus_UnitFrames";
+
 
 local select, pairs, _G, UnitFactionGroup, IsInInstance, GetSpellInfo, GetTime =
 	select, pairs, _G, UnitFactionGroup, IsInInstance, GetSpellInfo, GetTime;
@@ -19,18 +27,36 @@ local MAX_PARTY = MAX_PARTY_MEMBERS or 4;
 -- rompe si el cliente esta en otro idioma que el esperado. El spellID
 -- es el mismo en todos lados.
 --
--- OJO con la duracion de Will of the Forsaken (7744): en WotLK deberia
--- ser de 2 minutos, pero el valor que traia el addon era 45s. Warmane
--- podria tenerlo custom, asi que se deja en una constante aparte y bien
--- marcada para poder corregirla facil despues de verificar en el juego.
+-- WILL OF THE FORSAKEN (7744) NO ES EL TRINKET.
+--
+-- Es la racial del no-muerto (su propio cooldown es de 2 minutos). Desde
+-- el parche 3.3 comparte 45 segundos de cooldown con los efectos
+-- parecidos -- el medallon PvP incluido --: si el no-muerto la usa, su
+-- trinket queda bloqueado 45 s, NO 2 minutos, y despues lo tiene de
+-- nuevo.
+--
+-- Antes se la anotaba como si hubiera usado el trinket (2 minutos): el
+-- icono decia "sin trinket" hasta un minuto y cuarto despues de que en
+-- realidad ya lo tenia de vuelta. Ahora marca los 45 s que dura el
+-- bloqueo, y si el trinket ya estaba en un cooldown mas largo (lo habia
+-- usado antes) no se lo acorta.
+--
+-- Every Man for Himself (humano) si comparte el cooldown entero con el
+-- trinket: usarla es como usar el trinket, 2 minutos.
 -- =========================================================
-local WOTF_COOLDOWN = 120;   -- Will of the Forsaken (verificar en Warmane)
+local WOTF_SHARED_CD = 45;   -- bloqueo del trinket por Will of the Forsaken
 
 local TRINKET_SPELLS = {
 	[42292] = { cd = 120, voice = "Trinket" },              -- Medallon PvP (ambas facciones)
 	[59752] = { cd = 120, voice = "Trinket" },              -- Every Man for Himself (humano)
-	[7744]  = { cd = WOTF_COOLDOWN, voice = "WillOfTheForsaken" }, -- Voluntad de los Renegados
+	[7744]  = { cd = WOTF_SHARED_CD, shared = true,          -- Voluntad de los Renegados
+	            voice = "WillOfTheForsaken" },
 };
+
+-- Hasta cuando esta en cooldown cada icono. El marco Cooldown de 3.3.5 no
+-- dice cuanto le queda, y hace falta saberlo para no acortar un trinket
+-- de 2 minutos con el bloqueo de 45 s de la racial.
+local trinketExpire = {};   -- [marco cooldown] = GetTime() de fin
 
 ns.ArenaFrame_Trinkets = CreateFrame("Frame");
 local Core = ns.ArenaFrame_Trinkets;
@@ -295,6 +321,7 @@ function Core:HideAll()
 	for i = 1, MAX_ARENA_ENEMIES do
 		if self["arena"..i] then
 			CooldownFrame_SetTimer(self["arena"..i], GetTime(), 0, 1);
+			trinketExpire[self["arena"..i]] = nil;
 		end
 	end
 end
@@ -378,6 +405,7 @@ function Core:PLAYER_ENTERING_WORLD()
 		for i = 1, MAX_ARENA_ENEMIES do
 			if self["arena"..i] then
 				CooldownFrame_SetTimer(self["arena"..i], GetTime(), 0, 1);
+				trinketExpire[self["arena"..i]] = nil;
 			end
 		end
 	end
@@ -658,11 +686,18 @@ function Core:COMBAT_LOG_EVENT_UNFILTERED(timestamp, eventType,
 	local cdFrame = self:FindCooldownByGUID(srcGUID);
 	if not cdFrame then return; end
 
-	CooldownFrame_SetTimer(cdFrame, GetTime(), info.cd, 1);
+	-- La racial solo bloquea el trinket 45 s: si ya estaba en un cooldown
+	-- mas largo, se deja como esta (la voz si suena: avisa que la uso).
+	local now = GetTime();
+	local left = (trinketExpire[cdFrame] or 0) - now;
+	if not (info.shared and left >= info.cd) then
+		trinketExpire[cdFrame] = now + info.cd;
+		CooldownFrame_SetTimer(cdFrame, now, info.cd, 1);
+	end
 
 	if C.ArenaFrame_Trinket_Voice and info.voice then
 		pcall(function()
-			PlaySoundFile("Interface\\Addons\\"..AddOnName.."\\Media\\Voice\\"..info.voice..".mp3");
+			PlaySoundFile("Interface\\Addons\\"..MEDIA_ADDON.."\\Media\\Voice\\"..info.voice..".mp3");
 		end);
 	end
 end

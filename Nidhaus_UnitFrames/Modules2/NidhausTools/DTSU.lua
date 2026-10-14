@@ -312,13 +312,16 @@ end)
 local ticker = CreateFrame("Frame")
 ticker.elapsed = 0
 ticker:Hide()  -- oculto hasta que el modulo se active
+-- La lista de vencidos se reusa: antes era una tabla nueva cinco veces por
+-- segundo, basura para el recolector aunque no hubiera nada que borrar.
+local toRemove = {}
 ticker:SetScript("OnUpdate", function(self, dt)
     self.elapsed = self.elapsed + dt
     if self.elapsed < 0.2 then return end
     self.elapsed = 0
 
     local now = GetTime()
-    local toRemove = {}
+    for i = #toRemove, 1, -1 do toRemove[i] = nil end
     for key, st in pairs(states) do
         if now >= st.expire then
             table.insert(toRemove, key)
@@ -390,6 +393,11 @@ local function DTSU_SetEnabled(on)
         f:UnregisterAllEvents()
         ClearAll()
         ticker:Hide()
+        -- Si quedo en /dtsu move: sacar el recuadro verde (con el modulo
+        -- apagado /dtsu esta bloqueado y no habia forma de fijarlo).
+        anchor.bg:Hide()
+        anchor:EnableMouse(false)
+        anchor.moving = false
     end
 end
 

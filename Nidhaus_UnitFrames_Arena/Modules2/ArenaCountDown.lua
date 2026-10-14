@@ -1,6 +1,10 @@
 -- /script countdown = 60
 
-local AddOnName, ns = ...;
+local AddOnName = ...;
+-- Este addon se carga a pedido (ver Core/ArenaLoader.lua del addon
+-- principal), asi que el "..." de arriba NO trae el namespace de NUF: es el
+-- suyo propio. El de NUF se publica como global en Core/Init.lua.
+local ns = NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
 local hidden = false;
@@ -247,7 +251,9 @@ frame:EnableMouse(true)
 frame:SetClampedToScreen(true)
 frame:RegisterForDrag("LeftButton")
 frame:SetScript("OnDragStart", function(self)
-	if IsAltKeyDown() then self:StartMoving() end
+	-- Fijado desde el panel: no se mueve ni con Alt.
+	if K.ArenaTimersLocked then return end
+	if IsAltKeyDown() or K.ArenaTimersUnlocked then self:StartMoving() end
 end)
 frame:SetScript("OnDragStop", function(self)
 	self:StopMovingOrSizing()

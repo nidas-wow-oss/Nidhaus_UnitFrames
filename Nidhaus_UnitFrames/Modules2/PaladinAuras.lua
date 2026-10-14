@@ -1,6 +1,11 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
+-- SOLO PALADIN. Para las demas clases el archivo termina aca, antes de crear
+-- nada: Lua descarta todo su codigo y el modulo no ocupa memoria. El panel,
+-- el modo mover y los comandos ya preguntan si el modulo existe.
+if select(2, UnitClass("player")) ~= "PALADIN" then return; end
+
 -- =========================================================
 -- PaladinAuras.lua
 -- Port del grupo de WeakAuras "paladin wa" a codigo nativo.
@@ -77,48 +82,29 @@ local function DB()
 		NidhausUnitFramesDB.PaladinAuras = { x = -60, y = 38, scale = 0.95 };
 	end
 	local db = NidhausUnitFramesDB.PaladinAuras;
-	-- Donde mostrarse: de fabrica en todos lados, como hasta ahora. El ==
-	-- nil es para no pisarle nada a quien ya lo haya configurado.
-	if db.inArena == nil then db.inArena = true; end
-	if db.inBG    == nil then db.inBG    = true; end
-	if db.inDuel  == nil then db.inDuel  = true; end
-	if db.inWorld == nil then db.inWorld = true; end
+	-- Que iconos mostrar: cada uno tiene su casilla en el panel. De
+	-- fabrica los tres, como hasta ahora (el == nil no pisa lo elegido).
+	if db.showHoly == nil then db.showHoly = true; end
+	if db.showHeal == nil then db.showHeal = true; end
+	if db.showWar  == nil then db.showWar  = true; end
 	return db;
 end
 
 -- ---------------------------------------------------------
--- DONDE MOSTRARSE (mismo esquema que el Gargoyle y la alerta de hechizos)
---
--- Arena / Battlegrounds / Duelos / Mundo abierto. El duelo se sigue por
--- sus eventos: desde que te desafian (o desafias) hasta que termina.
--- (El Gargoyle mira DuelOutOfBoundsTimer, que solo existe si te saliste
--- del area del duelo; con los eventos se ve el duelo entero.)
+-- DONDE MOSTRARSE: Arena / Battlegrounds / Duelos / Mundo abierto.
+-- La logica (y el seguimiento del duelo) es comun a los modulos de clase:
+-- vive en ModuleManager (K.RegisterModuleZones). Las opciones se siguen
+-- guardando en esta misma tabla (inArena, inBG, inDuel, inWorld).
 -- ---------------------------------------------------------
-local inDuel = false;
-local duelWatch = CreateFrame("Frame");
-duelWatch:RegisterEvent("DUEL_REQUESTED");
-duelWatch:RegisterEvent("DUEL_INBOUNDS");
-duelWatch:RegisterEvent("DUEL_OUTOFBOUNDS");
-duelWatch:RegisterEvent("DUEL_FINISHED");
--- Un duelo no sobrevive a una pantalla de carga.
-duelWatch:RegisterEvent("PLAYER_ENTERING_WORLD");
-duelWatch:SetScript("OnEvent", function(self, event)
-	inDuel = (event ~= "DUEL_FINISHED" and event ~= "PLAYER_ENTERING_WORLD");
-end);
-if type(StartDuel) == "function" then
-	hooksecurefunc("StartDuel", function() inDuel = true; end);
-end
-
 local function ZoneAllowed()
-	local db = DB();
-	local _, itype = GetInstanceInfo();
-	if itype == "arena" then return db.inArena; end
-	if itype == "pvp"   then return db.inBG; end
-	if inDuel and db.inDuel then return true; end
-	return db.inWorld;
+	if not K.ModuleZoneAllowed then return true; end
+	return K.ModuleZoneAllowed("PaladinAuras");
 end
 
-function K.GetPaladinAurasZone(key) return DB()[key] and true or false; end
+function K.GetPaladinAurasZone(key)
+	if K.GetModuleZone then return K.GetModuleZone("PaladinAuras", key); end
+	return true;
+end
 
 -- ---------------------------------------------------------
 -- Ancla del grupo (es lo que se arrastra)
@@ -434,11 +420,25 @@ local function AttachGlow(icon)
 	return g;
 end
 
+-- OJO: PRENDER NO ES REINICIAR.
+--
+-- Aca estaba el borde que "parpadeaba" en vivo mientras que en el modo
+-- mover se veia perfecto. Los contadores de la animacion (el cuadro de
+-- las hormigas y la fase del latido) se ponian en cero en CADA llamada, y
+-- en vivo RefreshTurnEvil corre cada 0.1 s desde el ticker: el borde no
+-- pasaba nunca del segundo cuadro y volvia a empezar diez veces por
+-- segundo. En el modo mover el glow se prende una sola vez y nadie lo
+-- vuelve a tocar, por eso ahi giraba bien.
+--
+-- Ahora los contadores se reinician SOLO cuando el glow estaba apagado,
+-- asi la animacion sigue de largo mientras el icono siga en la pila.
 local function SetGlow(icon, on)
 	if on then
-		AttachGlow(icon);
-		icon.glow.t, icon.glow.antT, icon.glow.antI = 0, 0, 0;
-		icon.glow:Show();
+		local g = AttachGlow(icon);
+		if not g:IsShown() then
+			g.t, g.antT, g.antI = 0, 0, 0;
+			g:Show();
+		end
 	elseif icon.glow then
 		icon.glow:Hide();
 	end
@@ -506,6 +506,8 @@ local function FindHealDebuff()
 	end
 end
 
+local ApplyPreviewIcons;   -- mas abajo, junto al preview
+
 -- ---------------------------------------------------------
 -- Refresco
 -- ---------------------------------------------------------
@@ -522,8 +524,11 @@ local function Refresh()
 		end
 	end
 
+	local db = DB();
+
 	-- 1) Holy Strength
-	local icon, expires, duration = FindSelfBuff();
+	local icon, expires, duration;
+	if db.showHoly then icon, expires, duration = FindSelfBuff(); end
 	if icon then
 		icoHoly.tex:SetTexture(icon);
 		if duration and duration > 0 then
@@ -536,8 +541,10 @@ local function Refresh()
 		icoHoly:Hide();
 	end
 
-	-- 2) Reduccion de curacion en el grupo
-	local dIcon, dExp, dDur, who = FindHealDebuff();
+	-- 2) Reduccion de curacion en el grupo (si esta destildado ni se
+	-- recorre el grupo).
+	local dIcon, dExp, dDur, who;
+	if db.showHeal then dIcon, dExp, dDur, who = FindHealDebuff(); end
 	if dIcon then
 		icoHeal.tex:SetTexture(dIcon);
 		if dDur and dDur > 0 then
@@ -561,7 +568,8 @@ local function Refresh()
 	-- Lo que sirve es el BUFF del proc, que es lo que te habilita el
 	-- Exorcism / Flash of Light instantaneo. Se busca por nombre y tambien
 	-- por spellId, porque algunos servidores le cambian el nombre.
-	local wIcon, wExp, wDur = FindArtOfWar();
+	local wIcon, wExp, wDur;
+	if db.showWar then wIcon, wExp, wDur = FindArtOfWar(); end
 	if wIcon then
 		icoWar.tex:SetTexture(wIcon);
 		if wDur and wDur > 0 then
@@ -578,6 +586,15 @@ end
 -- Llena la pila con las mascotas enemigas de arena que tengan Turn Evil encima.
 local function RefreshTurnEvil()
 	if not teEnabled then return; end
+	-- Fuera de las zonas elegidas no se muestra (salvo en modo mover).
+	if not tePreview and K.ModuleZoneAllowed and not K.ModuleZoneAllowed("TurnEvil") then
+		for i = 1, TURN_EVIL_MAX do
+			SetGlow(teIcons[i], false);
+			teIcons[i]:Hide();
+		end
+		teAnchor:Hide();
+		return;
+	end
 	local n = 0;
 	local vistos = {};
 	for _, unit in ipairs(TE_UNITS) do
@@ -629,6 +646,15 @@ local function RefreshTurnEvil()
 		if n == 0 then teAnchor:Hide(); else teAnchor:Show(); end
 	end
 end
+
+-- Los dos marcos de este archivo guardan al soltar el MOUSE, y "Mover
+-- todo" arrastra con su propio recuadro: se le deja el guardado aca.
+-- Ver "UN SOLO DUEÑO POR POSICION" en GlobalUnlock.lua.
+-- type() y no "or {}": K tiene un indice por defecto en algunos
+-- entornos, y "or" no lo filtra.
+if type(K.FramePositionOwners) ~= "table" then K.FramePositionOwners = {}; end
+K.FramePositionOwners["PalAuras"] = function() SavePosition(); end
+K.FramePositionOwners["TurnEvil"] = function() TeSave(); end
 
 function K.SetTurnEvilPreview(state)
 	tePreview = state and true or false;
@@ -713,6 +739,15 @@ end);
 -- ---------------------------------------------------------
 -- Preview / mover
 -- ---------------------------------------------------------
+-- En modo mover se ven los iconos que tenes tildados, nada mas: asi lo
+-- acomodas viendo lo que despues va a aparecer.
+ApplyPreviewIcons = function()
+	local db = DB();
+	if db.showHoly then icoHoly:Show(); else icoHoly:Hide(); end
+	if db.showHeal then icoHeal:Show(); else icoHeal:Hide(); end
+	if db.showWar  then icoWar:Show();  else icoWar:Hide();  end
+end
+
 function K.SetPaladinAurasPreview(state)
 	previewOn = state and true or false;
 	anchor:EnableMouse(previewOn);
@@ -741,8 +776,8 @@ function K.SetPaladinAurasPreview(state)
 		for _, f in ipairs({ icoHoly, icoHeal, icoWar }) do
 			if not f.tex:GetTexture() then f.tex:SetTexture(qm); end
 			f:SetAlpha(1);
-			f:Show();
 		end
+		ApplyPreviewIcons();
 		anchor:SetAlpha(1);
 		icoHeal.label:SetText(UnitName("player") or "");
 		icoHoly.label:SetText("");
@@ -757,8 +792,21 @@ end
 function K.IsPaladinAurasPreview() return previewOn; end
 
 function K.SetPaladinAurasZone(key, v)
+	if K.SetModuleZone then K.SetModuleZone("PaladinAuras", key, v); end
+end
+
+-- Casillas de cada icono (panel): showHoly / showHeal / showWar.
+function K.GetPaladinAurasShow(key)
+	return DB()[key] and true or false;
+end
+
+function K.SetPaladinAurasShow(key, v)
 	DB()[key] = v and true or false;
-	Refresh();
+	if previewOn then
+		ApplyPreviewIcons();
+	else
+		Refresh();
+	end
 end
 
 function K.ResetPaladinAurasPosition()
@@ -819,10 +867,17 @@ end
 RestorePosition();
 TeRestore();
 
+-- Donde se muestra cada uno (ver ModuleManager). Cambiar una casilla o de
+-- zona los refresca en el acto; el ticker igual lo revisa cada 0.1 s.
+if K.RegisterModuleZones then
+	K.RegisterModuleZones("PaladinAuras", DB, function() Refresh(); end);
+	K.RegisterModuleZones("TurnEvil", TeDB, function() RefreshTurnEvil(); end);
+end
+
 K.RegisterModule("TurnEvil", {
 	name    = L["MOD_TURN_EVIL"] or "Turn Evil tracker",
 	desc    = L["MOD_TURN_EVIL_DESC"]
-		or "Shows which enemy arena pet is under Turn Evil.",
+		or "Shows who is under Turn Evil and how long is left: arena pets, summons like the Gargoyle, and undead or demons in the open world.",
 	default = false,
 
 	onEnable = function()
@@ -856,7 +911,7 @@ K.RegisterModule("TurnEvil", {
 K.RegisterModule("PaladinAuras", {
 	name    = L["MOD_PALADIN_AURAS"] or "Paladin tracker",
 	desc    = L["MOD_PALADIN_AURAS_DESC"]
-		or "Holy Strength proc, healing reduction on any party member, and The Art of War cooldown.",
+		or "Holy Strength proc, healing reduction on any party member, and The Art of War proc.",
 	default = false,
 
 	onEnable = function()

@@ -678,6 +678,8 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 			if K._UpdateButtonSpaceVisibility then K._UpdateButtonSpaceVisibility(); end
 			if K._UpdateMiniBgVisibility then K._UpdateMiniBgVisibility(); end
 			if K.ApplyActionBarButtonSpace then K.ApplyActionBarButtonSpace(); end
+			-- Sin modo de barras no hay nada que ocultar: todo a la vista.
+			if K.ApplyBarFade then K.ApplyBarFade(); end
 		elseif setting == "HideGryphons" then
 			if K.ApplyGryphons then K.ApplyGryphons(); end
 		elseif setting == "ShowBagPackTexture" then
@@ -1680,12 +1682,66 @@ local function PopulateTabs()
 	SectionHeader(paneBars, L["HEADER_BAR_TEXT"] or "Text and Feedback", xBarR, bT);
 
 	bT = bT - 24;
-	CreateModuleCB(paneBars, L["CB_BUTTON_RANGE"] or "Button Range", "ButtonRange",
+	local brCB = CreateModuleCB(paneBars, L["CB_BUTTON_RANGE"] or "Button Range", "ButtonRange",
 		xBarR, bT, L["TIP_ButtonRange"]);
+
+	-- ── Desplegable de Button Range: "Lorti UI red border" ──
+	-- Aparece debajo, corrido a la derecha, solo con Button Range tildado.
+	-- Lo que sigue (Hide Keybind Text y el resto) va anclado al cuerpo, asi
+	-- que baja al desplegarse y sube al cerrarse, sin dejar hueco.
+	local brBody = K.UI.Collapsible(paneBars, xBarR + 18, bT - 26, 260, 26, function()
+		return (K.IsModuleEnabled and K.IsModuleEnabled("ButtonRange")) or false;
+	end);
+	CreateCheckBox(brBody, L["CB_RANGE_LORTI"] or "Lorti UI red border", "ButtonRangeLortiRed", 0, 0);
+	local lortiRedCB = checkboxes[#checkboxes];
+	-- Sin Lorti UI los botones no tienen ese contorno: la casilla queda gris.
+	local function LortiOn()
+		return (K.IsModuleEnabled and K.IsModuleEnabled("LortiUI")) or false;
+	end
+	local function RefreshLortiRedCB()
+		local lbl = _G[lortiRedCB:GetName() .. "Text"];
+		if LortiOn() then
+			lortiRedCB:Enable();
+			if lbl then lbl:SetTextColor(1, 1, 1); end
+		else
+			lortiRedCB:Disable();
+			if lbl then lbl:SetTextColor(0.5, 0.5, 0.5); end
+		end
+	end
+	lortiRedCB:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+		GameTooltip:SetText(L["CB_RANGE_LORTI"] or "Lorti UI red border", 1, 1, 1);
+		GameTooltip:AddLine(L["TIP_RangeLorti"]
+			or "Out of range, the glow around the button (the Lorti UI border) turns red too. It takes the place of the Lorti 'Action Bars' color while it lasts, never on top of it, and that color comes back as soon as you are in range.",
+			nil, nil, nil, true);
+		if not LortiOn() then
+			GameTooltip:AddLine(" ");
+			GameTooltip:AddLine(L["TIP_RangeLorti_OFF"] or "Needs Lorti UI turned on (Addons tab).", 1, 0.67, 0, true);
+		end
+		GameTooltip:Show();
+	end);
+	lortiRedCB:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+	lortiRedCB:HookScript("OnClick", function()
+		-- Destildada: ningun contorno se queda rojo.
+		if C.ButtonRangeLortiRed ~= true and K.ButtonRangeResetLorti then K.ButtonRangeResetLorti(); end
+	end);
+	brBody:HookScript("OnShow", RefreshLortiRedCB);
+	RefreshLortiRedCB();
+	if brCB then
+		brCB:HookScript("OnClick", function() brBody:Refresh(); RefreshLortiRedCB(); end);
+	end
+
 	bT = bT - 26;
 	CreateCheckBox(paneBars, L["CB_HIDE_KEYBIND"] or "Hide Keybind Text", "HideKeybindText", xBarR, bT);
+	local keybindCB = checkboxes[#checkboxes];
+	keybindCB:ClearAllPoints();
+	keybindCB:SetPoint("TOPLEFT", brBody, "BOTTOMLEFT", -18, 0);
 	bT = bT - 26;
 	CreateCheckBox(paneBars, L["CB_HIDE_MACRO"] or "Hide Macro Names", "HideMacroText", xBarR, bT);
+	-- Cadena: cada casilla de esta columna cuelga de la anterior.
+	local barTextPrev = checkboxes[#checkboxes];
+	barTextPrev:ClearAllPoints();
+	barTextPrev:SetPoint("TOPLEFT", keybindCB, "TOPLEFT", 0, -26);
 
 	-- Barras laterales solo al pasar el mouse
 	bT = bT - 26;
@@ -1693,6 +1749,9 @@ local function PopulateTabs()
 		CreateCheckBox(paneBars, L["CB_SIDEBARS_HOVER"] or "Show side bars on mouseover",
 			"SideBarsHover", xBarR, bT);
 		local cb = checkboxes[#checkboxes];
+		cb:ClearAllPoints();
+		cb:SetPoint("TOPLEFT", barTextPrev, "TOPLEFT", 0, -26);
+		barTextPrev = cb;
 		cb:HookScript("OnClick", function()
 			if K.ApplySideBarHover then K.ApplySideBarHover(); end
 		end);
@@ -1706,6 +1765,50 @@ local function PopulateTabs()
 		end);
 		cb:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 	end
+
+	-- Mochila + micromenu: ocultos hasta pasar el mouse (5 s a la vista al
+	-- sacarlo y 3 s de desvanecimiento). Solo existe con Unify o MiniBar:
+	-- sin un modo puesto el addon no maneja esos marcos, igual que la
+	-- casilla del fondo de la mochila.
+	local fadeCBs = {};
+	local function FadeCB(label, setting, tipKey, tipDefault)
+		bT = bT - 26;
+		CreateCheckBox(paneBars, label, setting, xBarR, bT);
+		local cb = checkboxes[#checkboxes];
+		cb:ClearAllPoints();
+		cb:SetPoint("TOPLEFT", barTextPrev, "TOPLEFT", 0, -26);
+		barTextPrev = cb;
+		cb:HookScript("OnClick", function()
+			if K.ApplyBarFade then K.ApplyBarFade(); end
+		end);
+		cb:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(label, 1, 1, 1);
+			GameTooltip:AddLine(L[tipKey] or tipDefault, nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		cb:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+		fadeCBs[#fadeCBs + 1] = cb;
+	end
+	FadeCB(L["CB_FADE_BAGS"] or "Hide bags and micro menu", "BarsFadeBags", "TIP_FadeBags",
+		"The bags and the micro menu stay hidden and appear when the mouse is over them. When the mouse leaves they stay 5 s and then fade out in 3 s.");
+
+	local function UpdateFadeVisibility()
+		local anyBarActive = (C.UnifyActionBars == true) or (C.MiniBarEnabled == true);
+		for _, cb in ipairs(fadeCBs) do
+			if anyBarActive then cb:Show(); else cb:Hide(); end
+		end
+	end
+	-- Se cuelga del mismo aviso que la casilla del fondo de la mochila: el
+	-- panel lo llama al cambiar de modo de barras y al abrirse.
+	do
+		local prevBagVis = K._UpdateBagPackVisibility;
+		K._UpdateBagPackVisibility = function(...)
+			if prevBagVis then prevBagVis(...); end
+			UpdateFadeVisibility();
+		end
+	end
+	UpdateFadeVisibility();
 
 	-- Vuelve a la columna IZQUIERDA, justo debajo de Bar Style.
 	bY = bY - 46;
@@ -1759,7 +1862,7 @@ local function PopulateTabs()
 
 	-- La columna mas larga manda: si no, con la derecha mas alta que la
 	-- izquierda el scroll cortaba las ultimas opciones.
-	sideUI.SetContentHeight(2, math.min(bY, bT) - 60);
+	sideUI.SetContentHeight(2, math.min(bY, bT - 26) - 60);
 
 	-- ── 1.3 MINIMAP ───────────────────────────────────────────────
 	local mmY = -14;
@@ -1923,6 +2026,7 @@ local function PopulateTabs()
 	MinimapCB(L["CB_MINIMAP_HIDE_ZONE"]    or "Hide Zone Name",      "MinimapHideZone",   mmY); mmY = mmY - 26;
 	MinimapCB(L["CB_MINIMAP_HIDE_ZONEBG"]  or "Hide Zone Name Background", "MinimapHideZoneBG", mmY); mmY = mmY - 26;
 	MinimapCB(L["CB_MINIMAP_HIDE_CLOCK"]    or "Hide Clock",          "MinimapHideClock",    mmY); mmY = mmY - 26;
+	MinimapCB(L["CB_MINIMAP_HIDE_CLOCKBG"]  or "Hide Clock Background", "MinimapHideClockBG", mmY); mmY = mmY - 26;
 	MinimapCB(L["CB_MINIMAP_HIDE_ZOOM"]     or "Hide Zoom Buttons",   "MinimapHideZoom",     mmY); mmY = mmY - 26;
 	MinimapCB(L["CB_MINIMAP_HIDE_CALENDAR"] or "Hide Calendar",       "MinimapHideCalendar", mmY); mmY = mmY - 26;
 	MinimapCB(L["CB_MINIMAP_HIDE_WORLDMAP"] or "Hide World Map",      "MinimapHideWorldMap", mmY); mmY = mmY - 26;

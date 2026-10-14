@@ -695,7 +695,13 @@ end
 -- global de NUF lo pueda usar: ese arrastra el frame por su cuenta y
 -- despues necesita que el modulo se entere.
 function PartyTargets_AnchorFromFrame(frame)
-	if not frame or not PartyTargetsDB.anchor then return end
+	if not frame then return end
+	-- Modo libre ("Anchor to Party Frames" apagado): se guarda la posicion
+	-- del marco. Antes volvia sin guardar nada y se perdia al recargar.
+	if not PartyTargetsDB.anchor then
+		SavePosition(frame)
+		return
+	end
 	local offX, offY = ComputeAnchorOffset(frame)
 	PartyTargetsDB.anchorX = offX
 	PartyTargetsDB.anchorY = offY

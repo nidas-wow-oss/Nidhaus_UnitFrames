@@ -391,7 +391,7 @@ bar:SetScript("OnUpdate", function(self)
 	local decimas = floor((hi - now) * 10);
 	if decimas ~= self.lastDecimas then
 		self.lastDecimas = decimas;
-		textRight:SetText(format("%0.1f", hi - now));
+		textRight:SetFormattedText("%0.1f", hi - now);   -- sin basura (cada cuadro)
 	end
 end);
 
@@ -460,6 +460,12 @@ end
 
 
 -- Reset externo (boton del panel)
+-- Igual que el de Auto Shot: ver "UN SOLO DUEÑO POR POSICION".
+-- type() y no "or {}": K tiene un indice por defecto en algunos
+-- entornos, y "or" no lo filtra.
+if type(K.FramePositionOwners) ~= "table" then K.FramePositionOwners = {}; end
+K.FramePositionOwners["SwingTimer"] = function() SavePosition(); end
+
 function K.ResetMeleeSwingTimerPosition()
 	local db = DB();
 	db.x, db.y, db.scale = 0, 222, 1.0;
@@ -511,6 +517,9 @@ K.RegisterModule("MeleeSwingTimer", {
 	onDisable = function()
 		enabled = false;
 		events:UnregisterAllEvents();
+		-- Apagado con el modo mover puesto: fijarlo (guarda y saca el
+		-- recuadro "DRAG"), si no volvia asi al prenderlo de nuevo.
+		if unlocked then pcall(Lock); end
 		unlocked = false;
 		mover:Hide();
 	end,

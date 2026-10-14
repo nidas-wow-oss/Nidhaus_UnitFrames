@@ -415,6 +415,14 @@ local function PCB_CaptureDefaultLook(bar, border, flash)
 	if ic then
 		d.iconW, d.iconH = ic:GetWidth(), ic:GetHeight();
 	end
+	-- El texto: el template lo trae de 185 de ancho y con letra normal.
+	-- En Arena la barra mide 80 y el nombre del hechizo se salia por los
+	-- dos lados; ahi va con letra chica y del ancho de la barra.
+	local tx = _G[(bar:GetName() or "").."Text"];
+	if tx then
+		d.textFont = tx.GetFontObject and tx:GetFontObject() or nil;
+		d.textW, d.textH = tx:GetWidth(), tx:GetHeight();
+	end
 	if border then
 		d.borderTex = border:GetTexture();
 		d.borderW, d.borderH = border:GetWidth(), border:GetHeight();
@@ -459,6 +467,13 @@ local function PCB_ArenaMetrics()
 	return w, 13, 13, 13;
 end
 
+local function PCB_RestoreText(text, d)
+	if text and d.textW then
+		if d.textFont then text:SetFontObject(d.textFont); end
+		text:SetWidth(d.textW);
+	end
+end
+
 function PartyCastingBars.ApplyBarStyle(bar)
 	if not bar then return; end
 	local barName = bar:GetName();
@@ -470,6 +485,7 @@ function PartyCastingBars.ApplyBarStyle(bar)
 	local d = bar._pcbDefaultLook or {};
 
 	local icon = bar.barIcon or _G[barName.."Icon"];
+	local text = _G[barName.."Text"];
 
 	if PCB_BarStyle == "Arena" then
 		-- Sin marco: el template de las barras de arena no dibuja borde.
@@ -491,21 +507,17 @@ function PartyCastingBars.ApplyBarStyle(bar)
 		-- mostrar y le maneja el alfa durante la animacion de cierre. Hay
 		-- que dejarlo sin textura, y entonces se muestra sin dibujar nada.
 		-- Los otros dos estilos le reponen la suya desde d.flashTex.
-		if flash then
-			local src = _G.ArenaEnemyFrame1CastingBarFlash;
-			local tex = src and src.GetTexture and src:GetTexture();
-			if tex then
-				-- Si las barras de arena traen su propio flash, ese va.
-				flash:SetTexture(tex);
-				flash:SetWidth(src:GetWidth());
-				flash:SetHeight(src:GetHeight());
-				flash:ClearAllPoints();
-				flash:SetPoint("CENTER", bar, "CENTER", 0, 0);
-			else
-				flash:SetTexture(nil);
-			end
+		--
+		-- Antes, si las barras de arena ya estaban cargadas, se copiaba SU
+		-- flash: el resultado dependia de si habias pasado por una arena en
+		-- esa sesion. Ahora siempre igual: sin flash.
+		if flash then flash:SetTexture(nil); end
+		if text then
+			text:SetFontObject("GameFontHighlightSmall");
+			text:SetWidth(math.max(20, (aw or 80) - 4));
 		end
 	elseif PCB_BarStyle == "Blizzard" then
+		PCB_RestoreText(text, d);
 		if d.barW then bar:SetWidth(d.barW); bar:SetHeight(d.barH); end
 		if icon and d.iconW then icon:SetWidth(d.iconW); icon:SetHeight(d.iconH); end
 		if border then border:Show(); end
@@ -522,6 +534,7 @@ function PartyCastingBars.ApplyBarStyle(bar)
 			PCB_RestorePoints(flash, d.flashPts);
 		end
 	else
+		PCB_RestoreText(text, d);
 		if d.barW then bar:SetWidth(d.barW); bar:SetHeight(d.barH); end
 		if icon and d.iconW then icon:SetWidth(d.iconW); icon:SetHeight(d.iconH); end
 		if border then
@@ -547,6 +560,12 @@ end
 
 function PartyCastingBars.GetBarStyle() return PCB_BarStyle; end
 
+local function PCB_ApplyStyleAll()
+	for i, barFrame in ipairs(PartyCastingBars.Bars) do
+		PartyCastingBars.ApplyBarStyle(barFrame);
+	end
+end
+
 function PartyCastingBars.CycleBarStyle()
 	local nxt = (PCB_BarStyle == "Arcane" and "Blizzard")
 		or (PCB_BarStyle == "Blizzard" and "Arena")
@@ -560,9 +579,7 @@ function PartyCastingBars.SetBarStyle(value)
 		or (value == "Arena" and "Arena")
 		or "Arcane";
 	PCB_DB().barStyle = PCB_BarStyle;
-	for i, barFrame in ipairs(PartyCastingBars.Bars) do
-		PartyCastingBars.ApplyBarStyle(barFrame);
-	end
+	PCB_ApplyStyleAll();
 	-- Y con el estilo viaja su escala: el RefreshMenu de abajo lleva el
 	-- slider al valor que este estilo tenia guardado.
 	PartyCastingBars.SetScales(PCB_StyleScale(PCB_BarStyle));
@@ -628,6 +645,20 @@ function PartyCastingBars.GetTimeLeft(bar)
 		current_time = max - bar:GetValue();
 	end
 	return format(PartyCastingBars.TIME_LEFT, math.max(current_time, 0));
+end
+
+-- Lo mismo, escrito directo en la barra: corre en CADA cuadro mientras
+-- alguien del grupo castea, y SetFormattedText no crea un string de Lua
+-- por vuelta (format si, y eso es basura para el recolector).
+function PartyCastingBars.SetTimeLeft(bar)
+	local min, max = bar:GetMinMaxValues();
+	local current_time;
+	if bar.channeling then
+		current_time = bar:GetValue() - min;
+	else
+		current_time = max - bar:GetValue();
+	end
+	bar.barTime:SetFormattedText(PartyCastingBars.TIME_LEFT, math.max(current_time, 0));
 end
 
 function PartyCastingBars.OnEvent(bar, event, unit, spellName)
@@ -853,7 +884,7 @@ function PartyCastingBars.OnUpdate(bar)
 		local sparkPosition = ((status - bar.startTime) / (bar.maxValue - bar.startTime)) * bar:GetWidth();
 		if sparkPosition < 0 then sparkPosition = 0; end
 		bar.barSpark:SetPoint("CENTER", bar, "LEFT", sparkPosition, 0);
-		bar.barTime:SetText(PartyCastingBars.GetTimeLeft(bar));
+		PartyCastingBars.SetTimeLeft(bar);
 
 	elseif bar.channeling then
 		local time = GetTime();
@@ -877,7 +908,7 @@ function PartyCastingBars.OnUpdate(bar)
 		bar.barFlash:Hide();
 		local sparkPosition = ((barValue - bar.startTime) / (bar.endTime - bar.startTime)) * bar:GetWidth();
 		bar.barSpark:SetPoint("CENTER", bar, "LEFT", sparkPosition, 0);
-		bar.barTime:SetText(PartyCastingBars.GetTimeLeft(bar));
+		PartyCastingBars.SetTimeLeft(bar);
 
 	elseif GetTime() < bar.holdTime then
 		return;
@@ -1105,8 +1136,18 @@ local function PCB_ApplyInitialState()
 	end
 
 	-- Lo guardado manda sobre los defaults del archivo. Va ANTES de los
-	-- tres Enable/Set de abajo, que son los que lo aplican a las barras.
+	-- Enable/Set de abajo, que son los que lo aplican a las barras.
 	PCB_LoadSaved();
+
+	-- EL ESTILO GUARDADO, APLICADO.
+	--
+	-- Este era el bug de "el menu dice Arena y la barra se ve Arcane":
+	-- las barras se arman en su OnLoad (XML), ANTES de que exista la
+	-- SavedVariable, asi que nacen con el estilo de fabrica (Arcane).
+	-- PCB_LoadSaved leia el estilo guardado y lo dejaba en PCB_BarStyle
+	-- -- por eso el menu lo marcaba bien -- pero nadie se lo volvia a
+	-- aplicar a las barras. Solo se arreglaba tocando un boton de estilo.
+	PCB_ApplyStyleAll();
 
 	-- Apply internal defaults
 	PartyCastingBars.EnableIcons(PCB_IconsEnabled);
@@ -1118,17 +1159,41 @@ end
 
 -- Hook into NUF's CONFIG_LOADED. At that point C[] is fully populated.
 -- We defer one more frame to PLAYER_LOGIN so all bar frames are definitely created.
+local pcbWait;
 K.RegisterConfigEvent("CONFIG_LOADED", function()
-	local waitFrame = CreateFrame("Frame");
-	waitFrame:RegisterEvent("PLAYER_LOGIN");
-	waitFrame:SetScript("OnEvent", function(self)
-		self:UnregisterEvent("PLAYER_LOGIN");
+	if IsLoggedIn and IsLoggedIn() then
 		PCB_ApplyInitialState();
-	end);
+		return;
+	end
+	if not pcbWait then
+		pcbWait = CreateFrame("Frame");
+		pcbWait:SetScript("OnEvent", function(self)
+			self:UnregisterEvent("PLAYER_LOGIN");
+			PCB_ApplyInitialState();
+		end);
+	end
+	pcbWait:RegisterEvent("PLAYER_LOGIN");
+end);
+
+-- Las medidas de Arena salen de las barras de arena de verdad cuando
+-- existen (Blizzard_ArenaUI se carga recien al entrar a una arena o al
+-- abrir el mover). Al cargarse, se repasan las barras para que las del
+-- grupo queden iguales a esas; antes quedaban con las de reserva.
+local pcbArenaWatch = CreateFrame("Frame");
+pcbArenaWatch:RegisterEvent("ADDON_LOADED");
+pcbArenaWatch:SetScript("OnEvent", function(self, event, name)
+	if name ~= "Blizzard_ArenaUI" then return; end
+	self:UnregisterEvent("ADDON_LOADED");
+	if PCB_BarStyle == "Arena" then PCB_ApplyStyleAll(); end
 end);
 
 -- Also react to CONFIG_CHANGED so the options panel checkbox takes effect live
+local pcbLastArenaW;
 K.RegisterConfigEvent("CONFIG_CHANGED", function()
+	if PCB_BarStyle == "Arena" and C.ArenaCastBarWidth ~= pcbLastArenaW then
+		pcbLastArenaW = C.ArenaCastBarWidth;
+		PCB_ApplyStyleAll();
+	end
 	if not PCB_IsActive and C.PCB_Enabled then
 		PartyCastingBars.EnableToggle(true);
 	elseif PCB_IsActive and not C.PCB_Enabled then

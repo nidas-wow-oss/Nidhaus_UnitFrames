@@ -799,8 +799,17 @@ local runtimePanel
 -- el resto de las ventanas movibles del addon.
 local function SavePanelPoint()
 	if not (scalePanel and runtimePanel) then return end
-	local point, _, relativePoint, x, y = scalePanel:GetPoint()
+	local point, relTo, relativePoint, x, y = scalePanel:GetPoint()
 	if not point then return end
+	-- Si nunca la arrastraste esta colgada del marco de grupo, y al reponer
+	-- se aplicaba contra la pantalla: aparecia pegada al borde de arriba.
+	-- Se pasa a coordenadas de pantalla antes de guardar.
+	if relTo and relTo ~= UIParent and scalePanel:GetLeft() and scalePanel:GetTop() then
+		point, relativePoint = "TOPLEFT", "BOTTOMLEFT"
+		x, y = scalePanel:GetLeft(), scalePanel:GetTop()
+		scalePanel:ClearAllPoints()
+		scalePanel:SetPoint(point, UIParent, relativePoint, x, y)
+	end
 	-- Se guarda el PUNTO COMPLETO: StartMoving puede cambiar el tipo de
 	-- punto (de TOPLEFT a BOTTOMRIGHT, por ejemplo), asi que quedarse solo
 	-- con x/y perderia la referencia.

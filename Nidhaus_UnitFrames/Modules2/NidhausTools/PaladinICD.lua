@@ -1,6 +1,11 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
+-- SOLO PALADIN. Para las demas clases el archivo termina aca, antes de crear
+-- nada: Lua descarta todo su codigo y el modulo no ocupa memoria. El panel,
+-- el modo mover y los comandos ya preguntan si el modulo existe.
+if select(2, UnitClass("player")) ~= "PALADIN" then return; end
+
 -- =========================================================
 -- PaladinICD.lua  (integrado a NUF, de NidhausTools)
 -- CD interno visual de las defensivas de paladin (Divine Protection,
@@ -63,6 +68,20 @@ frame:SetMovable(true)
 frame:SetClampedToScreen(true)
 frame:EnableMouse(false)
 frame:Hide()
+
+-- Escala con slider en el panel (y Ctrl + rueda en "Mover todo", que ahora
+-- escribe en el mismo lugar). Antes solo tenia la rueda.
+if K.RegisterScalable then K.RegisterScalable("PaladinICD", frame, 1.0) end
+
+local enabled = false
+
+-- Donde se muestra (Arena / BG / Duelos / Mundo, ver ModuleManager). El
+-- cooldown se sigue contando aunque no se vea: si entras a una zona
+-- tildada con el CD corriendo, aparece con el tiempo que le queda.
+local function ZoneOK()
+    if not K.ModuleZoneAllowed then return true end
+    return K.ModuleZoneAllowed("PaladinICD")
+end
 
 frame.icon = frame:CreateTexture(nil, "ARTWORK")
 frame.icon:SetAllPoints()
@@ -137,7 +156,9 @@ local function StartCooldown(name, remaining)
     SetIconForName(name)
     frame.cooldown:SetCooldown(GetTime() - (DURATION - remaining), DURATION)
     SetIconGray(true)                 -- en cooldown = gris (como PAB)
-    frame:Show()
+    if ZoneOK() or frame.dragMode or frame.preview then
+        frame:Show()
+    end
 end
 
 frame:SetScript("OnUpdate", function(self)
@@ -214,11 +235,25 @@ function K.TogglePaladinICDMove()
         frame:Show()
     else
         frame.dragBg:Hide()
-        if expire - GetTime() <= 0 then
+        -- Al fijar queda como corresponde: con el CD corriendo, con
+        -- "dejarlo en pantalla" o escondido. Antes se escondia siempre que
+        -- no hubiera CD, aunque tuvieras tildado dejarlo a la vista.
+        if enabled and K.ApplyPaladinICDVisibility then
+            K.ApplyPaladinICDVisibility()
+        elseif expire - GetTime() <= 0 then
             frame:Hide()
         end
     end
     return frame.dragMode
+end
+
+function K.IsPaladinICDMoving() return frame.dragMode and true or false end
+
+function K.SetPaladinICDMove(state)
+    if (state and true or false) ~= (frame.dragMode and true or false) then
+        K.TogglePaladinICDMove()
+    end
+    return frame.dragMode and true or false
 end
 
 -- Preview para el modo "Mover todo": sin esto el icono esta oculto
@@ -233,9 +268,12 @@ function K.SetPaladinICDPreview(state)
         frame:Show()
     else
         frame.preview = false
-        if not frame.dragMode and (expire - GetTime()) <= 0
-           and not C.PaladinICDKeepVisible then
-            frame:Hide()
+        if not frame.dragMode then
+            if enabled and K.ApplyPaladinICDVisibility then
+                K.ApplyPaladinICDVisibility()
+            elseif (expire - GetTime()) <= 0 and not C.PaladinICDKeepVisible then
+                frame:Hide()
+            end
         end
     end
 end
@@ -256,8 +294,18 @@ end
 -- Muestra el icono "listo" (a color) cuando la opcion de dejarlo a la vista
 -- esta activada y no hay ningun cooldown corriendo.
 function K.ApplyPaladinICDVisibility()
+    -- Mientras lo estas moviendo (o en "Mover todo") se queda a la vista.
+    if frame.dragMode or frame.preview then return end
+    -- Fuera de las zonas elegidas no se muestra.
+    if not ZoneOK() then
+        frame:Hide()
+        return
+    end
     local onCD = (expire - GetTime()) > 0
-    if onCD then return end          -- si corre el CD, no tocar nada
+    if onCD then                     -- si corre el CD, que se vea
+        frame:Show()
+        return
+    end
     if C.PaladinICDKeepVisible then
         SetIconForName(nil)          -- icono por defecto
         SetIconGray(false)
@@ -270,6 +318,7 @@ end
 
 -- ===== integracion NUF: on/off del modulo =====
 local function PICD_SetEnabled(on)
+    enabled = on and true or false
     if on then
         ev:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
         ev:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -278,6 +327,18 @@ local function PICD_SetEnabled(on)
         ev:UnregisterAllEvents()
         frame:Hide()
     end
+end
+
+-- Cambiar una casilla de zona, o de zona, lo pone al dia en el acto.
+if K.RegisterModuleZones then
+    K.RegisterModuleZones("PaladinICD",
+        function()
+            PaladinICD_DB = PaladinICD_DB or {}
+            return PaladinICD_DB
+        end,
+        function()
+            if enabled then K.ApplyPaladinICDVisibility() end
+        end)
 end
 
 K.RegisterModule("PaladinICD", {

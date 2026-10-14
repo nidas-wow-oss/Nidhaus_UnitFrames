@@ -165,7 +165,7 @@ local function ZoneAllowed()
 	local _, itype = GetInstanceInfo();
 	if itype == "arena" then return db.inArena; end
 	if itype == "pvp"   then return db.inBG; end
-	if db.inDuel and _G.DuelOutOfBoundsTimer then return true; end
+	if K.InDuel and K.InDuel() then return db.inDuel and true or false; end
 	return db.inWorld;
 end
 

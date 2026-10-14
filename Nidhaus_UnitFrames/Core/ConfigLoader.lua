@@ -27,6 +27,10 @@ local function LoadPanel()
 	if IsAddOnLoaded and IsAddOnLoaded(LOD) then return true; end
 	if not LoadAddOn then return false; end
 
+	-- El panel tiene una pestaña entera de arena y arma todas sus hojas de
+	-- una: necesita los modulos de arena cargados antes que el.
+	if K.LoadArenaModules then pcall(K.LoadArenaModules); end
+
 	local loaded, reason = LoadAddOn(LOD);
 	if loaded then return true; end
 

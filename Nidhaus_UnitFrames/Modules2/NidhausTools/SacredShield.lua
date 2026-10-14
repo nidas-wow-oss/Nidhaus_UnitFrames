@@ -1,6 +1,11 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
+-- SOLO PALADIN. Para las demas clases el archivo termina aca, antes de crear
+-- nada: Lua descarta todo su codigo y el modulo no ocupa memoria. El panel,
+-- el modo mover y los comandos ya preguntan si el modulo existe.
+if select(2, UnitClass("player")) ~= "PALADIN" then return; end
+
 -- =========================================================
 -- SacredShield.lua  (integrado a NUF, de NidhausTools)
 -- Portado de la WeakAura "SS".
@@ -97,10 +102,17 @@ local function HasAura()
 end
 
 local moving = false;
+local enabled = false;
+
+-- Donde se muestra (Arena / BG / Duelos / Mundo, ver ModuleManager).
+local function ZoneOK()
+    if not K.ModuleZoneAllowed then return true; end
+    return K.ModuleZoneAllowed("SacredShield");
+end
 
 local function Update()
     if moving then return; end   -- en modo mover el icono se queda fijo y visible
-    if UnitExists(UNIT) and HasAura() then
+    if ZoneOK() and UnitExists(UNIT) and HasAura() then
         ResolveIcon();
         frame:Show();
     else
@@ -189,6 +201,7 @@ end
 
 -- ===== integracion NUF: on/off del modulo =====
 local function SS_SetEnabled(on)
+    enabled = on and true or false;
     if on then
         f:RegisterEvent("PLAYER_ENTERING_WORLD");
         f:RegisterEvent("PLAYER_TARGET_CHANGED");
@@ -199,6 +212,17 @@ local function SS_SetEnabled(on)
         if moving then SetMoving(false); end
         frame:Hide();
     end
+end
+
+if K.RegisterModuleZones then
+    K.RegisterModuleZones("SacredShield",
+        function()
+            SacredShieldDB = SacredShieldDB or {};
+            return SacredShieldDB;
+        end,
+        function()
+            if enabled then Update(); end
+        end);
 end
 
 K.RegisterModule("SacredShield", {

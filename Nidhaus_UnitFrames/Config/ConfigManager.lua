@@ -145,22 +145,34 @@ local defaults = {
 	-- EXTRA OPTIONS
 	ArenaCountDown = true,
 	ShadowSightTimer = true,   -- ojo (Shadow Sight): icono + cuenta, checkbox propio
-	ArenaDR = false,           -- iconos de DR (pestaña Arena > DR)
-	ArenaDRSize = 22,          -- DR: tamaño de cada icono
+	-- DR y DoT: los valores de fabrica son los que quedaron probados en
+	-- arena (los de las fotos del README), no los de la primera version.
+	--
+	-- DR: prendido, creciendo hacia la izquierda, iconos de 25, sin el
+	-- borde de color ni el texto 1/2 - 1/4 - X (el reloj ya lo dice todo)
+	-- y solo las dos categorias que importan en cada ronda: aturdimientos
+	-- e incapacitaciones (trampa, poli, reprensión...). Las demas siguen
+	-- contando por detras; se tildan en Arena > DR cuando hagan falta.
+	ArenaDR = true,            -- iconos de DR (pestaña Arena > DR)
+	ArenaDRSize = 25,          -- DR: tamaño de cada icono
 	ArenaDRSpacing = 2,        -- DR: separacion entre iconos
-	ArenaDRGrow = "AUTO",      -- DR: AUTO / LEFT / RIGHT / UP / DOWN
-	ArenaDRBorder = true,      -- DR: borde del color del nivel
-	ArenaDRText = true,        -- DR: texto 1/2 1/4 X
+	ArenaDRGrow = "LEFT",      -- DR: AUTO / LEFT / RIGHT / UP / DOWN
+	ArenaDRBorder = false,     -- DR: borde del color del nivel
+	ArenaDRText = false,       -- DR: texto 1/2 1/4 X
 	ArenaDRTimer = true,       -- DR: segundos que faltan para el reset
 	ArenaDRClassOnly = false,  -- DR: solo categorias de tu clase
-	ArenaDRHideCats = "",      -- DR: categorias ocultas, separadas por coma ("" = todas)
-	ArenaDoTWarn = false,      -- aviso de DoTs (pestaña Arena > DoT)
-	ArenaDoTSize = 16,         -- DoT: tamaño de los iconos
-	ArenaDoTSpacing = 2,       -- DoT: separacion
+	-- Ocultas de fabrica = todas menos ctrlstun (Aturdimientos) y
+	-- disorient (Incapacitaciones). "" seria mostrarlas todas.
+	ArenaDRHideCats = "openstun,rndstun,fear,horror,silence,cyclone,ctrlroot,rndroot,sleep,disarm,entrapment,scatter,mc,banish,charge,intimidation",
+	-- DoT: prendido, iconos chicos de 14 pegados entre si, hasta 3, sin el
+	-- texto "DoT" ni el borde rojo: al lado del marco se leen solos.
+	ArenaDoTWarn = true,       -- aviso de DoTs (pestaña Arena > DoT)
+	ArenaDoTSize = 14,         -- DoT: tamaño de los iconos
+	ArenaDoTSpacing = 0,       -- DoT: separacion
 	ArenaDoTMax = 3,           -- DoT: iconos como maximo
 	ArenaDoTGrow = "AUTO",     -- DoT: AUTO / LEFT / RIGHT / UP / DOWN
-	ArenaDoTLabel = true,      -- DoT: texto "DoT"
-	ArenaDoTBorder = true,     -- DoT: borde rojo
+	ArenaDoTLabel = false,     -- DoT: texto "DoT"
+	ArenaDoTBorder = false,    -- DoT: borde rojo
 	AutoSellGray = true,
 	AutoRepair = true,
 	ErrorHideInCombat = true,
@@ -184,6 +196,12 @@ local defaults = {
 	-- MINIMAP
 	AuraIconsPerRow   = 8,       -- iconos de buff por fila (BUFFS_PER_ROW)
 	SideBarsHover     = false,   -- barras laterales solo al pasar el mouse
+	-- Con Unify o MiniBar: mochila y micromenu ocultos hasta pasar el
+	-- mouse (5 s + 3 s de desvanecimiento). Ver Modules2/BarFade.lua.
+	BarsFadeBags      = false,
+	-- Button Range > "Lorti UI red border": fuera de rango el contorno de
+	-- Lorti se pone rojo (en lugar del color de Action Bars, no encima).
+	ButtonRangeLortiRed = false,
 	MinimapSquare     = false,   -- cuadrado en vez de redondo
 	-- Default | Light | Tooltip | Thin | Flat | Blizzard
 	MinimapBorderStyle = "Default",
@@ -191,6 +209,7 @@ local defaults = {
 	MinimapHideZoneBG = false,   -- ocultar la chapa dorada detras del nombre
 	MinimapHideAddonIcons = false, -- ocultar los iconos que cuelgan los addons
 	MinimapHideClock  = false,   -- ocultar el reloj
+	MinimapHideClockBG = false,  -- ocultar solo el fondo del reloj (quedan los numeros)
 	MinimapHideZoom   = false,   -- ocultar los botones de zoom
 	MinimapHideCalendar = false, -- ocultar el calendario (GameTimeFrame)
 	MinimapHideWorldMap = false, -- ocultar el boton del mapa del mundo
@@ -260,6 +279,46 @@ local defaults = {
 	LortiUI_Arena             = true,  -- Arena frame textures
 	LortiUI_ActionBars        = true,  -- Action bar textures
 	LortiUI_Minimap           = true,  -- Minimap textures & scroll
+	-- Color propio en vez de negro (el selector del Lorti UI suelto).
+	-- De fabrica apagado; el color de partida es su celeste.
+	LortiUI_CustomColor       = false,
+	LortiUI_ColorR            = 0.40,
+	LortiUI_ColorG            = 0.82,
+	LortiUI_ColorB            = 1.0,
+	-- El borde del minimapa y el de las barras de casteo, cada uno con su
+	-- casilla y su color (apagados de fabrica).
+	LortiUI_MinimapColor      = false,
+	LortiUI_MinimapR          = 0.40,
+	LortiUI_MinimapG          = 0.82,
+	LortiUI_MinimapB          = 1.0,
+	LortiUI_CastBarColor      = false,
+	LortiUI_CastBarR          = 0.40,
+	LortiUI_CastBarG          = 0.82,
+	LortiUI_CastBarB          = 1.0,
+	-- Buffs / Debuffs con el aspecto de Lorti (apagado: cambia todos los iconos)
+	LortiUI_Auras             = false,
+	-- Filas con color propio: marcos (en cualquier estilo) y auras
+	LortiUI_PlayerColor = false, LortiUI_PlayerR = 0.40, LortiUI_PlayerG = 0.82, LortiUI_PlayerB = 1.0,
+	LortiUI_TargetColor = false, LortiUI_TargetR = 0.40, LortiUI_TargetG = 0.82, LortiUI_TargetB = 1.0,
+	LortiUI_FocusColor  = false, LortiUI_FocusR  = 0.40, LortiUI_FocusG  = 0.82, LortiUI_FocusB  = 1.0,
+	LortiUI_PartyColor  = false, LortiUI_PartyR  = 0.40, LortiUI_PartyG  = 0.82, LortiUI_PartyB  = 1.0,
+	LortiUI_BuffColor   = false, LortiUI_BuffR   = 0.40, LortiUI_BuffG   = 0.82, LortiUI_BuffB   = 1.0,
+	LortiUI_DebuffColor = false, LortiUI_DebuffR = 0.40, LortiUI_DebuffG = 0.82, LortiUI_DebuffB = 1.0,
+	-- Tabla de zonas (cada zona: casilla "Lorti" + casilla "Color").
+	-- Layout2 = ya se convirtio lo viejo (K.LortiMigrateLayout).
+	LortiUI_Layout2     = false,
+	LortiUI_Player      = true,
+	LortiUI_Target      = true,
+	LortiUI_Focus       = true,
+	LortiUI_CastBar     = true,
+	LortiUI_AuraBuffs   = false,
+	LortiUI_AuraDebuffs = false,
+	LortiUI_PartyTargetsColor = false, LortiUI_PartyTargetsR = 0.40, LortiUI_PartyTargetsG = 0.82, LortiUI_PartyTargetsB = 1.0,
+	LortiUI_PartyPetColor     = false, LortiUI_PartyPetR     = 0.40, LortiUI_PartyPetG     = 0.82, LortiUI_PartyPetB     = 1.0,
+	LortiUI_ArenaColor        = false, LortiUI_ArenaR        = 0.40, LortiUI_ArenaG        = 0.82, LortiUI_ArenaB        = 1.0,
+	LortiUI_ActionBarsColor   = false, LortiUI_ActionBarsR   = 0.40, LortiUI_ActionBarsG   = 0.82, LortiUI_ActionBarsB   = 1.0,
+	-- "Mismo color a todo": el ultimo color usado
+	LortiUI_AllR = 0.40, LortiUI_AllG = 0.82, LortiUI_AllB = 1.0,
 };
 
 local configLoaded = false;
@@ -268,6 +327,12 @@ local configLoaded = false;
 local eventCallbacks = {};
 
 local function FireConfigEvent(eventName)
+	-- Antes de avisar que la config esta lista, los modulos que cambiaron
+	-- de claves convierten lo guardado (hoy: Lorti UI, la tabla de zonas).
+	-- Asi ningun modulo llega a leer claves sin convertir.
+	if eventName == "CONFIG_LOADED" and K.LortiMigrateLayout then
+		pcall(K.LortiMigrateLayout);
+	end
 	if eventCallbacks[eventName] then
 		for _, callback in ipairs(eventCallbacks[eventName]) do
 			local success, err = pcall(callback);
@@ -316,6 +381,20 @@ function K.RegisterConfigEvent(eventName, callback)
 		eventCallbacks[eventName] = {};
 	end
 	table.insert(eventCallbacks[eventName], callback);
+
+	-- EL QUE LLEGA TARDE TAMBIEN SE ENTERA.
+	--
+	-- Hace falta para los addons que se cargan a pedido (el panel de
+	-- opciones, los modulos de arena): cuando ellos se anotan, el
+	-- CONFIG_LOADED ya paso hace rato y su callback no se llamaba NUNCA.
+	-- Ahora se le avisa en el acto, que es justo lo que esperaba.
+	if eventName == "CONFIG_LOADED" and configLoaded then
+		local ok, err = pcall(callback);
+		if not ok then
+			print("|cffFF0000NUF:|r " .. (L["ERR_IN_EVENT"] or "Error in")
+				.. " CONFIG_LOADED: " .. tostring(err));
+		end
+	end
 end
 
 -- SafeConvertType
@@ -561,6 +640,14 @@ local function ResetConfig()
 	if NiceDamageDB   ~= nil then NiceDamageDB   = {}; end
 	if DTSU_DB        ~= nil then DTSU_DB        = {}; end
 	if PaladinICD_DB  ~= nil then PaladinICD_DB  = {}; end
+	-- Estas tambien quedaban con lo viejo despues del reset (estilo y
+	-- posiciones de Party Targets, escala/estilo/colores de las barras de
+	-- casteo del grupo, posiciones y zonas de Sacred Shield y Seduction).
+	if PartyTargetsDB         ~= nil then PartyTargetsDB         = {}; end
+	if PartyCastingBarsDB     ~= nil then PartyCastingBarsDB     = {}; end
+	if SacredShieldDB         ~= nil then SacredShieldDB         = {}; end
+	if SacredShieldTrackerDB  ~= nil then SacredShieldTrackerDB  = {}; end
+	if SeductionAlertDB       ~= nil then SeductionAlertDB       = {}; end
 
 	print(L["CFG_RESET_OK"]);
 	

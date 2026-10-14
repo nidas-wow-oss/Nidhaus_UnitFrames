@@ -1,6 +1,11 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
+-- SOLO PALADIN. Para las demas clases el archivo termina aca, antes de crear
+-- nada: Lua descarta todo su codigo y el modulo no ocupa memoria. El panel,
+-- el modo mover y los comandos ya preguntan si el modulo existe.
+if select(2, UnitClass("player")) ~= "PALADIN" then return; end
+
 -- =========================================================
 -- SacredShieldTracker.lua  (integrado a NUF, de NidhausTools)
 -- Portado del grupo de WeakAuras "Sacred Shield Tracker" (wago sYPSLKSKx)
@@ -259,10 +264,18 @@ local function UpdateChild(child, spellId, wantGlow)
     child:Show();
 end
 
+local sstEnabled = false;
+
+-- Donde se muestra (Arena / BG / Duelos / Mundo, ver ModuleManager).
+local function ZoneOK()
+    if not K.ModuleZoneAllowed then return true; end
+    return K.ModuleZoneAllowed("SacredShieldTracker");
+end
+
 local function Update()
     if moving then return; end
 
-    if not IsLoadable() then
+    if not IsLoadable() or not ZoneOK() then
         GlowOff(renew); GlowOff(shieldBuff);
         renew:Hide(); shieldBuff:Hide();
         Layout();
@@ -328,8 +341,19 @@ local function SetMoving(on)
         anchor:SetScript("OnDragStart", function(self) self:StartMoving(); end);
         anchor:SetScript("OnDragStop", function(self)
             self:StopMovingOrSizing();
-            local point, _, _, x, y = self:GetPoint();
-            SacredShieldTrackerDB.point, SacredShieldTrackerDB.x, SacredShieldTrackerDB.y = point, x, y;
+            -- El marco se ancla SIEMPRE por su borde de arriba ("TOP", crece
+            -- hacia abajo) y DB.point es el punto de la PANTALLA. Antes se
+            -- guardaba el punto del marco que dejaba StartMoving y despues se
+            -- reponia como punto de pantalla: quedaba corrido al reloguear.
+            -- Ahora se guarda el centro del borde de arriba, medido contra la
+            -- esquina de abajo de la pantalla, y se reancla igual en el acto.
+            local l, r, t = self:GetLeft(), self:GetRight(), self:GetTop();
+            if l and r and t then
+                local cx = (l + r) / 2;
+                SacredShieldTrackerDB.point, SacredShieldTrackerDB.x, SacredShieldTrackerDB.y = "BOTTOMLEFT", cx, t;
+                self:ClearAllPoints();
+                self:SetPoint("TOP", UIParent, "BOTTOMLEFT", cx, t);
+            end
         end);
     else
         anchor.bg:Hide();
@@ -374,6 +398,7 @@ end
 
 -- ===== integracion NUF =====
 local function SST_SetEnabled(on)
+    sstEnabled = on and true or false;
     if on then
         ev:RegisterEvent("UNIT_AURA");
         ev:RegisterEvent("PLAYER_ENTERING_WORLD");
@@ -392,6 +417,17 @@ local function SST_SetEnabled(on)
         end
         Layout();
     end
+end
+
+if K.RegisterModuleZones then
+    K.RegisterModuleZones("SacredShieldTracker",
+        function()
+            SacredShieldTrackerDB = SacredShieldTrackerDB or {};
+            return SacredShieldTrackerDB;
+        end,
+        function()
+            if sstEnabled then Update(); end
+        end);
 end
 
 K.RegisterModule("SacredShieldTracker", {

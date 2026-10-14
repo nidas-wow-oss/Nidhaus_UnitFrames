@@ -361,9 +361,24 @@ function K.ApplyMinimapBorderStyle()
 	-- oscuro con Lorti y blanco con cualquier otro, asi salir de Lorti lo
 	-- devuelve al dorado sin /reload. Mostrarlos u ocultarlos sigue siendo
 	-- cosa de la forma y de "Hide Zone Name Background".
-	local tint = lorti and LORTI_TINT or 1;
-	if MinimapBorder then MinimapBorder:SetVertexColor(tint, tint, tint); end
-	if MinimapBorderTop then MinimapBorderTop:SetVertexColor(tint, tint, tint); end
+	-- El tinte SOLO con el borde "Lorti UI": oscuro, o el color de la fila
+	-- "Minimap" de Lorti UI. Cualquier otro estilo va en blanco (su color
+	-- de fabrica).
+	--
+	-- OJO CON LOS NOMBRES: esto se llamaba tr/tg/tb, y mas abajo hay un
+	-- "local tb = GetThinBorder()" que le pisaba el azul con un marco. El
+	-- borde de Tooltip / Thin / Flat recibia un objeto como azul y salia
+	-- teñido de amarillo aunque Lorti no tuviera nada que ver.
+	local bR, bG, bB = 1, 1, 1;
+	if lorti then
+		if K.LortiMinimapTint then
+			bR, bG, bB = K.LortiMinimapTint();
+		else
+			bR, bG, bB = LORTI_TINT, LORTI_TINT, LORTI_TINT;
+		end
+	end
+	if MinimapBorder then MinimapBorder:SetVertexColor(bR, bG, bB); end
+	if MinimapBorderTop then MinimapBorderTop:SetVertexColor(bR, bG, bB); end
 
 	-- "DEFAULT" EN CUADRADO: LA TEXTURA EXISTE, SOLO NO SE PEDIA.
 	--
@@ -407,7 +422,7 @@ function K.ApplyMinimapBorderStyle()
 		for _, tx in ipairs(cs) do
 			tx:SetTexture(BORDER_DIR .. shape .. file);
 			tx:SetSize(size, size);
-			tx:SetVertexColor(tint, tint, tint, 1);
+			tx:SetVertexColor(bR, bG, bB, 1);
 			tx:Show();
 		end
 		return;
@@ -537,6 +552,23 @@ end
 -- ---------------------------------------------------------
 -- Adornos
 -- ---------------------------------------------------------
+-- EL FONDO DEL RELOJ: la chapa oscura detras de la hora. Es una textura
+-- sin nombre de TimeManagerClockButton (capa BORDER); la otra textura del
+-- boton es el destello de la alarma, que no se toca.
+local clockBG;
+local function ClockBackground()
+	if clockBG then return clockBG; end
+	if not TimeManagerClockButton then return nil; end
+	for _, r in ipairs({ TimeManagerClockButton:GetRegions() }) do
+		if r ~= TimeManagerAlarmFiredTexture and r.GetObjectType and r:GetObjectType() == "Texture"
+			and r.GetDrawLayer and r:GetDrawLayer() == "BORDER" then
+			clockBG = r;
+			return r;
+		end
+	end
+	return nil;
+end
+
 function K.ApplyMinimapDecorations()
 	-- Nombre de la zona
 	if MinimapZoneTextButton then
@@ -570,6 +602,12 @@ function K.ApplyMinimapDecorations()
 	-- Reloj
 	if TimeManagerClockButton then
 		if C.MinimapHideClock then TimeManagerClockButton:Hide(); else TimeManagerClockButton:Show(); end
+	end
+
+	-- Fondo del reloj: sin la chapa quedan solo los numeros, sobre el mapa.
+	local cbg = ClockBackground();
+	if cbg then
+		if C.MinimapHideClockBG then cbg:Hide(); else cbg:Show(); end
 	end
 
 	-- Botones de zoom

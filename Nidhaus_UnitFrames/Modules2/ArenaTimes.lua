@@ -46,7 +46,22 @@ local AT_HideQueueText;
 local AT_origHideOnEscape;
 
 local function Init()
-  if initialized then return; end
+  if initialized then
+    -- Volver a prender despues de un Disable: Disable le saco los eventos
+    -- y repuso el Escape del cartel. Antes esto volvia sin hacer nada y el
+    -- modulo quedaba muerto hasta /reload.
+    if StaticPopupDialogs and StaticPopupDialogs["CONFIRM_BATTLEFIELD_ENTRY"] then
+      StaticPopupDialogs["CONFIRM_BATTLEFIELD_ENTRY"].hideOnEscape = false;
+    end
+    if AT_eventFrame then
+      AT_eventFrame:RegisterEvent("UPDATE_BATTLEFIELD_STATUS");
+      AT_eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
+      AT_eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA");
+      local fn = AT_eventFrame:GetScript("OnEvent");
+      if fn then pcall(fn, AT_eventFrame); end
+    end
+    return;
+  end
   initialized = true;
 
   -- FIX: Guardar valor original para poder restaurar en onDisable

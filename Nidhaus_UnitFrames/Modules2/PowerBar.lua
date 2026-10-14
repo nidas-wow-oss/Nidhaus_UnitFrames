@@ -518,9 +518,9 @@ local function UpdateBar()
 		text:Hide();
 	else
 		if C.PowerBarShowPercent then
-			text:SetText(string.format("%d%%", math.floor(cur / max * 100 + 0.5)));
+			text:SetFormattedText("%d%%", math.floor(cur / max * 100 + 0.5));   -- sin basura
 		else
-			text:SetText(cur .. " / " .. max);
+			text:SetFormattedText("%d / %d", cur, max);
 		end
 		text:Show();
 	end
@@ -548,9 +548,9 @@ local function UpdateBar()
 				healthText:Hide();
 			else
 				if C.PowerBarShowPercent then
-					healthText:SetText(string.format("%d%%", math.floor(hp / hpmax * 100 + 0.5)));
+					healthText:SetFormattedText("%d%%", math.floor(hp / hpmax * 100 + 0.5));
 				else
-					healthText:SetText(hp .. " / " .. hpmax);
+					healthText:SetFormattedText("%d / %d", hp, hpmax);
 				end
 				healthText:Show();
 			end
@@ -674,6 +674,7 @@ K.RegisterModule("PowerBar", {
 		enabled = false;
 		testMode = false;
 		SetAuraMouse(false);
+		frame:EnableMouse(false);   -- si quedo en "Mover", que no siga comiendo clicks
 		events:UnregisterAllEvents();
 		frame:Hide();
 	end,

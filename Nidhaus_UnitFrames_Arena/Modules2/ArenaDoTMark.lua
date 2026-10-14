@@ -36,7 +36,11 @@
 -- Prueba:  /nufdot        (vista previa: prende el modo Test de arena)
 --          /nufdot clear  (la apaga)
 -- =========================================================
-local AddOnName, ns = ...;
+local AddOnName = ...;
+-- Este addon se carga a pedido (ver Core/ArenaLoader.lua del addon
+-- principal), asi que el "..." de arriba NO trae el namespace de NUF: es el
+-- suyo propio. El de NUF se publica como global en Core/Init.lua.
+local ns = NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
 local GetTime, UnitGUID, UnitExists, GetSpellInfo, IsInInstance =
@@ -54,7 +58,7 @@ local KNOWN_TTL = 30;    -- un DoT conocido marcado al caer el debuff se queda
                          -- no llega (enemigo fuera de rango del log)
 local OFFSET_Y  = -4;    -- posicion auto: debajo del marco (en Flat el pet
                          -- asoma 3 px por debajo del marco)
-local DEF_SIZE, DEF_GAP, DEF_MAX = 16, 2, 3;
+local DEF_SIZE, DEF_GAP, DEF_MAX = 14, 0, 3;   -- igual que ConfigManager
 local MAX_CAP   = 6;     -- tope del slider "maximo de iconos"
 
 -- DoTs conocidos (cualquier rank). Para el aviso inmediato.
