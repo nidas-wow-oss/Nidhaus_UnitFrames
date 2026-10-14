@@ -72,7 +72,9 @@ De fábrica: hasta 3 iconos de 14 pegados entre sí, creciendo hacia afuera del 
 
 ## Instalación
 
-1. Descargá la **v4.4** desde la [página de releases](../../releases/latest).
+1. Descargá **`Nidhaus_UnitFrames-v4.4.zip`** desde la [página de releases](../../releases/latest).
+   Ese archivo, **no** el "Source code (zip)": GitHub mete la descarga del código dentro de una
+   carpeta extra `Nidhaus_UnitFrames-main`, y copiar *esa* a `Interface/AddOns/` no hace nada.
 2. Extraé el archivo. Vas a obtener tres carpetas: `Nidhaus_UnitFrames`, `Nidhaus_UnitFrames_Config` y `Nidhaus_UnitFrames_Arena`.
 3. Copiá **las tres** carpetas a tu directorio `Interface/AddOns/` de WoW.
 4. Reiniciá el cliente, o escribí `/reload` si ya estás en el juego.
@@ -80,7 +82,10 @@ De fábrica: hasta 3 iconos de 14 pegados entre sí, creciendo hacia afuera del 
 
 > **¿Venís de una versión anterior?** Borrá la carpeta vieja `Nidhaus_UnitFrames` antes de copiar la nueva, en vez de superponerla: entre releases se reorganizan archivos y los restos de una build anterior pueden dar errores. Tu configuración vive en la carpeta `WTF` y se conserva.
 
-> Si bajás el repositorio con el botón verde *Code* en vez de la release, la carpeta extraída se va a llamar `Nidhaus_UnitFrames-main` y va a tener las tres carpetas adentro. Copiá esas tres carpetas a `Interface/AddOns/` — no copies `Nidhaus_UnitFrames-main` en sí.
+> **El botón verde *Code* no es la descarga que querés.** Te da una carpeta `Nidhaus_UnitFrames-main`
+> con las tres carpetas del addon *adentro*. WoW no las ve: en `Interface/AddOns/` tienen que estar las
+> tres carpetas `Nidhaus_UnitFrames*` en sí, no el envoltorio. Si ya lo bajaste así, abrí
+> `Nidhaus_UnitFrames-main` y sacá las tres carpetas de adentro.
 
 ## Comandos
 
