@@ -182,10 +182,12 @@ local function OnUpdate(self, elapsed)
 
 	local remaining = endTime - GetTime();
 	if remaining <= 0 then
-		-- En la prueba (/nuftimers) no hay otro ciclo: al llegar a 0 se
-		-- esconden todos los timers de la prueba juntos.
+		-- En la prueba no hay otro ciclo: al llegar a 0 se esconden todos
+		-- los timers juntos Y se sale del modo mover. Antes esto llamaba a
+		-- StopArenaTimerTests, que con "Mover" encendido los volvia a
+		-- arrancar: no se iban nunca.
 		if testMode then
-			if K.StopArenaTimerTests then K.StopArenaTimerTests(); else Stop(); end
+			if K.ExitArenaTimersMoving then K.ExitArenaTimersMoving(); else Stop(); end
 			return;
 		end
 		StartCycle(NEXT_CYCLE);
@@ -218,6 +220,14 @@ end;
 K.ArenaTimerTestStop[KEY] = function()
 	if testMode then Stop(); end
 end;
+
+-- Lo consulta la cascada de Dalaran: ella solo cierra el ciclo de prueba
+-- si ESTE no esta corriendo (los pilares pueden estar apagados en las
+-- opciones, o la arena puede no ser el Circulo del Valor). El de pilares
+-- manda porque su ciclo es mas corto.
+function K.IsArenaRoVTestRunning()
+	return (frame:IsShown() and testMode) and true or false;
+end
 
 local events = CreateFrame("Frame");
 events:RegisterEvent("CHAT_MSG_BG_SYSTEM_NEUTRAL");

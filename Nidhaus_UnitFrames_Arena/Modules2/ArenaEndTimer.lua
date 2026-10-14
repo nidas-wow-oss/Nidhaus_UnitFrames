@@ -284,11 +284,13 @@ end
 -- =========================================================
 -- MOVER LOS TIMERS (boton "Mover" de Arena > Timers)
 --
--- Lo mismo que /nuftimers, pero:
---   * sin los 25 segundos: quedan a la vista hasta que apretas "Fijar";
---   * se arrastran SIN Alt (K.ArenaTimersUnlocked lo miran los cuatro).
--- Cuando el de pilares llega a 0 llama a StopArenaTimerTests: en este
--- modo eso no los esconde, los vuelve a arrancar.
+-- Lo mismo que /nuftimers, pero se arrastran SIN Alt
+-- (K.ArenaTimersUnlocked lo miran los cuatro).
+--
+-- Igual que /nuftimers, termina cuando la cuenta de los pilares llega a 0
+-- (o la de la cascada, si los pilares no estan corriendo): ahi se esconden
+-- todos, cada uno en la posicion donde lo dejaste. Antes, en modo mover,
+-- se volvian a arrancar solos y no se iban mas.
 -- =========================================================
 local moveMode = false;
 
@@ -321,7 +323,37 @@ end);
 function K.StopArenaTimerTests()
 	testTimer:Hide();
 	RunAll(K.ArenaTimerTestStop);
-	if moveMode then RunAll(K.ArenaTimerTestStart); end
+end
+
+-- =========================================================
+-- SALIR DEL MODO MOVER SIN TOCAR EL CANDADO GUARDADO
+--
+-- Hay dos formas de terminar que NO son apretar "Fijar", y las dos tienen
+-- que dejar lo mismo: todo escondido, cada timer donde lo dejaste.
+--
+--   * Apagar "Mover todo" desde el panel. Ese modulo solo los MOSTRABA,
+--     asi que si el modo mover de los timers estaba encendido seguian en
+--     pantalla, contando, en pleno mundo abierto.
+--   * Que la cuenta de los pilares llegue a 0 -- o la de la cascada de
+--     Dalaran, si los pilares no estan corriendo.
+--
+-- No se usa SetArenaTimersMoving(false) porque ese ES el boton "Fijar" y
+-- escribe el candado. Aca el candado vuelve a lo que el usuario tenga
+-- guardado: terminar de mover no es lo mismo que pedir que se fijen.
+-- =========================================================
+function K.ExitArenaTimersMoving()
+	if not moveMode then
+		-- Sin modo mover puede haber una prueba de /nuftimers corriendo.
+		K.StopArenaTimerTests();
+		return;
+	end
+	moveMode = false;
+	K.ArenaTimersUnlocked = false;
+	K.ArenaTimersLocked = LockedDB();
+	testTimer:Hide();
+	RunAll(K.ArenaTimerTestStop);
+	-- El boton del panel (si esta abierto) vuelve a decir "Mover".
+	if K._OnArenaTimersMoving then pcall(K._OnArenaTimersMoving, false); end
 end
 
 function K.SetArenaTimersMoving(on)

@@ -2476,6 +2476,20 @@ function K.SetGlobalUnlock(state, scope)
 	if state and K.LoadArenaModules then pcall(K.LoadArenaModules); end
 	unlocked = state and true or false;
 
+	-- AL APAGAR "MOVER TODO" SE APAGAN TAMBIEN LOS TIMERS DE ARENA.
+	--
+	-- Este modulo solo los MOSTRABA (ver SetArenaTimersPreview), asi que si
+	-- el modo mover de los timers venia encendido por otro lado -- el boton
+	-- "Mover" de Arena > Timers, o /nuftimers -- al salir de aca se
+	-- quedaban en pantalla, contando, en pleno mundo abierto. Para el que
+	-- lo usa es el mismo boton: si sale de mover, no queda nada moviendose.
+	--
+	-- Va ANTES del repaso de vistas previas de abajo, que es el que apaga
+	-- los que mostro este modulo (los otros los apaga la linea de aca).
+	if not unlocked and K.ExitArenaTimersMoving then
+		pcall(K.ExitArenaTimersMoving);
+	end
+
 	-- Los modulos con modo mover PROPIO se fijan primero: si no, quedan dos
 	-- sistemas de arrastre sobre el mismo frame y se traba.
 	if unlocked then

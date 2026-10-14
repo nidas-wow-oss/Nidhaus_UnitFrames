@@ -120,6 +120,10 @@ end);
 local startTime = nil;
 local testMode  = false;
 local checkAcc  = 0;
+-- Cuando termina la prueba. El ciclo de verdad no para nunca (se da vuelta
+-- solo con fmod), pero la prueba tiene que cerrarse en algun lado o los
+-- timers se quedan en pantalla para siempre.
+local testEnd   = nil;
 
 local function Stop()
 	frame:Hide();
@@ -128,6 +132,7 @@ local function Stop()
 	startTime = nil;
 	testMode  = false;
 	checkAcc  = 0;
+	testEnd   = nil;
 end
 
 local function OnUpdate(self, elapsed)
@@ -151,6 +156,24 @@ local function OnUpdate(self, elapsed)
 		phaseA = false;
 	end
 
+	-- FIN DE LA PRUEBA.
+	--
+	-- Cierra el de los pilares cuando esta corriendo, porque su ciclo es
+	-- mas corto (25 s contra 30). Si no esta -- pilares apagados en las
+	-- opciones, o una arena que no es el Circulo del Valor -- cierra este,
+	-- al llegar a 0 su cuenta.
+	if testMode and testEnd and GetTime() >= testEnd then
+		if K.IsArenaRoVTestRunning and K.IsArenaRoVTestRunning() then
+			testEnd = GetTime() + (CYCLE_TOTAL - PHASE_A);
+		elseif K.ExitArenaTimersMoving then
+			K.ExitArenaTimersMoving();
+			return;
+		else
+			Stop();
+			return;
+		end
+	end
+
 	self.text:SetFormattedText("%d", math.floor(remaining));   -- sin basura
 
 	-- Amarillo mientras falta, rojo en los ultimos 5 segundos
@@ -169,6 +192,7 @@ end
 local function Start(isTest)
 	testMode  = isTest and true or false;
 	startTime = GetTime();
+	testEnd   = testMode and (GetTime() + PHASE_A) or nil;
 	checkAcc  = 0;
 	RestorePosition();
 	frame:Show();
