@@ -18,3 +18,10 @@ _to_delete/
 # Herramienta de diagnostico: queda en el disco, no va al repo.
 # No la carga el XML, asi que sacarla no cambia nada en el juego.
 Nidhaus_UnitFrames/Core/LayoutWatch.lua
+
+# El README no las referencia desde aca: viven en la rama readme-images,
+# asi que quien baja el repo con el boton Code se lleva solo los addons.
+images/
+
+# Banco de pruebas de desarrollo. No es un addon.
+Tests/

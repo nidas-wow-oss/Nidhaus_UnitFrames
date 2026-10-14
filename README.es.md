@@ -20,7 +20,7 @@ NUF combina y reescribe varios addons existentes — entre ellos Eazy Frames y s
 
 ## Funciones
 
-<img src="images/panel.png" width="559" alt="Panel de opciones de NUF" />
+<img src="https://raw.githubusercontent.com/nidas-wow-oss/Nidhaus_UnitFrames/readme-images/images/panel.png" width="559" alt="Panel de opciones de NUF" />
 
 - **Marcos de unidad** — jugador, objetivo, foco, grupo y boss, con skins propias, colores de clase y escala por marco.
 - **Arena** — marcos de arena en dos estilos (Default y Flat) con trinkets, iconos de especialización, DR, DoTs y cuenta regresiva, y un modo de prueba para ubicarlos fuera de una partida.
@@ -30,7 +30,7 @@ NUF combina y reescribe varios addons existentes — entre ellos Eazy Frames y s
 - **Character Setup** — copiá barras de acción, macros y bindeos entre personajes (nExtraBars incluido).
 - **Perfiles** — exportá e importá toda tu configuración.
 
-<img width="215" alt="Arena" src="https://github.com/user-attachments/assets/ace03d46-ccb9-4952-b3c1-bdbd25d2b891" /> <img width="220" alt="Arena" src="https://github.com/user-attachments/assets/ba6e5101-b017-4d48-a4bc-9b57ba7d2023" /> <img width="212" alt="Arena" src="https://github.com/user-attachments/assets/431c3a78-f485-40e2-b942-b1a4e6202e0c" /> <img width="137" alt="DoT warning" src="images/arena-dot-warning.png" />
+<img width="215" alt="Arena" src="https://github.com/user-attachments/assets/ace03d46-ccb9-4952-b3c1-bdbd25d2b891" /> <img width="220" alt="Arena" src="https://github.com/user-attachments/assets/ba6e5101-b017-4d48-a4bc-9b57ba7d2023" /> <img width="212" alt="Arena" src="https://github.com/user-attachments/assets/431c3a78-f485-40e2-b942-b1a4e6202e0c" /> <img width="137" alt="DoT warning" src="https://raw.githubusercontent.com/nidas-wow-oss/Nidhaus_UnitFrames/readme-images/images/arena-dot-warning.png" />
 
 | Marcos de grupo | Objetivos del grupo | NiceDamage |
 |:-:|:-:|:-:|
@@ -44,7 +44,7 @@ una partida; Shift + Alt + arrastrar mueve los cinco marcos juntos).
 
 ### Diminishing Returns
 
-<img src="images/arena-dr-panel.png" width="555" alt="Opciones de DR" /> <img src="images/arena-dr-ingame.png" width="316" alt="Iconos de DR al lado de los marcos de arena" />
+<img src="https://raw.githubusercontent.com/nidas-wow-oss/Nidhaus_UnitFrames/readme-images/images/arena-dr-panel.png" width="555" alt="Opciones de DR" /> <img src="https://raw.githubusercontent.com/nidas-wow-oss/Nidhaus_UnitFrames/readme-images/images/arena-dr-ingame.png" width="316" alt="Iconos de DR al lado de los marcos de arena" />
 
 Un icono por categoría de DR en cada enemigo de arena, con un reloj que cuenta hasta que se
 reinicia: **1/2** significa que el próximo CC de ese tipo dura la mitad, **1/4** un cuarto, **X**
@@ -54,7 +54,7 @@ Polimorfia, Sap, Reprensión y las demás.
 De fábrica: iconos de 25 creciendo hacia la izquierda, el reloj prendido, sin borde de color y sin
 el texto "1/2 - 1/4 - X" — en plena pelea el reloj ya te dice lo que necesitás.
 
-<img src="images/arena-dr-categories.png" width="298" alt="Categorías de DR" />
+<img src="https://raw.githubusercontent.com/nidas-wow-oss/Nidhaus_UnitFrames/readme-images/images/arena-dr-categories.png" width="298" alt="Categorías de DR" />
 
 Solo se muestran **Aturdimientos** e **Incapacitaciones**. Las demás categorías siguen contando por
 detrás, así que si tildás una más tarde aparece ya al día. *Todas*, *Mi clase* y *Ninguna* cambian
@@ -62,7 +62,7 @@ la lista entera de una.
 
 ### DoTs
 
-<img src="images/arena-dot-panel.png" width="389" alt="Opciones de DoT" />
+<img src="https://raw.githubusercontent.com/nidas-wow-oss/Nidhaus_UnitFrames/readme-images/images/arena-dot-panel.png" width="389" alt="Opciones de DoT" />
 
 El daño periódico que tenés puesto en cada enemigo de arena, en iconos chicos al lado de su marco,
 para ver de un vistazo a quién le falta el tuyo y cuándo está por caerse.
@@ -80,7 +80,7 @@ De fábrica: hasta 3 iconos de 14 pegados entre sí, creciendo hacia afuera del 
 
 > **¿Venís de una versión anterior?** Borrá la carpeta vieja `Nidhaus_UnitFrames` antes de copiar la nueva, en vez de superponerla: entre releases se reorganizan archivos y los restos de una build anterior pueden dar errores. Tu configuración vive en la carpeta `WTF` y se conserva.
 
-> Si bajás el repositorio con el botón verde *Code* en vez de la release, la carpeta extraída se va a llamar `Nidhaus_UnitFrames-main` y va a tener las tres carpetas adentro, más `Tests` e `images`, que no son addons. Copiá solamente las tres carpetas `Nidhaus_UnitFrames*` a `Interface/AddOns/` — no copies `Nidhaus_UnitFrames-main` en sí.
+> Si bajás el repositorio con el botón verde *Code* en vez de la release, la carpeta extraída se va a llamar `Nidhaus_UnitFrames-main` y va a tener las tres carpetas adentro. Copiá esas tres carpetas a `Interface/AddOns/` — no copies `Nidhaus_UnitFrames-main` en sí.
 
 ## Comandos
 
@@ -142,7 +142,6 @@ Integración, port a 3.3.5a, corrección de bugs y todo lo demás: **Nidhaus**.
 - Turn Evil tracker: el borde verde que gira ya no parpadea fuera del modo test.
 - Barras de casteo del grupo: el estilo que elegís ahora sí se aplica (se guardaba pero no se usaba).
 - El DR y las marcas de DoT de arena vienen con los valores de fábrica que muestra el README, y el "Resetear todo" ahora también limpia las tablas de Party Targets, Party Cast Bars, Sacred Shield, Sacred Shield Tracker y Seducción.
-- `Tests/`: 173 pruebas escritas en Lua 5.1 pelado, que cargan los archivos reales del addon contra stubs de la API del juego. Se corren con `Tests/run.sh`. No es un addon: no lo copies a `Interface/AddOns/`.
 
 ### v4.3
 - Arreglado el cartel "Nidhaus_UnitFrames has been blocked from an action only available to the Blizzard UI". Varias partes del addon dejaban "manchado" (taint) el código de Blizzard: Party Buffs (llamaba a las funciones de auras de Blizzard y les sacaba el UNIT_AURA a los marcos del grupo), el bloqueo de color de la barra de vida del objetivo y del foco, el repintado del color de clase, los iconos por fila de los buffs y los iconos de los tooltips (les ponían scripts a los tooltips de Blizzard). Ahora todo funciona sin tocar el código de Blizzard.

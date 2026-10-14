@@ -20,7 +20,7 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 
 ## Features
 
-<img src="images/panel.png" width="559" alt="NUF options panel" />
+<img src="https://raw.githubusercontent.com/nidas-wow-oss/Nidhaus_UnitFrames/readme-images/images/panel.png" width="559" alt="NUF options panel" />
 
 - **Unit frames** — player, target, focus, party and boss, with custom skins, class colors and per-frame scale.
 - **Arena** — arena frames in two styles (Default and Flat) with trinkets, spec icons, DR and DoT tracking and countdown, plus a test mode to place them outside a match.
@@ -30,7 +30,7 @@ NUF combines and reworks several existing addons — Eazy Frames and sArena amon
 - **Character Setup** — copy action bars, macros and keybinds between characters (nExtraBars included).
 - **Profiles** — export and import your whole configuration.
 
-<img width="215" alt="Arena" src="https://github.com/user-attachments/assets/ace03d46-ccb9-4952-b3c1-bdbd25d2b891" /> <img width="220" alt="Arena" src="https://github.com/user-attachments/assets/ba6e5101-b017-4d48-a4bc-9b57ba7d2023" /> <img width="212" alt="Arena" src="https://github.com/user-attachments/assets/431c3a78-f485-40e2-b942-b1a4e6202e0c" /> <img width="137" alt="DoT warning" src="images/arena-dot-warning.png" />
+<img width="215" alt="Arena" src="https://github.com/user-attachments/assets/ace03d46-ccb9-4952-b3c1-bdbd25d2b891" /> <img width="220" alt="Arena" src="https://github.com/user-attachments/assets/ba6e5101-b017-4d48-a4bc-9b57ba7d2023" /> <img width="212" alt="Arena" src="https://github.com/user-attachments/assets/431c3a78-f485-40e2-b942-b1a4e6202e0c" /> <img width="137" alt="DoT warning" src="https://raw.githubusercontent.com/nidas-wow-oss/Nidhaus_UnitFrames/readme-images/images/arena-dot-warning.png" />
 
 | New Party Frame | Party Targets | NiceDamage |
 |:-:|:-:|:-:|
@@ -44,7 +44,7 @@ Shift + Alt + drag moves all five frames together).
 
 ### Diminishing Returns
 
-<img src="images/arena-dr-panel.png" width="555" alt="DR options" /> <img src="images/arena-dr-ingame.png" width="316" alt="DR icons next to the arena frames" />
+<img src="https://raw.githubusercontent.com/nidas-wow-oss/Nidhaus_UnitFrames/readme-images/images/arena-dr-panel.png" width="555" alt="DR options" /> <img src="https://raw.githubusercontent.com/nidas-wow-oss/Nidhaus_UnitFrames/readme-images/images/arena-dr-ingame.png" width="316" alt="DR icons next to the arena frames" />
 
 One icon per DR category on each arena enemy, with a clock counting down to the reset: **1/2** means
 the next CC of that kind will last half, **1/4** a quarter, **X** that they are immune. DR is shared
@@ -53,7 +53,7 @@ per category, so the hunter's trap shares it with Polymorph, Sap, Repentance and
 Out of the box: icons of 25 growing to the left, the clock on, no colored border and no
 "1/2 - 1/4 - X" text — the clock already tells you what you need mid-fight.
 
-<img src="images/arena-dr-categories.png" width="298" alt="DR categories" />
+<img src="https://raw.githubusercontent.com/nidas-wow-oss/Nidhaus_UnitFrames/readme-images/images/arena-dr-categories.png" width="298" alt="DR categories" />
 
 Only **Stuns** and **Incapacitates** are shown. The other categories keep counting in the background,
 so ticking one later shows it already up to date. *All*, *My class* and *None* set the whole list
@@ -61,7 +61,7 @@ at once.
 
 ### DoTs
 
-<img src="images/arena-dot-panel.png" width="389" alt="DoT options" />
+<img src="https://raw.githubusercontent.com/nidas-wow-oss/Nidhaus_UnitFrames/readme-images/images/arena-dot-panel.png" width="389" alt="DoT options" />
 
 The periodic damage you have running on each arena enemy, as small icons beside their frame, so you
 can see at a glance who is missing yours and when it is about to fall off.
@@ -82,9 +82,8 @@ label or the red border.
 > errors. Your saved settings live in the `WTF` folder and are preserved.
 
 > If you download the repository with the green *Code* button instead of the release, the extracted folder
-> will be named `Nidhaus_UnitFrames-main` and will contain the three addon folders inside it, plus `Tests`
-> and `images`, which are not addons. Copy only the three `Nidhaus_UnitFrames*` folders out of it into
-> `Interface/AddOns/` — do not copy `Nidhaus_UnitFrames-main` itself.
+> will be named `Nidhaus_UnitFrames-main` and will contain the three addon folders inside it. Copy those
+> three folders out of it into `Interface/AddOns/` — do not copy `Nidhaus_UnitFrames-main` itself.
 
 ## Slash Commands
 
@@ -147,7 +146,6 @@ Integration, porting to 3.3.5a, bug fixing and everything else: **Nidhaus**.
 - Turn Evil tracker: the spinning green border no longer flickers outside test mode.
 - Party cast bars: the style you pick is now actually applied (it was saved but ignored).
 - Arena DR and DoT marks ship with the factory defaults shown in the README, and "Reset all" now also clears the Party Targets, Party Cast Bars, Sacred Shield, Sacred Shield Tracker and Seduction stores.
-- `Tests/`: 173 checks written in plain Lua 5.1 that load the real addon files against stubs of the game API. Run them with `Tests/run.sh`. Not an addon — do not copy it into `Interface/AddOns/`.
 
 ### v4.3
 - Fixed the "Nidhaus_UnitFrames has been blocked from an action only available to the Blizzard UI" popup. Several parts of the addon were leaving Blizzard's code "tainted": Party Buffs (it called Blizzard's aura functions and took UNIT_AURA away from the party frames), the target/focus health bar color lock, the class color refresh, the buffs-per-row setting and the tooltip icons (they added scripts to Blizzard's tooltips). They all work now without touching Blizzard's code.
