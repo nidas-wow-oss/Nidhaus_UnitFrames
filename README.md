@@ -71,19 +71,20 @@ label or the red border.
 
 ## Installation
 
-1. Download **v4.3** from the [releases page](../../releases/latest).
-2. Extract the archive. You will get two folders: `Nidhaus_UnitFrames` and `Nidhaus_UnitFrames_Config`.
-3. Copy **both** folders into your WoW `Interface/AddOns/` directory.
+1. Download **v4.4** from the [releases page](../../releases/latest).
+2. Extract the archive. You will get three folders: `Nidhaus_UnitFrames`, `Nidhaus_UnitFrames_Config` and `Nidhaus_UnitFrames_Arena`.
+3. Copy **all three** folders into your WoW `Interface/AddOns/` directory.
 4. Restart the WoW client, or type `/reload` if you are already in-game.
-5. Enable both addons on the character selection screen.
+5. Enable **all three** addons on the character selection screen. `Nidhaus_UnitFrames_Arena` is new in v4.4 and holds the arena frames: if it is not ticked, arena will not work.
 
 > **Updating from an older version?** Delete the old `Nidhaus_UnitFrames` folder before copying the new
 > one instead of overwriting it — files get reorganised between releases, and leftovers can cause
 > errors. Your saved settings live in the `WTF` folder and are preserved.
 
 > If you download the repository with the green *Code* button instead of the release, the extracted folder
-> will be named `Nidhaus_UnitFrames-main` and will contain both addon folders inside it. Copy the two
-> folders out of it into `Interface/AddOns/` — do not copy `Nidhaus_UnitFrames-main` itself.
+> will be named `Nidhaus_UnitFrames-main` and will contain the three addon folders inside it, plus `Tests`
+> and `images`, which are not addons. Copy only the three `Nidhaus_UnitFrames*` folders out of it into
+> `Interface/AddOns/` — do not copy `Nidhaus_UnitFrames-main` itself.
 
 ## Slash Commands
 
@@ -136,6 +137,17 @@ adaptations, and the credit for those belongs to their original authors:
 Integration, porting to 3.3.5a, bug fixing and everything else: **Nidhaus**.
 
 ## Changelog
+
+### v4.4
+- **The arena modules are now a separate addon, `Nidhaus_UnitFrames_Arena`, loaded on demand.** It loads when you enter an arena, when you open the options panel or when you use Move Everything; the rest of the time it is not read at all. That is 360 KB less compiled Lua on every login. Install it along with the other two: if it is not enabled at the character selection screen, arena will not work.
+- **One owner per position.** Two systems were saving the position of the same frame (Move Everything's own store and each module's), and whichever wrote last won. That is where "Reset does nothing" and "the frame goes back by itself after a /reload" came from — Sacred Shield, Seduction, the Gargoyle tracker, the arena timers, the pet frame. Now, if a module has its own store, the module wins: Move Everything still lets you drag the frame, but it hands the saving over.
+- Party pets: their own page in the options panel (Frames > Party pet), crowd control shown on the portrait, owner class colour, dispellable auras highlighted, dimmed when out of range, and a clock with seconds on the auras. The aura cooldown now spins the same way as Party Buffs.
+- Arena timers: a button to move all four at once, and **Lock** really locks them — not even Alt + drag moves them. The state is saved between sessions.
+- Waterfall and the Ring of Valor pillars use the same font as the Shadow Sight eye (`PVPInfoTextFont`), and the pillar number sits in its own layer above the cooldown sweep, so it is no longer darkened by it.
+- Turn Evil tracker: the spinning green border no longer flickers outside test mode.
+- Party cast bars: the style you pick is now actually applied (it was saved but ignored).
+- Arena DR and DoT marks ship with the factory defaults shown in the README, and "Reset all" now also clears the Party Targets, Party Cast Bars, Sacred Shield, Sacred Shield Tracker and Seduction stores.
+- `Tests/`: 173 checks written in plain Lua 5.1 that load the real addon files against stubs of the game API. Run them with `Tests/run.sh`. Not an addon — do not copy it into `Interface/AddOns/`.
 
 ### v4.3
 - Fixed the "Nidhaus_UnitFrames has been blocked from an action only available to the Blizzard UI" popup. Several parts of the addon were leaving Blizzard's code "tainted": Party Buffs (it called Blizzard's aura functions and took UNIT_AURA away from the party frames), the target/focus health bar color lock, the class color refresh, the buffs-per-row setting and the tooltip icons (they added scripts to Blizzard's tooltips). They all work now without touching Blizzard's code.

@@ -72,15 +72,15 @@ De fábrica: hasta 3 iconos de 14 pegados entre sí, creciendo hacia afuera del 
 
 ## Instalación
 
-1. Descargá la **v4.3** desde la [página de releases](../../releases/latest).
-2. Extraé el archivo. Vas a obtener dos carpetas: `Nidhaus_UnitFrames` y `Nidhaus_UnitFrames_Config`.
-3. Copiá **las dos** carpetas a tu directorio `Interface/AddOns/` de WoW.
+1. Descargá la **v4.4** desde la [página de releases](../../releases/latest).
+2. Extraé el archivo. Vas a obtener tres carpetas: `Nidhaus_UnitFrames`, `Nidhaus_UnitFrames_Config` y `Nidhaus_UnitFrames_Arena`.
+3. Copiá **las tres** carpetas a tu directorio `Interface/AddOns/` de WoW.
 4. Reiniciá el cliente, o escribí `/reload` si ya estás en el juego.
-5. Activá los dos addons en la pantalla de selección de personaje.
+5. Activá **los tres** addons en la pantalla de selección de personaje. `Nidhaus_UnitFrames_Arena` es nuevo en la v4.4 y trae los marcos de arena: si no lo tildás, la arena no anda.
 
 > **¿Venís de una versión anterior?** Borrá la carpeta vieja `Nidhaus_UnitFrames` antes de copiar la nueva, en vez de superponerla: entre releases se reorganizan archivos y los restos de una build anterior pueden dar errores. Tu configuración vive en la carpeta `WTF` y se conserva.
 
-> Si bajás el repositorio con el botón verde *Code* en vez de la release, la carpeta extraída se va a llamar `Nidhaus_UnitFrames-main` y va a tener las dos carpetas adentro. Copiá esas dos carpetas a `Interface/AddOns/` — no copies `Nidhaus_UnitFrames-main` en sí.
+> Si bajás el repositorio con el botón verde *Code* en vez de la release, la carpeta extraída se va a llamar `Nidhaus_UnitFrames-main` y va a tener las tres carpetas adentro, más `Tests` e `images`, que no son addons. Copiá solamente las tres carpetas `Nidhaus_UnitFrames*` a `Interface/AddOns/` — no copies `Nidhaus_UnitFrames-main` en sí.
 
 ## Comandos
 
@@ -132,6 +132,17 @@ NUF está construido sobre el trabajo de mucha gente. El motor y varios módulos
 Integración, port a 3.3.5a, corrección de bugs y todo lo demás: **Nidhaus**.
 
 ## Changelog
+
+### v4.4
+- **Los módulos de arena ahora son un addon aparte, `Nidhaus_UnitFrames_Arena`, que se carga a pedido.** Se carga al entrar a una arena, al abrir el panel de opciones o al usar Mover todo; el resto del tiempo ni se lee. Son 360 KB menos de Lua compilado en cada login. Instalalo junto con los otros dos: si no está activado en la pantalla de selección de personaje, la arena no anda.
+- **Un solo dueño por posición.** Había dos sistemas guardando la posición del mismo marco (la tabla de Mover todo y la propia de cada módulo), y ganaba el que escribía último. De ahí venían el "Reset no hace nada" y el "el marco vuelve solo después de un /reload": Sacred Shield, Seducción, el tracker de la gárgola, los timers de arena, el marco de la mascota. Ahora, si el módulo tiene tabla propia, manda el módulo: Mover todo te deja arrastrar igual, pero le pasa el guardado.
+- Mascotas del grupo: hoja propia en el panel (Frames > Party pet), el CC en el retrato, color de clase del dueño, resaltado de lo que podés dispelear, atenuado fuera de rango, y reloj con segundos en las auras. El cooldown de las auras ahora gira igual que el de Party Buffs.
+- Timers de arena: un botón para mover los cuatro juntos, y **Fijar** los fija de verdad — no se mueven ni con Alt + arrastrar. El estado se guarda entre sesiones.
+- El Waterfall y los pilares del Círculo del Valor usan la misma letra que el ojo (Vista de las Sombras, `PVPInfoTextFont`), y el número del pilar va en su propia capa por encima del barrido del reloj, así que ya no se ve oscurecido.
+- Turn Evil tracker: el borde verde que gira ya no parpadea fuera del modo test.
+- Barras de casteo del grupo: el estilo que elegís ahora sí se aplica (se guardaba pero no se usaba).
+- El DR y las marcas de DoT de arena vienen con los valores de fábrica que muestra el README, y el "Resetear todo" ahora también limpia las tablas de Party Targets, Party Cast Bars, Sacred Shield, Sacred Shield Tracker y Seducción.
+- `Tests/`: 173 pruebas escritas en Lua 5.1 pelado, que cargan los archivos reales del addon contra stubs de la API del juego. Se corren con `Tests/run.sh`. No es un addon: no lo copies a `Interface/AddOns/`.
 
 ### v4.3
 - Arreglado el cartel "Nidhaus_UnitFrames has been blocked from an action only available to the Blizzard UI". Varias partes del addon dejaban "manchado" (taint) el código de Blizzard: Party Buffs (llamaba a las funciones de auras de Blizzard y les sacaba el UNIT_AURA a los marcos del grupo), el bloqueo de color de la barra de vida del objetivo y del foco, el repintado del color de clase, los iconos por fila de los buffs y los iconos de los tooltips (les ponían scripts a los tooltips de Blizzard). Ahora todo funciona sin tocar el código de Blizzard.
