@@ -12,13 +12,19 @@ local K, C, L = unpack(ns);
 -- Mover: Alt + click izquierdo y arrastrar.
 -- =========================================================
 
--- CADA 25 SEGUNDOS, TAMBIEN EL PRIMERO.
+-- EL PRIMERO A LOS 50 SEGUNDOS, DESPUES CADA 25.
 --
--- Antes el primer ciclo era de 45s (el valor del codigo de TrinityCore) y
--- recien despues 25. En el servidor los pilares cambian cada 25s desde el
--- arranque, asi que el timer quedaba 20s corrido en todos los ciclos.
-local FIRST_CYCLE  = 25;
-local NEXT_CYCLE   = 25;
+-- Esto cambio dos veces y conviene dejar escrito por que.
+--
+-- Empezo en 45 s (el valor del codigo de TrinityCore) y despues 25. Como
+-- en el servidor los ciclos que se repiten son de 25, se bajo el primero
+-- a 25 tambien -- y ahi quedo corrido al reves: el primer pilar sale a
+-- los 50 s de que se abren las puertas, no a los 25. Medido en el
+-- servidor, que es lo unico que vale: el codigo de TrinityCore no coincide.
+--
+-- Asi que son dos numeros distintos y no uno solo.
+local FIRST_CYCLE  = 50;   -- desde que empieza la arena hasta el 1er pilar
+local NEXT_CYCLE   = 25;   -- y de ahi en adelante
 local KEY          = "RoVPillars";
 
 -- ---------------------------------------------------------
@@ -206,8 +212,12 @@ local function Start(duration, isTest)
 end
 
 K.ArenaTimerTests = K.ArenaTimerTests or {};
+-- La PRUEBA usa el ciclo corto, no el primero: sirve para acomodar el
+-- marco, y esperar 50 s para eso no tiene sentido. Ademas ArenaEndTimer
+-- corta la prueba a los 25 s, asi que con FIRST_CYCLE nunca se veia
+-- llegar a 0.
 K.ArenaTimerTests[KEY] = function()
-	if frame:IsShown() and testMode then Stop(); else Start(FIRST_CYCLE, true); end
+	if frame:IsShown() and testMode then Stop(); else Start(NEXT_CYCLE, true); end
 end;
 
 -- /nuftimers: arrancar / cortar la prueba SIN tocar un timer de verdad
@@ -215,7 +225,7 @@ end;
 K.ArenaTimerTestStart = K.ArenaTimerTestStart or {};
 K.ArenaTimerTestStop  = K.ArenaTimerTestStop  or {};
 K.ArenaTimerTestStart[KEY] = function()
-	if not frame:IsShown() then Start(FIRST_CYCLE, true); end
+	if not frame:IsShown() then Start(NEXT_CYCLE, true); end
 end;
 K.ArenaTimerTestStop[KEY] = function()
 	if testMode then Stop(); end

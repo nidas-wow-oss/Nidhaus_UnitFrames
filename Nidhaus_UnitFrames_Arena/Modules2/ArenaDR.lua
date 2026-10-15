@@ -765,6 +765,24 @@ ev:SetScript("OnEvent", function(self, event, ...)
 	end
 end);
 
+-- ---------------------------------------------------------
+-- ARRANQUE AL CARGAR
+--
+-- Hasta aca este modulo solo reaccionaba a eventos. Con el paquete de
+-- arena a pedido eso no alcanza: la carga la dispara el propio
+-- PLAYER_ENTERING_WORLD de entrar a la arena (Core/ArenaLoader.lua del
+-- addon principal), asi que este archivo empieza a correr MIENTRAS ese
+-- evento se esta repartiendo y no lo oye nunca.
+--
+-- Y el combat log se registra adentro de ApplyState. Sin esta llamada, en
+-- esa primera arena el modulo no se enteraba de NADA: ni un CC, ni un DoT.
+--
+-- Es el mismo bug que dejaba los trinkets sin aparecer. ApplyState se
+-- puede llamar de mas sin problema: compara contra 'listening' y
+-- 'enabled' antes de tocar algo.
+-- ---------------------------------------------------------
+ApplyState();
+
 -- El modo Test de arena prende y apaga el mouse de los trinkets al abrirse
 -- y al cerrarse (ArenaMover). Es el mismo momento para la vista previa.
 if type(K.SetTrinketMouseState) == "function" then
