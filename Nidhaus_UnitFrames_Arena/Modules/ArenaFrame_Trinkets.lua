@@ -291,8 +291,45 @@ function Core:TryCreate()
 	end
 
 	self.created = true;
-	self:RegisterEvent("PLAYER_ENTERING_WORLD");
 	self:PLAYER_ENTERING_WORLD();
+end
+
+-- =========================================================
+-- ARRANQUE QUE NO DEPENDE DE UN EVENTO QUE YA PASO
+--
+-- Los iconos se armaban al oir el ADDON_LOADED de Blizzard_ArenaUI. Eso
+-- andaba mientras este archivo vivia en el addon principal, que se carga
+-- al entrar al juego: ya estaba escuchando mucho antes de que a nadie se
+-- le ocurriera abrir una arena.
+--
+-- Con el paquete de arena a pedido se dio vuelta. La forma NORMAL de que
+-- este archivo exista es justamente ese ADDON_LOADED: es el que dispara
+-- la carga (ver Core/ArenaLoader.lua del addon principal). O sea que el
+-- archivo empieza a correr MIENTRAS el evento se esta repartiendo, y
+-- registrarse para el llega tarde: no se oye nunca. addonLoaded se queda
+-- en false, TryCreate no corre y no aparece NINGUN trinket -- y como el
+-- combat log se registra recien ahi, tampoco se marca el cooldown.
+--
+-- Por eso ya no se depende del evento:
+--   * si Blizzard_ArenaUI YA esta cargado, se arma en el acto;
+--   * PLAYER_ENTERING_WORLD queda registrado SIEMPRE (antes se registraba
+--     adentro de TryCreate, o sea solo si ya habia salido bien: si fallaba
+--     una vez no habia segundo intento);
+--   * ARENA_OPPONENT_UPDATE reintenta, que es el momento en que los
+--     marcos enemigos existen con seguridad.
+--
+-- No se fuerza LoadAddOn("Blizzard_ArenaUI") aca: si todavia no esta, se
+-- arma en alguno de los reintentos. Cargarlo de prepo en cada login seria
+-- devolver la memoria que se gano al separar el paquete de arena.
+-- =========================================================
+function Core:Bootstrap()
+	if self.created then return true; end
+	if not self.addonLoaded and IsAddOnLoaded and IsAddOnLoaded("Blizzard_ArenaUI") then
+		self.addonLoaded = true;
+	end
+	if not self.addonLoaded then return false; end
+	self:ApplyState();
+	return self.created and true or false;
 end
 
 function Core:ShowAll()
@@ -364,6 +401,12 @@ function Core:ADDON_LOADED(addonName)
 end
 
 function Core:PLAYER_ENTERING_WORLD()
+	-- Reintento. Entrar a una arena puede ser la primera vez que
+	-- Blizzard_ArenaUI existe; Bootstrap corta solo si ya esta armado, y el
+	-- guard de aca es el que corta la recursion (TryCreate vuelve a llamar
+	-- a esta funcion al terminar).
+	if not self.created then self:Bootstrap(); end
+
 	-- Los de party se arman SIEMPRE que su propio checkbox este activo,
 	-- sin importar el estado del rastreo de arena.
 	self:SetupPartyTrinkets();
@@ -664,6 +707,8 @@ end
 
 -- Cada vez que un enemigo aparece o el grupo cambia, actualizar el cache
 function Core:ARENA_OPPONENT_UPDATE()
+	-- Tambien es reintento: aca los marcos enemigos existen con seguridad.
+	if not self.created then self:Bootstrap(); end
 	if AnyTrinketEnabled() then self:RefreshGUIDCache(); end
 end
 
@@ -745,3 +790,15 @@ function K.UpdateTrinketBorderColors()
 		end
 	end
 end
+
+-- ---------------------------------------------------------
+-- ENGANCHES DE ARRANQUE
+--
+-- Ver "ARRANQUE QUE NO DEPENDE DE UN EVENTO QUE YA PASO", mas arriba.
+-- Los dos eventos quedan registrados desde que el archivo carga, no desde
+-- que TryCreate sale bien, y se intenta armar una vez en el acto por si
+-- Blizzard_ArenaUI ya estaba (que es el caso normal ahora).
+-- ---------------------------------------------------------
+Core:RegisterEvent("PLAYER_ENTERING_WORLD");
+Core:RegisterEvent("ARENA_OPPONENT_UPDATE");
+Core:Bootstrap();
