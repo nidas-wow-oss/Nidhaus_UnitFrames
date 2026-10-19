@@ -55,7 +55,7 @@ local function GetSquareBorder()
 	-- Era mentira. En Media\Minimap\borders\square\ hay un Blizzard.tga,
 	-- hecho justamente para esto. Nunca se cargaba por otro motivo (mira
 	-- STYLE_FILE en ApplyMinimapBorderStyle), y en vez de ir a mirar la
-	-- carpeta me inventé una explicacion que sonaba razonable.
+	-- carpeta me inventÃ© una explicacion que sonaba razonable.
 	--
 	-- Este filo queda como estaba: hoy no lo usa ningun estilo.
 	local THICK = 3;

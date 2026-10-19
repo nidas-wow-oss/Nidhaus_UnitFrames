@@ -1,3 +1,12 @@
+## NOTA: este .toc NO se usa.
+## PartyCastingBars vive DENTRO de Nidhaus_UnitFrames, y WoW solo lee el
+## .toc de la carpeta raiz de un addon. Los archivos se cargan desde
+## Nidhaus_UnitFrames.xml y PartyCastingBarsDB esta declarado en el .toc
+## de NUF -- los colores, la escala y el estilo se guardan ahi
+## (ver PCB_SaveColors / PCB_LoadSaved en PartyCastingBars.lua).
+## Las SavedVariables que declara este archivo NUNCA se registran.
+## Se deja como referencia del addon original y su autor.
+
 ## Interface: 30000
 ## Title: PartyCastingBars
 ## Title-deDE: Gruppen-Zauberleisten

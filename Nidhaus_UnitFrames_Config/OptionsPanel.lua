@@ -913,7 +913,7 @@ local function CreateDropdown(parent, labelText, setting, options, xOffset, yOff
 	-- EL CUADRO MUESTRA LA ETIQUETA, NO EL VALOR.
 	--
 	-- Antes ponia btn.value, que es la clave interna. Mientras clave y
-	-- etiqueta coincidian no se notaba, pero en español ya no coinciden
+	-- etiqueta coincidian no se notaba, pero en espaÃ±ol ya no coinciden
 	-- (y con la lista de fuentes el valor es un numero, asi que se
 	-- hubiera leido "10" en vez del nombre).
 	local function TextFor(value)

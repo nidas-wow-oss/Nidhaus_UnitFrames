@@ -11,7 +11,11 @@
 	<!-- LayoutCore va ANTES que todo el que se anote en el: los modulos
 	     llaman a K.LayoutRegisterStore al cargarse. -->
 	<Script file="Core\LayoutCore.lua"/>
-	<!-- Caja negra de las barras. Apagada por defecto: /nufwatch on -->
+	<!-- Core/LayoutWatch.lua (la caja negra de las barras, /nufwatch) es una
+	     herramienta de diagnostico y NO se publica: esta en .gitignore y no
+	     se carga desde aca. Si hace falta depurar las barras, se descomenta
+	     la linea de abajo con el archivo presente en el disco.
+	     <Script file="Core\LayoutWatch.lua"/> -->
 	<Script file="Core\BarBaseline.lua"/>
 	<!-- Registro central de escalas: debe cargar antes que los modulos -->
 	<Script file="Core\ScaleAPI.lua"/>

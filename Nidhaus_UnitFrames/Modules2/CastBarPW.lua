@@ -257,7 +257,7 @@ local function StyleOne(barName)
 			border:SetVertexColor(unpack(BORDER_TINT));
 		end
 
-		-- UN SOLO DUEÑO POR TEXTURA.
+		-- UN SOLO DUEÃ‘O POR TEXTURA.
 		--
 		-- Si el addon Nidhaus Frame Borders esta dibujando su filo fino
 		-- alrededor de esta barra, es el quien esconde el marco de
@@ -406,7 +406,7 @@ end
 -- en un store que no es suyo (globalPos.CastBar, de Move Everything) y no
 -- la devolvia nunca. Al destildar "Custom Cast Bar" volvia el arte de
 -- Blizzard pero la barra se quedaba a 1.2, que es el numero de pw: barra
--- de Blizzard con tamaño de pw. Eso es el "se bugea el tamaño".
+-- de Blizzard con tamaÃ±o de pw. Eso es el "se bugea el tamaÃ±o".
 --
 -- Quien toma prestado devuelve. Se guarda el valor que habia ANTES de la
 -- primera aplicacion y se repone al apagar, por K.SetGlobalFrameScale para
@@ -417,7 +417,7 @@ end
 -- El caso raro: si el modulo ya venia encendido del login, lo que hay
 -- guardado ES nuestro propio valor de la sesion pasada, no el del usuario.
 -- No hay forma de distinguirlos, asi que en ese caso se devuelve 1, que es
--- el tamaño con el que Blizzard la dibuja.
+-- el tamaÃ±o con el que Blizzard la dibuja.
 local function CapturePlayerScale(target)
 	if playerScaleBefore ~= nil then return; end
 	local v;
@@ -453,7 +453,7 @@ end
 -- icono flotante, el marco subido 26px), y eso alcanza para que Blizzard
 -- la reacomode y la posicion del usuario se pierda hasta el /reload. Por
 -- eso, en los dos sentidos del toggle, se le pide a Move Everything que
--- reponga LO SUYO. Un solo dueño, y el toggle no le compite.
+-- reponga LO SUYO. Un solo dueÃ±o, y el toggle no le compite.
 local function ReapplyPlayerPosition()
 	if K.RestoreGlobalPosition then
 		pcall(K.RestoreGlobalPosition, "CastBar");

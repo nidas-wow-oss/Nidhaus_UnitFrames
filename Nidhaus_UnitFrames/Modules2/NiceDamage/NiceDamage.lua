@@ -11,7 +11,7 @@ local DEFAULT_FONT = "Fonts\\FRIZQT__.TTF";
 
 -- flags: bandera de SetFont. Vacio es sin contorno, "OUTLINE" con contorno
 -- fino. Solo pesa en la fuente de curaciones y auras (CombatTextFont, que
--- es un objeto de fuente de verdad). El numero de daño flotante sale de la
+-- es un objeto de fuente de verdad). El numero de daÃ±o flotante sale de la
 -- global DAMAGE_TEXT_FONT, que es una RUTA pelada: el cliente le pone el
 -- contorno el solo y no hay donde elegirlo.
 local fontList = {

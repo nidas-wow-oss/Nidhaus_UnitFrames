@@ -1573,7 +1573,7 @@ function K.PopulateArenaTab(panel)
 		-- suelta. Ahora la calculadora se MUDA a este hueco: es la misma,
 		-- no una copia (mira K.APC_Dock en Modules2/ArenaPointsCalc.lua).
 		--
-		-- El hueco mide lo que mide la calculadora. Se le da tamaño propio
+		-- El hueco mide lo que mide la calculadora. Se le da tamaÃ±o propio
 		-- y no se lo ancla a los cuatro lados porque el pane tiene scroll:
 		-- con anclajes se estiraria y la ventana quedaria deformada.
 		apcHost = CreateFrame("Frame", "NidhausArenaCalcHost", apcBlock);

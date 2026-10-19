@@ -10,7 +10,7 @@ local locale = GetLocale();
 local isSpanish = (locale == "esES" or locale == "esMX");
 
 -- NOTA: los textos que solo usa el panel de opciones viven en
--- Nidhaus_UnitFrames_Config/Locale.lua (ese addon se carga recien al abrir
+-- Nidhaus_UnitFrames_Config/SubTabs.lua (ese addon se carga recien al abrir
 -- el panel, asi que no ocupan memoria mientras jugas). Aca quedan los que
 -- usa el addon principal. Un texto nuevo del panel va alla.
 
@@ -369,7 +369,7 @@ L["MINIMAP_DRAG"]                = "|cffFFFFFFDrag:|r Move icon";
 -- Faltaban ENTERAS: el codigo las pedia con L["..."] or "ingles", asi
 -- que la lista salia en ingles en los dos idiomas y nadie lo notaba,
 -- porque el texto de respaldo estaba ahi mismo. Definidas aca, la
--- version en español de mas abajo ya tiene que traducir.
+-- version en espaÃ±ol de mas abajo ya tiene que traducir.
 L["CMDLIST_GENERAL"] = "General";
 L["CMDLIST_NUF"] = "Open the options panel";
 L["CMDLIST_NUF_HELP"] = "This list";

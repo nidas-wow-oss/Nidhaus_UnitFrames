@@ -794,7 +794,7 @@ end
 
 -- Y AL SUBIRSE A UN VEHICULO.
 --
--- Cuando un compañero se sube a algo, Blizzard llama a
+-- Cuando un compaÃ±ero se sube a algo, Blizzard llama a
 -- PartyMemberFrame_ToVehicleArt: esconde la textura normal del marco y
 -- muestra la de vehiculo, que es mas grande y tiene otra forma. Al bajarse
 -- llama a ToPlayerArt y las vuelve a cambiar.

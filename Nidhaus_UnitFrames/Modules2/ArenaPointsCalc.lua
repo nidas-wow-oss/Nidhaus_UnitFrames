@@ -588,7 +588,7 @@ function K.APC_Undock()
     mainFrame:SetParent((apcPrev and apcPrev.parent) or UIParent)
     mainFrame:SetFrameStrata((apcPrev and apcPrev.strata) or "DIALOG")
     mainFrame:ClearAllPoints()
-    -- Su tamaño propio: al acoplarla no se toco, pero se repone por las
+    -- Su tamaÃ±o propio: al acoplarla no se toco, pero se repone por las
     -- dudas de que el panel se lo haya cambiado.
     mainFrame:SetWidth(300)
     mainFrame:SetHeight(248)
