@@ -121,11 +121,23 @@ local MOVABLES = {
 	-- esquina superior derecha, asi que el recuadro quedaba corrido a la
 	-- izquierda respecto de los iconos que realmente se ven. El corrimiento
 	-- lo acomoda; es un solo numero si hay que afinarlo.
+	-- EL RECUADRO SE MIDE SOBRE LOS ICONOS DE VERDAD.
+	--
+	-- El ancla mide 1x1 (ver la cabecera de AuraAnchor.lua), asi que sin
+	-- esto caia en el camino de "marco sin tamaño util" y se dibujaba una
+	-- caja fija de 200x60 con un corrimiento de 20 puesto a ojo. No tenia
+	-- nada que ver con el bloque: no cambiaba con los iconos por fila ni
+	-- con la escala, que es justo lo que se pedia.
+	--
+	-- Midiendo los iconos, el recuadro ES el bloque: si lo dejas en 4 por
+	-- fila, mide cuatro iconos de ancho; si subis la escala, crece.
+	-- overlayOffset queda para cuando no hay ninguna aura activa y hay que
+	-- volver a la caja fija.
 	{ key = "Buffs",      group = "extra", frames = {"NUF_BuffAnchor"},   label = "Buffs",   scalable = true, auraAnchor = true,
+	  buttons = { prefix = "BuffButton", count = BUFF_MAX_DISPLAY or 32 },
 	  overlayOffset = { 20, 0 } },
-	-- Mismo corrimiento que Buffs: si no, los dos recuadros quedaban
-	-- desalineados entre si aunque las auras si esten alineadas.
 	{ key = "Debuffs",    group = "extra", frames = {"NUF_DebuffAnchor"}, label = "Debuffs", scalable = true, debuffAnchor = true,
+	  buttons = { prefix = "DebuffButton", count = DEBUFF_MAX_DISPLAY or 16 },
 	  overlayOffset = { 20, 0 } },
 	-- La barra mide 195x13 pero su marco decorado sobresale bastante: con
 	-- SetAllPoints el recuadro quedaba visiblemente adentro de la barra.

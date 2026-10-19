@@ -320,6 +320,65 @@ K.ReanchorDebuffs = ReanchorDebuffs;
 K.ReanchorAuras = ReanchorAuras;
 
 -- ---------------------------------------------------------
+-- LA ESCALA VA EN LOS ICONOS, NO EN EL ANCLA
+--
+-- Los sliders de "Buff scale" y "Debuff scale" no hacian absolutamente
+-- nada, ni al moverlos ni despues de un /reload, y el motivo es que el
+-- ancla no es el PADRE de los iconos.
+--
+-- Este modulo no reparenta nada a proposito (ver la cabecera del
+-- archivo): solo re-ancla BuffButton1 al ancla dentro del hook de
+-- Blizzard. Anclar no es colgar. Los iconos siguen siendo hijos de
+-- BuffFrame, asi que la escala que ScaleAPI le ponia al ancla no los
+-- alcanzaba: se estaba escalando un marco de 1x1 invisible.
+--
+-- La escala se le pone a cada icono. Como Blizzard los encadena uno al
+-- siguiente, con la misma escala en todos el bloque entero crece parejo
+-- y los huecos acompañan.
+--
+-- Se aplica en dos momentos: cuando el slider cambia el valor (el hook de
+-- abajo) y cada vez que se re-anclan las auras, que es cuando pueden
+-- haber aparecido iconos nuevos sin escalar.
+-- ---------------------------------------------------------
+local BUFF_ICONS   = BUFF_MAX_DISPLAY   or 32;
+local DEBUFF_ICONS = DEBUFF_MAX_DISPLAY or 16;
+
+local function ScaleIcons(prefix, count, scale)
+	for i = 1, count do
+		local b = _G[prefix .. i];
+		if b and b.SetScale then pcall(b.SetScale, b, scale); end
+	end
+end
+
+local function ApplyBuffIconScale()
+	local s = BuffScale();
+	ScaleIcons("BuffButton", BUFF_ICONS, s);
+	-- Los encantamientos temporales viven en la misma fila.
+	ScaleIcons("TempEnchant", 3, s);
+end
+
+local function ApplyDebuffIconScale()
+	ScaleIcons("DebuffButton", DEBUFF_ICONS, DebuffScale());
+end
+
+K.ApplyAuraIconScales = function()
+	ApplyBuffIconScale();
+	ApplyDebuffIconScale();
+end
+
+-- El slider escribe con K.SetModuleScale; de ahi se engancha para que el
+-- cambio se vea en el acto y no en la proxima actualizacion de auras.
+if type(K.SetModuleScale) == "function" then
+	hooksecurefunc(K, "SetModuleScale", function(id)
+		if id == "PlayerBuffs" then
+			ApplyBuffIconScale();
+		elseif id == "PlayerDebuffs" then
+			ApplyDebuffIconScale();
+		end
+	end);
+end
+
+-- ---------------------------------------------------------
 -- Iconos por fila (tecnica tomada de KPack/BuffFrame)
 --
 -- Blizzard arma las filas de buffs leyendo la global BUFFS_PER_ROW justo
@@ -378,15 +437,24 @@ function K.ApplyAuraIconsPerRow()
 	if K.ReanchorDebuffs then K.ReanchorDebuffs(); end
 end
 
+-- En los dos hooks se re-aplica tambien la escala: Blizzard crea los
+-- iconos a medida que hacen falta, y uno recien creado nace en 1. Sin
+-- esto, con la escala subida los buffs nuevos aparecian mas chicos que
+-- los que ya estaban.
 if type(BuffFrame_UpdateAllBuffAnchors) == "function" then
 	hooksecurefunc("BuffFrame_UpdateAllBuffAnchors", function()
+		if K.ApplyAuraIconScales then K.ApplyAuraIconScales(); end
 		ReanchorAuras();
 		ReanchorDebuffs();
 	end);
 end
 
 if type(BuffFrame_Update) == "function" then
-	hooksecurefunc("BuffFrame_Update", function() ReanchorAuras(); ReanchorDebuffs(); end);
+	hooksecurefunc("BuffFrame_Update", function()
+		if K.ApplyAuraIconScales then K.ApplyAuraIconScales(); end
+		ReanchorAuras();
+		ReanchorDebuffs();
+	end);
 end
 
 -- Blizzard tambien reordena en este evento
