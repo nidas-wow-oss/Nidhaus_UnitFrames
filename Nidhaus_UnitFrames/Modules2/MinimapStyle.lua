@@ -340,6 +340,29 @@ function K.ApplyMinimapBorderStyle()
 	local style = BorderStyle();
 	local cs = GetCorners();
 
+	-- SIN BORDE.
+	--
+	-- Va primero y corta: es la unica opcion que no dibuja nada, asi que
+	-- no tiene que pasar por ninguna de las ramas de abajo.
+	--
+	-- Cada estilo apaga a los otros al entrar, pero ninguno apagaba el aro
+	-- de Blizzard SIN poner algo en su lugar: el aro lo prende o lo apaga
+	-- ApplyMinimapShape segun la forma, y esta funcion corre despues
+	-- (mira el final de ApplyMinimapShape). Por eso alcanza con apagarlo
+	-- aca, y por eso al volver a cualquier otro estilo reaparece solo.
+	--
+	-- MinimapBorderTop -- la chapa curva con el nombre de la zona -- NO se
+	-- toca: tiene su propia casilla ("Hide Zone Name Background") y
+	-- ApplyMinimapDecorations corre despues que esto, asi que apagarla
+	-- aca no duraria ni un cuadro.
+	if style == "None" then
+		if cs then for _, tx in ipairs(cs) do tx:Hide(); end end
+		local tb = GetThinBorder(); if tb then tb:Hide(); end
+		if squareBorder then squareBorder:Hide(); end
+		if MinimapBorder then MinimapBorder:Hide(); end
+		return;
+	end
+
 	-- LIGHT TAMBIEN EN REDONDO.
 	--
 	-- Light no era como los demas: los otros estilos son UNA imagen de

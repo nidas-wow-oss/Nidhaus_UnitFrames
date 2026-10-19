@@ -1957,6 +1957,9 @@ local function PopulateTabs()
 			-- En su lugar entra Lorti UI, que SI se ve distinto: oscurece
 			-- el aro en vez de reemplazarlo.
 			{ text = L["MINIMAP_BORDER_LORTI"] or "Lorti UI", value = "Lorti" },
+			-- Sin nada alrededor del mapa. Va ultima a proposito: es la
+			-- que menos se usa y asi no se la elige sin querer.
+			{ text = L["MINIMAP_BORDER_NONE"] or "None", value = "None" },
 		};
 
 		-- Si Lorti tiene el minimapa prendido, el desplegable arranca
@@ -1993,7 +1996,10 @@ local function PopulateTabs()
 		local function UpdateBorderNote()
 			if not note then return; end
 			local style = C.MinimapBorderStyle or "Default";
-			if style == "Light" and C.MinimapSquare ~= true then
+			if style == "None" then
+				note:SetText("|cff8EAEC9" .. (L["NOTE_MINIMAP_BORDER_NONE"]
+					or "No border at all. The zone name plate has its own checkbox below.") .. "|r");
+			elseif style == "Light" and C.MinimapSquare ~= true then
 				note:SetText("|cffFFD100" .. (L["NOTE_MINIMAP_BORDER_SQUARE"]
 					or "Light only works with the square shape.") .. "|r");
 			else

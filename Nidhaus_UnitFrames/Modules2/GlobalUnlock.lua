@@ -202,8 +202,24 @@ local MOVABLES = {
 	-- ella. Y si arrastras una por separado, se guarda su desplazamiento
 	-- relativo, asi que sigue acompañando a la principal desde el lugar
 	-- nuevo. Es el mismo patron de "Holder" que usa Modules/ActionBars.lua.
+	-- CON MINIBAR SE ARRASTRA EL BOTON, NO EL MARCO.
+	--
+	-- Aca estaba el "la barra de mascota no se mueve mientras la arrastro,
+	-- recien aparece en su lugar cuando bloqueo".
+	--
+	-- MiniBar no coloca PetActionBarFrame: apila PetActionButton1 (mira
+	-- MB_STACK en MiniBar.lua) y los demas botones cuelgan de el. El
+	-- recuadro, en cambio, arrastraba el MARCO. O sea que se movia un
+	-- marco que con MiniBar no decide nada, mientras lo que se ve seguia
+	-- anclado donde lo habia dejado la pila: nada se movia en pantalla.
+	-- Al bloquear corria un repintado completo que SI leia la posicion
+	-- guardada, y recien ahi saltaba a destino.
+	--
+	-- Con framesMiniBar los dos sistemas miran el mismo marco. Las tres
+	-- filas ya lo tenian; a esta y a la de posesion se les habia olvidado.
 	{ key = "PetBar",     group = "extra", frames = {"PetActionBarFrame"},     label = "Pet Bar",
 	  class = PET_CLASSES, orIfPet = true,
+	  framesMiniBar = {"PetActionButton1"},
 	  scalable = true, protected = true, anchorTo = "MainMenuBar", managed = "PetActionBarFrame", onlyIfVisible = true,
 	  buttons = { prefix = "PetActionButton", count = NUM_PET_ACTION_SLOTS or 10 } },
 	-- Se mueve NUESTRO contenedor, no el frame de Blizzard: los botones
@@ -218,6 +234,7 @@ local MOVABLES = {
 	  buttons = { prefix = "MultiCastActionButton", count = 12 },
 	  class = "SHAMAN" },
 	{ key = "PossessBar", group = "extra", frames = {"PossessBarFrame"},       label = "Possess Bar",
+	  framesMiniBar = {"PossessButton1"},   -- idem PetBar: MB_STACK apila el boton
 	  scalable = true, protected = true, anchorTo = "MainMenuBar", managed = "PossessBarFrame", onlyIfVisible = true,
 	  buttons = { prefix = "PossessButton", count = NUM_POSSESS_SLOTS or 2 } },
 	{ key = "AutoShot",   group = "extra", frames = {"NUF_AutoShotMover"},     label = "Auto Shot", scalable = true,

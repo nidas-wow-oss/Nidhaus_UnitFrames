@@ -15,7 +15,7 @@ local function CreateOptionsPanel()
 	-- Mas ancha y mas alta que antes (240x240): el contenido entraba justo,
 	-- las filas se tocaban y el slider no tenia lugar para su cajita.
 	f:SetWidth(300)
-	f:SetHeight(362)
+	f:SetHeight(392)   -- +30: la fila del boton de prueba
 	f:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
 	-- Por ENCIMA del panel principal de NUF.
 	--
@@ -264,6 +264,47 @@ local function CreateOptionsPanel()
 	if K and K.UI and K.UI.AttachSliderValue then
 		K.UI.AttachSliderValue(slider);
 	end
+
+	-- ========================
+	-- VER COMO QUEDAN, SIN GRUPO
+	--
+	-- Los marcos de objetivo del grupo estan bajo RegisterUnitWatch: el
+	-- juego los muestra solo si existe "partyNtarget". Estando solo no hay
+	-- ninguno, asi que acomodar la escala o el estilo era a ciegas -- o
+	-- habia que abrir "Mover todo", que ademas saca los recuadros azules
+	-- de toda la interfaz.
+	--
+	-- Las dos piezas ya existian (K.SetPartyTestMode inventa cuatro
+	-- compañeros y K.SetPartyTargetPreview saca los marcos del watch);
+	-- faltaba el boton que las encienda desde aca.
+	-- ========================
+	local testOn = false;
+	local testBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+	testBtn:SetWidth(240)
+	testBtn:SetHeight(22)
+	testBtn:SetPoint("BOTTOM", 0, 44)
+
+	local function SetTest(on)
+		if InCombatLockdown() then
+			-- Los marcos son protegidos: en combate no se tocan.
+			print("|cff4FC3F7NUF:|r " .. (L["PT_TEST_COMBAT"]
+				or "El modo prueba no se puede prender en combate."))
+			return
+		end
+		testOn = on and true or false
+		if K and K.SetPartyTestMode    then pcall(K.SetPartyTestMode, testOn) end
+		if K and K.SetPartyTargetPreview then pcall(K.SetPartyTargetPreview, testOn) end
+		testBtn:SetText(testOn and (L["PT_TEST_STOP"] or "Stop test")
+		                       or (L["PT_TEST"]      or "Test mode"))
+	end
+
+	testBtn:SetText(L["PT_TEST"] or "Test mode")
+	testBtn:SetScript("OnClick", function() SetTest(not testOn) end)
+
+	-- Al cerrar el panel se apaga SIEMPRE. Si no, los cuatro marcos
+	-- quedaban colgados en pantalla hasta el proximo /reload y parecia un
+	-- bug del addon.
+	f:HookScript("OnHide", function() if testOn then SetTest(false) end end)
 
 	-- ========================
 	-- Save Button
