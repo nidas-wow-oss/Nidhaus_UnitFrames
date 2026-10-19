@@ -706,19 +706,62 @@ local function BarMode()
 	return "plain";
 end
 
-local PER_MODE_KEYS = { MainBar = true, ActionBar2 = true, ActionBar3 = true };
-
--- Todo lo que MiniBar apila. Mover cualquiera de estos clava a los demas.
+-- TODO LO QUE LA PILA MUEVE GUARDA POR MODO, NO SOLO LAS TRES FILAS.
+--
+-- Esto eran tres claves (las filas de acciones) y las otras cuatro se
+-- habian quedado afuera por descuido, no por diseño: postura, totems,
+-- mascota y posesion los apila MiniBar igual que a las filas, y Unify los
+-- deja en otro lado. Con una sola posicion compartida, acomodabas la barra
+-- de mascota con MiniBar puesto, volvias a Unify y aparecia arriba de las
+-- barras -- o al reves.
+--
+-- La lista es la misma que STACK_KEYS, y eso no es casualidad: lo que la
+-- pila coloca distinto en cada modo es exactamente lo que necesita una
+-- posicion por modo. Se deja como UNA lista para que no se vuelvan a
+-- separar.
 local STACK_KEYS = {
 	MainBar = true, ActionBar2 = true, ActionBar3 = true,
 	StanceBar = true, TotemBar = true, PetBar = true, PossessBar = true,
 };
+
+local PER_MODE_KEYS = STACK_KEYS;
 
 local function EntryKey(entry)
 	local k = (type(entry) == "table") and entry.key or entry;
 	if PER_MODE_KEYS[k] then return k .. "#" .. BarMode(); end
 	return k;
 end
+
+-- ---------------------------------------------------------
+-- LO GUARDADO ANTES, A LOS TRES MODOS
+--
+-- Cada vez que una clave entra a PER_MODE_KEYS, lo que el usuario ya tenia
+-- guardado queda bajo la clave PELADA ("PetBar") y nadie vuelve a leerlo:
+-- desde ese momento se busca "PetBar#mini". Sin esto, agregar una clave se
+-- siente como que el addon "perdio" la posicion.
+--
+-- Se copia la pelada a los tres modos y se borra. Cada modo arranca donde
+-- estaba y de ahi en adelante sigue su camino. Corre una sola vez porque
+-- despues ya no queda ninguna clave pelada que migrar.
+-- ---------------------------------------------------------
+local function MigrateBareKeys()
+	local db = DB();
+	for key in pairs(PER_MODE_KEYS) do
+		local old = db[key];
+		if type(old) == "table" then
+			for _, m in ipairs({ "mini", "unify", "plain" }) do
+				local mk = key .. "#" .. m;
+				if db[mk] == nil then
+					local copy = {};
+					for f, v in pairs(old) do copy[f] = v; end
+					db[mk] = copy;
+				end
+			end
+			db[key] = nil;
+		end
+	end
+end
+K.MigrateBarModeKeys = MigrateBareKeys;
 
 -- Para que el panel pueda armar la lista de claves a resetear.
 K.BarModeKey = EntryKey;
@@ -1207,6 +1250,22 @@ local function UnlockFramePoint(frame)
 	if frame then frame.NUFPoint = nil; end
 end
 
+-- Suelta el candado de TODOS los marcos que una entrada puede resolver.
+-- No alcanza con ResolveFrame: devuelve uno solo segun el modo, y el
+-- candado puede haber quedado puesto sobre el del OTRO modo (el holder de
+-- MiniBar o el marco de Blizzard, segun cual estuviera activo al mover).
+local function UnlockEntryFrames(entry)
+	if type(entry) ~= "table" then return; end
+	for _, list in ipairs({ entry.frames, entry.framesMiniBar }) do
+		if type(list) == "table" then
+			for _, name in ipairs(list) do
+				local f = _G[name];
+				if f then UnlockFramePoint(f); end
+			end
+		end
+	end
+end
+
 local function RestoreOne(entry)
 	-- Los party target no guardan posicion aca: la maneja su modulo,
 	-- anclandolos a cada PartyMemberFrame. Si quedo una entrada vieja de
@@ -1219,7 +1278,30 @@ local function RestoreOne(entry)
 	end
 
 	local pos = DB()[EntryKey(entry)];
-	if not pos then return; end
+	if not pos then
+		-- SIN NADA GUARDADO EN ESTE MODO: HAY QUE SOLTAR EL CANDADO.
+		--
+		-- Aca estaba el "apago Unify (o MiniBar) y la barra no vuelve al
+		-- lugar de Blizzard, se queda donde la habia dejado".
+		--
+		-- LockFramePoint no es un SetPoint: le deja al marco un hook
+		-- PERMANENTE sobre SetPoint que repone frame.NUFPoint. Mientras ese
+		-- campo tenga algo, cualquier SetPoint que venga de afuera se
+		-- deshace solo, en el acto.
+		--
+		-- Al cambiar de modo la clave pasa a ser otra -- MainBar#plain en
+		-- vez de MainBar#unify -- y ahi no hay nada guardado, asi que esta
+		-- funcion cortaba de una... dejando puesto el candado del modo
+		-- ANTERIOR. Despues RestoreBarBaseline movia la barra a su lugar de
+		-- fabrica y el hook se la devolvia antes de que se dibujara: por
+		-- eso parecia que el modo "no se apagaba del todo".
+		--
+		-- Soltar el candado es lo unico que faltaba. La posicion del modo
+		-- anterior NO se borra: sigue guardada bajo su clave y vuelve
+		-- intacta cuando volves a ese modo.
+		UnlockEntryFrames(entry);
+		return;
+	end
 
 	-- ESCALA CON DUEÑO PROPIO (ver ScaleOwner): no se aplica desde aca. Si
 	-- quedo una de antes, se le pasa al dueño -- es la que estabas viendo,
@@ -1332,6 +1414,11 @@ function K.RestoreGlobalPosition(key)
 end
 
 function K.RestoreGlobalPositions()
+	-- Primero lo viejo a su lugar nuevo (ver MigrateBareKeys). Es
+	-- idempotente: despues de la primera pasada no queda ninguna clave
+	-- pelada, asi que llamarla en cada rearmado no cuesta nada.
+	MigrateBareKeys();
+
 	for _, entry in ipairs(MOVABLES) do
 		pcall(RestoreOne, entry);
 	end

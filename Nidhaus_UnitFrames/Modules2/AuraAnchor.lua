@@ -21,16 +21,76 @@ local ANCHOR_W, ANCHOR_H = 330, 90;
 -- ---------------------------------------------------------
 -- DB
 -- ---------------------------------------------------------
-local function DB()
+local function BuffRoot()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.AuraAnchor then NidhausUnitFramesDB.AuraAnchor = {}; end
 	return NidhausUnitFramesDB.AuraAnchor;
 end
 
-local function DebuffDB()
+local function DebuffRoot()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.DebuffAnchor then NidhausUnitFramesDB.DebuffAnchor = {}; end
 	return NidhausUnitFramesDB.DebuffAnchor;
+end
+
+-- ---------------------------------------------------------
+-- UNA POSICION POR MODO DE BARRAS
+--
+-- MiniBar, Unify y "sin modo" dejan las barras a alturas distintas, asi
+-- que el lugar donde el bloque de auras queda bien tampoco es el mismo.
+--
+-- Habia UNA sola posicion guardada: la acomodabas con Unify puesto y, al
+-- volver a MiniBar, el bloque reaparecia donde lo habia dejado el otro
+-- modo. Y era peor que un simple olvido: este modulo SI se anota en el
+-- registro de stores de LayoutCore, asi que en cada cambio de modo
+-- re-aplicaba con toda fidelidad la misma posicion para los tres.
+--
+-- Las barras ya guardaban por modo desde hace rato (PER_MODE_KEYS en
+-- GlobalUnlock.lua); las auras se habian quedado afuera de esa idea.
+--
+-- El modo sale de K.LayoutActiveMode(), el mismo que usa el rearmado: una
+-- sola definicion, asi no hay dos que se puedan desincronizar.
+-- ---------------------------------------------------------
+local MODES = { "mini", "unify", "plain" };
+
+local function Mode()
+	if K.LayoutActiveMode then return K.LayoutActiveMode(); end
+	-- LayoutCore carga mucho antes que este archivo, asi que este respaldo
+	-- no deberia usarse nunca. Queda por si alguien reordena el XML.
+	if C.MiniBarEnabled  == true then return "mini";  end
+	if C.UnifyActionBars == true then return "unify"; end
+	return "plain";
+end
+
+-- Devuelve el sub-registro del modo activo, migrando lo viejo la primera
+-- vez. Lo guardado antes de que esto existiera es UNA posicion sin modo:
+-- se copia a los tres para que nadie pierda lo que ya tenia acomodado, y
+-- de ahi en adelante cada modo sigue su propio camino.
+local function PerMode(root)
+	if root.point ~= nil and type(root.byMode) ~= "table" then
+		root.byMode = {};
+		for _, m in ipairs(MODES) do
+			root.byMode[m] = {
+				point = root.point, relativePoint = root.relativePoint,
+				x     = root.x,     y             = root.y,
+			};
+		end
+		root.point, root.relativePoint, root.x, root.y = nil, nil, nil, nil;
+	end
+	if type(root.byMode) ~= "table" then root.byMode = {}; end
+	local m = Mode();
+	if type(root.byMode[m]) ~= "table" then root.byMode[m] = {}; end
+	return root.byMode[m];
+end
+
+local function DB()       return PerMode(BuffRoot());   end
+local function DebuffDB() return PerMode(DebuffRoot()); end
+
+-- El boton Reset borra los TRES modos. Borrar solo el activo dejaba el
+-- bloque "reseteado" hasta que cambiabas de modo y reaparecia movido.
+local function WipeAllModes(root)
+	root.point, root.relativePoint, root.x, root.y = nil, nil, nil, nil;
+	root.byMode = {};
 end
 
 local function HasCustomPosition()
@@ -136,12 +196,16 @@ local function ApplyDefaultDebuffPos()
 end
 
 local function RestoreAnchorPosition()
-	local db = DB();
-	-- Una escala vieja guardada aca pasa al slider (una sola vez).
-	if db.scale then
-		if K.SetModuleScale then K.SetModuleScale("PlayerBuffs", db.scale); end
-		db.scale = nil;
+	-- Una escala vieja guardada aca pasa al slider (una sola vez). Se lee
+	-- de la RAIZ y no del sub-registro por modo: la escala nunca dependio
+	-- del modo de barras, solo la posicion.
+	local broot = BuffRoot();
+	if broot.scale then
+		if K.SetModuleScale then K.SetModuleScale("PlayerBuffs", broot.scale); end
+		broot.scale = nil;
 	end
+
+	local db = DB();
 	if db.point then
 		anchor:ClearAllPoints();
 		anchor:SetPoint(db.point, UIParent, db.relativePoint, db.x, db.y);
@@ -150,11 +214,13 @@ local function RestoreAnchorPosition()
 		ApplyDefaultAnchorPos();
 	end
 
-	local ddb = DebuffDB();
-	if ddb.scale then
-		if K.SetModuleScale then K.SetModuleScale("PlayerDebuffs", ddb.scale); end
-		ddb.scale = nil;
+	local droot = DebuffRoot();
+	if droot.scale then
+		if K.SetModuleScale then K.SetModuleScale("PlayerDebuffs", droot.scale); end
+		droot.scale = nil;
 	end
+
+	local ddb = DebuffDB();
 	if ddb.point then
 		debuffAnchor:ClearAllPoints();
 		debuffAnchor:SetPoint(ddb.point, UIParent, ddb.relativePoint, ddb.x, ddb.y);
@@ -196,10 +262,9 @@ end
 function K.ResetAuraAnchor()
 	-- FIX: antes el recuadro terminaba corrido hacia abajo porque el default
 	-- se anclaba al minimapa. Ahora usa la posicion de fabrica real de los buffs.
-	local db = DB();
-	db.point, db.relativePoint, db.x, db.y, db.scale = nil, nil, nil, nil, nil;
-	local ddb = DebuffDB();
-	ddb.point, ddb.relativePoint, ddb.x, ddb.y, ddb.scale = nil, nil, nil, nil, nil;
+	-- Los TRES modos, no solo el que este puesto.
+	WipeAllModes(BuffRoot());
+	WipeAllModes(DebuffRoot());
 	-- Y la escala, que es la del slider.
 	if K.ResetModuleScale then
 		K.ResetModuleScale("PlayerBuffs");
