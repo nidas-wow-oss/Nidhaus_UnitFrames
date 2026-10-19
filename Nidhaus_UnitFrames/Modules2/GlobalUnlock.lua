@@ -192,18 +192,22 @@ local MOVABLES = {
 	-- nuevo. Es el mismo patron de "Holder" que usa Modules/ActionBars.lua.
 	{ key = "PetBar",     group = "extra", frames = {"PetActionBarFrame"},     label = "Pet Bar",
 	  class = PET_CLASSES, orIfPet = true,
-	  scalable = true, protected = true, anchorTo = "MainMenuBar", managed = "PetActionBarFrame", onlyIfVisible = true, overlaySize = { 300, 34 } },
+	  scalable = true, protected = true, anchorTo = "MainMenuBar", managed = "PetActionBarFrame", onlyIfVisible = true,
+	  buttons = { prefix = "PetActionButton", count = NUM_PET_ACTION_SLOTS or 10 } },
 	-- Se mueve NUESTRO contenedor, no el frame de Blizzard: los botones
 	-- cuelgan de el (ver K.AttachStanceButtons en Modules/ActionBars.lua).
 	-- Asi no hay frame protegido, ni gestor de posiciones, ni candados.
 	{ key = "StanceBar",  group = "extra", frames = {"NUF_StanceBarHolder"},  label = "Stance Bar",
 	  scalable = true, anchorTo = "MainMenuBar", onlyIfVisible = true,
-	  resetFunc = "ResetStanceHolder" },
+	  resetFunc = "ResetStanceHolder",
+	  buttons = { prefix = "ShapeshiftButton", count = NUM_SHAPESHIFT_SLOTS or 10 } },
 	{ key = "TotemBar",   group = "extra", frames = {"MultiCastActionBarFrame"}, label = "Totem Bar",
-	  scalable = true, protected = true, anchorTo = "MainMenuBar", managed = "MultiCastActionBarFrame", onlyIfVisible = true, overlaySize = { 250, 40 },
+	  scalable = true, protected = true, anchorTo = "MainMenuBar", managed = "MultiCastActionBarFrame", onlyIfVisible = true,
+	  buttons = { prefix = "MultiCastActionButton", count = 12 },
 	  class = "SHAMAN" },
 	{ key = "PossessBar", group = "extra", frames = {"PossessBarFrame"},       label = "Possess Bar",
-	  scalable = true, protected = true, anchorTo = "MainMenuBar", managed = "PossessBarFrame", onlyIfVisible = true, overlaySize = { 120, 40 } },
+	  scalable = true, protected = true, anchorTo = "MainMenuBar", managed = "PossessBarFrame", onlyIfVisible = true,
+	  buttons = { prefix = "PossessButton", count = NUM_POSSESS_SLOTS or 2 } },
 	{ key = "AutoShot",   group = "extra", frames = {"NUF_AutoShotMover"},     label = "Auto Shot", scalable = true,
 	  module = "AutoShotTimer", class = "HUNTER" },
 	{ key = "SwingTimer", group = "extra", frames = {"NUF_SwingMover"},        label = "Auto attack", scalable = true,
@@ -966,10 +970,33 @@ local function SavePosition(entry, frame)
 	if entry.anchorTo and C.MiniBarEnabled ~= true then
 		local parent = _G[entry.anchorTo];
 		if parent and parent:GetLeft() and frame:GetLeft() then
+			-- EN PIXELES DE PANTALLA, Y RECIEN AHI AL ESPACIO DEL MARCO.
+			--
+			-- Aca habia una resta cruda:
+			--     frame:GetLeft() - parent:GetLeft()
+			--
+			-- GetLeft devuelve en el espacio de CADA marco (la pantalla
+			-- dividida por SU escala efectiva), asi que restar los dos
+			-- numeros solo da bien cuando los dos tienen la misma escala.
+			--
+			-- Con todo en 1 nunca se noto. Pero apenas agrandabas una barra
+			-- con Ctrl + rueda las escalas dejaban de coincidir y el offset
+			-- salia mal, proporcional a la diferencia: la barra se corria
+			-- sola al escalarla, y despues algun repintado la reacomodaba.
+			-- Ese era el "la escala la descoloca" y el "se vuelve a su
+			-- lugar si apreto una tecla".
+			--
+			-- SetPoint mide el offset en el espacio del marco que se esta
+			-- anclando, asi que se pasa todo a pantalla y se divide por la
+			-- escala de ESE marco.
+			local fs = frame:GetEffectiveScale()  or 1;
+			local ps = parent:GetEffectiveScale() or 1;
+			if fs == 0 then fs = 1; end
+
 			db[EntryKey(entry)].point         = "BOTTOMLEFT";
 			db[EntryKey(entry)].relativePoint = "BOTTOMLEFT";
-			db[EntryKey(entry)].x             = frame:GetLeft()   - parent:GetLeft();
-			db[EntryKey(entry)].y             = frame:GetBottom() - parent:GetBottom();
+			db[EntryKey(entry)].x             = (frame:GetLeft()   * fs - parent:GetLeft()   * ps) / fs;
+			db[EntryKey(entry)].y             = (frame:GetBottom() * fs - parent:GetBottom() * ps) / fs;
 			db[EntryKey(entry)].rel           = entry.anchorTo;
 			-- Se re-ancla en el acto: si se deja colgando de UIParent, deja
 			-- de seguir a la principal hasta el proximo login.
@@ -1233,6 +1260,50 @@ local function OnLockedSetPoint(frame)
 	frame:ClearAllPoints();
 	frame:SetPoint(unpack(p));
 	frame._nufApplying = nil;
+end
+
+-- ---------------------------------------------------------
+-- ESCALAR SIN QUE SE CORRA: EL CENTRO SE QUEDA DONDE ESTA
+--
+-- Un SetScale a secas agranda el marco desde su punto de anclaje. Las
+-- barras estan ancladas por BOTTOMLEFT, asi que al subir la escala
+-- crecian hacia la derecha y hacia arriba: el borde izquierdo quedaba
+-- clavado y la barra se iba de lugar. Se veia como "la escala la
+-- descoloca", y despues algun repintado la reacomodaba sola -- de ahi la
+-- sensacion de que apretar una tecla la "devolvia a su lugar".
+--
+-- Lo que se espera de un control de tamaño es que crezca para los dos
+-- lados por igual. Se mide el centro en pixeles de PANTALLA antes y
+-- despues, y se corre el anclaje por la diferencia.
+--
+-- Pantalla y no coordenadas del marco: GetCenter devuelve en el espacio
+-- del propio marco, que es justo lo que acaba de cambiar. Comparar los
+-- dos numeros crudos seria comparar unidades distintas.
+-- ---------------------------------------------------------
+local function ScaleKeepingCenter(frame, newScale)
+	local ok, cx, cy = pcall(frame.GetCenter, frame);
+	local before = (ok and cx) and { cx * (frame:GetEffectiveScale() or 1),
+	                                 cy * (frame:GetEffectiveScale() or 1) } or nil;
+
+	pcall(frame.SetScale, frame, newScale);
+	if not before then return; end
+
+	local p, rel, rp, x, y = frame:GetPoint();
+	if not p then return; end
+
+	local es = frame:GetEffectiveScale() or 1;
+	if es == 0 then return; end
+	local ok2, ncx, ncy = pcall(frame.GetCenter, frame);
+	if not (ok2 and ncx) then return; end
+
+	-- La diferencia esta en pixeles de pantalla; el offset de SetPoint se
+	-- mide en el espacio del marco, asi que se divide por su escala.
+	local dx = (before[1] - ncx * es) / es;
+	local dy = (before[2] - ncy * es) / es;
+	if dx == 0 and dy == 0 then return; end
+
+	frame:ClearAllPoints();
+	frame:SetPoint(p, rel or UIParent, rp, (x or 0) + dx, (y or 0) + dy);
 end
 
 local function LockFramePoint(frame, entry, pos)
@@ -1860,6 +1931,54 @@ local function CreateOverlay(entry)
 		local offX = (e.overlayOffset and e.overlayOffset[1]) or 0;
 		local offY = (e.overlayOffset and e.overlayOffset[2]) or 0;
 
+		-- EL RECUADRO DE UNA BARRA SE MIDE SOBRE SUS BOTONES.
+		--
+		-- Estas cuatro barras tenian un overlaySize fijo puesto a ojo (la
+		-- de mascota, 300x34). El marco de Blizzard que las contiene es
+		-- bastante mas ancho que los botones que tiene adentro -- y ademas
+		-- no cambia con la escala --, asi que el recuadro sobraba por la
+		-- derecha y no seguia al tamaño real: agarrabas aire.
+		--
+		-- Los botones dan el ancho de lo que de verdad se ve, y crecen con
+		-- la escala solos. Es exactamente lo que ya hacia
+		-- K.UpdateActionBarsBox con las tres filas de acciones; estas se
+		-- habian quedado con el numero fijo.
+		--
+		-- Se mide en pixeles de PANTALLA (GetLeft por la escala efectiva
+		-- del boton) y se traduce al espacio del overlay, porque boton y
+		-- overlay pueden tener escalas distintas.
+		if e.buttons then
+			local l, r, bt, tp, bscale;
+			for i = 1, (e.buttons.count or 0) do
+				local f = _G[e.buttons.prefix .. i];
+				if f and f:IsVisible() and f:GetLeft() then
+					local fs = f:GetEffectiveScale() or 1;
+					local fl, fr = f:GetLeft() * fs, f:GetRight() * fs;
+					local fb, ft = f:GetBottom() * fs, f:GetTop() * fs;
+					l  = math.min(l  or fl, fl);
+					r  = math.max(r  or fr, fr);
+					bt = math.min(bt or fb, fb);
+					tp = math.max(tp or ft, ft);
+					bscale = fs;
+				end
+			end
+			if l and bscale and (r - l) > 4 then
+				local us = self:GetEffectiveScale() or 1;
+				if us > 0 then
+					self:SetSize((r - l) / us, math.max((tp - bt) / us, 10));
+					-- Se divide por la escala del OVERLAY, no por la de
+					-- UIParent: SetPoint mide el offset en el espacio del
+					-- marco que se esta posicionando. Es la misma cuenta
+					-- que MB_PlaceAtScreen en MiniBar.lua.
+					self:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l / us, bt / us);
+					return;
+				end
+			end
+			-- Sin botones visibles se sigue de largo y se mide el marco,
+			-- que es lo que habia antes: mejor un recuadro de mas que
+			-- ninguno.
+		end
+
 		local w = box:GetWidth()  or 0;
 		local h = box:GetHeight() or 0;
 
@@ -2212,8 +2331,22 @@ end
 				if K.ApplyActionBarScale then pcall(K.ApplyActionBarScale, newScale); end
 				if K.RefreshPanelSliders then pcall(K.RefreshPanelSliders, "ActionBarScale"); end
 			else
-				self.target:SetScale(newScale);
+				-- Crece para los dos lados: ver ScaleKeepingCenter.
+				ScaleKeepingCenter(self.target, newScale);
 				SaveScale(self.entry, newScale);
+
+				-- Y SE GUARDA EL PUNTO NUEVO.
+				--
+				-- Centrar mueve el anclaje. Sin guardarlo, el proximo login
+				-- repondria el de antes y la barra apareceria descolocada
+				-- -- peor que no centrarla, porque el salto llega despues.
+				--
+				-- Salvo que la posicion tenga dueño propio: esos la guardan
+				-- por su cuenta y escribir aca seria volver al problema de
+				-- los dos sistemas peleando por el mismo marco.
+				if not (OwnsItsPosition and OwnsItsPosition(self.entry.key)) then
+					SavePosition(self.entry, self.target);
+				end
 
 				-- CADA BARRA CON SU ESCALA.
 				--

@@ -415,7 +415,18 @@ local function ApplyPetBar()
     local offset = GetBarOffset();
     PetActionBarFrame:SetPoint("BOTTOMLEFT", MainMenuBar, "TOPLEFT", pos.x, pos.y + offset);
 
-    PetActionBarFrame:SetScale(1);
+    -- LA ESCALA DEL USUARIO MANDA.
+    --
+    -- Aca habia un SetScale(1) a secas. Escalabas la barra de mascota con
+    -- Ctrl + rueda, se guardaba bien, y al /reload volvia a 1: esta
+    -- funcion corre despues de reponer lo guardado y lo pisaba sin mirar.
+    --
+    -- El 1 sigue siendo el valor por defecto -- hay que ponerlo, porque si
+    -- no la barra hereda la escala de MainMenuBar --, pero si el usuario
+    -- le puso la suya con la rueda, esa gana. Es el mismo criterio que usa
+    -- ApplyBarHolderScales con las tres filas (K.GetGlobalScale).
+    local own = K.GetGlobalScale and K.GetGlobalScale("PetBar");
+    PetActionBarFrame:SetScale((type(own) == "number" and own > 0) and own or 1);
     LockSetPoint(PetActionBarFrame);
     if PetActionBarHealthBar then
         PetActionBarHealthBar:ClearAllPoints();
