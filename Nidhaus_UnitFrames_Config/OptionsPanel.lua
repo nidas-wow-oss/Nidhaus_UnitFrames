@@ -2340,32 +2340,48 @@ local function PopulateTabs()
 		end
 	end
 
+	-- "Sin" ES UN BOTON, NO UN TRUCO.
+	--
+	-- Apagar la cuadricula ya se podia: apretabas el que estaba puesto y
+	-- volvia a movimiento libre. Pero eso no lo adivina nadie, y encima
+	-- con la cuadricula apagada no quedaba NINGUN boton hundido, asi que
+	-- tampoco habia forma de ver en que estado estabas.
+	--
+	-- Un boton propio arregla las dos cosas de una: se ve el estado y se
+	-- apaga sin saber el truco. El truco sigue funcionando para quien ya
+	-- lo tenia agarrado.
 	local gx = xL + 50;
-	for _, step in ipairs({ 2, 5, 10 }) do
+	for _, step in ipairs({ 0, 2, 5, 10 }) do
 		local b = CreateFrame("Button", nil, paneMove, "UIPanelButtonTemplate");
 		b:SetPoint("TOPLEFT", gx, vY + 4);
-		b:SetSize(52, 22);
-		b:SetText("x" .. step);
+		b:SetSize((step == 0) and 46 or 52, 22);
+		b:SetText((step == 0) and (L["BTN_GRID_OFF"] or "Sin") or ("x" .. step));
 		b:SetScript("OnClick", function()
 			-- Mismo comportamiento que los botones de la consola del modo
 			-- mover: el que ya esta puesto se apaga y queda movimiento
 			-- libre. Son los mismos tres botones en dos lugares.
 			local cur  = (C and C.MoveGridStep) or 10;
-			local want = (cur == step) and 0 or step;
+			local want = (step == 0 or cur == step) and 0 or step;
 			if K.SaveConfig then K.SaveConfig("MoveGridStep", want); end
 			RefreshGridButtons();
 			if K.RefreshMoveConsoleGrid then pcall(K.RefreshMoveConsoleGrid); end
 		end);
 		b:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-			GameTooltip:SetText("x" .. step, 1, 1, 1);
-			GameTooltip:AddLine(string.format(L["TIP_MOVE_GRID"]
-				or "Cells of %d pixels a side.", step), nil, nil, nil, true);
+			if step == 0 then
+				GameTooltip:SetText(L["BTN_GRID_OFF"] or "Sin", 1, 1, 1);
+				GameTooltip:AddLine(L["TIP_MOVE_GRID_OFF"]
+					or "No grid: the frame goes exactly where you drop it.", nil, nil, nil, true);
+			else
+				GameTooltip:SetText("x" .. step, 1, 1, 1);
+				GameTooltip:AddLine(string.format(L["TIP_MOVE_GRID"]
+					or "Cells of %d pixels a side.", step), nil, nil, nil, true);
+			end
 			GameTooltip:Show();
 		end);
 		b:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 		gridBtns[step] = b;
-		gx = gx + 58;
+		gx = gx + ((step == 0) and 52 or 58);
 	end
 	RefreshGridButtons();
 	K._RefreshMoveGridButtons = RefreshGridButtons;

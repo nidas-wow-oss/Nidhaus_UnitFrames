@@ -2626,17 +2626,28 @@ local function BuildConsole()
 	-- avisaba al panel (K._RefreshMoveGridButtons); faltaba el reves.
 	K.RefreshMoveConsoleGrid = RefreshGrid;
 
+	-- "Sin" ES UN BOTON, NO UN TRUCO.
+	--
+	-- Apagar la cuadricula ya se podia: apretabas el que estaba puesto y
+	-- volvia a movimiento libre. Pero eso no lo adivina nadie, y encima
+	-- con la cuadricula apagada no quedaba NINGUN boton hundido, asi que
+	-- tampoco habia forma de ver en que estado estabas.
+	--
+	-- Un boton propio arregla las dos cosas de una: se ve el estado y se
+	-- apaga sin saber el truco. El truco sigue funcionando para quien ya
+	-- lo tenia agarrado.
 	local gx = 56;
-	for _, step in ipairs({ 2, 5, 10 }) do
+	for _, step in ipairs({ 0, 2, 5, 10 }) do
 		local b = CreateFrame("Button", nil, console, "UIPanelButtonTemplate");
 		b:SetPoint("TOPLEFT", console, "TOPLEFT", gx, -48);
-		b:SetSize(50, 22);
-		b:SetText("x" .. step);
+		b:SetSize((step == 0) and 44 or 50, 22);
+		b:SetText((step == 0) and (L["BTN_GRID_OFF"] or "Sin") or ("x" .. step));
 		b:SetScript("OnClick", function()
 			-- Apretar el que YA esta puesto lo apaga: vuelve a 0, o sea
 			-- movimiento libre. Apretar otro cambia de paso, como siempre.
 			local cur  = (C and C.MoveGridStep) or 10;
-			local want = (cur == step) and 0 or step;
+			-- El de "Sin" apaga y punto; los otros alternan como siempre.
+			local want = (step == 0 or cur == step) and 0 or step;
 			if K.SaveConfig then K.SaveConfig("MoveGridStep", want); end
 			RefreshGrid();
 			-- El panel de opciones, si esta abierto, tiene los mismos tres
@@ -2644,7 +2655,7 @@ local function BuildConsole()
 			if K._RefreshMoveGridButtons then pcall(K._RefreshMoveGridButtons); end
 		end);
 		console.gridBtns[step] = b;
-		gx = gx + 54;
+		gx = gx + ((step == 0) and 48 or 54);
 	end
 
 	-- Segunda fila, bien separada de la de arriba.
