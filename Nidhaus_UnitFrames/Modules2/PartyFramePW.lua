@@ -445,21 +445,31 @@ function StyleOne(i)
 		if mpBar then mpBar:SetStatusBarTexture(C.statusbarTexture); end
 	end
 
-	-- NOMBRE ARRIBA DEL MARCO
+	-- EL NOMBRE ARRIBA DEL MARCO: SOLO EN COMPACT 2.
 	--
-	-- Mismo anclaje que usa el estilo Custom de arena en ArenaFrame.lua:
-	--     frame.name:SetPoint("BOTTOM", frame.healthbar, "TOP", 0, 1)
+	-- Este archivo dibuja DOS estilos: "Big Blizzard" (PW) y "Compact 2"
+	-- (PW2). Subir el nombre encima de la barra de vida se hizo por el
+	-- segundo: ahi el marco es angosto y el nombre tapaba los numeros.
 	--
-	-- En el estilo compacto el marco es angosto y el nombre encima de la
-	-- barra de vida se comia los numeros. Sacandolo arriba se leen las dos
-	-- cosas, y ademas queda igual que los marcos de arena, que es como se
-	-- ve el conjunto cuando tenes party y arena en pantalla a la vez.
+	-- Pero se aplicaba a los dos, y en Big Blizzard no tiene sentido: ese
+	-- estilo es el marco de Blizzard, mas grande. El nombre ya entra donde
+	-- Blizzard lo pone, y moverlo solo hacia que cambiara de lugar al
+	-- prender y apagar el estilo.
+	--
+	-- En Big Blizzard se repone el anclaje que se guardo en Capture, asi
+	-- cambiar de Compact 2 a Big Blizzard tambien lo devuelve en el acto.
 	local nameFS = _G[fn .. "Name"];
-	if nameFS and hp then
+	local nameUp = (K.GetPartyFrameStyle and K.GetPartyFrameStyle() == "PW2");
+	if nameFS and hp and nameUp then
 		nameFS:ClearAllPoints();
 		-- +2 y no el +1 de pw: con el nombre ARRIBA del marco un pixel de
 		-- aire mas lo despega del borde superior de la barra de vida.
 		nameFS:SetPoint("BOTTOM", hp, "TOP", 0, 2);
+	elseif nameFS and orig[fn] and orig[fn].name then
+		-- Big Blizzard: de vuelta al anclaje de fabrica. Hace falta
+		-- hacerlo y no solo "no tocarlo", porque se puede llegar aca
+		-- viniendo de Compact 2, que si lo habia subido.
+		RestorePoint(nameFS, orig[fn].name);
 	end
 
 	-- FONDO DEL MARCO
@@ -741,6 +751,10 @@ end
 -- =========================================================
 local function PinName(i)
 	if not applied then return; end
+	-- Solo Compact 2 sube el nombre (ver StyleOne). En Big Blizzard no hay
+	-- nada que sostener: si este guardian corriera igual, volveria a
+	-- subirlo en el primer refresco y el arreglo no duraria nada.
+	if not (K.GetPartyFrameStyle and K.GetPartyFrameStyle() == "PW2") then return; end
 	local fn = "PartyMemberFrame" .. i;
 	local f  = _G[fn];
 	if not f or not f:IsShown() then return; end

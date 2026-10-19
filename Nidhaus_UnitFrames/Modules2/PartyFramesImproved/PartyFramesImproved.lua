@@ -123,22 +123,8 @@ local function StyleFrame(i)
 	if nameOutline == "" or nameOutline == "Blizz" then nameOutline = nil; end
 	name:SetFont("Fonts\\FRIZQT__.TTF", 7, nameOutline);
 
-	-- EL NOMBRE SE QUEDA DONDE LO PONE BLIZZARD.
-	--
-	-- Aca habia un ClearAllPoints + SetPoint("TOPLEFT", 50, -4). Este
-	-- estilo es el marco de Blizzard mas grande, no un marco distinto: el
-	-- nombre ya esta donde tiene que estar, y moverlo a mano solo hacia
-	-- que cambiara de lugar al prender y apagar el estilo.
-	--
-	-- El numero tampoco era confiable: estaba puesto a ojo y ya habia sido
-	-- retocado una vez (-8 -> -4). Un offset fijo contra un marco que
-	-- cambia de tamaño y de escala no se sostiene.
-	--
-	-- La fuente SI se achica: el nombre entra mejor en el espacio que deja
-	-- el marco grande, y eso no mueve el texto porque el anclaje es por la
-	-- izquierda. RestoreFrame sigue reponiendo el anclaje guardado, que
-	-- ahora es el mismo con el que entro: queda como red de seguridad para
-	-- quien venga de una version que si lo movia.
+	name:ClearAllPoints();
+	name:SetPoint("TOPLEFT", 50, -4);   -- 4px mas arriba (antes -8)
 
 	-- Vida y mana NO se tocan: van con la fuente original de Blizzard.
 	-- Antes se forzaban a 7 y los numeros quedaban ilegibles en un marco
