@@ -43,16 +43,13 @@ local AT_qFrame;
 local AT_eventFrame;
 local AT_StopInviteBar;
 local AT_HideQueueText;
-local AT_origHideOnEscape;
+local AT_inviteWarned = false;
 
 local function Init()
   if initialized then
-    -- Volver a prender despues de un Disable: Disable le saco los eventos
-    -- y repuso el Escape del cartel. Antes esto volvia sin hacer nada y el
-    -- modulo quedaba muerto hasta /reload.
-    if StaticPopupDialogs and StaticPopupDialogs["CONFIRM_BATTLEFIELD_ENTRY"] then
-      StaticPopupDialogs["CONFIRM_BATTLEFIELD_ENTRY"].hideOnEscape = false;
-    end
+    -- Volver a prender despues de un Disable: Disable le saco los eventos.
+    -- Antes esto volvia sin hacer nada y el modulo quedaba muerto hasta
+    -- /reload.
     if AT_eventFrame then
       AT_eventFrame:RegisterEvent("UPDATE_BATTLEFIELD_STATUS");
       AT_eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
@@ -64,11 +61,29 @@ local function Init()
   end
   initialized = true;
 
-  -- FIX: Guardar valor original para poder restaurar en onDisable
-  if StaticPopupDialogs and StaticPopupDialogs["CONFIRM_BATTLEFIELD_ENTRY"] then
-    AT_origHideOnEscape = StaticPopupDialogs["CONFIRM_BATTLEFIELD_ENTRY"].hideOnEscape;
-    StaticPopupDialogs["CONFIRM_BATTLEFIELD_ENTRY"].hideOnEscape = false;
-  end
+  -- =======================================================
+  -- ACA NO SE TOCA StaticPopupDialogs["CONFIRM_BATTLEFIELD_ENTRY"].
+  --
+  -- Antes se le ponia hideOnEscape = false, para que Escape no te cerrara
+  -- el cartel de "entrar a la arena". Andaba, y de paso manchaba (taint)
+  -- una tabla de Blizzard para siempre. El precio aparecia lejos de aca:
+  --
+  --   StaticPopup_EscapePressed() recorre los carteles abiertos y lee
+  --   info.hideOnEscape de cada uno. Leer ESE campo manchado ensucia la
+  --   ejecucion de ahi en adelante, y en el mismo recorrido se llega al
+  --   cartel "CAMP", cuyo OnCancel llama a CancelLogout().
+  --
+  -- O sea: con la invitacion de arena en pantalla, apretar Escape durante
+  -- la cuenta de salida dejaba el logout sin poder cancelarse, con el
+  -- cartel de "Interface action failed because of an AddOn". Ese es el
+  -- CancelLogout() que reportaba el TaintFixer.
+  --
+  -- No hay manera de dejar ese flag en false sin manchar: el campo vive
+  -- adentro de la tabla de Blizzard. Asi que se deja como viene, y lo que
+  -- se queria evitar -- perder la entrada por un Escape de mas -- se
+  -- cubre avisando por chat cuando el cartel se cierra con tiempo
+  -- todavia (ver el OnUpdate de la barra, mas abajo).
+  -- =======================================================
 
   local holder = CreateFrame("Frame", "ArenaTimes_InviteBarHolder", UIParent);
   holder:SetHeight(12);
@@ -158,8 +173,26 @@ local function Init()
     holder:Show();
     textFrame:Show();
     -- Usa elapsed para animación suave (server devuelve enteros = saltos feos)
+    AT_inviteWarned = false;
     holder:SetScript("OnUpdate", function(self, elapsed)
-      if not popup:IsShown() then StopInviteBar(); return; end
+      if not popup:IsShown() then
+        -- EL REEMPLAZO DEL hideOnEscape.
+        --
+        -- El cartel se fue pero la invitacion sigue viva. En vez de
+        -- manchar la tabla de Blizzard para que Escape no lo cierre
+        -- (ver el comentario grande en Init), se avisa que todavia
+        -- estas a tiempo. Una sola vez por invitacion.
+        local left = GetBattlefieldPortExpiration(confirmIndex) or 0;
+        if left > 0 and not AT_inviteWarned then
+          AT_inviteWarned = true;
+          print("|cff4FC3F7NUF:|r " .. string.format(
+            L["ARENA_INVITE_STILL_OPEN"]
+              or "Cerraste el cartel de entrada y todavia podes entrar: %d s. Volve a abrirlo con el icono de battleground del minimapa.",
+            math.floor(left)));
+        end
+        StopInviteBar();
+        return;
+      end
       local sr = GetBattlefieldPortExpiration(confirmIndex) or 0;
       if sr <= 0 then StopInviteBar(); return; end
       timeLeft = timeLeft - elapsed;
@@ -244,9 +277,6 @@ local function Disable()
   if AT_eventFrame then AT_eventFrame:UnregisterAllEvents(); end
   if AT_StopInviteBar then AT_StopInviteBar(); end
   if AT_HideQueueText then AT_HideQueueText(); end
-  if StaticPopupDialogs and StaticPopupDialogs["CONFIRM_BATTLEFIELD_ENTRY"] and AT_origHideOnEscape ~= nil then
-    StaticPopupDialogs["CONFIRM_BATTLEFIELD_ENTRY"].hideOnEscape = AT_origHideOnEscape;
-  end
 end
 
 K.RegisterModule("ArenaTimes", {
