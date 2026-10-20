@@ -170,9 +170,12 @@ local function CreateSlider(parent, label, setting, minVal, maxVal, step, xOffse
 		-- no avisaba de nada. Paso con "Focus".
 		local aplicado = false;
 		local movables = K.GetMovablesForSetting and K.GetMovablesForSetting(setting);
-		if movables and K.SetGlobalFrameScale then
+		-- La misma puerta que Ctrl + rueda (SetMovableScaleFromControl):
+		-- el slider escala desde el centro igual que la rueda.
+		local setScale = K.SetMovableScaleFromControl or K.SetGlobalFrameScale;
+		if movables and setScale then
 			for _, mk in ipairs(movables) do
-				if K.SetGlobalFrameScale(mk, value) then aplicado = true; end
+				if setScale(mk, value) then aplicado = true; end
 			end
 		end
 
@@ -1657,6 +1660,17 @@ function K.PopulateFramesTab(panel)
 			if K.SaveConfig then K.SaveConfig("AuraIconsPerRow", v); end
 			if K.ApplyAuraIconsPerRow then K.ApplyAuraIconsPerRow(); end
 		end);
+
+		-- Para que el Reset de la hoja (y cualquier otro) lo deje al dia.
+		-- Se pone _last ANTES de SetValue: asi OnValueChanged ve el mismo
+		-- numero y no vuelve a guardar lo que se acaba de resetear.
+		function K.RefreshAuraIconsPerRowSlider()
+			local n = (K.GetAuraIconsPerRow and K.GetAuraIconsPerRow()) or 8;
+			s._last = n;
+			s:SetValue(n);
+			val:SetText(tostring(n));
+		end
+		s:HookScript("OnShow", K.RefreshAuraIconsPerRowSlider);
 
 		FNote(paneAuras, L["NOTE_ICONS_PER_ROW"]
 			or "How many buff icons fit in one row before wrapping to the next.",

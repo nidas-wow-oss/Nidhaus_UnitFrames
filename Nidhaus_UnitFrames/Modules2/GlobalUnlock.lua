@@ -896,11 +896,19 @@ local function DetachPartyChain()
 			local scale = pf:GetEffectiveScale();
 			local left, top = pf:GetLeft(), pf:GetTop();
 			if left and top then
-				local x = left * scale / uiScale;
-				local y = top * scale / uiScale - uiH;
+				-- A pantalla con la escala de ANTES de reparentar, y de
+				-- pantalla al espacio del marco con la de DESPUES: el
+				-- offset de SetPoint va en el espacio del propio marco.
+				-- Antes se dividia por la de UIParent, que es lo mismo
+				-- solo si el marco no tiene escala propia; con "Party
+				-- Frame Scale" distinto de 1 el marco saltaba al soltarlo.
+				local sx, sy = left * scale, top * scale;
 				pf:SetParent(UIParent);
+				local ns = pf:GetEffectiveScale() or uiScale;
+				if not ns or ns == 0 then ns = uiScale; end
 				pf:ClearAllPoints();
-				pf:SetPoint("TOPLEFT", UIParent, "TOPLEFT", x, y);
+				pf:SetPoint("TOPLEFT", UIParent, "TOPLEFT",
+					sx / ns, (sy - uiH * uiScale) / ns);
 			end
 		end
 	end
@@ -1271,6 +1279,99 @@ local function CurrentScale(entry, frame)
 end
 K.GetMovableScale = CurrentScale;
 
+-- ---------------------------------------------------------
+-- EL RECUADRO SE ENTERA CUANDO CAMBIA UNA ESCALA. VENGA DE DONDE VENGA.
+--
+-- Esta es la otra mitad de la idea de Dominos, y era la que faltaba.
+-- En Dominos, cambiar la escala es siempre: guardar, aplicar, y AVISAR
+-- (Rescale + el callback DOMINOS_RESCALE). Todo lo que muestra la escala
+-- -- el slider, el recuadro de arrastre -- escucha ese aviso y se pone
+-- al dia, sin importar quien la cambio.
+--
+-- Aca la rueda ya se repintaba sola: era ella la que cambiaba el numero.
+-- El slider del panel, en cambio, guardaba y aplicaba, pero nadie le
+-- avisaba al recuadro. Movias "Buff scale" con el modo mover abierto, los
+-- iconos crecian, y el recuadro se quedaba varado con su tamaño viejo y
+-- su numero viejo ("Buffs 0.90" con el slider en 1.40).
+--
+-- Ahora cualquier camino que cambie una escala pide un refresco:
+--
+--   * ScaleAPI (SetModuleScale / ResetModuleScale): buffs, debuffs,
+--     timers de arena, Sacred Shield, Seduccion, el ojo, etc.
+--   * SetGlobalFrameScale: los sliders de Player, Target, Pet, Cast Bar.
+--   * ApplyActionBarScale: el slider "Action Bar Scale".
+--   * Los setters propios de Auto Shot, Swing y flechas (OWN_SCALE).
+--
+-- POR QUE AL CUADRO SIGUIENTE Y NO EN EL ACTO. Algunos tamaños se
+-- terminan de acomodar DESPUES de que vuelve el setter: con los buffs,
+-- AuraAnchor escala los iconos en un hook que corre cuando SetModuleScale
+-- ya termino. Medir en el acto daba la caja de la escala anterior. Un
+-- cuadro despues ya esta todo en su lugar, y de paso diez ticks del
+-- slider en el mismo cuadro cuestan un solo repintado.
+-- ---------------------------------------------------------
+local function SetOverlayLabel(ov, entry, frame)
+	entry = entry or ov.entry;
+	frame = frame or ov.target;
+	if not (ov and ov.text and entry) then return; end
+	if entry.scalable then
+		ov.text:SetText(entry.label .. "  " ..
+			string.format("%.2f", CurrentScale(entry, frame)));
+	else
+		ov.text:SetText(entry.label);
+	end
+end
+
+local function RefreshOverlays()
+	for _, ov in ipairs(overlays) do
+		-- El que se esta arrastrando se repinta solo en su OnUpdate:
+		-- reanclarlo desde aca le pelearia al cursor.
+		if ov:IsShown() and ov.target and not ov.drag then
+			SetOverlayLabel(ov);
+			if ov.AnchorOverlay then pcall(ov.AnchorOverlay, ov); end
+		end
+	end
+end
+
+local overlayRefresher = CreateFrame("Frame");
+overlayRefresher:Hide();
+overlayRefresher:SetScript("OnUpdate", function(self)
+	self:Hide();
+	RefreshOverlays();
+end);
+
+local function RequestOverlayRefresh()
+	-- Barato si el modo mover esta cerrado: los recuadros estan ocultos
+	-- y RefreshOverlays no toca ninguno.
+	overlayRefresher:Show();
+end
+K.RequestMoverRefresh = RequestOverlayRefresh;
+
+-- Los setters que viven en otros modulos se enganchan aca, sin tocar el
+-- modulo. Se intenta cada vez que se arman los recuadros (para entonces
+-- todos los modulos ya cargaron) y cada uno se engancha una sola vez.
+local scaleHooked = {};
+local function HookScaleSetter(name)
+	if scaleHooked[name] or type(K[name]) ~= "function" then return; end
+	scaleHooked[name] = true;
+	hooksecurefunc(K, name, RequestOverlayRefresh);
+end
+-- Los que el panel llama en vivo al mover un slider de tamaño. Si alguno
+-- no tiene recuadro, el aviso no cuesta nada: RefreshOverlays solo mira
+-- los que estan a la vista.
+local SCALE_SETTERS = {
+	"ApplyActionBarScale",     -- Action Bar Scale
+	"ApplyCastBarPWScale",     -- barra de casteo (estilo PW)
+	"ApplyPetFrameScale",      -- marco de la mascota
+	"ApplyPartyFrameScale",    -- marcos del grupo
+	"ApplyMinimapScale",       -- minimapa
+	"SetClassTimersScale",     -- timers de clase
+	"SavePowerBarScale",       -- barra de energia
+};
+local function InstallScaleHooks()
+	for _, name in ipairs(SCALE_SETTERS) do HookScaleSetter(name); end
+	for _, o in pairs(OWN_SCALE) do HookScaleSetter(o.set); end
+end
+
 -- Topes de los sliders del panel: con la rueda no se pasa de ahi, asi el
 -- slider siempre puede mostrar el numero.
 local SLIDER_RANGE = {
@@ -1313,6 +1414,9 @@ function K.SetGlobalFrameScale(key, scale)
 	SaveScale(entry, scale);
 	-- nExtraBars acompaña a las barras de accion (MiniBar.lua).
 	if K.SyncExtraBarScale then pcall(K.SyncExtraBarScale); end
+	-- El slider de Player/Target/Pet/Cast Bar pasa por aca: el recuadro
+	-- del modo mover tiene que enterarse (ver RequestOverlayRefresh).
+	RequestOverlayRefresh();
 	return true;
 end
 
@@ -1421,6 +1525,190 @@ local function UnlockEntryFrames(entry)
 			end
 		end
 	end
+end
+
+-- ---------------------------------------------------------
+-- ESCALAR DESDE UN CONTROL: LA RUEDA Y EL SLIDER HACEN LO MISMO
+--
+-- Para los marcos sin dueño de escala (Player, Target, Pet, Cast Bar...)
+-- la rueda y el slider del panel hacian cosas distintas:
+--
+--   * Ctrl + rueda escalaba desde el CENTRO (ScaleKeepingCenter) y
+--     guardaba el punto nuevo.
+--   * El slider llamaba a SetGlobalFrameScale, que es un SetScale a
+--     secas: el marco crecia desde su esquina de anclaje y se corria.
+--
+-- Mismo numero, resultado distinto en pantalla. Ahora las dos pasan por
+-- aca.
+--
+-- POR QUE NO SE CAMBIO SetGlobalFrameScale DIRECTAMENTE. La llaman
+-- tambien el codigo de carga (CastBarPW al prender el estilo) y el reset.
+-- Centrar ahi movia el marco y GUARDABA esa posicion en momentos en que
+-- nadie esta escalando nada: al entrar al juego te podia correr la barra
+-- de casteo de donde la dejaste. Los controles tienen su propia puerta.
+-- ---------------------------------------------------------
+local function CenteredScaleAndSave(entry, frame, newScale)
+	-- El candado (LockFramePoint) repone el punto viejo en cada SetPoint.
+	-- Con _nufApplying el centrado no le pelea; despues se le da el
+	-- punto nuevo.
+	frame._nufApplying = true;
+	ScaleKeepingCenter(frame, newScale);
+	frame._nufApplying = nil;
+	SaveScale(entry, newScale);
+
+	if OwnsItsPosition and OwnsItsPosition(entry.key) then
+		-- Posicion con dueño: se le pasa el punto centrado, como al soltar
+		-- un arrastre. Antes no se guardaba en ningun lado y al /reload el
+		-- modulo reponia el punto de antes con la escala nueva: el marco
+		-- aparecia corrido, el salto llegaba despues.
+		SaveToOwner(entry, frame);
+	else
+		SavePosition(entry, frame);
+		-- Fuera del modo mover el candado sigue puesto: que reponga el
+		-- punto centrado y no el de antes.
+		if not unlocked and frame.NUFPoint then
+			local saved = DB()[EntryKey(entry)];
+			if saved and saved.point then LockFramePoint(frame, entry, saved); end
+		end
+	end
+end
+
+local function HasSavedPoint(entry)
+	local saved = DB()[EntryKey(entry)];
+	return type(saved) == "table" and saved.point ~= nil;
+end
+
+-- La puerta de los sliders del panel.
+--
+-- Centra igual que la rueda cuando tiene sentido: con el modo mover
+-- abierto (ahi la rueda y el slider estan uno al lado del otro) o cuando
+-- el marco ya tiene una posicion tuya. Si el marco sigue en el lugar de
+-- fabrica, Blizzard lo acomoda solo y fijarle un punto lo sacaria de ese
+-- acomodo sin que lo pidieras: ahi queda el SetScale de siempre.
+function K.SetMovableScaleFromControl(key, scale)
+	if type(scale) ~= "number" then return false; end
+	local entry = BY_KEY[key];
+	if not entry then return false; end
+	if entry.protected and InCombatLockdown() then return false; end
+	local f = ResolveFrame(entry);
+	if not f then return false; end
+
+	local changed = math.abs((f:GetScale() or 1) - scale) > 0.0005;
+	if changed and (unlocked or HasSavedPoint(entry)) then
+		CenteredScaleAndSave(entry, f, scale);
+		if K.SyncExtraBarScale then pcall(K.SyncExtraBarScale); end
+		RequestOverlayRefresh();
+		return true;
+	end
+	return K.SetGlobalFrameScale(key, scale);
+end
+
+-- ---------------------------------------------------------
+-- ESCALA CON DUEÑO, DESDE UN CONTROL: EL MARCO NO SE CORRE
+--
+-- Los marcos con dueño de escala (ScaleAPI: buffs, debuffs, timers de
+-- arena, Sacred Shield, Seduccion...; o la DB propia: Swing, Auto Shot,
+-- flechas) se escalaban con un SetScale a secas. El offset de SetPoint se
+-- mide en el espacio del propio marco, asi que al cambiar la escala el
+-- offset en pantalla cambia con ella: un marco anclado a 300 px del centro
+-- se iba a 450 px con escala 1.5. Con el slider y con la rueda por igual,
+-- pero se corria.
+--
+-- Es la cuenta de Dominos (Frame:GetScaledCoords / SetFrameScale): el
+-- offset se multiplica por escala_vieja / escala_nueva, y el punto de
+-- anclaje queda en el mismo lugar de la pantalla. Despues se guarda, como
+-- hace Dominos con SavePosition, para que al /reload no vuelva el viejo.
+--
+-- CUANDO SE HACE. Guardar una posicion la vuelve "tuya", asi que solo se
+-- hace cuando ya lo era o cuando estas acomodando:
+--   * posicion con dueño (timers, Sacred Shield...): con el modo mover
+--     abierto, y se le pasa al dueño (SaveToOwner), como al soltar un
+--     arrastre;
+--   * buffs y debuffs: si ya tienen una posicion guardada. En la de
+--     fabrica la cuenta la hace AuraAnchor, que la sigue manteniendo
+--     pegada al minimapa.
+-- ---------------------------------------------------------
+local ID_TO_KEY = {};
+for key, id in pairs(MODULE_SCALE_ID) do ID_TO_KEY[id] = key; end
+
+local function KeepAnchorPoint(entry, frame, cap)
+	if not (cap and frame) then return; end
+	local new = frame:GetScale() or 1;
+	if new == 0 then return; end
+	local r = cap.scale / new;
+	if math.abs(r - 1) < 0.000001 then return; end
+
+	frame._nufApplying = true;
+	frame:ClearAllPoints();
+	frame:SetPoint(cap.p, cap.rel or UIParent, cap.rp, cap.x * r, cap.y * r);
+	frame._nufApplying = nil;
+
+	if OwnsItsPosition and OwnsItsPosition(entry.key) then
+		SaveToOwner(entry, frame);
+	else
+		SavePosition(entry, frame);
+		if not unlocked and frame.NUFPoint then
+			local saved = DB()[EntryKey(entry)];
+			if saved and saved.point then LockFramePoint(frame, entry, saved); end
+		end
+	end
+end
+
+local function SetOwnedScaleFromControl(entry, frame, owner, newScale)
+	local cap;
+	if frame then
+		local owned = OwnsItsPosition and OwnsItsPosition(entry.key);
+		local keep  = (owned and unlocked) or ((not owned) and HasSavedPoint(entry));
+		if keep then
+			local p, rel, rp, x, y = frame:GetPoint();
+			if p then
+				cap = { p = p, rel = rel, rp = rp, x = x or 0, y = y or 0,
+				        scale = frame:GetScale() or 1 };
+			end
+		end
+	end
+	owner.set(newScale);
+	KeepAnchorPoint(entry, frame, cap);
+end
+
+-- LA PUERTA UNICA DE LOS CONTROLES DE ESCALA.
+--
+-- Slider del panel o Ctrl + rueda, para cualquier movible: va al mismo
+-- lugar y hace lo mismo. Con dueño, por SetOwnedScaleFromControl; la
+-- barra 1 sin MiniBar, por Action Bar Scale; el resto, desde el centro
+-- (SetMovableScaleFromControl).
+function K.SetScaleFromControl(key, scale)
+	if type(scale) ~= "number" then return false; end
+	local entry = BY_KEY[key];
+	if not entry then return false; end
+	if entry.protected and InCombatLockdown() then return false; end
+
+	local owner = ScaleOwner(entry);
+	if owner then
+		SetOwnedScaleFromControl(entry, ResolveFrame(entry), owner, scale);
+		ClearSavedScale(entry);
+		RequestOverlayRefresh();
+		return true;
+	end
+	if MainBarIsMaster(entry) then
+		K.ClearBarOwnScales();
+		if K.SaveConfigSilent then K.SaveConfigSilent("ActionBarScale", scale); end
+		if K.ApplyActionBarScale then pcall(K.ApplyActionBarScale, scale); end
+		if K.RefreshPanelSliders then pcall(K.RefreshPanelSliders, "ActionBarScale"); end
+		RequestOverlayRefresh();
+		return true;
+	end
+	return K.SetMovableScaleFromControl(key, scale);
+end
+
+-- Para los sliders genericos de ScaleAPI (K.UI.ScaleSlider), que conocen
+-- el id del modulo y no la clave del movible. Un id sin movible (el
+-- contador de arena, DTSU, las mascotas del grupo...) escala como siempre.
+function K.SetModuleScaleFromControl(id, scale)
+	local key = ID_TO_KEY[id];
+	if key and BY_KEY[key] and K.SetScaleFromControl(key, scale) then return true; end
+	if K.SetModuleScale then K.SetModuleScale(id, scale); end
+	return true;
 end
 
 local function RestoreOne(entry)
@@ -1944,15 +2232,89 @@ local MOVER_BACKDROP = {
 	insets   = { left = 2.6, right = 2.6, top = 2.6, bottom = 2.6 },
 };
 
--- Alfa BAJO a proposito.
+-- LOS COLORES DE DOMINOS (core/drag.lua).
 --
--- Con 0.55 y 0.65 el recuadro tapaba por completo el frame que estabas
--- moviendo: arrastrabas a ciegas y recien veias el resultado al soltar. El
--- relleno solo tiene que insinuar el area; quien la define es el borde, y
--- por eso el borde va al 100% de opacidad en vez de al 50%.
-local COLOR_FRAME = { 1, 0.565, 0.251, 0.28 };          -- marcos de unidad
-local COLOR_EXTRA = { 0.671, 0.804, 0.937, 0.30 };      -- barras, auras, avisos
-local COLOR_EDGE  = { 0, 1, 0.62, 1 };                  -- borde, bien visible
+-- Recuadro plano, sin borde: Dominos pinta su drag con un solo color al
+-- 40% (0, 0.5, 0.7) y, al pasar el mouse, le suma un resaltado
+-- (0.2, 0.3, 0.4, 0.5) en modo ADD, que lo aclara. Aca igual. Los marcos
+-- de unidad conservan un tono propio, mas calido, para que no se
+-- confundan con las barras cuando se pisan.
+local COLOR_FRAME = { 0.75, 0.40, 0.10, 0.40 };          -- marcos de unidad
+local COLOR_EXTRA = { 0,    0.50, 0.70, 0.40 };          -- barras, auras, avisos (Dominos)
+local COLOR_HOVER = { 0.20, 0.30, 0.40, 0.50 };          -- resaltado al pasar el mouse (Dominos)
+
+-- ---------------------------------------------------------
+-- LA GRILLA DE LAS AURAS: EL DRAG MUESTRA DONDE VAN A ESTAR
+--
+-- Es la idea de Dominos (modules/auraBuffsBar.lua): su marco de buffs no
+-- mide los buffs que tenes ahora, mide TODOS los lugares (36 botones en
+-- tantas columnas como digas), asi que el recuadro es una vista previa de
+-- la zona que van a ocupar. Cambias las columnas y el recuadro cambia.
+--
+-- Aca: BUFF_MAX_DISPLAY lugares (32) para buffs y DEBUFF_MAX_DISPLAY (16)
+-- para debuffs, en filas de "Icons per row", con el tamaño y la
+-- separacion con que Blizzard los acomoda (BuffFrame_UpdateAllBuffAnchors:
+-- iconos de 30, 5 entre uno y otro, BUFF_ROW_SPACING entre filas), a la
+-- escala del slider. Crece desde la esquina de arriba a la derecha, que es
+-- de donde Blizzard empieza a poner los iconos.
+--
+-- Antes el recuadro media los iconos visibles: con tres buffs era una
+-- tirita, y mover el slider de iconos por fila no le cambiaba nada.
+-- ---------------------------------------------------------
+local function AuraGrid(e)
+	local isDebuff = e.debuffAnchor and true or false
+	local per = (K.GetAuraIconsPerRow and K.GetAuraIconsPerRow()) or tonumber(BUFFS_PER_ROW) or 8;
+	if type(per) ~= "number" or per < 1 then per = 8; end
+	local n = isDebuff and (tonumber(DEBUFF_MAX_DISPLAY) or 16) or (tonumber(BUFF_MAX_DISPLAY) or 32);
+	local s = (K.GetModuleScale and K.GetModuleScale(isDebuff and "PlayerDebuffs" or "PlayerBuffs")) or 1;
+	if type(s) ~= "number" or s <= 0 then s = 1; end
+
+	-- Los iconos son hijos de BuffFrame y cada uno lleva la escala del
+	-- slider: en pantalla miden 30 x (escala de BuffFrame) x (slider).
+	local bf = _G["BuffFrame"];
+	local base = (bf and bf.GetEffectiveScale and bf:GetEffectiveScale()) or UIParent:GetEffectiveScale() or 1;
+	local ref = _G["TempEnchant1"];
+	local bw = (ref and ref.GetWidth and ref:GetWidth()) or 30;
+	local bh = (ref and ref.GetHeight and ref:GetHeight()) or 30;
+	if type(bw) ~= "number" or bw < 8 then bw = 30; end
+	if type(bh) ~= "number" or bh < 8 then bh = 30; end
+	local f  = base * s;
+	local sp = tonumber(BUFF_ROW_SPACING) or 0;
+
+	return {
+		per = per, n = n,
+		cols = math.min(per, n), rows = math.ceil(n / per),
+		w = bw * f, h = bh * f,
+		gap = 5 * f, space = sp * f,
+		pad = 12 * f,          -- el tiempo que va debajo de la ultima fila
+	};
+end
+
+-- Un cuadradito por lugar: se ve de un vistazo cuantos van por fila,
+-- aunque tengas tres buffs. Blizzard recien reacomoda los iconos de
+-- verdad en el proximo cambio de auras; los cuadraditos se acomodan en el
+-- acto, que es justamente la vista previa.
+local function LayoutAuraSlots(ov, g, us)
+	ov.slots = ov.slots or {};
+	local w, h   = g.w / us, g.h / us;
+	local dx, dy = (g.w + g.gap) / us, (g.h + g.space) / us;
+	for i = 1, g.n do
+		local tex = ov.slots[i];
+		if not tex then
+			tex = ov:CreateTexture(nil, "ARTWORK");
+			tex:SetTexture(1, 1, 1, 0.14);
+			ov.slots[i] = tex;
+		end
+		local col = (i - 1) % g.per;
+		local row = math.floor((i - 1) / g.per);
+		tex:ClearAllPoints();
+		tex:SetWidth(w);
+		tex:SetHeight(h);
+		tex:SetPoint("TOPRIGHT", ov, "TOPRIGHT", -col * dx, -row * dy);
+		tex:Show();
+	end
+	for i = g.n + 1, #ov.slots do ov.slots[i]:Hide(); end
+end
 
 local overlayLevel = 10;
 
@@ -2033,6 +2395,26 @@ local function CreateOverlay(entry)
 		-- Se mide en pixeles de PANTALLA (GetLeft por la escala efectiva
 		-- del boton) y se traduce al espacio del overlay, porque boton y
 		-- overlay pueden tener escalas distintas.
+		-- BUFFS Y DEBUFFS: la grilla entera (ver AuraGrid), colgada de la
+		-- esquina de arriba a la derecha del ancla. El ancla es lo que se
+		-- arrastra, asi que el recuadro la sigue durante el arrastre.
+		if e.auraAnchor or e.debuffAnchor then
+			local tgt = self.target;
+			local right, top = tgt and tgt:GetRight(), tgt and tgt:GetTop();
+			if right and top then
+				local g  = AuraGrid(e);
+				local ts = tgt:GetEffectiveScale() or 1;
+				local us = self:GetEffectiveScale() or 1;
+				if us == 0 then us = 1; end
+				local wpx = g.cols * g.w + (g.cols - 1) * g.gap;
+				local hpx = g.rows * g.h + (g.rows - 1) * g.space + g.pad;
+				self:SetSize(wpx / us, hpx / us);
+				self:SetPoint("TOPRIGHT", UIParent, "BOTTOMLEFT", right * ts / us, top * ts / us);
+				LayoutAuraSlots(self, g, us);
+				return;
+			end
+		end
+
 		if e.buttons then
 			local l, r, bt, tp, bscale;
 			for i = 1, (e.buttons.count or 0) do
@@ -2117,37 +2499,37 @@ local function CreateOverlay(entry)
 	overlay:RegisterForDrag("LeftButton");
 	overlay:Hide();
 
-	-- Aspecto del recuadro.
+	-- ASPECTO: EL DRAG DE DOMINOS.
 	--
-	-- Antes era una textura plana celeste, sin borde: con quince recuadros
-	-- encimados no se distinguia donde terminaba uno y empezaba el otro.
-	-- Ahora lleva backdrop con borde, y el color dice de que se trata:
+	-- Plano y SIN BORDE: un solo color al 40% que deja ver lo que hay
+	-- abajo. Antes llevaba un backdrop con borde verde al 100%, que con
+	-- quince recuadros en pantalla era mas borde que otra cosa.
 	--
-	--   naranja = marcos de unidad (Player, Target, Focus, Party, Arena)
-	--   celeste = todo lo demas (barras, auras, avisos, timers)
+	-- Al pasar el mouse se aclara (el resaltado de Dominos, en modo ADD),
+	-- asi sabes cual vas a agarrar antes de hacer click, aunque haya dos
+	-- encimados. Mientras lo arrastras se queda aclarado.
 	--
-	-- Es la misma idea del mover de pw_unitframes, que separa por color el
-	-- marco principal de los elementos que cuelgan de el.
-	overlay:SetBackdrop(MOVER_BACKDROP);
+	--   tono calido = marcos de unidad (Player, Target, Party...)
+	--   celeste     = todo lo demas, el color de Dominos
 	local col = (entry.group == "frames") and COLOR_FRAME or COLOR_EXTRA;
-	overlay:SetBackdropColor(col[1], col[2], col[3], col[4]);
-	overlay:SetBackdropBorderColor(unpack(COLOR_EDGE));
+	overlay.bg = overlay:CreateTexture(nil, "BACKGROUND");
+	overlay.bg:SetAllPoints(overlay);
+	overlay.bg:SetTexture(col[1], col[2], col[3], col[4]);
 
-	-- Etiqueta en la ESQUINA, no al centro.
-	--
-	-- Centrada caia justo donde casi todos los frames tienen su propio
-	-- texto — el nombre del compañero, el de la barra de casteo — y los dos
-	-- se encimaban hasta volverse ilegibles. Arriba a la izquierda no hay
-	-- nada con que chocar, y ademas queda claro a que recuadro pertenece
-	-- cuando dos se solapan.
-	--
-	-- Lleva una chapita oscura detras: sobre el mundo, un texto amarillo
-	-- suelto se pierde apenas pasas sobre algo claro.
-	overlay.textBG = overlay:CreateTexture(nil, "ARTWORK");
-	overlay.textBG:SetTexture(0, 0, 0, 0.65);
+	overlay.hl = overlay:CreateTexture(nil, "BORDER");
+	overlay.hl:SetAllPoints(overlay);
+	overlay.hl:SetTexture(COLOR_HOVER[1], COLOR_HOVER[2], COLOR_HOVER[3], COLOR_HOVER[4]);
+	overlay.hl:SetBlendMode("ADD");
+	overlay.hl:Hide();
+	overlay:HookScript("OnEnter", function(self) self.hl:Show(); end);
+	overlay:HookScript("OnLeave", function(self)
+		if not self.drag then self.hl:Hide(); end
+	end);
 
-	overlay.text = overlay:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-	overlay.text:SetPoint("TOPLEFT", overlay, "TOPLEFT", 5, -4);
+	-- Etiqueta AL CENTRO, como en Dominos, con la letra normal del juego
+	-- (la grande no entra en los recuadros chicos: Seduccion, el ICD).
+	overlay.text = overlay:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+	overlay.text:SetPoint("CENTER", overlay, "CENTER", 0, 0);
 	overlay.text:SetTextColor(1, 0.82, 0);
 	-- EL NUMERO SE VE DE ENTRADA, NO RECIEN AL GIRAR LA RUEDA.
 	--
@@ -2155,15 +2537,7 @@ local function CreateOverlay(entry)
 	-- clic de rueda. Mostrarlo desde el arranque no es decoracion: es la
 	-- forma de ver de un vistazo si coincide con el slider. Justamente asi
 	-- se vio que no coincidian.
-	if entry.scalable then
-		overlay.text:SetText(entry.label .. "  " ..
-			string.format("%.2f", CurrentScale(entry, frame)));
-	else
-		overlay.text:SetText(entry.label);
-	end
-
-	overlay.textBG:SetPoint("TOPLEFT",     overlay.text, "TOPLEFT",     -3,  2);
-	overlay.textBG:SetPoint("BOTTOMRIGHT", overlay.text, "BOTTOMRIGHT",  3, -2);
+	SetOverlayLabel(overlay, entry, frame);
 
 	overlay.target = frame;
 	overlay.entry  = entry;
@@ -2205,6 +2579,11 @@ end
 local function BeginDrag(overlay)
 	local f = overlay.target;
 	if not f then return; end
+	-- Que los modulos sepan que este marco se esta arrastrando y no lo
+	-- reacomoden en el medio (AuraAnchor recoloca el ancla de debuffs en
+	-- cada cambio de auras mientras esta en su lugar de fabrica).
+	f._nufDragging = true;
+	if overlay.hl then overlay.hl:Show(); end
 
 	-- SOLTARLO DEL GESTOR DE BLIZZARD ANTES DE MOVERLO.
 	--
@@ -2268,6 +2647,9 @@ end
 local function EndDrag(overlay)
 	overlay:SetScript("OnUpdate", nil);
 	overlay.drag = nil;
+	if overlay.target then overlay.target._nufDragging = nil; end
+	-- Si el mouse ya no esta encima, se apaga el resaltado.
+	if overlay.hl and not (MouseIsOver and MouseIsOver(overlay)) then overlay.hl:Hide(); end
 end
 
 	overlay:SetScript("OnDragStart", function(self)
@@ -2420,7 +2802,9 @@ end
 			if owner then
 				-- Tiene dueño: se guarda y se aplica ALLA, y su slider se
 				-- mueve solo. En globalPos no queda escala.
-				owner.set(newScale);
+				-- Por SetOwnedScaleFromControl, la misma que usa el slider:
+				-- el marco no se corre al escalar.
+				SetOwnedScaleFromControl(self.entry, self.target, owner, newScale);
 				ClearSavedScale(self.entry);
 			elseif MainBarIsMaster(self.entry) then
 				-- Barra 1 = "Action Bar Scale": lo mismo que mover el slider.
@@ -2429,22 +2813,16 @@ end
 				if K.ApplyActionBarScale then pcall(K.ApplyActionBarScale, newScale); end
 				if K.RefreshPanelSliders then pcall(K.RefreshPanelSliders, "ActionBarScale"); end
 			else
-				-- Crece para los dos lados: ver ScaleKeepingCenter.
-				ScaleKeepingCenter(self.target, newScale);
-				SaveScale(self.entry, newScale);
-
-				-- Y SE GUARDA EL PUNTO NUEVO.
+				-- Crece para los dos lados (ScaleKeepingCenter) Y SE GUARDA
+				-- EL PUNTO NUEVO: centrar mueve el anclaje, y sin guardarlo
+				-- el proximo login repondria el de antes -- peor que no
+				-- centrar, porque el salto llega despues. Salvo que la
+				-- posicion tenga dueño propio (esos la guardan solos).
 				--
-				-- Centrar mueve el anclaje. Sin guardarlo, el proximo login
-				-- repondria el de antes y la barra apareceria descolocada
-				-- -- peor que no centrarla, porque el salto llega despues.
-				--
-				-- Salvo que la posicion tenga dueño propio: esos la guardan
-				-- por su cuenta y escribir aca seria volver al problema de
-				-- los dos sistemas peleando por el mismo marco.
-				if not (OwnsItsPosition and OwnsItsPosition(self.entry.key)) then
-					SavePosition(self.entry, self.target);
-				end
+				-- Es la MISMA funcion que usa el slider del panel
+				-- (SetMovableScaleFromControl): la rueda y el slider no
+				-- pueden dar resultados distintos.
+				CenteredScaleAndSave(self.entry, self.target, newScale);
 
 				-- CADA BARRA CON SU ESCALA.
 				--
@@ -2485,7 +2863,9 @@ end
 			-- nExtraBars acompaña a las barras de accion (MiniBar.lua).
 			if K.SyncExtraBarScale then pcall(K.SyncExtraBarScale); end
 
-			self.text:SetText(self.entry.label .. "  " .. string.format("%.2f", newScale));
+			-- El numero que se muestra es el GUARDADO, leido por el mismo
+			-- camino que el slider: si el dueño lo recorto, se ve recortado.
+			SetOverlayLabel(self);
 			self:AnchorOverlay();
 		end);
 	end
@@ -2574,6 +2954,7 @@ end
 local builtFor = {};
 
 local function BuildOverlays()
+	InstallScaleHooks();
 	-- CORTAR LA CADENA DE MINIBAR, ANTES QUE NADA.
 	--
 	-- MiniBar apila con anclajes relativos, que en WoW son vinculos vivos:
@@ -2609,6 +2990,9 @@ local function BuildOverlays()
 				ov.target = f;
 			end
 			if ov.target and ov.AnchorOverlay then ov:AnchorOverlay(); end
+			-- El numero tambien: pudo cambiar con el slider mientras el
+			-- modo mover estaba cerrado.
+			SetOverlayLabel(ov);
 		end
 	end
 end

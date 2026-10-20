@@ -703,6 +703,52 @@ end
 --  y GlobalUnlock dibuja el recuadro encima (overlayOn). No se mueve ni
 --  se ancla a nada: es puramente una caja de medida.
 -- ──────────────────────────────────────────────────────────────
+-- ──────────────────────────────────────────────────────────────
+--  MEDIR BOTONES EN PIXELES DE PANTALLA
+--
+--  Este era el recuadro "varado" de la barra 1 con Action Bar Scale en
+--  1.14: la barra crecia y el recuadro se quedaba del tamaño de 1.00, y
+--  ademas corrido hacia la izquierda.
+--
+--  GetLeft/GetRight/GetBottom/GetTop NO vienen en una unidad comun: vienen
+--  en el espacio de CADA marco, o sea pixeles de pantalla divididos por SU
+--  escala efectiva. Los botones estan escalados (Action Bar Scale, o la
+--  escala de su fila); la caja es hija de UIParent y no. Usar los numeros
+--  de los botones tal cual como offsets de la caja achicaba todo por la
+--  escala de los botones: con 1.14, la caja salia 1/1.14 de la barra, y
+--  su esquina tambien.
+--
+--  Con escala 1 los dos espacios coinciden y no se notaba nada. Por eso
+--  tardo en aparecer: hacia falta escalar las barras.
+--
+--  La cuenta correcta es la de siempre: todo a pantalla (por la escala del
+--  boton) y de pantalla al espacio de la caja (dividido por la suya). Es
+--  la misma que hace el recuadro de la barra de mascota en GlobalUnlock y
+--  MB_PlaceAtScreen en MiniBar.
+-- ──────────────────────────────────────────────────────────────
+local function FitBoxToButtons(box, list)
+    local l, r, b, t;
+    for _, f in ipairs(list) do
+        if f and f:IsVisible() and f:GetLeft() then
+            local s = f:GetEffectiveScale() or 1;
+            local fl, fr = f:GetLeft() * s,   f:GetRight() * s;
+            local fb, ft = f:GetBottom() * s, f:GetTop() * s;
+            l = math.min(l or fl, fl);
+            r = math.max(r or fr, fr);
+            b = math.min(b or fb, fb);
+            t = math.max(t or ft, ft);
+        end
+    end
+    if not l then return false; end
+
+    local bs = box:GetEffectiveScale() or 1;
+    if bs == 0 then bs = 1; end
+    box:ClearAllPoints();
+    box:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l / bs, b / bs);
+    box:SetSize(math.max((r - l) / bs, 10), math.max((t - b) / bs, 10));
+    return true;
+end
+
 local barsBox;
 
 function K.UpdateActionBarsBox()
@@ -725,20 +771,7 @@ function K.UpdateActionBarsBox()
         parts[#parts + 1] = _G["MultiBarBottomRightButton" .. i];
     end
 
-    local l, r, t, b;
-    for _, f in ipairs(parts) do
-        if f and f:IsVisible() and f:GetLeft() then
-            l = math.min(l or f:GetLeft(),   f:GetLeft());
-            r = math.max(r or f:GetRight(),  f:GetRight());
-            b = math.min(b or f:GetBottom(), f:GetBottom());
-            t = math.max(t or f:GetTop(),    f:GetTop());
-        end
-    end
-    if not l then return barsBox; end
-
-    barsBox:ClearAllPoints();
-    barsBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b);
-    barsBox:SetSize(math.max(r - l, 10), math.max(t - b, 10));
+    if not FitBoxToButtons(barsBox, parts) then return barsBox; end
 
     if K.UpdateActionBarBoxes then K.UpdateActionBarBoxes(); end
     return barsBox;
@@ -1108,26 +1141,15 @@ function K.UpdateActionBarBoxes()
             prefixes = ROW_PREFIX;   -- fila 1 en modo bloque: las tres
         end
 
-        local l, r, t, b;
+        local list = {};
         for _, prefix in ipairs(prefixes) do
-        for i = 1, 12 do
-            local f = _G[prefix .. i];
-            if f and f:IsVisible() and f:GetLeft() then
-                l = math.min(l or f:GetLeft(),   f:GetLeft());
-                r = math.max(r or f:GetRight(),  f:GetRight());
-                b = math.min(b or f:GetBottom(), f:GetBottom());
-                t = math.max(t or f:GetTop(),    f:GetTop());
-            end
-        end
+            for i = 1, 12 do list[#list + 1] = _G[prefix .. i]; end
         end
 
-        -- Fila oculta: se deja la caja donde estaba. Vaciarla la mandaria a
-        -- la esquina y el recuadro apareceria ahi al abrir el modo mover.
-        if l then
-            box:ClearAllPoints();
-            box:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b);
-            box:SetSize(math.max(r - l, 10), math.max(t - b, 10));
-        end
+        -- Fila oculta: FitBoxToButtons no toca la caja y queda donde
+        -- estaba. Vaciarla la mandaria a la esquina y el recuadro
+        -- apareceria ahi al abrir el modo mover.
+        FitBoxToButtons(box, list);
     end
 end
 
@@ -1441,21 +1463,9 @@ function K.UpdateStanceBarBox()
         stanceBox:EnableMouse(false);
     end
 
-    local l, r, t, b;
-    for i = 1, 10 do
-        local btn = _G["ShapeshiftButton" .. i];
-        if btn and btn:IsVisible() and btn:GetLeft() then
-            l = math.min(l or btn:GetLeft(),   btn:GetLeft());
-            r = math.max(r or btn:GetRight(),  btn:GetRight());
-            b = math.min(b or btn:GetBottom(), btn:GetBottom());
-            t = math.max(t or btn:GetTop(),    btn:GetTop());
-        end
-    end
-    if not l then return stanceBox; end
-
-    stanceBox:ClearAllPoints();
-    stanceBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b);
-    stanceBox:SetSize(math.max(r - l, 10), math.max(t - b, 10));
+    local list = {};
+    for i = 1, 10 do list[#list + 1] = _G["ShapeshiftButton" .. i]; end
+    FitBoxToButtons(stanceBox, list);
     return stanceBox;
 end
 

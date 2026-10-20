@@ -186,7 +186,13 @@ function K.UI.ScaleSlider(parent, moduleId, x, y, width, label)
 		if self._last == v then return; end
 		self._last = v;
 		val:SetText(string.format("%.2f", v));
-		K.SetModuleScale(moduleId, v);
+		-- Por la puerta de los controles (GlobalUnlock): lo mismo que
+		-- Ctrl + rueda, sin que el marco se corra al escalar.
+		if K.SetModuleScaleFromControl then
+			K.SetModuleScaleFromControl(moduleId, v);
+		else
+			K.SetModuleScale(moduleId, v);
+		end
 	end);
 
 	s.Refresh = function(self)

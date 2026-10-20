@@ -373,9 +373,15 @@ local function CreatePetFrameDragOverlays()
 					local frameX, frameY = pf:GetCenter();
 					if not parentX or not frameX then return; end
 
-					local scale = pf:GetEffectiveScale() / arenaFrame:GetEffectiveScale();
-					local offsetX = (frameX - parentX) * (pf:GetEffectiveScale() / arenaFrame:GetEffectiveScale());
-					local offsetY = (frameY - parentY) * (pf:GetEffectiveScale() / arenaFrame:GetEffectiveScale());
+					-- Cada GetCenter viene en el espacio de SU marco: se pasan
+					-- los dos a pantalla y el resultado al espacio de la
+					-- mascota (en ese se miden sus offsets). La cuenta vieja
+					-- daba lo mismo solo con las dos escalas iguales.
+					local pe = pf:GetEffectiveScale() or 1;
+					local ae = arenaFrame:GetEffectiveScale() or 1;
+					if pe == 0 then pe = 1; end
+					local offsetX = (frameX * pe - parentX * ae) / pe;
+					local offsetY = (frameY * pe - parentY * ae) / pe;
 					offsetX = math.floor(offsetX * 10 + 0.5) / 10;
 					offsetY = math.floor(offsetY * 10 + 0.5) / 10;
 

@@ -170,10 +170,38 @@ local function DebuffScale()
 end
 
 -- Posicion de fabrica de los buffs en 3.3.5a
+--
+-- LA ESQUINA NO SE MUEVE CON LA ESCALA. El ancla lleva la escala del
+-- slider, y el offset de SetPoint se mide en el espacio del propio marco:
+-- -205 a escala 1.5 son 307 px de pantalla. O sea que agrandar los buffs
+-- los corria hacia la izquierda, y achicarlos hacia la derecha. Se divide
+-- por la escala para que la esquina quede siempre donde Blizzard pone sus
+-- buffs, a 205 del borde (o pegada al minimapa, ver MinimapInset).
+--
+-- Y EL ANCLA VA DONDE ESTAN LOS BUFFS DE VERDAD: la esquina de BuffFrame.
+--
+-- En la posicion de fabrica los iconos los acomoda Blizzard colgados de
+-- BuffFrame (ReanchorAuras no los toca hasta que les des una posicion).
+-- El ancla, en cambio, se calculaba aparte con MinimapInset: con el
+-- minimapa agrandado quedaba unos 30 px a la izquierda de los buffs, y el
+-- drag de buffs no coincidia con los iconos ni con el de debuffs (que si
+-- cuelga de TempEnchant1, o sea de BuffFrame). Ademas, al empezar a
+-- arrastrarlo, los buffs saltaban esa diferencia.
+--
+-- Pegada a la esquina de BuffFrame, con offset 0, coincide siempre y no
+-- depende de la escala. MinimapInset queda solo por si BuffFrame no
+-- existiera.
 local function ApplyDefaultAnchorPos()
+	local s = BuffScale();
+	if not s or s <= 0 then s = 1; end
+	anchor:SetScale(s);
 	anchor:ClearAllPoints();
-	anchor:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -MinimapInset(), -13);
-	anchor:SetScale(BuffScale());
+	local bf = _G["BuffFrame"];
+	if bf and bf.GetRight then
+		anchor:SetPoint("TOPRIGHT", bf, "TOPRIGHT", 0, 0);
+	else
+		anchor:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -MinimapInset() / s, -13 / s);
+	end
 end
 
 -- Se llama al mover el slider de tamaño del minimapa.
@@ -189,10 +217,50 @@ function K.RefreshAuraAnchorDefault()
 	if K.ReanchorDebuffs then K.ReanchorDebuffs(); end
 end
 
+-- EN LA POSICION DE FABRICA, EL ANCLA VA DONDE BLIZZARD PONE LOS DEBUFFS.
+--
+-- Sin posicion propia, los debuffs los acomoda Blizzard
+-- (DebuffButton_UpdateAnchors): el primero cuelga de TempEnchant1, tantas
+-- filas de buffs mas abajo como haya, y nunca menos de dos. El ancla
+-- estaba en otro lado (pegada debajo del ancla de buffs), asi que el
+-- recuadro del modo mover no caia sobre los debuffs y, al empezar a
+-- arrastrarlo, saltaba.
+--
+-- Aca se hace la misma cuenta que Blizzard, con sus mismas variables, asi
+-- que el ancla queda exactamente sobre el primer debuff. Lleva la escala
+-- del slider de debuffs, igual que los iconos: el offset se mide en ese
+-- espacio en los dos casos y da lo mismo en pantalla.
+local function BlizzardDebuffOffset()
+	local te  = _G["TempEnchant1"];
+	local h   = (te and te.GetHeight and te:GetHeight()) or 30;
+	if type(h) ~= "number" or h < 8 then h = 30; end
+	local sp  = tonumber(BUFF_ROW_SPACING) or 0;
+	local per = tonumber(BUFFS_PER_ROW) or 8;
+	if per < 1 then per = 8; end
+	local bf  = _G["BuffFrame"];
+	local nb  = (tonumber(BUFF_ACTUAL_DISPLAY) or 0) + ((bf and tonumber(bf.numEnchants)) or 0);
+	local nc  = (bf and tonumber(bf.numConsolidated)) or 0;
+	if nc > 0 then nb = nb - nc + 1; end
+	local rows = math.ceil(nb / per);
+	if rows < 2 then return (2 * sp) + h; end
+	return rows * (sp + h);
+end
+
 local function ApplyDefaultDebuffPos()
+	-- Mientras lo arrastras en el modo mover, no se lo toca.
+	if debuffAnchor._nufDragging then return; end
+	local s = DebuffScale();
+	if not s or s <= 0 then s = 1; end
+	debuffAnchor:SetScale(s);
 	debuffAnchor:ClearAllPoints();
-	debuffAnchor:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -20);
-	debuffAnchor:SetScale(DebuffScale());
+	local te = _G["TempEnchant1"];
+	if te then
+		debuffAnchor:SetPoint("TOPRIGHT", te, "BOTTOMRIGHT", 0, -BlizzardDebuffOffset());
+	else
+		-- Sin TempEnchant1 (no deberia pasar: viene en el XML de Blizzard)
+		-- queda debajo del ancla de buffs, 20 px de pantalla.
+		debuffAnchor:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -20 / s);
+	end
 end
 
 local function RestoreAnchorPosition()
@@ -368,14 +436,32 @@ end
 
 -- El slider escribe con K.SetModuleScale; de ahi se engancha para que el
 -- cambio se vea en el acto y no en la proxima actualizacion de auras.
+local function OnAuraScaleChanged(id)
+	if id == "PlayerBuffs" then
+		ApplyBuffIconScale();
+		-- En la posicion de fabrica, la esquina se recalcula con la escala
+		-- nueva (ver ApplyDefaultAnchorPos). Con posicion propia la cuenta
+		-- la hace GlobalUnlock (SetOwnedScaleFromControl), que es quien la
+		-- guarda.
+		if not HasCustomPosition() then ApplyDefaultAnchorPos(); end
+		if not HasCustomDebuffPosition() then ApplyDefaultDebuffPos(); end
+	elseif id == "PlayerDebuffs" then
+		ApplyDebuffIconScale();
+		if not HasCustomDebuffPosition() then ApplyDefaultDebuffPos(); end
+	end
+end
 if type(K.SetModuleScale) == "function" then
-	hooksecurefunc(K, "SetModuleScale", function(id)
-		if id == "PlayerBuffs" then
-			ApplyBuffIconScale();
-		elseif id == "PlayerDebuffs" then
-			ApplyDebuffIconScale();
-		end
-	end);
+	hooksecurefunc(K, "SetModuleScale", OnAuraScaleChanged);
+end
+-- Y EL RESET TAMBIEN.
+--
+-- Solo estaba enganchado SetModuleScale. El boton Reset devuelve la
+-- escala con ResetModuleScale, que pone en 1 el ancla (un marco de 1x1
+-- invisible) pero no los iconos: los buffs se quedaban del tamaño de
+-- antes hasta el proximo cambio de auras, y el slider decia 1.00. Parecia
+-- que el Reset no reseteaba la escala.
+if type(K.ResetModuleScale) == "function" then
+	hooksecurefunc(K, "ResetModuleScale", OnAuraScaleChanged);
 end
 
 -- ---------------------------------------------------------
@@ -435,26 +521,35 @@ function K.ApplyAuraIconsPerRow()
 	ApplyBuffsPerRow();
 	if K.ReanchorAuras then K.ReanchorAuras(); end
 	if K.ReanchorDebuffs then K.ReanchorDebuffs(); end
+	-- Las filas de buffs cambian, y con ellas donde Blizzard pone los
+	-- debuffs.
+	if not HasCustomDebuffPosition() then ApplyDefaultDebuffPos(); end
+	-- Y el drag de buffs/debuffs crece o se achica en el acto: es la
+	-- vista previa de las filas nuevas (GlobalUnlock, AuraGrid).
+	if K.RequestMoverRefresh then K.RequestMoverRefresh(); end
 end
 
 -- En los dos hooks se re-aplica tambien la escala: Blizzard crea los
 -- iconos a medida que hacen falta, y uno recien creado nace en 1. Sin
 -- esto, con la escala subida los buffs nuevos aparecian mas chicos que
 -- los que ya estaban.
+-- Despues de cada reacomodo de Blizzard: el ancla de debuffs de fabrica
+-- sigue a los debuffs (cambian de fila segun cuantos buffs haya), y el
+-- recuadro del modo mover, si esta abierto, se pone al dia.
+local function AfterBlizzardLayout()
+	if K.ApplyAuraIconScales then K.ApplyAuraIconScales(); end
+	ReanchorAuras();
+	ReanchorDebuffs();
+	if not HasCustomDebuffPosition() then ApplyDefaultDebuffPos(); end
+	if K.RequestMoverRefresh then K.RequestMoverRefresh(); end
+end
+
 if type(BuffFrame_UpdateAllBuffAnchors) == "function" then
-	hooksecurefunc("BuffFrame_UpdateAllBuffAnchors", function()
-		if K.ApplyAuraIconScales then K.ApplyAuraIconScales(); end
-		ReanchorAuras();
-		ReanchorDebuffs();
-	end);
+	hooksecurefunc("BuffFrame_UpdateAllBuffAnchors", AfterBlizzardLayout);
 end
 
 if type(BuffFrame_Update) == "function" then
-	hooksecurefunc("BuffFrame_Update", function()
-		if K.ApplyAuraIconScales then K.ApplyAuraIconScales(); end
-		ReanchorAuras();
-		ReanchorDebuffs();
-	end);
+	hooksecurefunc("BuffFrame_Update", AfterBlizzardLayout);
 end
 
 -- Blizzard tambien reordena en este evento

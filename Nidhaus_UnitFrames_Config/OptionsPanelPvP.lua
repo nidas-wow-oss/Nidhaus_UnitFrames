@@ -1070,7 +1070,11 @@ function K.BuildPvPSection(pane)
 			if self._last == v then return; end
 			self._last = v;
 			swVal:SetText(string.format("%.2f", v));
-			if K.SaveMeleeSwingScale then K.SaveMeleeSwingScale(v); end
+			-- Misma puerta que Ctrl + rueda sobre la barra de swing.
+			if not (K.SetScaleFromControl and K.SetScaleFromControl("SwingTimer", v))
+			   and K.SaveMeleeSwingScale then
+				K.SaveMeleeSwingScale(v);
+			end
 		end);
 
 		swReset:SetScript("OnClick", function()

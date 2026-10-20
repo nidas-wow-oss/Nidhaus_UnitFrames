@@ -154,11 +154,38 @@ end
 
 -- Buffs y debuffs. El ancla de auras guarda ademas en su propio store,
 -- asi que hay que limpiarlo aparte o el proximo login repone lo viejo.
+--
+-- EL RESET DE LA HOJA VUELVE TODO LO QUE LA HOJA MUESTRA. La hoja
+-- "Player Buffs and Debuffs" tiene posicion (los dos bloques, en los tres
+-- modos de barras), "Buff scale", "Debuff scale" e "Icons per row". El
+-- boton reponia los tres primeros y se olvidaba de los iconos por fila:
+-- apretabas Reset y la fila seguia de 12.
 function K.ResetAuras()
 	ResetKeys({ "Buffs", "Debuffs" }, function()
+		-- Posicion de los dos bloques (todos los modos) y las dos escalas.
 		if K.ResetAuraAnchor then pcall(K.ResetAuraAnchor); end
+
+		-- Iconos por fila, al valor de fabrica de ConfigManager.
+		local def = (K.GetConfigDefault and K.GetConfigDefault("AuraIconsPerRow")) or 8;
+		if C.AuraIconsPerRow ~= def then
+			if K.SaveConfigSilent then pcall(K.SaveConfigSilent, "AuraIconsPerRow", def);
+			else C.AuraIconsPerRow = def; end
+			if K.ApplyAuraIconsPerRow then pcall(K.ApplyAuraIconsPerRow); end
+		end
+
+		-- Los iconos, ya con escala y fila de fabrica.
+		if K.ApplyAuraIconScales then pcall(K.ApplyAuraIconScales); end
 		if K.ReanchorAuras   then pcall(K.ReanchorAuras);   end
 		if K.ReanchorDebuffs then pcall(K.ReanchorDebuffs); end
+
+		-- Los sliders de la hoja muestran lo que quedo. Los de escala ya
+		-- se refrescan solos (ScaleAPI); el de iconos por fila no tenia
+		-- con que.
+		if K.RefreshModuleScaleSliders then pcall(K.RefreshModuleScaleSliders); end
+		if K.RefreshAuraIconsPerRowSlider then pcall(K.RefreshAuraIconsPerRowSlider); end
+
+		-- Y el recuadro del modo mover, si esta abierto.
+		if K.RequestMoverRefresh then pcall(K.RequestMoverRefresh); end
 	end);
 end
 

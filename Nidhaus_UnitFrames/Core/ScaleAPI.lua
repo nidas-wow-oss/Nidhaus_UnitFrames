@@ -80,6 +80,10 @@ function K.SetModuleScale(id, value)
 	-- Que su slider muestre el numero nuevo, venga de donde venga (el
 	-- propio slider, Ctrl + rueda en "Mover todo", un reset).
 	if K.RefreshModuleScaleSliders then K.RefreshModuleScaleSliders(id); end
+	-- Y el recuadro del modo mover, que muestra el mismo numero y mide el
+	-- marco (GlobalUnlock: RequestOverlayRefresh). Es el "avisar" de
+	-- guardar -> aplicar -> avisar, como Dominos.
+	if K.RequestMoverRefresh then K.RequestMoverRefresh(id); end
 end
 
 -- Tiene un valor guardado (no el de fabrica)?
@@ -96,6 +100,10 @@ function K.ResetModuleScale(id)
 		pcall(f.SetScale, f, entry.default or 1.0);
 	end
 	if K.RefreshModuleScaleSliders then K.RefreshModuleScaleSliders(id); end
+	-- Y el recuadro del modo mover, que muestra el mismo numero y mide el
+	-- marco (GlobalUnlock: RequestOverlayRefresh). Es el "avisar" de
+	-- guardar -> aplicar -> avisar, como Dominos.
+	if K.RequestMoverRefresh then K.RequestMoverRefresh(id); end
 end
 
 -- Reaplica todas las escalas guardadas (por si un modulo recrea su frame)

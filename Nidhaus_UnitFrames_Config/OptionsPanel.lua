@@ -2217,6 +2217,9 @@ local function PopulateTabs()
 		-- jugador la guarda Move Everything, y si la escribieramos por
 		-- afuera el proximo login volveria al valor viejo y pareceria que
 		-- el slider no guarda nada.
+		-- Primero la puerta de los controles, para que centre igual que
+		-- Ctrl + rueda; despues lo propio del estilo (la del objetivo).
+		if K.SetMovableScaleFromControl then K.SetMovableScaleFromControl("CastBar", value); end
 		if K.ApplyCastBarPWScale then K.ApplyCastBarPWScale(value); end
 	end);
 

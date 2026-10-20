@@ -473,11 +473,16 @@ function K.ApplyIndividualPartyPositions()
 					local left, top = pf:GetLeft(), pf:GetTop();
 					if left and top then
 						local uiScale = UIParent:GetEffectiveScale();
-						local x = left * scale / uiScale;
-						local y = top * scale / uiScale - UIParent:GetHeight();
+						-- Pantalla con la escala de antes de reparentar;
+						-- offset en el espacio del marco con la de despues
+						-- (igual que DetachPartyChain en GlobalUnlock).
+						local sx, sy = left * scale, top * scale;
 						pf:SetParent(UIParent);
+						local ns = pf:GetEffectiveScale() or uiScale;
+						if not ns or ns == 0 then ns = uiScale; end
 						pf:ClearAllPoints();
-						pf:SetPoint("TOPLEFT", UIParent, "TOPLEFT", x, y);
+						pf:SetPoint("TOPLEFT", UIParent, "TOPLEFT",
+							sx / ns, (sy - UIParent:GetHeight() * uiScale) / ns);
 						SaveFramePosition(key, pf);
 					end
 				else
