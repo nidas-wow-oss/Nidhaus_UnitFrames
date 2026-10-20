@@ -1184,6 +1184,7 @@ local function ScaleOwner(entry)
 	local id = MODULE_SCALE_ID[key];
 	if id and K.IsScalable and K.IsScalable(id) then
 		return {
+			get   = function() return K.GetModuleScale(id); end,
 			set   = function(v) K.SetModuleScale(id, v); end,
 			reset = function() K.ResetModuleScale(id); end,
 		};
@@ -1195,11 +1196,22 @@ local function ScaleOwner(entry)
 			if type(fn) == "function" then pcall(fn); end
 		end
 		return {
+			-- Estos modulos ya declaraban su getter en OWN_SCALE y no se
+			-- usaba en ningun lado: la rueda leia el marco. Ahora se usa.
+			get   = function()
+				local g = o.get and K[o.get];
+				if type(g) == "function" then
+					local ok, v = pcall(g);
+					if ok and type(v) == "number" and v > 0 then return v; end
+				end
+				return o.default or 1.0;
+			end,
 			set   = function(v) K[o.set](v); refresh(); end,
 			reset = function() K[o.set](o.default); refresh(); end,
 		};
 	end
 end
+
 
 -- LA BARRA 1 ES EL "ACTION BAR SCALE" (salvo con MiniBar).
 --
@@ -1213,6 +1225,51 @@ local function MainBarIsMaster(entry)
 	local key = (type(entry) == "table") and entry.key or entry;
 	return key == "MainBar" and C.MiniBarEnabled ~= true;
 end
+
+-- ---------------------------------------------------------
+-- DE DONDE SALE LA ESCALA ACTUAL. UNA SOLA RESPUESTA.
+--
+-- Esta es la idea que usa Dominos, y vale la pena escribirla porque es
+-- la que faltaba:
+--
+--     function Frame:GetScale()  return self.sets.scale or 1  end
+--
+-- Dominos nunca pregunta cuanto mide el marco: devuelve EL DATO
+-- GUARDADO. Todos sus controles -- el slider del menu, la rueda, el
+-- comando de chat -- llaman a esa misma funcion, asi que no se pueden
+-- contradecir aunque algo mas le haya tocado la escala al marco.
+--
+-- Aca el slider ya hacia lo correcto (lee K.GetModuleScale, escribe
+-- K.SetModuleScale), pero la rueda leia self.target:GetScale(): el valor
+-- VIVO del marco. Mientras los dos numeros coincidan no se nota; en
+-- cuanto algo mueve la escala del marco por otro lado, la rueda arranca
+-- a contar desde un numero distinto del que muestra el slider y los dos
+-- controles se van separando. Con los buffs se veia clarisimo: el slider
+-- decia 2.00 y la rueda empezaba de nuevo en 1.00.
+--
+-- El orden de preferencia va del dato mas especifico al mas general, y
+-- el valor vivo del marco queda de ultimo recurso, solo para movibles
+-- que no guardan escala en ningun lado.
+-- ---------------------------------------------------------
+local function CurrentScale(entry, frame)
+	local owner = ScaleOwner(entry);
+	if owner and owner.get then
+		local ok, v = pcall(owner.get);
+		if ok and type(v) == "number" and v > 0 then return v; end
+	end
+
+	-- La barra 1 sin MiniBar ES el slider "Action Bar Scale".
+	if MainBarIsMaster(entry) then
+		local v = tonumber(C and C.ActionBarScale);
+		if v and v > 0 then return v; end
+	end
+
+	local saved = K.GetGlobalScale and K.GetGlobalScale(entry);
+	if type(saved) == "number" and saved > 0 then return saved; end
+
+	return (frame and frame.GetScale and frame:GetScale()) or 1;
+end
+K.GetMovableScale = CurrentScale;
 
 -- Topes de los sliders del panel: con la rueda no se pasa de ahi, asi el
 -- slider siempre puede mostrar el numero.
@@ -2092,7 +2149,18 @@ local function CreateOverlay(entry)
 	overlay.text = overlay:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 	overlay.text:SetPoint("TOPLEFT", overlay, "TOPLEFT", 5, -4);
 	overlay.text:SetTextColor(1, 0.82, 0);
-	overlay.text:SetText(entry.label);
+	-- EL NUMERO SE VE DE ENTRADA, NO RECIEN AL GIRAR LA RUEDA.
+	--
+	-- Antes el recuadro decia solo el nombre y el valor aparecia al primer
+	-- clic de rueda. Mostrarlo desde el arranque no es decoracion: es la
+	-- forma de ver de un vistazo si coincide con el slider. Justamente asi
+	-- se vio que no coincidian.
+	if entry.scalable then
+		overlay.text:SetText(entry.label .. "  " ..
+			string.format("%.2f", CurrentScale(entry, frame)));
+	else
+		overlay.text:SetText(entry.label);
+	end
 
 	overlay.textBG:SetPoint("TOPLEFT",     overlay.text, "TOPLEFT",     -3,  2);
 	overlay.textBG:SetPoint("BOTTOMRIGHT", overlay.text, "BOTTOMRIGHT",  3, -2);
@@ -2339,7 +2407,8 @@ end
 			if not IsControlKeyDown() then return; end
 			if self.entry.protected and InCombatLockdown() then return; end
 
-			local current = self.target:GetScale() or 1;
+			-- EL DATO, NO EL MARCO (ver CurrentScale).
+			local current = CurrentScale(self.entry, self.target);
 			local newScale = current + (delta > 0 and 0.05 or -0.05);
 			local key = self.entry.key;
 			local range = (MainBarIsMaster(self.entry) and MAINBAR_RANGE)
