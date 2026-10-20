@@ -149,6 +149,19 @@ Integration, porting to 3.3.5a, bug fixing and everything else: **Nidhaus**.
 - Turn Evil tracker: the spinning green border no longer flickers outside test mode.
 - Party cast bars: the style you pick is now actually applied (it was saved but ignored).
 - Arena DR and DoT marks ship with the factory defaults shown in the README, and "Reset all" now also clears the Party Targets, Party Cast Bars, Sacred Shield, Sacred Shield Tracker and Seduction stores.
+- **Move Everything: one position per bar mode.** The action bars and the buff/debuff block now remember a position *for each mode* (MiniBar, unified bars, plain bars), so switching modes no longer drags your old layout along with it. Turning both bar modes off puts the bars back where Blizzard keeps them.
+- **Scaling no longer moves what you are scaling.** A bar, the auras, anything you resize now grows from its own centre instead of from its anchor corner, so it stays where you put it. And the slider in the options panel and `Ctrl` + mouse wheel in Move Everything now read and write the same stored number, so whichever one you use the other agrees with it — the way Dominos does it. This applies to every scalable option, not just the bars.
+- **The buff and debuff size sliders actually resize the icons.** Before, they moved the anchor and nothing else.
+- Move Everything: the drag box now measures the frame it is on — pet bar, stance bar, totems, possess bar, buffs, debuffs — instead of drawing a fixed rectangle, and the pet bar follows the mouse while you drag instead of jumping into place at the end. The pet bar also keeps its size after a `/reload`.
+- Move Everything: an **Off** button on the grid, to turn snapping off without leaving the mode.
+- **Arena trinkets were not showing at all** since arena became a load-on-demand addon: the module was waiting for an event that had already fired before the addon was loaded. Same bug and same fix for the DR marks and the DoT marks, which stayed asleep during the first arena of the session.
+- **Ring of Valor:** the first pillar is at 50 s, and every pillar after that every 25 s. It used to count 25 s from the start of the match.
+- **The arena timers hide when they are supposed to.** They stayed on screen after leaving Move Everything, and they sat at 0:00 instead of disappearing when the count ran out.
+- **Taint: the logout could not be cancelled, and it was our fault.** With the arena invite popup on screen, pressing Escape during the logout countdown left it running, with an "Interface action failed because of an AddOn" message. The addon was writing into one of Blizzard's dialog tables so Escape would not close the invite; that write tainted the table permanently, and reading it later was what blocked `CancelLogout()`. The write is gone. Instead, if you close the invite with time left, NUF tells you in chat that you can still get in and how to reopen it.
+- Minimap: a **None** border option, for a minimap with nothing around it.
+- Party Targets: a test button on its options page, so you can see and place the frames without being in a group.
+- The **Big Blizzard** party style leaves the member's name where Blizzard puts it. It was being moved above the health bar, which is the Compact 2 style's job.
+- Every file ships as UTF-8, so accented text reads correctly whatever the client's locale.
 
 ### v4.3
 - Fixed the "Nidhaus_UnitFrames has been blocked from an action only available to the Blizzard UI" popup. Several parts of the addon were leaving Blizzard's code "tainted": Party Buffs (it called Blizzard's aura functions and took UNIT_AURA away from the party frames), the target/focus health bar color lock, the class color refresh, the buffs-per-row setting and the tooltip icons (they added scripts to Blizzard's tooltips). They all work now without touching Blizzard's code.
