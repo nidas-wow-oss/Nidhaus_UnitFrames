@@ -130,44 +130,99 @@ local function StatusBarFont()
 	return sbFont, sbFlags, sbShadow;
 end
 
+-- Nombres a los que este modulo les cambio fuente o sombra:
+-- [frameName] = { face = cara que tenia antes, shadow = true si puso la sombra }
+local borderTouched = {};
+
+-- Con un estilo de grupo propio, la fuente del nombre del compañero es de
+-- K.ApplyPartyTextFont (tamaño y contorno del panel de Party): no se toca.
+local function PartyStyleOwnsName(frameName)
+	if not string.find(frameName, "^PartyMemberFrame%d$") then return false; end
+	local style = (K.GetPartyFrameStyle and K.GetPartyFrameStyle()) or "Default";
+	return style ~= "Default";
+end
+
+local function RestoreShadow(nameString, of)
+	local sh = of and of.shadow;
+	if sh then
+		pcall(nameString.SetShadowOffset, nameString, sh[1], sh[2]);
+		pcall(nameString.SetShadowColor, nameString, sh[3], sh[4], sh[5], sh[6]);
+	end
+end
+
+-- Deshace lo que puso ApplyBorder (y nada si no puso nada). La cara y el
+-- tamaño ACTUALES se respetan: pueden ser de otro modulo.
+local function UndoBorder(frameName, nameString)
+	local t = borderTouched[frameName];
+	if not t then return; end
+	borderTouched[frameName] = nil;
+	local of = originalFont[frameName];
+	local ok, curF, curS = pcall(nameString.GetFont, nameString);
+	if not ok or type(curF) ~= "string" or curF == "" then return; end
+	local face = t.shadow and t.face or curF;
+	local flag = of and of[3] ~= "" and of[3] or nil;
+	pcall(nameString.SetFont, nameString, face, curS or (of and of[2]) or 12, flag);
+	if t.shadow then RestoreShadow(nameString, of); end
+end
+
 -- Aplica el borde de forma segura (nunca puede tirar error en un hook).
+-- Corre cada 0.25 s: solo cambia los FLAGS (y la cara en "Shadow"), lee
+-- cara y tamaño actuales en vez de la foto, y no escribe si ya esta igual.
+-- Asi no le pisa al grupo el tamaño que pone K.ApplyPartyTextFont.
 local function ApplyBorder(frameName, nameString)
 	if _G.NUF_SAFE then return; end   -- modo seguro: no toca la fuente
 	local of = originalFont[frameName];
 	if not of or not of[1] or not nameString.SetFont then return; end
-	local border = C.UnitNameBorder or "None";
-
-	-- "Shadow": copiar tal cual el look del texto de vida/mana — fuente,
-	-- flags y sombra. El tamaño se respeta el del nombre.
-	if border == "Shadow" then
-		local f, fl, sh = StatusBarFont();
-		if f then
-			pcall(nameString.SetFont, nameString, f, of[2], fl);
-			if sh then
-				pcall(nameString.SetShadowOffset, nameString, sh[1], sh[2]);
-				pcall(nameString.SetShadowColor, nameString, sh[3], sh[4], sh[5], sh[6]);
-			end
-			return;
-		end
-		-- Si el FontObject no existiera, se cae al contorno normal.
+	if PartyStyleOwnsName(frameName) then
+		borderTouched[frameName] = nil;
+		return;
 	end
-
+	local border = C.UnitNameBorder or "None";
 	local FLAGS = {
 		Outline = "OUTLINE",
 		Thick   = "THICKOUTLINE",
 	};
-	local flag = FLAGS[border];
-	if not flag then
-		-- "None": se deja la fuente como venia de fabrica.
-		flag = (of[3] ~= "" and of[3]) or nil;
-	end
-	pcall(nameString.SetFont, nameString, of[1], of[2], flag);
 
-	-- Devolver la sombra original por si venias del modo "Shadow".
-	local sh = of.shadow;
-	if sh then
-		pcall(nameString.SetShadowOffset, nameString, sh[1], sh[2]);
-		pcall(nameString.SetShadowColor, nameString, sh[3], sh[4], sh[5], sh[6]);
+	-- "Shadow": copiar el look del texto de vida/mana — fuente, flags y
+	-- sombra. Si el FontObject no existiera, queda como "None".
+	local sbF, sbFl, sbSh;
+	if border == "Shadow" then sbF, sbFl, sbSh = StatusBarFont(); end
+
+	if not FLAGS[border] and not sbF then
+		-- "None": la fuente es de quien la puso; solo se deshace lo nuestro.
+		UndoBorder(frameName, nameString);
+		return;
+	end
+
+	local ok, curF, curS, curFl = pcall(nameString.GetFont, nameString);
+	if not ok or type(curF) ~= "string" or curF == "" then return; end
+	local t = borderTouched[frameName];
+	if not t then
+		t = { face = curF };
+		borderTouched[frameName] = t;
+	end
+
+	local face, flag;
+	if sbF then
+		face, flag = sbF, sbFl;
+		t.shadow = true;
+	else
+		-- Viniendo de "Shadow" se devuelve la cara que tenia antes.
+		face = t.shadow and t.face or curF;
+		flag = FLAGS[border];
+	end
+	if face ~= curF or (flag or "") ~= (curFl or "") then
+		pcall(nameString.SetFont, nameString, face, curS or of[2], flag);
+	end
+
+	if sbF then
+		if sbSh then
+			pcall(nameString.SetShadowOffset, nameString, sbSh[1], sbSh[2]);
+			pcall(nameString.SetShadowColor, nameString, sbSh[3], sbSh[4], sbSh[5], sbSh[6]);
+		end
+	elseif t.shadow then
+		t.shadow = nil;
+		RestoreShadow(nameString, of);
 	end
 end
 
@@ -230,9 +285,10 @@ function K.ResetUnitNameColor()
 			EnsureFontCaptured(entry.frame, nameString);
 			local orig = originalColor[entry.frame];
 			if orig then nameString:SetTextColor(orig[1], orig[2], orig[3]); end
-			local of = originalFont[entry.frame];
-			if of and of[1] and nameString.SetFont then
-				pcall(nameString.SetFont, nameString, of[1], of[2], (of[3] ~= "" and of[3]) or nil);
+			-- La fuente: solo se deshace el borde que pusimos. Reescribir la
+			-- foto vieja le pisaba al grupo el tamaño del panel de Party.
+			if nameString.SetFont and not PartyStyleOwnsName(entry.frame) then
+				UndoBorder(entry.frame, nameString);
 			end
 		end
 	end
@@ -380,14 +436,14 @@ SlashCmdList["NUFNAMES"] = function(msg)
 		if K.SaveConfig then K.SaveConfig("UnitNameColorMode", mode); end
 		C.UnitNameColorMode = mode;
 		ApplyNow();
-		print("|cff4FC3F7NUF:|r modo forzado a " .. mode);
+		print("|cff4FC3F7NUF:|r " .. string.format(L["UNC_FORCED_MODE"] or "Name color mode set to %s.", mode));
 		return;
 	end
 
 	print("|cff4FC3F7NUF names|r ------------------------------");
-	print("  modulo cargado: |cff00FF00si|r");
+	print("  module loaded: |cff00FF00yes|r");
 	print("  C.UnitNameColorMode = " .. tostring(C.UnitNameColorMode));
-	print("  ticker corriendo   = " .. tostring(ticker:IsShown()));
+	print("  ticker running     = " .. tostring(ticker:IsShown()));
 
 	local found, missing = 0, {};
 	for _, entry in ipairs(unitFrames) do
@@ -396,7 +452,7 @@ SlashCmdList["NUFNAMES"] = function(msg)
 			found = found + 1;
 			local ok, r, g, b = pcall(fs.GetTextColor, fs);
 			if not ok then r, g, b = -1, -1, -1; end
-			print(string.format("  |cff00FF00OK|r  %-18s color %.2f %.2f %.2f  texto: %s",
+			print(string.format("  |cff00FF00OK|r  %-18s color %.2f %.2f %.2f  text: %s",
 				entry.frame, r or -1, g or -1, b or -1, tostring(fs:GetText() or "")));
 		else
 			table.insert(missing, entry.frame);
@@ -404,8 +460,8 @@ SlashCmdList["NUFNAMES"] = function(msg)
 	end
 
 	if #missing > 0 then
-		print("  |cffFF5555NO ENCONTRADOS:|r " .. table.concat(missing, ", "));
+		print("  |cffFF5555NOT FOUND:|r " .. table.concat(missing, ", "));
 	end
-	print("  encontrados: " .. found .. " de " .. #unitFrames);
-	print("  Uso: /nufnames white | class | default");
+	print("  found: " .. found .. " of " .. #unitFrames);
+	print("  Usage: /nufnames white | class | default");
 end

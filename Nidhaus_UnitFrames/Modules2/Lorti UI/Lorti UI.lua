@@ -212,11 +212,6 @@ end
 -- =============================================
 local tinted = {}   -- [textura] = true si la tiño Lorti
 
-local function AsuriOn()
-	local C = ns[2]
-	return C.UnitFrameCustomTexture and C.AsuriFrames
-end
-
 -- restore: color de fabrica (blanco si no se dice otra cosa)
 local function TintOne(tex, zone, dark, mult, rr, rg, rb)
 	if not tex then return end
@@ -238,7 +233,8 @@ end
 -- se pisan: Default, Light, Dark, Compact y Asuri.
 -- =============================================
 local FRAME_TEXTURES = {
-	-- { textura, zona, marco grande (Asuri lo deja gris) }
+	-- { textura, zona }  (el tercer campo marcaba los marcos grandes, que
+	-- Asuri dejaba grises; ya no tiene filtro de color)
 	{ "PlayerFrameTexture",                "Player", true },
 	{ "PetFrameTexture",                   "Player" },
 	{ "TargetFrameTextureFrameTexture",    "Target", true },
@@ -253,8 +249,9 @@ local function TintUnitFrames()
 	local skipPlayer = K.IcyPlayerFrameOn and K.IcyPlayerFrameOn();
 	for _, e in ipairs(FRAME_TEXTURES) do
 		if not (skipPlayer and e[1] == "PlayerFrameTexture") then
-			local d = (e[3] and AsuriOn()) and 0.25 or 1
-			TintOne(_G[e[1]], e[2], 0.05, 1, d, d, d)
+			-- Al quitar el tinte vuelve a blanco en todos los estilos,
+			-- Asuri incluido (antes volvia a su gris 0.25).
+			TintOne(_G[e[1]], e[2], 0.05, 1, 1, 1, 1)
 		end
 	end
 end

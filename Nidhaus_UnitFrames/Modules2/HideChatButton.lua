@@ -9,6 +9,9 @@ local HCBxpos = 0;
 local HCBypos = 0;
 local HCBkeyable = false;
 local HCBuseralpha = .25;
+-- El punto de anclaje tambien: al soltar el arrastre el cliente reancla el
+-- boton al punto mas cercano. Sin punto guardado (lo de antes), BOTTOMLEFT.
+local HCBpoint, HCBrelpoint = nil, nil;
 
 -- FIX: Helpers para persistir en NidhausUnitFramesDB (ya es SavedVariable)
 local function SaveHCBSettings()
@@ -17,6 +20,8 @@ local function SaveHCBSettings()
     NidhausUnitFramesDB.HCBypos = HCBypos;
     NidhausUnitFramesDB.HCBkeyable = HCBkeyable;
     NidhausUnitFramesDB.HCBuseralpha = HCBuseralpha;
+    NidhausUnitFramesDB.HCBpoint = HCBpoint;
+    NidhausUnitFramesDB.HCBrelpoint = HCBrelpoint;
 end
 
 local function LoadHCBSettings()
@@ -25,6 +30,14 @@ local function LoadHCBSettings()
     if NidhausUnitFramesDB.HCBypos ~= nil then HCBypos = NidhausUnitFramesDB.HCBypos; end
     if NidhausUnitFramesDB.HCBkeyable ~= nil then HCBkeyable = NidhausUnitFramesDB.HCBkeyable; end
     if NidhausUnitFramesDB.HCBuseralpha ~= nil then HCBuseralpha = NidhausUnitFramesDB.HCBuseralpha; end
+    HCBpoint = NidhausUnitFramesDB.HCBpoint;
+    HCBrelpoint = NidhausUnitFramesDB.HCBrelpoint;
+end
+
+local function PlaceHCB(frame)
+    frame:ClearAllPoints();
+    frame:SetPoint(HCBpoint or "BOTTOMLEFT", UIParent, HCBrelpoint or HCBpoint or "BOTTOMLEFT",
+        HCBxpos, HCBypos);
 end
 
 if not HCBframe then
@@ -37,7 +50,8 @@ if not HCBframe then
     -- FIX: Guardar posición al soltar el drag
     HCBframe:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing();
-        local _, _, _, x, y = self:GetPoint(1);
+        local point, _, relPoint, x, y = self:GetPoint(1);
+        HCBpoint, HCBrelpoint = point, relPoint;
         HCBxpos = x or 0;
         HCBypos = y or 0;
         SaveHCBSettings();
@@ -81,8 +95,8 @@ HCBframe.RestoreDefaults = function(frame)
     HCBxpos = 0;
     HCBypos = 0;
     HCBuseralpha = .25;
-    HCBframe:ClearAllPoints();
-    HCBframe:SetPoint("BOTTOMLEFT", HCBxpos, HCBypos);
+    HCBpoint, HCBrelpoint = nil, nil;
+    PlaceHCB(HCBframe);
     SaveHCBSettings();
     HCBframe:Paint();
 end
@@ -253,8 +267,7 @@ HCBframe.OnEvent = function(frame, event, ...)
         if addonName == AddOnName then
             -- FIX: Cargar settings persistidos y reposicionar
             LoadHCBSettings();
-            HCBframe:ClearAllPoints();
-            HCBframe:SetPoint("BOTTOMLEFT", HCBxpos, HCBypos);
+            PlaceHCB(HCBframe);
         end
         HCBframe:Paint();
     elseif HCBframe.ChatIsShown == false and eventcolors[event] then

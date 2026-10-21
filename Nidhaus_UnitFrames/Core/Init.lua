@@ -39,7 +39,9 @@ emgFrame:SetScript("OnEvent", function(self, event, addon)
 	if addon ~= AddOnName then return; end
 	self:UnregisterEvent("ADDON_LOADED");
 	if type(NidhausUnitFramesDB) ~= "table" or not NidhausUnitFramesDB._emgReset_v36d then
-		NidhausUnitFramesDB = { _emgReset_v36d = true };
+		-- Base nueva: el apagado de una vez de ModuleManager ("_forcedOff_v39")
+		-- no tiene nada viejo que apagar, los defaults ya mandan.
+		NidhausUnitFramesDB = { _emgReset_v36d = true, _forcedOff_v39 = true };
 	end
 end);
 

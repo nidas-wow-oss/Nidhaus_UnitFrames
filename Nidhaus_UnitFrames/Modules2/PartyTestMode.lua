@@ -13,6 +13,7 @@ local K, C, L = unpack(ns);
 local MAX_PARTY = MAX_PARTY_MEMBERS or 4;
 
 local active = false;
+local watchedBefore = {};   -- marcos que ya estaban bajo UnitWatch al entrar
 
 -- Los marcos del grupo son PROTEGIDOS. Antes se les reemplazaba el metodo
 -- Hide (frame.Hide = function() end) y al salir se les volvia a asignar el
@@ -107,8 +108,15 @@ local function Enable()
 			-- Que Blizzard no lo esconda mientras dura el modo prueba.
 			HookHideForTest(frame);
 
-			-- UnitWatch oculta el frame si la unidad no existe
-			if UnregisterUnitWatch then pcall(UnregisterUnitWatch, frame); end
+			-- De fabrica los marcos del grupo NO estan bajo UnitWatch (los
+			-- muestra PartyMemberFrame_UpdateMember). Solo se saca y se repone
+			-- si alguien lo habia registrado: registrarlo siempre al salir los
+			-- dejaba bajo el watch para siempre y volvian a verse en banda
+			-- aunque la opcion de Blizzard dijera ocultarlos.
+			if UnitWatchRegistered and UnregisterUnitWatch and UnitWatchRegistered(frame) then
+				watchedBefore[frame] = true;
+				pcall(UnregisterUnitWatch, frame);
+			end
 
 			frame:Show();
 			FillFrame(frame, i);
@@ -130,7 +138,10 @@ local function Disable()
 		local frame = _G["PartyMemberFrame" .. i];
 		if frame then
 
-			if RegisterUnitWatch then pcall(RegisterUnitWatch, frame); end
+			if watchedBefore[frame] then
+				watchedBefore[frame] = nil;
+				if RegisterUnitWatch then pcall(RegisterUnitWatch, frame); end
+			end
 
 			-- Si de verdad no hay nadie en el grupo, esconderlo
 			if not UnitExists("party" .. i) then

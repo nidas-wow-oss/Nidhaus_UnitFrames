@@ -102,7 +102,13 @@ end
 
 function K.RestoreArenaToTPositions()
 	local saved = K.GetSavedArenaToTPos();
-	if not saved then return; end
+	-- Sin nada para este estilo, al lugar de fabrica (y no el del anterior).
+	if not saved then
+		for i = 1, MAX_ARENA_ENEMIES do
+			if totFrames[i] then PositionToTFrame(i); end
+		end
+		return;
+	end
 	for i = 1, MAX_ARENA_ENEMIES do
 		local f = totFrames[i];
 		local af = _G["ArenaEnemyFrame"..i];
@@ -113,10 +119,10 @@ function K.RestoreArenaToTPositions()
 	end
 end
 
+-- Solo el estilo puesto (cada estilo guarda su lugar).
 function K.ResetArenaToTPositions()
-	if NidhausUnitFramesDB then
-		NidhausUnitFramesDB.ArenaToTPositions = nil;
-	end
+	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaToTPositions;
+	if type(db) == "table" then db[GetToTPositionKey()] = nil; end
 	for i = 1, MAX_ARENA_ENEMIES do
 		PositionToTFrame(i);
 	end
@@ -528,6 +534,18 @@ local function UpdateAll()
 	for i = 1, MAX_ARENA_ENEMIES do UpdateToTFrame(i); end
 end
 
+-- Refresco cada 0.5 s dentro de la arena. Lo arranca PLAYER_ENTERING_WORLD
+-- y tambien Enable: cargando a pedido en la arena, ese evento ya paso.
+local function StartPolling()
+	if eventFrame._polling then return; end
+	eventFrame._polling = true;
+	local el = 0;
+	eventFrame:SetScript("OnUpdate", function(s, dt)
+		el = el + dt;
+		if el >= 0.5 then el = 0; UpdateAll(); end
+	end);
+end
+
 -- ══════════════════════════════════════════════════════════════
 -- TEST MODE
 -- ══════════════════════════════════════════════════════════════
@@ -623,14 +641,7 @@ local function OnEvent(self, event, unit)
 			for i = 1, MAX_ARENA_ENEMIES do CreateToTFrame(i); PositionToTFrame(i); end
 			K.RestoreArenaToTPositions();
 			K.ApplyArenaToTScale(C.ArenaToTScale or 1.0);
-			if not self._polling then
-				self._polling = true;
-				local el = 0;
-				self:SetScript("OnUpdate", function(s, dt)
-					el = el + dt;
-					if el >= 0.5 then el = 0; UpdateAll(); end
-				end);
-			end
+			StartPolling();
 		else
 			HideAll(); self:SetScript("OnUpdate", nil); self._polling = false;
 		end
@@ -701,6 +712,7 @@ local function Enable()
 	if iType == "arena" then
 		for i = 1, MAX_ARENA_ENEMIES do CreateToTFrame(i); PositionToTFrame(i); end
 		K.RestoreArenaToTPositions();
+		StartPolling();
 	end
 	if K._testModeActive or
 		(NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover and NidhausUnitFramesDB.ArenaMover.IsShown) then

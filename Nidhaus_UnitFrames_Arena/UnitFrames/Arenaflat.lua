@@ -108,7 +108,7 @@ function K.ApplyFlatStyle(arenaFrame, index)
 	CaptureFlatOriginals(arenaFrame, index);
 
 	-- FIX: Fallbacks sincronizados con ConfigManager defaults (antes: 150, 18, 12, 12)
-	local width = C.ArenaFlatWidth or 120;
+	local width = C.ArenaFlatWidth or 100;
 	local healthH = C.ArenaFlatHealthBarHeight or 20;
 	local powerH = C.ArenaFlatPowerBarHeight or 8;
 	local healthFont = C.ArenaFlatHealthFontSize or 9;
@@ -234,62 +234,12 @@ function K.ApplyFlatStyle(arenaFrame, index)
 		mbTS:Hide();
 	end
 
-	-- ═══════════════════════════════════════════════════════════
-	-- FIX: Posicionar cast bar y trinket según ArenaMirrorMode
-	-- Esto DEBE estar dentro de ApplyFlatStyle porque es la única
-	-- función que corre siempre al re-aplicar el estilo flat.
-	-- MirrorMode.lua intentaba hacerlo por separado pero algo lo sobreescribía.
-	-- ═══════════════════════════════════════════════════════════
-	local castBar = _G["ArenaEnemyFrame"..index.."CastingBar"];
-	if castBar then
-		castBar:ClearAllPoints();
-		-- Posición guardada para el modo actual tiene prioridad
-		local savedCB = K.GetSavedCastBarPos and K.GetSavedCastBarPos();
-		if savedCB then
-			castBar:SetPoint(savedCB[1], arenaFrame, savedCB[2], savedCB[3], savedCB[4]);
-		elseif C.ArenaMirrorMode then
-			-- Mirror ON default: cast bar DERECHA (opuesto al trinket)
-			castBar:SetPoint("BOTTOMLEFT", arenaFrame, "BOTTOMRIGHT", 8, 6);
-			local icon = _G["ArenaEnemyFrame"..index.."CastingBarIcon"];
-			if icon then
-				icon:ClearAllPoints();
-				icon:SetPoint("LEFT", castBar, "RIGHT", 2, 0);
-			end
-		else
-			-- Mirror OFF default: cast bar IZQUIERDA (opuesto al trinket)
-			castBar:SetPoint("BOTTOMRIGHT", arenaFrame, "BOTTOMLEFT", -8, 6);
-			local icon = _G["ArenaEnemyFrame"..index.."CastingBarIcon"];
-			if icon then
-				icon:ClearAllPoints();
-				icon:SetPoint("RIGHT", castBar, "LEFT", -2, 0);
-			end
-		end
-	end
-
-	-- Trinket: ArenaMirrorMode SIEMPRE gana sobre savedPos.
-	-- savedPos solo se respeta cuando mirror mode está OFF (el usuario la arrastró manualmente).
-	-- Usar _G primero (más fiable que ns.ArenaFrame_Trinkets.frames que puede ser nil en test mode).
-	local trinketBorder = _G["NidhausArenaTrinketBorder"..index];
-	if not trinketBorder then
-		local trinketCore = ns and ns.ArenaFrame_Trinkets;
-		if trinketCore and trinketCore.frames and trinketCore.frames[index] then
-			trinketBorder = trinketCore.frames[index].border;
-		end
-	end
-	if trinketBorder then
-		trinketBorder:ClearAllPoints();
-		-- Posición guardada para el modo actual tiene prioridad
-		local savedPos = K.GetSavedTrinketPos and K.GetSavedTrinketPos();
-		if savedPos then
-			trinketBorder:SetPoint(savedPos[1], arenaFrame, savedPos[2], savedPos[3], savedPos[4]);
-		elseif C.ArenaMirrorMode then
-			-- Mirror ON default: trinket IZQUIERDA
-			trinketBorder:SetPoint("BOTTOMRIGHT", arenaFrame, "BOTTOMLEFT", -8, 0);
-		else
-			-- Mirror OFF default: trinket DERECHA
-			trinketBorder:SetPoint("BOTTOMLEFT", arenaFrame, "BOTTOMRIGHT", 8, 0);
-		end
-	end
+	-- Cast bar y trinket: va aca porque es lo que corre siempre al
+	-- re-aplicar Flat. Cada uno a su lugar del modo puesto (lo guardado
+	-- para Flat + espejo, o el de fabrica de Flat); la cuenta vive en UN
+	-- lugar por pieza, aca habia una copia propia de cada una.
+	if K.PositionArenaCastBar then K.PositionArenaCastBar(index); end
+	if K.PositionArenaTrinket then K.PositionArenaTrinket(index); end
 end
 
 function K.RemoveFlatStyle(index)
@@ -382,11 +332,16 @@ end
 function K.ResetFlatDefaults()
 	-- FIX: Defaults sincronizados con ConfigManager.lua
 	-- Antes: Width=150, HealthBarHeight=18, HealthFont=12, PowerFont=12
-	-- ConfigManager: Width=120, HealthBarHeight=20, HealthFont=9, PowerFont=9
+	-- ConfigManager: Width=100, HealthBarHeight=20, HealthFont=9, PowerFont=9
 	local defaults = {
-		ArenaFlatWidth = 120, ArenaFlatHealthBarHeight = 20, ArenaFlatPowerBarHeight = 8,
+		ArenaFlatWidth = 100, ArenaFlatHealthBarHeight = 20, ArenaFlatPowerBarHeight = 8,
 		ArenaFlatHealthFontSize = 9, ArenaFlatPowerFontSize = 9, ArenaFlatMirrored = false,
 	};
+	-- El valor de fabrica manda (ConfigManager); los de arriba son respaldo.
+	for key in pairs(defaults) do
+		local d = K.GetConfigDefault and K.GetConfigDefault(key);
+		if d ~= nil then defaults[key] = d; end
+	end
 	for key, val in pairs(defaults) do K.SaveConfig(key, val); end
 	if IsFlatModeActive() then
 		K.ApplyAllFlatStyles();

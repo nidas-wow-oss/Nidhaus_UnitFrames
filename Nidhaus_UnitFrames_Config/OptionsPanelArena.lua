@@ -49,12 +49,14 @@ local tooltips = {
 	ArenaDoTBorder          = "TIP_ArenaDoTBorder",
 };
 
-local function AddTooltip(frame, setting)
+-- El titulo es el texto que ve el usuario (el del control), no la clave
+-- interna: salia "PlayerFrameScale" o "ArenaDRSize" en los dos idiomas.
+local function AddTooltip(frame, setting, title)
 	local tipKey = tooltips[setting];
 	if not tipKey then return; end
 	frame:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-		GameTooltip:SetText(setting, 1, 1, 1);
+		GameTooltip:SetText(title or L[setting] or setting, 1, 1, 1);
 		GameTooltip:AddLine(L[tipKey] or tipKey, nil, nil, nil, true);
 		GameTooltip:Show();
 	end);
@@ -71,7 +73,7 @@ local function CreateCheckBox(parent, label, setting, xOffset, yOffset)
 	cb.text:SetPoint("LEFT", cb, "RIGHT", 4, 0);
 	cb.text:SetText(label);
 	cb:SetChecked(C[setting] or false);
-	AddTooltip(cb, setting);
+	AddTooltip(cb, setting, label);
 
 	cb:SetScript("OnClick", function(self)
 		local checked = self:GetChecked() == 1 or self:GetChecked() == true;
@@ -107,9 +109,15 @@ local function CreateCheckBox(parent, label, setting, xOffset, yOffset)
 			if K._UpdateArenaLowerHeight then K._UpdateArenaLowerHeight(); end
 			if K._RefreshArenaLayout then K._RefreshArenaLayout(); end
 		elseif setting == "ArenaMirrorMode" then
+			-- Cada lado del espejo tiene su lugar: se voltea y despues cada
+			-- pieza (y el marco entero) va a su sitio de este lado.
+			if K.SwapArenaModeData then K.SwapArenaModeData(); end
 			if K.ApplyMirrorMode then K.ApplyMirrorMode(); end
-			if K.RefreshArenaDRLayout then K.RefreshArenaDRLayout(); end
-			if K.RefreshArenaDoTLayout then K.RefreshArenaDoTLayout(); end
+			local applied = K.SyncArenaMode and K.SyncArenaMode();
+			if not applied then
+				if K.RefreshArenaDRLayout then K.RefreshArenaDRLayout(); end
+				if K.RefreshArenaDoTLayout then K.RefreshArenaDoTLayout(); end
+			end
 		elseif setting == "ShadowSightTimer" then
 			if K.ApplyShadowSightSetting then K.ApplyShadowSightSetting(); end
 		elseif setting == "ArenaDR" then
@@ -164,6 +172,10 @@ end
 -- Yellow title on top, white value centered below,
 -- small min/max on left/right sides
 -- =========================================================
+-- Todos los sliders de la pestaña, para ponerlos al dia cuando cambian los
+-- valores desde afuera (al cambiar de estilo cada uno trae los suyos).
+local arenaSliders = {};
+
 local function CreateSlider(parent, label, setting, minVal, maxVal, step, xOffset, yOffset)
 	local slider = CreateFrame("Slider", nil, parent, "OptionsSliderTemplate");
 	slider:SetPoint("TOPLEFT", xOffset, yOffset);
@@ -189,13 +201,21 @@ local function CreateSlider(parent, label, setting, minVal, maxVal, step, xOffse
 
 	-- Min value (small, left of slider)
 
-	AddTooltip(slider, setting);
+	AddTooltip(slider, setting, label);
 
+	slider._last = C[setting] or minVal;
+	slider._step = step;
+	table.insert(arenaSliders, slider);
 	slider:SetScript("OnValueChanged", function(self, value)
 		value = math.floor(value / step + 0.5) * step;
+		-- El SetValue de abajo vuelve a entrar aca: con el mismo valor, nada.
+		if self._last == value then return; end
+		self._last = value;
 		self:SetValue(value);
 		slider.ValueText:SetText(FormatSliderValue(step, value));
-		K.SaveConfig(setting, value);
+		-- Guardar ya, avisar de a ratos (K.SaveConfigThrottled).
+		if K.SaveConfigThrottled then K.SaveConfigThrottled(setting, value);
+		else K.SaveConfig(setting, value); end
 
 		if setting == "ArenaFrameScale" then
 			if K.ApplyArenaScale then K.ApplyArenaScale(value); end
@@ -219,6 +239,21 @@ local function CreateSlider(parent, label, setting, minVal, maxVal, step, xOffse
 	return slider;
 end
 
+-- Pone cada slider en el valor de C sin volver a guardarlo (el _last
+-- igual al valor corta el OnValueChanged de arriba).
+function K.RefreshArenaPanelSliders()
+	for _, sl in ipairs(arenaSliders) do
+		local v = sl.setting and C[sl.setting];
+		if type(v) == "number" and sl.GetValue and math.abs((sl:GetValue() or 0) - v) > 0.0001 then
+			sl._last = v;
+			sl:SetValue(v);
+		end
+		if type(v) == "number" and sl.ValueText then
+			sl.ValueText:SetText(FormatSliderValue(sl._step or 1, v));
+		end
+	end
+end
+
 -- =========================================================
 -- CreateDropdown
 -- =========================================================
@@ -238,6 +273,15 @@ local function CreateDropdown(parent, labelText, setting, options, xOff, yOff, o
 	dd:SetPoint("TOPLEFT", -16, -16);
 	UIDropDownMenu_SetWidth(dd, 140);
 
+	-- En la caja va el NOMBRE de la opcion, no el valor interno: "Borderless"
+	-- guarda "Compact" y "Compact" guarda "Compact2", y se leia al reves.
+	local function TextFor(value)
+		for _, opt in ipairs(options) do
+			if opt.value == value then return opt.text; end
+		end
+		return tostring(value);
+	end
+
 	local function Initialize(self, level)
 		for _, opt in ipairs(options) do
 			local info = UIDropDownMenu_CreateInfo();
@@ -245,7 +289,7 @@ local function CreateDropdown(parent, labelText, setting, options, xOff, yOff, o
 			info.value = opt.value;
 			info.func = function(btn)
 				UIDropDownMenu_SetSelectedValue(dd, btn.value);
-				UIDropDownMenu_SetText(dd, btn.value);
+				UIDropDownMenu_SetText(dd, TextFor(btn.value));
 				K.SaveConfig(setting, btn.value);
 				if onChange then onChange(btn.value); end
 			end;
@@ -256,7 +300,7 @@ local function CreateDropdown(parent, labelText, setting, options, xOff, yOff, o
 
 	UIDropDownMenu_Initialize(dd, Initialize);
 	UIDropDownMenu_SetSelectedValue(dd, C[setting] or options[1].value);
-	UIDropDownMenu_SetText(dd, C[setting] or options[1].value);
+	UIDropDownMenu_SetText(dd, TextFor(C[setting] or options[1].value));
 
 	container.dropdown = dd;
 	return container;
@@ -715,6 +759,12 @@ function K.PopulateArenaTab(panel)
 	local function OnStyleChange(value)
 		local isFlat = (value == "Flat");
 
+		-- Cada estilo recuerda su escala, sus tamaños y sus posiciones
+		-- (ArenaModes.lua): primero se guarda lo del que se va y se trae lo
+		-- de este (solo datos); lo visual se aplica al final, con el estilo
+		-- ya armado.
+		if K.SwapArenaModeData then K.SwapArenaModeData(); end
+
 		-- La casilla de color de clase solo vive en el estilo Blizzard, y al
 		-- cambiar de estilo hay que repintar las barras: la regla de quien
 		-- lleva color depende justamente del estilo.
@@ -780,6 +830,12 @@ function K.PopulateArenaTab(panel)
 		-- aca seria invisible -- se leeria como global nil, sin avisar.
 		-- Un campo de tabla se resuelve al llamar, cuando ya existe.
 		if K._UpdateArenaOptionsVisibility then K._UpdateArenaOptionsVisibility(); end
+
+		-- Y al final, con el estilo ya armado: el lugar de los marcos, la
+		-- escala y los tamaños de este estilo, y cada pieza a su lugar
+		-- (barra de casteo, trinket, mascota, DR, DoT y ToT).
+		local applied = K.SyncArenaMode and K.SyncArenaMode();
+		if not applied and K.RefreshArenaModeLayout then K.RefreshArenaModeLayout(); end
 	end
 
 	local styleDDContainer = CreateDropdown(content, L["LABEL_ARENA_STYLE"] or "Arena Style", "ArenaFrameStyle",
@@ -913,23 +969,13 @@ function K.PopulateArenaTab(panel)
 	resetPetBtn:SetSize(170, 24);
 	resetPetBtn:SetText(L["BTN_RESET_PET_POS"] or "Reset position");
 	resetPetBtn:SetScript("OnClick", function()
-		if NidhausUnitFramesDB then
-			NidhausUnitFramesDB.PetFramePositions = nil;
-		end
+		-- Solo el modo puesto (estilo + espejo): los demas guardan lo suyo.
+		local db = NidhausUnitFramesDB and NidhausUnitFramesDB.PetFramePositions;
+		if type(db) == "table" and K.GetArenaPositionKey then db[K.GetArenaPositionKey()] = nil; end
 		local isFlat = K.IsFlatModeActive and K.IsFlatModeActive();
-		if isFlat and C.ArenaFlatPetStyle then
-			if K.ApplyFlatPetFrames then K.ApplyFlatPetFrames(); end
-		else
-			for i = 1, MAX_ARENA_ENEMIES do
-				local pf = _G["ArenaEnemyFrame"..i.."PetFrame"];
-				if pf and pf._blizzDefaultPoints then
-					pf:ClearAllPoints();
-					for _, pt in ipairs(pf._blizzDefaultPoints) do
-						pf:SetPoint(unpack(pt));
-					end
-				end
-			end
-		end
+		if isFlat and C.ArenaFlatPetStyle and K.ApplyFlatPetFrames then K.ApplyFlatPetFrames(); end
+		-- Sin posicion guardada, cada mascota vuelve al lugar de fabrica del modo.
+		if K.RestorePetFramePositions then K.RestorePetFramePositions(); end
 	end);
 
 	-- El alto de la seccion depende de si el cast bar esta desplegado.
@@ -1183,10 +1229,11 @@ function K.PopulateArenaTab(panel)
 	totResetBtn:SetSize(80, 20);
 	totResetBtn:SetText(L["BTN_RESET_SHORT"] or "Reset");
 	totResetBtn:SetScript("OnClick", function()
-		K.SaveConfig("ArenaToTScale", 1.0);
-		totScaleSlider:SetValue(1.0);
+		local def = (K.GetConfigDefault and K.GetConfigDefault("ArenaToTScale")) or 1.0;
+		K.SaveConfig("ArenaToTScale", def);
+		totScaleSlider:SetValue(def);
 		if K.ResetArenaToTPositions then K.ResetArenaToTPositions(); end
-		if K.ApplyArenaToTScale then K.ApplyArenaToTScale(1.0); end
+		if K.ApplyArenaToTScale then K.ApplyArenaToTScale(def); end
 	end);
 
 	local function RefreshToTSection()

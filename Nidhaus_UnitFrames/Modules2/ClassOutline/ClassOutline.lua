@@ -208,7 +208,17 @@ local function UpdateFrame(frame)
 	ring:Show();
 end
 
+-- Declaradas mas abajo; UpdateAll las usa en tiempo de ejecucion.
+local EnsureHook, events;
+
 local function UpdateAll()
+	-- Tema Asuri puesto a mitad de sesion (sin pasar por PLAYER_ENTERING_WORLD):
+	-- sin el hook y los eventos la cadena quedaba fija con el objetivo de antes.
+	if C.UnitFrameCustomTexture and C.AsuriFrames and EnsureHook and events then
+		EnsureHook();
+		events:RegisterEvent("PLAYER_TARGET_CHANGED");
+		events:RegisterEvent("PLAYER_FOCUS_CHANGED");
+	end
 	local frames = {
 		_G["NidhausPlayerFrame"] or _G["PlayerFrame"],
 		_G["PlayerFrame"],
@@ -224,7 +234,7 @@ K.RefreshClassOutlines = UpdateAll;
 -- ---------------------------------------------------------
 -- Hook
 -- ---------------------------------------------------------
-local function EnsureHook()
+function EnsureHook()
 	if hooked then return; end
 	hooked = true;
 	-- Se engancha UNA sola vez y para siempre: hooksecurefunc no se puede
@@ -234,7 +244,7 @@ local function EnsureHook()
 	end);
 end
 
-local events = CreateFrame("Frame");
+events = CreateFrame("Frame");
 events:SetScript("OnEvent", function()
 	UpdateAll();
 end);
@@ -288,5 +298,7 @@ K.RegisterModule("ClassOutline", {
 		enabled = false;
 		events:UnregisterAllEvents();
 		for _, ring in pairs(rings) do ring:Hide(); end
+		-- La cadena Asuri no depende de este modulo: vuelve con sus eventos.
+		UpdateAll();
 	end,
 });

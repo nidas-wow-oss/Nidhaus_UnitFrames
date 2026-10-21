@@ -39,7 +39,26 @@ local function SaveFramePosition(key, frame)
 		relativePoint = relativePoint,
 		x = x,
 		y = y,
+		-- Con que escala se tomaron los offsets (ver K.SavedPointOffsets).
+		scale = frame.GetScale and frame:GetScale() or nil,
 	};
+end
+
+-- LOS OFFSETS GUARDADOS, EN LA ESCALA DE HOY.
+--
+-- El offset de SetPoint se mide en el espacio del propio marco: un miembro
+-- del grupo guardado a escala 1.0 y repuesto a 1.5 (el 3v3) aparecia a 1,5
+-- veces la distancia, y al reves al apagar el 3v3. Se guarda la escala con
+-- la posicion y se convierte al aplicar; la misma esquina queda en el
+-- mismo lugar de la pantalla. Lo guardado antes, sin escala, va como venia.
+function K.SavedPointOffsets(saved, frame)
+	local x, y = saved.x or 0, saved.y or 0;
+	local s = tonumber(saved.scale);
+	local cur = frame and frame.GetScale and frame:GetScale();
+	if s and s > 0 and cur and cur > 0 and math.abs(s - cur) > 0.0001 then
+		return x * s / cur, y * s / cur;
+	end
+	return x, y;
 end
 
 function K.GetSavedPosition(key)
@@ -58,6 +77,8 @@ end
 -- RESET POSITIONS & SCALE
 
 function K.ResetPositionsAndScale()
+	-- Escala y posicion de marcos protegidos: en combate, al terminar.
+	if K.AfterCombat("ResetPositionsAndScale", K.ResetPositionsAndScale) then return; end
 	EnsurePositionsTable();
 
 	-- Clear ALL saved positions
@@ -184,9 +205,20 @@ function K.ResetPositionsAndScale()
 		NidhausUnitFramesDB.ArenaMover = { IsShown = false };
 	end
 
-	-- Reset castbar and trinket saved positions
+	-- Reset castbar and trinket saved positions (todos los estilos de arena)
 	NidhausUnitFramesDB.CastBarPositions = nil;
 	NidhausUnitFramesDB.TrinketPositions = nil;
+	NidhausUnitFramesDB.PetFramePositions = nil;
+	NidhausUnitFramesDB.ArenaToTPositions = nil;
+	-- El lugar de los marcos de arena de los otros estilos y su escala
+	-- (cada estilo guarda los suyos, ver Arena/Modules/ArenaModes.lua).
+	NidhausUnitFramesDB.ArenaModeAnchors = nil;
+	if type(NidhausUnitFramesDB.ArenaStyleValues) == "table" then
+		for _, t in pairs(NidhausUnitFramesDB.ArenaStyleValues) do
+			if type(t) == "table" then t.ArenaFrameScale = nil; end
+		end
+	end
+	if K.RefreshArenaModeLayout then pcall(K.RefreshArenaModeLayout); end
 	-- y las filas de DR y DoT (vuelven a su lugar automatico)
 	NidhausUnitFramesDB.ArenaDRPositions = nil;
 	if K.RefreshArenaDRLayout then K.RefreshArenaDRLayout(); end
@@ -460,7 +492,8 @@ function K.ApplyIndividualPartyPositions()
 					pf:SetParent(UIParent);
 					pf:ClearAllPoints();
 					local relFrame = _G[saved.relativeTo] or UIParent;
-					pf:SetPoint(saved.point, relFrame, saved.relativePoint, saved.x, saved.y);
+					local x, y = K.SavedPointOffsets(saved, pf);
+					pf:SetPoint(saved.point, relFrame, saved.relativePoint, x, y);
 				end
 				-- If no saved position: frame is already at 3v3 position, don't touch
 			else
@@ -489,7 +522,8 @@ function K.ApplyIndividualPartyPositions()
 					pf:SetParent(UIParent);
 					pf:ClearAllPoints();
 					local relFrame = _G[saved.relativeTo] or UIParent;
-					pf:SetPoint(saved.point, relFrame, saved.relativePoint, saved.x, saved.y);
+					local x, y = K.SavedPointOffsets(saved, pf);
+					pf:SetPoint(saved.point, relFrame, saved.relativePoint, x, y);
 				end
 			end
 		end

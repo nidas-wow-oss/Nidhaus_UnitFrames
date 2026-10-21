@@ -160,6 +160,11 @@ local function StyleFrame(i)
 		local manabar = _G["PartyMemberFrame" .. i .. "ManaBar"];
 		if manabar then manabar:SetStatusBarTexture(C.statusbarTexture); end
 	end
+
+	-- Lo del panel (contorno del nombre, tamaño de los numeros) va al
+	-- final: el nombre se acaba de poner en 7 sin contorno, y sin esto el
+	-- modo "como el texto de vida/mana" perdia la cara de esa fuente.
+	if K.ApplyPartyTextFont then K.ApplyPartyTextFont(i); end
 end
 
 local function RestoreFrame(i)
@@ -207,13 +212,26 @@ local function RestoreFrame(i)
 	end
 end
 
+-- En combate no se pinta: queda anotado para el final de la pelea. Antes
+-- solo se salia, y apagar Improved peleando dejaba su marco para siempre.
+-- Al ejecutarse se vuelve a mirar el estado, por si cambio en el medio.
 local function StyleAll()
-	if InCombatLockdown() then return; end
+	if InCombatLockdown() then
+		if K.AfterCombat then
+			K.AfterCombat("PFIStyleRestore", function() if enabled then StyleAll(); end end);
+		end
+		return;
+	end
 	for i = 1, MAX_PARTY do StyleFrame(i); end
 end
 
 local function RestoreAll()
-	if InCombatLockdown() then return; end
+	if InCombatLockdown() then
+		if K.AfterCombat then
+			K.AfterCombat("PFIStyleRestore", function() if not enabled then RestoreAll(); end end);
+		end
+		return;
+	end
 	for i = 1, MAX_PARTY do RestoreFrame(i); end
 end
 

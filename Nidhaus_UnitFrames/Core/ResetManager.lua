@@ -50,6 +50,21 @@ local BAR_KEYS = {
 --
 -- Pasarle las claves ya traducidas era el motivo por el que este boton
 -- borraba los datos pero no movia nada en pantalla.
+-- EN COMBATE, DESPUES.
+--
+-- Casi todo lo que repone un reset es protegido (barras, marcos de unidad,
+-- contenedores): en combate el juego corta cada SetScale/SetPoint y el
+-- reset queda a medias. /move reset y los botones del panel funcionan en
+-- combate, asi que el reset entero se corre al terminar la pelea, de una.
+local function LaterIfCombat(key, fn)
+	if K.AfterCombat and K.AfterCombat(key, fn) then
+		print("|cff4FC3F7NUF:|r " .. (L["RESET_AFTER_COMBAT"]
+			or "You're in combat: the reset will apply when combat ends."));
+		return true;
+	end
+	return false;
+end
+
 local function BarKeySet()
 	local keys = {};
 	for _, k in ipairs(BAR_KEYS) do keys[k] = true; end
@@ -125,6 +140,7 @@ end
 -- unidad ni nada que no sea el area de barras.
 -- ---------------------------------------------------------
 function K.ResetActionBars()
+	if LaterIfCombat("ResetActionBars", K.ResetActionBars) then return; end
 	ResetBarScaleSetting();
 
 	if K.ResetGlobalPositions then
@@ -161,6 +177,7 @@ end
 -- boton reponia los tres primeros y se olvidaba de los iconos por fila:
 -- apretabas Reset y la fila seguia de 12.
 function K.ResetAuras()
+	if LaterIfCombat("ResetAuras", K.ResetAuras) then return; end
 	ResetKeys({ "Buffs", "Debuffs" }, function()
 		-- Posicion de los dos bloques (todos los modos) y las dos escalas.
 		if K.ResetAuraAnchor then pcall(K.ResetAuraAnchor); end
@@ -190,12 +207,14 @@ function K.ResetAuras()
 end
 
 function K.ResetCastBar()
+	if LaterIfCombat("ResetCastBar", K.ResetCastBar) then return; end
 	ResetKeys({ "CastBar" }, function()
 		if K.ResetCastBarPositions then pcall(K.ResetCastBarPositions); end
 	end);
 end
 
 function K.ResetMinimap()
+	if LaterIfCombat("ResetMinimap", K.ResetMinimap) then return; end
 	ResetKeys({ "Minimap" });
 end
 
@@ -223,6 +242,7 @@ local UNITFRAME_SCALES = {
 };
 
 function K.ResetUnitFrames()
+	if LaterIfCombat("ResetUnitFrames", K.ResetUnitFrames) then return; end
 	ResetKeys({
 		"Player", "Target", "Pet",
 		"Party1", "Party2", "Party3", "Party4",
@@ -275,6 +295,10 @@ function K.ResetUnitFrames()
 		-- 5) y que el panel muestre los numeros nuevos
 		if K.RefreshScaleSliders then pcall(K.RefreshScaleSliders); end
 		if K.RefreshCastBarScaleSlider then pcall(K.RefreshCastBarScaleSlider); end
+		-- El de la barra de casteo del focus vive en la lista del panel
+		-- general, no en la de la pestaña Frames: sin esto quedaba con el
+		-- numero viejo hasta el /reload.
+		if K.RefreshPanelSliders then pcall(K.RefreshPanelSliders, "FocusSpellBarScale"); end
 		-- Los del 3v3 no estan en la lista de RefreshScaleSliders (son
 		-- otro tipo de slider, mas chico), asi que tienen su propio aviso.
 		-- Refresca los de las DOS pestañas, General y Party.
@@ -291,6 +315,7 @@ end
 -- rearmado, para que los dos botones terminen en el mismo estado.
 -- ---------------------------------------------------------
 function K.ResetEverything()
+	if LaterIfCombat("ResetEverything", K.ResetEverything) then return; end
 	ResetBarScaleSetting();
 
 	if K.ResetGlobalPositions then

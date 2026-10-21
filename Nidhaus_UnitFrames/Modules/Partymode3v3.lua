@@ -124,7 +124,10 @@ function K.Apply3v3PartyMode()
 					partyFrame:ClearAllPoints();
 					partyFrame:SetParent(UIParent);
 					local relFrame = _G[saved.relativeTo] or UIParent;
-					partyFrame:SetPoint(saved.point, relFrame, saved.relativePoint, saved.x, saved.y);
+					-- Guardada quiza a otra escala (modo normal): misma esquina.
+					local x, y = saved.x, saved.y;
+					if K.SavedPointOffsets then x, y = K.SavedPointOffsets(saved, partyFrame); end
+					partyFrame:SetPoint(saved.point, relFrame, saved.relativePoint, x, y);
 				else
 					partyFrame:SetScale(Get3v3Scale(i));
 					partyFrame:ClearAllPoints();
@@ -169,8 +172,33 @@ function K.Disable3v3PartyMode()
 	end
 
 	if not K.NidhausPartyFrame then
-		-- Sin contenedor no hay a donde reanclarlos. La escala ya volvio a la
-		-- tuya; de la posicion se encarga quien corresponda.
+		-- Sin contenedor (posiciones custom apagadas). El 3v3 los habia
+		-- clavado en SUS lugares; si nadie los devuelve, el 1 se quedaba en
+		-- 40,-140 y los otros colgados de el, todo corrido hasta el /reload.
+		if C.PartyIndividualMove and K.ApplyIndividualPartyPositions then
+			-- Los que moviste a mano vuelven a su lugar (a esta escala).
+			K.ApplyIndividualPartyPositions();
+		else
+			-- El lugar de Blizzard (PartyFrame.xml): el 1 a 10,-160 de la
+			-- pantalla y cada uno debajo de la mascota del anterior.
+			local spacing = tonumber(C.PartyMemberFrameSpacing) or 0;
+			for i = 1, MAX_PARTY_MEMBERS do
+				local pf = _G["PartyMemberFrame"..i];
+				if pf then
+					pf:ClearAllPoints();
+					if i == 1 then
+						pf:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 10, -160);
+					else
+						local prevPet = _G["PartyMemberFrame"..(i-1).."PetFrame"];
+						if prevPet then
+							pf:SetPoint("TOPLEFT", prevPet, "BOTTOMLEFT", -23, -10 - spacing);
+						else
+							pf:SetPoint("TOPLEFT", _G["PartyMemberFrame"..(i-1)], "BOTTOMLEFT", 0, -10 - spacing);
+						end
+					end
+				end
+			end
+		end
 		if K.PartyBuffs_OnFramesMoved then K.PartyBuffs_OnFramesMoved(); end
 		return;
 	end

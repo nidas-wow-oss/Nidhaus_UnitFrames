@@ -275,7 +275,9 @@ end
 local function Update()
     if moving then return; end
 
-    if not IsLoadable() or not ZoneOK() then
+    -- Apagado no muestra nada: "Mover todo" llama a SetMoving(false) tambien
+    -- con el modulo apagado, y sin eventos el icono quedaba clavado.
+    if not sstEnabled or not IsLoadable() or not ZoneOK() then
         GlowOff(renew); GlowOff(shieldBuff);
         renew:Hide(); shieldBuff:Hide();
         Layout();
@@ -333,7 +335,7 @@ local function SetMoving(on)
         end
         ResolveIcon(renew, SHIELD_ID);
         ResolveIcon(shieldBuff, ABSORB_ID);
-        if renew.text then renew.text:SetText(UnitName("player") or "Nombre"); end
+        if renew.text then renew.text:SetText(UnitName("player") or "Name"); end
         Layout();
         anchor.bg:Show();
         anchor:EnableMouse(true);

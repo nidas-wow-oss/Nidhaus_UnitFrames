@@ -214,7 +214,7 @@ do
 		i = i + 1;
 		while true do
 			local chr = string.sub(s, i, i);
-			if chr == "" then return nil, i, "cadena sin cerrar"; end
+			if chr == "" then return nil, i, "unclosed string"; end
 			if chr == quote then return table.concat(out), i + 1; end
 
 			if chr == "\\" then
@@ -241,13 +241,13 @@ do
 	-- del contenido es un salto de linea, se descarta.
 	local function ReadLongString(s, i)
 		local level = string.match(s, "^%[(=*)%[", i);
-		if not level then return nil, i, "no es cadena larga"; end
+		if not level then return nil, i, "not a long string"; end
 
 		local open  = string.len(level) + 2;
 		local close = "]" .. level .. "]";
 		local from  = i + open;
 		local stop  = string.find(s, close, from, true);
-		if not stop then return nil, i, "cadena larga sin cerrar"; end
+		if not stop then return nil, i, "unclosed long string"; end
 
 		local body = string.sub(s, from, stop - 1);
 		if string.sub(body, 1, 1) == "\n" then body = string.sub(body, 2); end
@@ -264,20 +264,20 @@ do
 
 		while true do
 			local chr = string.sub(s, i, i);
-			if chr == "" then return nil, i, "tabla sin cerrar"; end
+			if chr == "" then return nil, i, "unclosed table"; end
 			if chr == "}" then return out, i + 1; end
 
-			if chr ~= "[" then return nil, i, "se esperaba '[' de una clave"; end
+			if chr ~= "[" then return nil, i, "expected '[' for a key"; end
 
 			local key, err;
 			key, i, err = ReadValue(s, i + 1, depth + 1);
-			if key == nil then return nil, i, err or "clave invalida"; end
+			if key == nil then return nil, i, err or "invalid key"; end
 
 			i = SkipSpace(s, i);
-			if string.sub(s, i, i) ~= "]" then return nil, i, "se esperaba ']'"; end
+			if string.sub(s, i, i) ~= "]" then return nil, i, "expected ']'"; end
 			i = SkipSpace(s, i + 1);
 
-			if string.sub(s, i, i) ~= "=" then return nil, i, "se esperaba '='"; end
+			if string.sub(s, i, i) ~= "=" then return nil, i, "expected '='"; end
 
 			local value;
 			value, i, err = ReadValue(s, i + 1, depth + 1);
@@ -325,7 +325,7 @@ do
 		if string.sub(s, i, i + 3) == "true" then return true, i + 4; end
 		if string.sub(s, i, i + 4) == "false" then return false, i + 5; end
 
-		return nil, i, "valor no reconocido cerca de '" ..
+		return nil, i, "unrecognized value near '" ..
 			string.sub(s, i, i + 12) .. "'";
 	end
 
@@ -335,14 +335,14 @@ do
 
 		local text = "{" .. body .. "}";
 		local out, stop, err = ReadTable(text, 1, 0);
-		if out == nil then return nil, err or "formato invalido"; end
+		if out == nil then return nil, err or "invalid format"; end
 
 		-- Y que no sobre nada despues de la llave de cierre. Sin esto, una
 		-- entrada como "} basura {" se leia como una tabla vacia valida en
 		-- vez de rechazarse.
 		stop = SkipSpace(text, stop);
 		if stop <= string.len(text) then
-			return nil, "sobra texto despues de la tabla";
+			return nil, "extra text after the table";
 		end
 
 		return out;
@@ -508,6 +508,13 @@ local function ReadSlot(slot)
 
 	if kind == "companion" then
 		return { a = "C", b = { b = subType, c = id } };
+	end
+
+	-- Conjunto de equipo, por nombre ("E" es agregado nuestro, como "s").
+	-- Si el cliente no da el nombre, la casilla queda sin representar y el
+	-- import no la toca.
+	if kind == "equipmentset" and type(id) == "string" and id ~= "" then
+		return { a = "E", b = id };
 	end
 
 	return nil;
@@ -684,7 +691,7 @@ function K.SlotExport()
 		-- Lo usa el filtro del desplegable. Las lineas @ las descarta el
 		-- importador, asi que agregarla no rompe ninguna cadena, vieja ni nueva.
 		"@ CLASS " .. (select(2, UnitClass("player")) or "?"),
-		"@ Formato compatible con MySlot.",
+		"@ MySlot compatible format.",
 		"@ --------------------",
 		"",
 	};
@@ -785,6 +792,14 @@ local function PlaceOnSlot(slot, entry)
 	elseif entry.a == "C" then
 		if type(entry.b) ~= "table" then return; end
 		PickupCompanion(entry.b.b, entry.b.c);
+
+	elseif entry.a == "E" then
+		-- Solo si este personaje tiene un conjunto con ese nombre.
+		if type(entry.b) ~= "string" or not PickupEquipmentSetByName
+			or not (GetEquipmentSetInfoByName and GetEquipmentSetInfoByName(entry.b)) then
+			return;
+		end
+		PickupEquipmentSetByName(entry.b);
 
 	else
 		return;
@@ -969,9 +984,15 @@ function K.SlotImport(text)
 	local placed = 0;
 	for slot = 1, MAX_ACTION_SLOTS do
 		local entry = profile[slot];
-		if entry ~= nil or GetActionInfo(slot) then
+		if entry ~= nil then
 			PlaceOnSlot(slot, entry);
-			if entry then placed = placed + 1; end
+			placed = placed + 1;
+		elseif GetActionInfo(slot) then
+			-- Vaciar SOLO lo que el formato sabe guardar. Lo que no (un
+			-- hechizo o macro que no se pudo leer) nunca viaja en la cadena,
+			-- ni en el backup: borrarlo era perderlo sin vuelta.
+			local okR, cur = pcall(ReadSlot, slot);
+			if okR and cur then PlaceOnSlot(slot, nil); end
 		end
 	end
 

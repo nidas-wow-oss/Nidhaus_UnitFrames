@@ -60,6 +60,8 @@ local Path;
 -- Posicion de fabrica de la barra de casteo en modo Flat (ver el uso mas
 -- abajo): salio de dejarla acomodada en el juego.
 local CASTBAR_FLAT_DEFAULT = { "CENTER", "CENTER", -106.1, 1.2 };
+-- Con el modo espejo la de fabrica va del otro lado del marco.
+local CASTBAR_FLAT_DEFAULT_MIRROR = { "CENTER", "CENTER", 106.1, 1.2 };
 
 local TEX_W, TEX_H = 124, 53;
 local TEX_X, TEX_Y = 0, 5;      -- donde se ancla el arte dentro del marco
@@ -83,6 +85,14 @@ local BAR_MP_GAP   = -1;
 -- Retrato de clase: corrimiento respecto del borde derecho del marco.
 -- Con el arte mas alto quedaba levantado respecto del hueco redondo.
 local PORT_X, PORT_Y = 0, -4;
+
+-- Las mismas medidas para el modo espejo (MirrorMode.lua las voltea): asi
+-- siguen siendo el unico lugar donde se tocan.
+K.ArenaCustomLayout = {
+	TEX_W = TEX_W, TEX_H = TEX_H, TEX_X = TEX_X, TEX_Y = TEX_Y,
+	BAR_X = BAR_X, BAR_Y = BAR_Y, BAR_W = BAR_W, BAR_HP_H = BAR_HP_H, BAR_MP_H = BAR_MP_H,
+	BAR_MP_GAP = BAR_MP_GAP, PORT_X = PORT_X, PORT_Y = PORT_Y,
+};
 
 local function GetArenaTexturePath()
 	-- Compact 2: EXACTAMENTE la misma textura que usan el PlayerFrame en
@@ -233,6 +243,12 @@ local function CaptureOriginals(index)
 	arenaOriginals[index] = orig;
 end
 
+-- La foto de fabrica (la de Blizzard, sacada antes de estilar). La usa el
+-- modo espejo en vez de fotografiar el marco ya estilado.
+function K.GetArenaFrameOriginals(index)
+	return arenaOriginals[index];
+end
+
 local function RestoreDefaultArenaTextures()
 	for i = 1, MAX_ARENA_ENEMIES do
 		local arenaFrame = _G["ArenaEnemyFrame"..i];
@@ -379,6 +395,8 @@ local function ApplyArenaTextures()
 			tex:Show();
 		end
 
+		-- Sin limpiar, el TOPRIGHT del modo espejo quedaba sumado y estiraba la barra.
+		arenaFrame.healthbar:ClearAllPoints();
 		arenaFrame.healthbar:SetPoint("TOPLEFT", arenaFrame, "TOPLEFT", BAR_X, BAR_Y);
 		arenaFrame.healthbar:SetSize(BAR_W, BAR_HP_H);
 		arenaFrame.name:ClearAllPoints();
@@ -450,6 +468,11 @@ local function ArenaFrames_OnLoad()
 	-- marcos no: eso queda para cuando termina el combate.
 	if InCombatLockdown() then
 		pcall(ApplyArenaTextures);
+		-- El estilo recien puesto viene sin espejar. El espejo tambien es solo
+		-- arte y barras: se repone ya, no al terminar la pelea.
+		if C.ArenaMirrorMode and K.ApplyMirrorMode and not K.IsFlatModeActive() then
+			pcall(K.ApplyMirrorMode);
+		end
 		K.AfterCombat("ArenaFrames_OnLoad", ArenaFrames_OnLoad);
 		return;
 	end
@@ -464,6 +487,9 @@ local function ArenaFrames_OnLoad()
 	if C.ArenaCastBarEnable and K.ToggleArenaCastBar then
 		pcall(K.ToggleArenaCastBar, true);
 	end
+	-- La mascota en su lugar del modo puesto. Fuera de Flat solo se ponia
+	-- al abrir el Test: en una arena de verdad quedaba en el de Blizzard.
+	if K.RestorePetFramePositions then pcall(K.RestorePetFramePositions); end
 end
 
 K.ArenaFrames_OnLoad = ArenaFrames_OnLoad;
@@ -649,6 +675,9 @@ function K.ToggleArenaCustomTexture(enabled)
 	end
 	
 	if K.ApplyArenaSpacing then K.ApplyArenaSpacing(); end
+	-- RestoreDefaultArenaTextures deja la barra de casteo de fabrica: si
+	-- "Custom cast bar" esta tildado, se le devuelven su escala y su ancho.
+	if C.ArenaCastBarEnable and K.ToggleArenaCastBar then K.ToggleArenaCastBar(true); end
 end
 
 function K.ToggleArenaFlatMode(enabled)
@@ -669,6 +698,8 @@ function K.ToggleArenaFlatMode(enabled)
 	
 	K.ApplyArenaSpacing();
 	if K.ApplyMirrorMode then K.ApplyMirrorMode(); end
+	-- Mismo motivo que en ToggleArenaCustomTexture.
+	if C.ArenaCastBarEnable and K.ToggleArenaCastBar then K.ToggleArenaCastBar(true); end
 end
 
 function K.UpdateFlatStyle()
@@ -754,23 +785,19 @@ local castBarDragSetup = false;
 -- ═══════════════════════════════════════════════════════════
 function K.GetSavedCastBarPos()
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.CastBarPositions;
-
+	local key = K.GetArenaPositionKey and K.GetArenaPositionKey()
+		or ((C.ArenaFrameStyle or "Custom") .. (C.ArenaMirrorMode and "_mirror" or "_normal"));
+	local saved = db and db[key];
+	if saved then return saved; end
 	-- Igual que el trinket: en modo Flat, si todavia no se movio nada, se
-	-- usa la posicion de fabrica pensada para ese modo.
-	local isFlatNow = (C.ArenaFrameStyle == "Flat") or (C.ArenaFlatMode == true);
-	if isFlatNow then
-		local fkey = K.GetArenaPositionKey and K.GetArenaPositionKey() or "Flat_normal";
-		if not (db and db[fkey]) then return CASTBAR_FLAT_DEFAULT; end
+	-- usa la posicion de fabrica pensada para ese modo. En los demas, nil:
+	-- K.PositionArenaCastBar pone el lugar de fabrica de ese estilo. (Ya no
+	-- cae a una posicion "sin estilo": eso hacia que lo movido en un estilo
+	-- apareciera en todos. Lo viejo se paso al estilo puesto, ArenaModes.lua.)
+	if (C.ArenaFrameStyle == "Flat") or (C.ArenaFlatMode == true) then
+		return C.ArenaMirrorMode and CASTBAR_FLAT_DEFAULT_MIRROR or CASTBAR_FLAT_DEFAULT;
 	end
-	if not db then return nil; end
-	-- Try composite key first (style + mirror), fallback to legacy keys
-	if K.GetArenaPositionKey then
-		local compositeKey = K.GetArenaPositionKey();
-		if db[compositeKey] then return db[compositeKey]; end
-	end
-	-- Legacy fallback: mirror/normal keys
-	local key = C.ArenaMirrorMode and "mirror" or "normal";
-	return db[key] or db.global;
+	return nil;
 end
 
 -- ═══════════════════════════════════════════════════════════
@@ -898,7 +925,7 @@ end
 --
 -- Ahora hace las tres cosas que uno espera de un boton que dice Reset:
 --
---   1. Borra las posiciones guardadas.
+--   1. Borra la posicion guardada (la del modo puesto).
 --   2. Devuelve escala y ancho a los valores de fabrica.
 --   3. Vuelve a colocar las barras AHORA, sin recargar.
 --
@@ -906,12 +933,13 @@ end
 -- que sabe combinar posicion guardada, modo espejo y modo flat. Si se
 -- reposicionara a mano aca habria dos calculos distintos para lo mismo.
 function K.ResetCastBarPositions()
-	if NidhausUnitFramesDB then
-		NidhausUnitFramesDB.CastBarPositions = nil;
-	end
+	-- Solo el modo puesto: cada estilo (y cada lado del espejo) guarda lo
+	-- suyo, y el boton resetea lo que estas viendo.
+	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.CastBarPositions;
+	if db and K.GetArenaPositionKey then db[K.GetArenaPositionKey()] = nil; end
 
-	local scale = 1.0;
-	local width = 80;
+	local scale = (K.GetConfigDefault and K.GetConfigDefault("ArenaCastBarScale")) or 1.0;
+	local width = (K.GetConfigDefault and K.GetConfigDefault("ArenaCastBarWidth")) or 80;
 
 	if K.SaveConfig then
 		K.SaveConfig("ArenaCastBarScale", scale);
@@ -1187,19 +1215,12 @@ worldHandler:SetScript("OnEvent", function(self, event)
 	-- (cuando el mod está desactivado, isInitialized es false pero
 	-- igual necesitamos restaurar defaults al entrar a arena)
 	if not C.ArenaFrameOn then
-		RestoreDefaultArenaTextures();
-		if K.RemoveAllFlatStyles then K.RemoveAllFlatStyles(); end
-		if ArenaEnemyFrames then
-			ArenaEnemyFrames:SetScale(1);
-			ArenaEnemyFrames:SetParent(UIParent);
-			ArenaEnemyFrames:ClearAllPoints();
-			ArenaEnemyFrames:SetPoint("RIGHT", UIParent, "RIGHT", -50, -110);
-			ArenaEnemyFrames:Show();
-		end
-		-- Reset individual frame scales
-		for i = 1, (MAX_ARENA_ENEMIES or 5) do
-			local frame = _G["ArenaEnemyFrame"..i];
-			if frame then frame:SetScale(1); end
+		-- Con el mod apagado los marcos son de Blizzard (o de Gladius/sArena).
+		-- Solo se devuelven si NUF todavia los tiene tomados, y una vez: antes
+		-- se movian y se forzaba Show() en cada evento de arena.
+		if ArenaEnemyFrames and NidhausArenaEnemyFrames
+			and ArenaEnemyFrames:GetParent() == NidhausArenaEnemyFrames then
+			K.DisableArenaFrameMod();
 		end
 		if NidhausArenaEnemyFrames then NidhausArenaEnemyFrames:Hide(); end
 		return;
@@ -1330,7 +1351,15 @@ function K.DisableArenaFrameMod()
 			-- FIX: Restaurar posición default de Blizzard
 			ArenaEnemyFrames:ClearAllPoints();
 			ArenaEnemyFrames:SetPoint("RIGHT", UIParent, "RIGHT", -50, -110);
-			ArenaEnemyFrames:Show();
+			-- Visible solo donde Blizzard lo mostraria (opcion de Interfaz y
+			-- adentro de una arena): un Show() fuera de arena escondia las
+			-- misiones seguidas.
+			local _, itype = IsInInstance();
+			if ArenaEnemyFrames.show and itype == "arena" then
+				ArenaEnemyFrames:Show();
+			else
+				ArenaEnemyFrames:Hide();
+			end
 		end
 
 		-- FIX: Reset individual frame scales to 1 (may have been set incorrectly)

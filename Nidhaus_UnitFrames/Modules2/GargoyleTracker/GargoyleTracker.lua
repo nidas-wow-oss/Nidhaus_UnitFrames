@@ -917,6 +917,9 @@ local function StartGargoyle(sourceName, isTest, gargGUID)
   state.castTarget = ""
   state.plate      = nil
   state.plateHP    = nil
+  state.plateName  = nil
+  state.hpSeen     = false
+  state.scanAcc    = nil   -- la primera busqueda, en el primer cuadro
 
   local icon = GetGargoyleIcon()
   SetPortraitToTexture(bIconTex, icon)
@@ -944,15 +947,18 @@ end
 -- =====================================================
 -- NAMEPLATE SCAN
 -- =====================================================
+-- Devuelve tambien la FontString del nombre: las placas se reciclan, y con
+-- ella el OnUpdate comprueba que la placa guardada siga siendo la gargola.
 local function FindGargoyleNameplate()
+  local want = GargName()
   for _, plate in ipairs({ WorldFrame:GetChildren() }) do
     if plate and plate.GetRegions and plate:IsShown() then
-      local found = false
+      local found
       for _, reg in ipairs({ plate:GetRegions() }) do
         if reg and reg.GetObjectType
            and reg:GetObjectType() == "FontString"
-           and reg:GetText() == GargName() then
-          found = true; break
+           and reg:GetText() == want then
+          found = reg; break
         end
       end
       if found then
@@ -960,15 +966,19 @@ local function FindGargoyleNameplate()
           if child and child.GetObjectType
              and child:GetObjectType() == "StatusBar" then
             local _, mx = child:GetMinMaxValues()
-            if mx and mx > 0 then return plate, child end
+            if mx and mx > 0 then return plate, child, found end
           end
         end
-        return plate, nil
+        return plate, nil, found
       end
     end
   end
-  return nil, nil
+  return nil, nil, nil
 end
+
+-- Cada cuanto se busca la placa mientras no aparece. Recorrer todas las
+-- placas en cada cuadro creaba decenas de tablas por cuadro en un BG.
+local PLATE_SCAN_EVERY = 0.25
 
 -- =====================================================
 -- ONUPDATE
@@ -1029,15 +1039,28 @@ f:SetScript("OnUpdate", function(self, elapsed)
   end
 
   if not state.testMode then
+    -- La placa se recicla para otra unidad cuando la gargola sale de vista:
+    -- si ya no esta visible o cambio de nombre, se suelta (queda la ultima
+    -- vida leida) y se vuelve a buscar.
+    if state.plate and not (state.plate:IsShown() and state.plateName
+        and state.plateName:GetText() == GargName()) then
+      state.plate, state.plateHP, state.plateName = nil, nil, nil
+    end
+
     if not state.plate then
-      local p, hp = FindGargoyleNameplate()
-      if p then state.plate = p; state.plateHP = hp end
+      state.scanAcc = (state.scanAcc or PLATE_SCAN_EVERY) + elapsed
+      if state.scanAcc >= PLATE_SCAN_EVERY then
+        state.scanAcc = 0
+        local p, hp, nm = FindGargoyleNameplate()
+        if p then state.plate = p; state.plateHP = hp; state.plateName = nm end
+      end
     end
 
     if state.plateHP and state.plateHP:IsShown() then
       local v = state.plateHP:GetValue()
       local _, mx = state.plateHP:GetMinMaxValues()
       if mx and mx > 0 then
+        state.hpSeen = true
         local pct = math.max(0, math.min(1, v / mx))
         hpBar:SetValue(pct)
         hpBar.txt:SetFormattedText("%d / %d", math.floor(v + 0.5), math.floor(mx + 0.5))
@@ -1049,7 +1072,7 @@ f:SetScript("OnUpdate", function(self, elapsed)
           hpBar:SetStatusBarColor(0.9, 0.15, 0.15, 1)
         end
       end
-    else
+    elseif not state.hpSeen then
       hpBar:SetValue(0)
       hpBar.txt:SetText("")
     end
@@ -1137,6 +1160,12 @@ loginF:SetScript("OnEvent", function(self)
   local icon = GetGargoyleIcon()
   SetPortraitToTexture(bIconTex, icon)
   cIconTex:SetTexture(icon)
+  -- Al cargar el archivo la DB guardada todavia no existe: los carteles
+  -- quedaban con el nombre en ingles y el modo en "blizzard". Recien
+  -- aca se puede leer el nombre aprendido y el modo elegido.
+  bNameTxt:SetText(GargName())
+  cNameTxt:SetText(GargName())
+  if not state.active then SetActiveMode(GTDB().mode or MODE_BLIZZARD) end
   self:UnregisterAllEvents()
 end)
 
@@ -1270,17 +1299,17 @@ SlashCmdList.GT = function(msg)
       x, y = tonumber(x), tonumber(y)
       bIconH:ClearAllPoints()
       bIconH:SetPoint("TOPLEFT", uiBlizz, "TOPLEFT", x, y)
-      print("GT: icon movido a TOPLEFT("..x..", "..y..") 60x60")
+      print("GT: icon moved to TOPLEFT("..x..", "..y..") 60x60")
     else
       local p1, rel, p2, cx, cy = bIconH:GetPoint(1)
-      print("GT: icon actual -> TOPLEFT("..tostring(math.floor(cx+0.5))..", "..tostring(math.floor(cy+0.5))..") 60x60")
-      print("GT: uso: /gt icon X Y  (ej: /gt icon 189 -8)")
+      print("GT: current icon -> TOPLEFT("..tostring(math.floor(cx+0.5))..", "..tostring(math.floor(cy+0.5))..") 60x60")
+      print("GT: usage: /gt icon X Y  (e.g. /gt icon 189 -8)")
     end
 
   elseif msg == "center" then
     ui:ClearAllPoints()
     ui:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
-    print("GT: centrado")
+    print("GT: centered")
 
 
   elseif msg:match("^bars") then
@@ -1294,9 +1323,9 @@ SlashCmdList.GT = function(msg)
       bHpH:SetPoint("TOPLEFT", uiBlizz, "TOPLEFT", x, y - 17)
       bDurH:ClearAllPoints(); bDurH:SetSize(w, 10)
       bDurH:SetPoint("TOPLEFT", uiBlizz, "TOPLEFT", x, y - 30)
-      print("GT: barras -> x="..x.." w="..w.." y="..y.." (HP y="..(y-17)..", Dur y="..(y-30)..")")
+      print("GT: bars -> x="..x.." w="..w.." y="..y.." (HP y="..(y-17)..", Dur y="..(y-30)..")")
     else
-      print("GT: uso: /gt bars X W Y  (ej: /gt bars 107 118 -14)")
+      print("GT: usage: /gt bars X W Y  (e.g. /gt bars 107 118 -14)")
     end
 
   elseif msg:match("^cast") then
@@ -1308,7 +1337,7 @@ SlashCmdList.GT = function(msg)
       bCastH:Show(); bCastIconH:Show(); bCastTxtF:Show(); bCastFlashF:Show()
       print("GT: castbar -> TOPLEFT("..x..", "..y..")")
     else
-      print("GT: uso: /gt cast X Y  (ej: /gt cast 65 -80)")
+      print("GT: usage: /gt cast X Y  (e.g. /gt cast 65 -80)")
     end
 
   elseif msg == "test" then
@@ -1319,7 +1348,7 @@ SlashCmdList.GT = function(msg)
     hpBar:SetValue(1)
     hpBar:SetStatusBarColor(0.2, 0.9, 0.2, 1)
     hpBar.txt:SetText("24692 / 24692")
-    print("GT: simulando 30s con casteos consecutivos")
+    print("GT: simulating 30s of back-to-back casts")
     -- Casteos consecutivos cada 2s con 1.5s de cast
     local te, castCount = 0, 0
     local tf = CreateFrame("Frame")
@@ -1350,7 +1379,7 @@ SlashCmdList.GT = function(msg)
       GT_CALIBRATING = false
       ui:Hide()
       bCastH:Hide(); bCastIconH:Hide(); bCastTxtF:Hide(); bCastFlashF:Hide()
-      print("GT CAL: cerrado.")
+      print("GT CAL: closed.")
       return
     end
     -- Calibracion: muestra el frame con barras al 60% para ajustar posiciones
@@ -1378,11 +1407,11 @@ SlashCmdList.GT = function(msg)
     timeTxt:SetText("18.0s")
     timeTxt:SetTextColor(1, 1, 1, 1)
     ui:Show()
-    print("GT CAL: modo calibracion (Blizzard). /gt cal para cerrar.")
-    print("GT CAL: /gt icon X Y  /gt bars X W  para ajuste en vivo")
+    print("GT CAL: calibration mode (Blizzard). /gt cal to close.")
+    print("GT CAL: /gt icon X Y  /gt bars X W  for live tuning")
 
   elseif ui:IsShown() then
-    ui:Hide(); print("GT: oculto")
+    ui:Hide(); print("GT: hidden")
 
   else
     ui:Show()

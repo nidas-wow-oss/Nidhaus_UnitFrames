@@ -424,6 +424,35 @@ local function RefreshAllAuras()
 end
 
 ------------------------------------------------------------------------
+-- Ancla Debuff1 / Buff1 (solo los tipos que maneja el modulo).
+-- El offset guardado esta en el espacio del MARCO (el mismo del mover),
+-- pero el icono tiene escala propia y SetPoint lee el offset en el espacio
+-- del icono: sin dividir por su escala, con 1.5 la fila se iba al 150%.
+------------------------------------------------------------------------
+local function AnchorFirstIcons(f, doB, doD)
+	if doD then
+		local d1 = _G[f:GetName() .. "Debuff1"]
+		if d1 then
+			local debuffs = GetCurrentDebuffs()
+			local s = (d1.GetScale and d1:GetScale()) or 1
+			if not s or s <= 0 then s = 1 end
+			d1:ClearAllPoints()
+			d1:SetPoint("LEFT", f, "RIGHT", debuffs.x / s, debuffs.y / s)
+		end
+	end
+	if doB then
+		local b1 = _G[f:GetName() .. "Buff1"]
+		if b1 then
+			local buffs = GetCurrentBuffs()
+			local s = (b1.GetScale and b1:GetScale()) or 1
+			if not s or s <= 0 then s = 1 end
+			b1:ClearAllPoints()
+			b1:SetPoint("TOPLEFT", f, "TOPLEFT", buffs.x / s, buffs.y / s)
+		end
+	end
+end
+
+------------------------------------------------------------------------
 -- ApplyScaleAll — aplica escala a todos los iconos visibles
 ------------------------------------------------------------------------
 local function ApplyScaleAll(scaleTable)
@@ -439,24 +468,22 @@ local function ApplyScaleAll(scaleTable)
 				if b and b.SetScale then b:SetScale(ShowBuffs() and sb or 1) end
 				if d and d.SetScale then d:SetScale(ShowDebuffs() and sd or 1) end
 			end
+			-- Con la escala nueva cambia el offset que lee SetPoint: reanclar.
+			if pbEnabled then AnchorFirstIcons(f, ShowBuffs(), ShowDebuffs()) end
 		end
 	end
 end
 
 ------------------------------------------------------------------------
 -- ReanchorAll — ancla Buff1/Debuff1 en espacio LOCAL del frame
--- WoW 3.3.5: SetPoint offsets son en el espacio de coordenadas del padre
--- del frame que se ancla. Buff1/Debuff1 son hijos de PartyMemberFrame,
--- por lo que los offsets van en el espacio local de ese frame.
--- Al guardar offsetX=48, un frame en escala 1.5 lo muestra como 72px.
--- Esto es el comportamiento correcto probado en la versión "copia".
+-- Los offsets guardados estan en el espacio del PartyMemberFrame (siguen
+-- su escala, tambien la del 3v3). SetPoint los lee en el espacio del
+-- icono, asi que AnchorFirstIcons los divide por la escala propia de este.
 ------------------------------------------------------------------------
 local function ReanchorAll()
 	if not pbEnabled then return; end
 	ApplyDefaults()
 
-	local buffs   = GetCurrentBuffs();
-	local debuffs = GetCurrentDebuffs();
 	local maxB    = GetMaxBuffs();
 	local maxD    = GetMaxDebuffs();
 
@@ -468,20 +495,7 @@ local function ReanchorAll()
 			EnsureAuraFrames(f)
 			-- El anclaje de Debuff1 / Buff1 solo se toca si ese tipo es del
 			-- modulo; si no, es de Blizzard o del estilo de party.
-			if doD then
-				local d1 = _G[f:GetName() .. "Debuff1"]
-				if d1 then
-					d1:ClearAllPoints()
-					d1:SetPoint("LEFT", f, "RIGHT", debuffs.x, debuffs.y)
-				end
-			end
-			if doB then
-				local b1 = _G[f:GetName() .. "Buff1"]
-				if b1 then
-					b1:ClearAllPoints()
-					b1:SetPoint("TOPLEFT", f, "TOPLEFT", buffs.x, buffs.y)
-				end
-			end
+			AnchorFirstIcons(f, doB, doD)
 			-- Ocultar iconos más allá del límite (o todos los buffs si el
 			-- modulo no los maneja; los debuffs de Blizzard son 4).
 			for j = (doB and maxB or 0) + 1, 20 do
@@ -836,9 +850,26 @@ local function PlacePanelFrom(src)
 	end
 end
 
+-- Los movers son hijos de PartyMemberFrame1: estando solo ese marco esta
+-- oculto y no se veian. Al abrir se prende el modo prueba (si lo prendimos
+-- nosotros, lo apagamos al cerrar).
+local testOwned = false
+local function EnsurePartyVisibleForMovers()
+	if testOwned or InCombatLockdown() then return end
+	local f1 = GetPartyAnchor()
+	if f1 and not f1:IsShown() and K.SetPartyTestMode and K.IsPartyTestMode and not K.IsPartyTestMode() then
+		K.SetPartyTestMode(true)
+		testOwned = K.IsPartyTestMode() and true or false
+	end
+end
+
 local function LockUI()
 	ShowMovers(false)
 	if scalePanel and scalePanel:IsShown() then scalePanel:Hide() end
+	if testOwned then
+		testOwned = false
+		if K.SetPartyTestMode and not InCombatLockdown() then K.SetPartyTestMode(false) end
+	end
 end
 
 local function EnsureScalePanel()
@@ -1069,6 +1100,7 @@ SlashCmdList["PARTYBUFFS"] = function(msg)
 		if scalePanel and scalePanel:IsShown() then
 			LockUI()
 		else
+			EnsurePartyVisibleForMovers()
 			CreateMovers()
 			ShowMovers(true)
 			ShowScalePanel(true)

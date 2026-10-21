@@ -23,12 +23,14 @@ local tooltips = {
 	PartyTargetsEnabled     = "TIP_PartyTargets",
 };
 
-local function AddTooltip(frame, setting)
+-- El titulo es el texto que ve el usuario (el del control), no la clave
+-- interna: salia "PlayerFrameScale" o "ArenaDRSize" en los dos idiomas.
+local function AddTooltip(frame, setting, title)
 	local tipKey = tooltips[setting];
 	if not tipKey then return; end
 	frame:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-		GameTooltip:SetText(L[setting] or setting, 1, 1, 1);
+		GameTooltip:SetText(title or L[setting] or setting, 1, 1, 1);
 		GameTooltip:AddLine(L[tipKey] or tipKey, nil, nil, nil, true);
 		GameTooltip:Show();
 	end);
@@ -129,7 +131,7 @@ local function CreateSlider(parent, label, setting, minVal, maxVal, step, xOffse
 	-- lee, y si algun dia se saca la cajita vuelve a aparecer al dia.
 	slider._nufOwnValue = slider.ValueText;
 
-	AddTooltip(slider, setting);
+	AddTooltip(slider, setting, label);
 
 	-- FIX PERF: Apply visual changes immediately during drag, but only save
 	-- to DB (with CONFIG_CHANGED event) on mouse release. This eliminates
@@ -944,101 +946,215 @@ function K.PopulateFramesTab(panel)
 		RefreshStyle();
 	end
 
-	-- ── Contorno del texto (idea tomada de KPack) ──
-	-- Solo cambia el FLAG de la fuente, no el tipo ni el tamaño: asi sirve
-	-- para los tres estilos sin romper los tamaños de cada uno.
-	-- Con el estilo Blizzard no hay nada que tocar acá: manda el default del
-	-- juego. Antes la seccion se ocultaba widget por widget, pero el hueco
-	-- quedaba igual porque todo lo de abajo estaba anclado a coordenadas
-	-- fijas. Ahora va en un cuerpo desplegable: cerrado mide 1px y lo que
-	-- sigue sube solo, porque se ancla AL CUERPO y no a un numero.
+	-- ── TEXTO DEL GRUPO: NOMBRE Y NUMEROS, POR SEPARADO ──
+	--
+	-- Dos columnas, cada una con su contorno y su tamaño:
+	--   NOMBRE                          NUMEROS DE VIDA / MANA
+	--   [contorno ▼]                    [contorno ▼]
+	--   Tamaño (estilo) ──●──           Tamaño (estilo) ──●──
+	--                                   [ ] Ocultar los numeros
+	--
+	-- El tamaño es POR ESTILO (Improved tiene el marco grande, Compact 2 el
+	-- angosto): los sliders muestran y cambian el del estilo elegido, y al
+	-- cambiar de estilo pasan a mostrar el de ese.
+	--
+	-- VISTA PREVIA: si no estas en grupo, tocar cualquiera de estos
+	-- controles prende el modo prueba (los 4 de mentira) para que veas el
+	-- cambio, y se apaga solo al cerrar el panel. Si el modo prueba ya
+	-- estaba prendido por vos, no se toca.
+	--
+	-- Con el estilo Blizzard la seccion se esconde: ahi manda el juego. Va
+	-- en un cuerpo desplegable: cerrado mide 1px y lo de abajo sube solo.
 	py = py - 44;
-	-- Alto del cuerpo: cabecera en 0, etiqueta y desplegable en -30, slider en
-	-- -66. El slider mide 16 y ademas UIKit le cuelga DEBAJO la cajita con el
-	-- valor (otros 17), asi que el contenido llega a -99. Con 92 la cajita se
-	-- salia del cuerpo y pisaba la casilla de abajo.
-	local fontBody = K.UI.Collapsible(paneParty, x, py, 440, 104, function()
+	local fontBody = K.UI.Collapsible(paneParty, x, py, 440, 162, function()
 		local style = (K.GetPartyFrameStyle and K.GetPartyFrameStyle()) or "Default";
 		return style ~= "Default";
 	end);
 
-	FHeader(fontBody, L["HEADER_PARTY_FONT"] or "Text Outline", 0, 0);
+	FHeader(fontBody, L["HEADER_PARTY_FONT"] or "Party text", 0, 0);
 
-	do
-		local outlines = {
-			{ value = "",                  text = L["OUTLINE_NONE"]      or "None" },
-			{ value = "OUTLINE",           text = L["OUTLINE_NORMAL"]    or "Outline" },
-			{ value = "THICKOUTLINE",      text = L["OUTLINE_THICK"]     or "Thick outline" },
-			{ value = "Blizz",             text = L["OUTLINE_BLIZZ"]     or "Like health / mana text" },
-		};
-		local function OutText(v)
-			for _, o in ipairs(outlines) do if o.value == v then return o.text; end end
-			return outlines[1].text;
+	local function CurStyle()
+		local s = K.GetPartyFrameStyle and K.GetPartyFrameStyle();
+		if type(s) ~= "string" or s == "" then s = "Default"; end
+		return s;
+	end
+	local function StyleName(s)
+		return L["PARTY_STYLE_" .. string.upper(s)] or s;
+	end
+	local function RepaintParty()
+		if K.RefreshPartyText then K.RefreshPartyText();
+		else
+			if K.RestylePartyFrames then K.RestylePartyFrames(); end
+			if K.PFI_Restyle then K.PFI_Restyle(); end
 		end
+	end
 
-		local lbl = fontBody:CreateFontString(nil, "ARTWORK", "GameFontNormal");
-		lbl:SetPoint("TOPLEFT", 2, -30);
-		lbl:SetText((K.UI and K.UI.Label(L["LBL_PARTY_FONT"] or "Font outline"))
-			or (L["LBL_PARTY_FONT"] or "Font outline"));
+	-- VISTA PREVIA AUTOMATICA
+	local previewOwned = false;
+	local function PreviewIfAlone()
+		if previewOwned or InCombatLockdown() then return; end
+		local inGroup = ((GetNumPartyMembers and GetNumPartyMembers()) or 0) > 0
+			or ((GetNumRaidMembers and GetNumRaidMembers()) or 0) > 0;
+		if inGroup then return; end
+		if K.IsPartyTestMode and K.SetPartyTestMode and not K.IsPartyTestMode() then
+			K.SetPartyTestMode(true);
+			previewOwned = true;
+		end
+	end
+	local function StopPreview()
+		if previewOwned and K.IsPartyTestMode and K.IsPartyTestMode() and K.SetPartyTestMode then
+			K.SetPartyTestMode(false);
+		end
+		previewOwned = false;
+	end
+	-- Se apaga al cerrar el PANEL entero, no al cambiar de hoja.
+	do
+		local top = paneParty;
+		while top:GetParent() and top:GetParent() ~= UIParent do top = top:GetParent(); end
+		top:HookScript("OnHide", StopPreview);
+	end
 
-		local dd = CreateFrame("Frame", "NidhausPartyOutlineDD", fontBody, "UIDropDownMenuTemplate");
-		dd:SetPoint("LEFT", lbl, "RIGHT", 4, -2);
+	-- ── Un desplegable de contorno ──
+	local function OutlineDropDown(name, parent, xPos, yPos, label, opts, key, default)
+		local function OutText(v)
+			for _, o in ipairs(opts) do if o.value == v then return o.text; end end
+			return opts[1].text;
+		end
+		local lbl = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+		lbl:SetPoint("TOPLEFT", xPos + 2, yPos);
+		lbl:SetText(label);
+		local dd = CreateFrame("Frame", name, parent, "UIDropDownMenuTemplate");
+		dd:SetPoint("TOPLEFT", lbl, "BOTTOMLEFT", -18, -2);
 		UIDropDownMenu_SetWidth(dd, 150);
 		UIDropDownMenu_Initialize(dd, function(self, level)
-			for _, opt in ipairs(outlines) do
+			for _, opt in ipairs(opts) do
 				local info = UIDropDownMenu_CreateInfo();
 				info.text  = opt.text;
 				info.value = opt.value;
 				info.func  = function(btn)
 					UIDropDownMenu_SetSelectedValue(dd, btn.value);
 					UIDropDownMenu_SetText(dd, OutText(btn.value));
-					if K.SaveConfig then K.SaveConfig("PartyFontOutline", btn.value); end
-					if K.RestylePartyFrames then K.RestylePartyFrames(); end
-					if K.PFI_Restyle then K.PFI_Restyle(); end
+					if K.SaveConfig then K.SaveConfig(key, btn.value); end
+					PreviewIfAlone();
+					RepaintParty();
 				end;
-				info.checked = (opt.value == (C.PartyFontOutline or "OUTLINE"));
+				local cur = C[key]; if cur == nil then cur = default; end
+				info.checked = (opt.value == cur);
 				UIDropDownMenu_AddButton(info, level);
 			end
 		end);
-		UIDropDownMenu_SetSelectedValue(dd, C.PartyFontOutline or "OUTLINE");
-		UIDropDownMenu_SetText(dd, OutText(C.PartyFontOutline or "OUTLINE"));
-
+		local function Sync()
+			local v = C[key]; if v == nil then v = default; end
+			UIDropDownMenu_SetSelectedValue(dd, v);
+			UIDropDownMenu_SetText(dd, OutText(v));
+		end
+		Sync();
+		return Sync;
 	end
 
-	-- Tamaño del texto de vida/mana del grupo. 0 = el de cada estilo.
-	do
-		local fsSlider = CreateFrame("Slider", "NidhausPartyFontSizeSlider", fontBody,
-			"OptionsSliderTemplate");
-		fsSlider:SetPoint("TOPLEFT", 8, -66);
-		fsSlider:SetWidth(200);
-		-- 0 = Auto; de ahi salta a 6, que es el minimo legible.
-		fsSlider:SetMinMaxValues(0, 20);
-		fsSlider:SetValueStep(1);
-		local start = tonumber(C.PartyFontSize) or 0;
-		fsSlider:SetValue(start);
-		_G[fsSlider:GetName() .. "Low"]:SetText(L["PARTY_FONT_AUTO"] or "Auto");
-		_G[fsSlider:GetName() .. "High"]:SetText("20");
-		_G[fsSlider:GetName() .. "Text"]:SetText(L["SLIDER_PARTY_FONT_SIZE"] or "Text size");
-		fsSlider:SetScript("OnValueChanged", function(self, v)
-			v = math.floor(v + 0.5);
-			if v > 0 and v < 6 then v = 6; end
-			if K.SaveConfig then K.SaveConfig("PartyFontSize", v); end
-			if K.RestylePartyFrames then K.RestylePartyFrames(); end
-			if K.PFI_Restyle then K.PFI_Restyle(); end
+	-- ── Un slider de tamaño, del estilo elegido ──
+	-- La punta izquierda es "Auto" (el tamaño del estilo) y de ahi se pasa
+	-- directo a 6, el minimo legible: sin posiciones muertas.
+	local AUTO_POS, MIN_SIZE = 5, 6;
+	local function ToSlider(v)
+		v = tonumber(v) or 0;
+		if v < MIN_SIZE then return AUTO_POS; end
+		return v;
+	end
+	local function FromSlider(v)
+		v = math.floor((tonumber(v) or 0) + 0.5);
+		if v <= AUTO_POS then return 0; end
+		return v;
+	end
+	local function SizeSlider(name, parent, xPos, yPos, kind, tipKey, tipText)
+		local s = CreateFrame("Slider", name, parent, "OptionsSliderTemplate");
+		s:SetPoint("TOPLEFT", xPos + 8, yPos);
+		s:SetWidth(190);
+		s:SetMinMaxValues(AUTO_POS, 20);
+		s:SetValueStep(1);
+		s._nufFormat = function(v)
+			if FromSlider(v) == 0 then return L["PARTY_FONT_AUTO"] or "Auto"; end
+			return tostring(math.floor(v + 0.5));
+		end
+		s._nufParse = function(text)
+			text = string.lower(text or "");
+			if text == "" or string.find(text, "^a") then return AUTO_POS; end
+			local n = tonumber(text);
+			if not n then return nil; end
+			if n <= 0 then return AUTO_POS; end
+			if n < MIN_SIZE then return MIN_SIZE; end
+			return n;
+		end
+		_G[name .. "Low"]:SetText(L["PARTY_FONT_AUTO"] or "Auto");
+		_G[name .. "High"]:SetText("20");
+		local function Key() return "Party" .. kind .. "Size_" .. CurStyle(); end
+		local function Title()
+			_G[name .. "Text"]:SetText(string.format(L["SLIDER_PARTY_SIZE_FOR"] or "Size (%s)", StyleName(CurStyle())));
+		end
+		local function Sync()
+			local v = tonumber(C[Key()]) or 0;
+			if v > 0 and v < MIN_SIZE then v = MIN_SIZE; end
+			s._last = (v < MIN_SIZE) and 0 or v;
+			s:SetValue(ToSlider(v));
+			Title();
+			if s._nufSyncValue then s._nufSyncValue(); end
+		end
+		s:SetScript("OnValueChanged", function(self, v)
+			v = FromSlider(v);
+			if self._last == v then return; end
+			self._last = v;
+			-- Mientras se arrastra: se guarda sin CONFIG_CHANGED y se ve en
+			-- el acto, en el estilo elegido.
+			if K.SaveConfigSilent then K.SaveConfigSilent(Key(), v);
+			elseif K.SaveConfig then K.SaveConfig(Key(), v); end
+			PreviewIfAlone();
+			RepaintParty();
 		end);
-		fsSlider:SetScript("OnEnter", function(self)
+		s:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-			GameTooltip:SetText(L["SLIDER_PARTY_FONT_SIZE"] or "Text size", 1, 1, 1);
-			GameTooltip:AddLine(L["TIP_PartyFontSize"] or "", nil, nil, nil, true);
+			GameTooltip:SetText(_G[name .. "Text"]:GetText() or "", 1, 1, 1);
+			GameTooltip:AddLine(L[tipKey] or tipText, nil, nil, nil, true);
 			GameTooltip:Show();
 		end);
-		fsSlider:SetScript("OnLeave", function() GameTooltip:Hide(); end);
-
+		s:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+		Sync();
+		return Sync;
 	end
 
-	-- Los botones de estilo llaman a esto al cambiar de modo.
+	local nameOutlines = {
+		{ value = "",             text = L["OUTLINE_NONE"]   or "None" },
+		{ value = "OUTLINE",      text = L["OUTLINE_NORMAL"] or "Outline" },
+		{ value = "THICKOUTLINE", text = L["OUTLINE_THICK"]  or "Thick outline" },
+		{ value = "Blizz",        text = L["OUTLINE_BLIZZ"]  or "Like health / mana text" },
+	};
+	local numOutlines = {
+		{ value = "Style",        text = L["OUTLINE_STYLE"]  or "The style's own" },
+		{ value = "",             text = L["OUTLINE_NONE"]   or "None" },
+		{ value = "OUTLINE",      text = L["OUTLINE_NORMAL"] or "Outline" },
+		{ value = "THICKOUTLINE", text = L["OUTLINE_THICK"]  or "Thick outline" },
+	};
+
+	local COL2 = 250;
+	local syncNameDD = OutlineDropDown("NidhausPartyOutlineDD", fontBody, 0, -26,
+		L["LBL_PARTY_NAME"] or "Name", nameOutlines, "PartyFontOutline", "OUTLINE");
+	local syncNumDD = OutlineDropDown("NidhausPartyNumOutlineDD", fontBody, COL2, -26,
+		L["LBL_PARTY_NUMBERS"] or "Health / mana numbers", numOutlines, "PartyNumOutline", "Style");
+	local syncNameSize = SizeSlider("NidhausPartyNameSizeSlider", fontBody, 0, -92, "Name",
+		"TIP_PartyNameSize", "Size of the party members' names in the chosen style. Auto keeps the style's own size.");
+	local syncNumSize = SizeSlider("NidhausPartyFontSizeSlider", fontBody, COL2, -92, "Num",
+		"TIP_PartyFontSize", "Size of the health / mana numbers in the chosen style. Auto keeps the style's own size.");
+
+	local function SyncPartyText()
+		syncNameDD(); syncNumDD(); syncNameSize(); syncNumSize();
+	end
+	-- Al dia cada vez que se ve (Reset Defaults, cambio de perfil).
+	fontBody:HookScript("OnShow", SyncPartyText);
+
+	-- Los botones de estilo llaman a esto al cambiar de modo: la seccion
+	-- se esconde con Blizzard y los sliders pasan al tamaño del estilo nuevo.
 	local function UpdatePartyFontVisibility()
 		fontBody:Refresh();
+		SyncPartyText();
 	end
 	K._UpdatePartyFontVisibility = UpdatePartyFontVisibility;
 
@@ -1052,11 +1168,11 @@ function K.PopulateFramesTab(panel)
 		cbHide = CreateFrame("CheckButton", "NidhausPartyHideTextCB", paneParty,
 			"InterfaceOptionsCheckButtonTemplate");
 		-- Oculta los NUMEROS de vida y mana, o sea que es parte de "Text".
-		-- Va a la DERECHA del slider de tamaño, no debajo del bloque: los
-		-- dos ocupaban una fila entera cada uno y sobraba media pantalla a
-		-- la derecha. El parent sigue siendo paneParty, no fontBody, para
-		-- que no se esconda cuando el bloque de fuente se colapsa.
-		cbHide:SetPoint("TOPLEFT", fontBody, "TOPLEFT", 250, -62);
+		-- Va debajo del slider de los numeros (es parte de "numeros").
+		-- El parent sigue siendo paneParty, no fontBody, para que no se
+		-- esconda cuando el bloque de texto se colapsa (estilo Blizzard):
+		-- ahi se muda debajo del bloque, ver LayoutUnderPartyText.
+		cbHide:SetPoint("TOPLEFT", fontBody, "TOPLEFT", 250, -132);
 		cbHide:SetHitRectInsets(0, 0, 0, 0);
 		local fs = _G["NidhausPartyHideTextCBText"];
 		if fs then fs:SetText(L["CB_PARTY_HIDE_TEXT"] or "Hide health / mana numbers"); end
@@ -1082,6 +1198,31 @@ function K.PopulateFramesTab(panel)
 	-- medio, se mudo a su propia hoja (Party pet).
 	modeSep:SetPoint("TOPLEFT", fontBody, "BOTTOMLEFT", -4, -14);
 
+	-- CON EL BLOQUE DE TEXTO CERRADO (estilo Blizzard) la casilla de
+	-- ocultar numeros no puede quedar colgada de donde estaba el slider:
+	-- el bloque mide 1px, lo de abajo sube, y la casilla quedaba encima de
+	-- "Mode". Se muda debajo del bloque y "Mode" baja con ella.
+	local function LayoutUnderPartyText()
+		cbHide:ClearAllPoints();
+		modeSep:ClearAllPoints();
+		if fontBody:IsShown() then
+			cbHide:SetPoint("TOPLEFT", fontBody, "TOPLEFT", 250, -132);
+			modeSep:SetPoint("TOPLEFT", fontBody, "BOTTOMLEFT", -4, -14);
+		else
+			cbHide:SetPoint("TOPLEFT", fontBody, "BOTTOMLEFT", 0, -6);
+			modeSep:SetPoint("TOPLEFT", cbHide, "BOTTOMLEFT", -4, -10);
+		end
+	end
+	LayoutUnderPartyText();
+	paneParty:HookScript("OnShow", LayoutUnderPartyText);
+	do
+		local prev = K._UpdatePartyFontVisibility;
+		K._UpdatePartyFontVisibility = function()
+			if prev then prev(); end
+			LayoutUnderPartyText();
+		end
+	end
+
 	local modeHeader = FHeader(paneParty, L["HEADER_PARTY_MODE"] or "Mode", 0, 0);
 	modeHeader:ClearAllPoints();
 	modeHeader:SetPoint("TOPLEFT", modeSep, "BOTTOMLEFT", 4, -10);
@@ -1093,6 +1234,9 @@ function K.PopulateFramesTab(panel)
 	cb3v3.text:SetText(L["CB_PARTY_3V3"] or "Party Mode 3v3");
 	cb3v3:SetChecked(C.PartyMode3v3 and true or false);
 	if K.RegisterSettingCheckbox then K.RegisterSettingCheckbox("PartyMode3v3", cb3v3); end
+	-- Como sus copias: atenuado con "Use Custom Positions" apagado. Este se
+	-- habia quedado afuera y podia volver a prender el 3v3.
+	if K.Register3v3Checkbox then K.Register3v3Checkbox(cb3v3); end
 	cb3v3:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
 		GameTooltip:SetText(L["CB_PARTY_3V3"] or "Party Mode 3v3", 1, 1, 1);

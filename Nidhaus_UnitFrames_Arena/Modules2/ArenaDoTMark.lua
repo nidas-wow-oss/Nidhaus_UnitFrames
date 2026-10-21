@@ -614,8 +614,10 @@ function K.ToggleArenaDoTPreview()
 	return true;
 end
 
+-- Solo el modo puesto: cada estilo (y cada lado del espejo) guarda su lugar.
 function K.ResetArenaDoTPosition()
-	if NidhausUnitFramesDB then NidhausUnitFramesDB.ArenaDoTPositions = nil; end
+	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaDoTPositions;
+	if type(db) == "table" then db[PosKey()] = nil; end
 	RefreshAll();
 end
 

@@ -30,7 +30,7 @@ local GROUPS = {
 	}},
 	{ title = L["CMDLIST_MOVING"] or "Moving things", cmds = {
 		{ "/nufmove",      L["CMDLIST_MOVE"]      or "Move Everything (also /move, /nufunlock)" },
-		{ "/nufslot",      L["CMDLIST_SLOT"]      or "Layout profiles per character", mod = "SlotProfiles" },
+		{ "/nufslot",      L["CMDLIST_SLOT"]      or "Layout profiles per character" },
 		{ "/nufparty",     L["CMDLIST_PARTYTEST"] or "Fake party, to position the frames alone" },
 	}},
 	{ title = L["CMDLIST_FRAMES"] or "Frames", cmds = {

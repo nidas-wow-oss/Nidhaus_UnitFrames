@@ -217,6 +217,14 @@ end
 -- ---------------------------------------------------------
 local BLOCK_W = 470;
 
+-- Cada bloque se anota en la hoja, con el hueco que deja arriba, para
+-- poder medir el alto TOTAL con todo desplegado (ver ExpandedHeight).
+local function TrackBlock(pane, blk, gap)
+	blk._gap = gap;
+	pane._nufBlocks = pane._nufBlocks or {};
+	table.insert(pane._nufBlocks, blk);
+end
+
 local function ModuleBlock(pane, prev, moduleId, label, desc, tip)
 	local blk = CreateFrame("Frame", nil, pane);
 	blk:SetWidth(BLOCK_W);
@@ -225,6 +233,7 @@ local function ModuleBlock(pane, prev, moduleId, label, desc, tip)
 	else
 		blk:SetPoint("TOPLEFT", 16, -14);
 	end
+	TrackBlock(pane, blk, prev and 10 or 14);
 
 	-- Franja divisoria que separa este addon del anterior
 	local sep = blk:CreateTexture(nil, "ARTWORK");
@@ -296,6 +305,7 @@ local function HeaderBlock(pane, prev, title, note)
 	else
 		blk:SetPoint("TOPLEFT", 16, -14);
 	end
+	TrackBlock(pane, blk, 14);
 
 	local h = 0;
 	local fs = blk:CreateFontString(nil, "ARTWORK", "GameFontNormal");
@@ -488,10 +498,16 @@ local CLASS_MODULES = {
 			function() return (K.GetAutoShotBorderStyle and K.GetAutoShotBorderStyle()) or "Tooltip"; end,
 			function(v) if K.SetAutoShotBorderStyle then K.SetAutoShotBorderStyle(v); end end);
 
-		y = y - 32;
+		-- El cuerpo mide 44: con 32 la casilla de abajo pisaba los botones
+		-- del borde. Y va colgada del cuerpo, asi sube cuando se pliega.
+		y = y - 48;
 
-		local _, acH = ModuleCB(pane, L["MOD_ARROWCOUNT"] or "Arrow / Bullet Count", "ArrowCount",
+		local acCB, acH = ModuleCB(pane, L["MOD_ARROWCOUNT"] or "Arrow / Bullet Count", "ArrowCount",
 			x, y, L["MOD_ARROWCOUNT_DESC"]);
+		if acCB then
+			acCB:ClearAllPoints();
+			acCB:SetPoint("TOPLEFT", asBody, "BOTTOMLEFT", 0, -4);
+		end
 		y = y - 42 - (acH or 0);
 
 		-- ── Buffs de la mascota ──
@@ -1320,10 +1336,16 @@ function K.BuildPvPSection(pane)
 	-- sacaron junto con los de cada clase: anunciar lo que no esta hecho
 	-- solo ocupa lugar y hace parecer que falta algo.
 
-	-- Alto para el scroll. Se devuelve un valor generoso y fijo: los bloques
-	-- cambian de alto al desplegarse, y recalcularlo en vivo daria un scroll
-	-- que salta. Con este alto entra todo aunque esten todos desplegados.
-	return -1000;
+	-- Alto para el scroll: el de TODO desplegado, medido. Se calcula una vez
+	-- (recalcularlo al desplegar haria saltar el scroll). Antes era un
+	-- -1000 fijo, y con Power Bar, la alerta de hechizos y la gargola
+	-- abiertos el final de la hoja (opciones de la gargola) quedaba afuera.
+	local total = 0;
+	for _, blk in ipairs(pane._nufBlocks or {}) do
+		local h = blk._headH and (blk._headH + (blk._bodyH or 0) + 4) or (blk:GetHeight() or 0);
+		total = total + (blk._gap or 0) + h;
+	end
+	return -math.max(1000, total + 20);
 end
 
 -- ---------------------------------------------------------

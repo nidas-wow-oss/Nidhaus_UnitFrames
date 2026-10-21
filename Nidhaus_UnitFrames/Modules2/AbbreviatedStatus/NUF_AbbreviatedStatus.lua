@@ -452,25 +452,29 @@ function K.MirrorAbbrevPct(bar)
 	end
 end
 
+-- Devuelve la barra a como la trae Blizzard: sin porcentaje y con el
+-- anclaje original del texto.
+local function LeaveBar(self, statusText)
+	if self._nufPct then self._nufPct:Hide(); end
+	if self._nufMoved then
+		RestoreOrigPoints(self, statusText);
+		self._nufMoved = false;
+	end
+end
+
 local function ApplyBar(self)
 	local statusText = self.TextString;
 	if not statusText then return; end
 
-	CaptureOrigPoints(self, statusText);
-
 	-- Modulo apagado: dejamos el texto normal de Blizzard y escondemos lo
 	-- nuestro. Restauramos el anclaje ORIGINAL (no un centrado inventado).
 	if not IsOn() then
-		if self._nufPct then self._nufPct:Hide(); end
-		if self._nufMoved then
-			RestoreOrigPoints(self, statusText);
-			self._nufMoved = false;
-		end
+		LeaveBar(self, statusText);
 		return;
 	end
 
 	local unit = self.unit;
-	if not unit then return; end
+	if not unit then LeaveBar(self, statusText); return; end
 
 	-- CACHEADA EN LA BARRA, como _nufIsHealth de mas abajo.
 	--
@@ -484,16 +488,14 @@ local function ApplyBar(self)
 		self._nufUKey = ukey;
 		self._nufUKeyFor = unit;
 	end
-	if not VALID[ukey] then return; end
+	-- En vehiculo la barra pasa a "vehicle" / "partypetN": sin esto quedaba
+	-- el porcentaje viejo congelado y el texto corrido a la derecha.
+	if not VALID[ukey] then LeaveBar(self, statusText); return; end
 
 	-- Unidad desactivada desde el menu: se deja tal cual la trae Blizzard.
 	local ucfg = UnitCfg(ukey);
 	if not ucfg.on then
-		if self._nufPct then self._nufPct:Hide(); end
-		if self._nufMoved then
-			RestoreOrigPoints(self, statusText);
-			self._nufMoved = false;
-		end
+		LeaveBar(self, statusText);
 		return;
 	end
 
@@ -521,6 +523,11 @@ local function ApplyBar(self)
 		if self._nufPct then self._nufPct:Hide(); end
 		return;
 	end
+
+	-- La foto del anclaje natural, justo antes de moverlo. Antes se sacaba
+	-- en cada refresco de cada barra aun con el modulo apagado (tablas
+	-- nuevas cientos de veces por segundo en pelea, sin usarse nunca).
+	CaptureOrigPoints(self, statusText);
 
 	-- FontString propia para el porcentaje (creada la primera vez)
 	local pctFS = self._nufPct;

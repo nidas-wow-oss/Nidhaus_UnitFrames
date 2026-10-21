@@ -734,15 +734,18 @@ function shieldwatch_onevent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, ar
         shieldwatch_myclass = select(2, UnitClass("player"))
         
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")
-        
-        CreateFrame("GameTooltip", "shieldwatchTooltip")
-        shieldwatchTooltip:SetOwner(WorldFrame, "ANCHOR_NONE")
-        shieldwatchTooltip:AddFontStrings(
-            shieldwatchTooltip:CreateFontString("$parentTextLeft1", nil, "GameTooltipText"),
-            shieldwatchTooltip:CreateFontString("$parentTextRight1", nil, "GameTooltipText")
-        )
-        
-        UIDropDownMenu_Initialize(shieldwatch_FrameDropDown, shieldwatch_InitDropDown, "MENU")
+
+        -- Este bloque corre dos veces (a mano al prender el modulo y con el
+        -- PLAYER_ENTERING_WORLD real): el tooltip y el menu, una sola vez.
+        if not shieldwatchTooltip then
+            CreateFrame("GameTooltip", "shieldwatchTooltip")
+            shieldwatchTooltip:SetOwner(WorldFrame, "ANCHOR_NONE")
+            shieldwatchTooltip:AddFontStrings(
+                shieldwatchTooltip:CreateFontString("$parentTextLeft1", nil, "GameTooltipText"),
+                shieldwatchTooltip:CreateFontString("$parentTextRight1", nil, "GameTooltipText")
+            )
+            UIDropDownMenu_Initialize(shieldwatch_FrameDropDown, shieldwatch_InitDropDown, "MENU")
+        end
         shieldwatch_Bar:SetMinMaxValues(0, 100)
     elseif event == 'CHAT_MSG_ADDON' then
         Debug(tostring(GetTime()) .. ":addonmsg from " .. tostring(arg4) .. " in " .. tostring(arg3) .. " (" .. tostring(arg1) .. ") " .. tostring(arg2))

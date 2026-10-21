@@ -26,7 +26,11 @@ end
 local f = CreateFrame("Frame");
 f:RegisterEvent("PLAYER_LEAVING_WORLD");
 f:RegisterEvent("PLAYER_LOGOUT");
-f:SetScript("OnEvent", function() SaveAnchorToDB(); end);
+f:SetScript("OnEvent", function()
+	-- Perfil importado o reset con recarga pendiente: no pisar lo escrito.
+	if K._nufPendingReload then return; end
+	SaveAnchorToDB();
+end);
 
 function K.SaveArenaAnchorPosition() SaveAnchorToDB(); end
 

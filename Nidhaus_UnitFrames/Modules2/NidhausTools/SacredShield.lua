@@ -112,7 +112,9 @@ end
 
 local function Update()
     if moving then return; end   -- en modo mover el icono se queda fijo y visible
-    if ZoneOK() and UnitExists(UNIT) and HasAura() then
+    -- Apagado no se muestra: SetMoving(false) llega aunque el modulo este
+    -- apagado ("Mover todo") y sin eventos nadie lo volvia a esconder.
+    if enabled and ZoneOK() and UnitExists(UNIT) and HasAura() then
         ResolveIcon();
         frame:Show();
     else

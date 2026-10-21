@@ -826,29 +826,29 @@ SlashCmdList["NUFPALAURAS"] = function(msg)
 	-- hechizo simplemente no tiene cooldown que mostrar.
 	if msg == "debug" then
 		local p = function(t) DEFAULT_CHAT_FRAME:AddMessage("|cff4FC3F7NUFpal:|r " .. t); end
-		p("modulo PaladinAuras activo: " .. tostring(enabled));
-		p("modulo TurnEvil activo: " .. tostring(teEnabled));
+		p("PaladinAuras module on: " .. tostring(enabled));
+		p("TurnEvil module on: " .. tostring(teEnabled));
 		p("preview: " .. tostring(previewOn));
 		local pt, _, rp, x, y = anchor:GetPoint();
-		p(string.format("ancla: point=%s rel=%s x=%.0f y=%.0f visible=%s alpha=%.1f scale=%.2f",
+		p(string.format("anchor: point=%s rel=%s x=%.0f y=%.0f visible=%s alpha=%.1f scale=%.2f",
 			tostring(pt), tostring(rp), x or 0, y or 0,
 			tostring(anchor:IsShown()), anchor:GetAlpha(), anchor:GetScale()));
-		p("iconos mostrados: Holy=" .. tostring(icoHoly:IsShown())
+		p("icons shown: Holy=" .. tostring(icoHoly:IsShown())
 			.. " Heal=" .. tostring(icoHeal:IsShown())
 			.. " War=" .. tostring(icoWar:IsShown()));
 
 		local nm, _, ic = GetSpellInfo(ART_OF_WAR_SPELL);
-		p("hechizo " .. ART_OF_WAR_SPELL .. ": " .. tostring(nm)
-			.. " icono=" .. tostring(ic));
+		p("spell " .. ART_OF_WAR_SPELL .. ": " .. tostring(nm)
+			.. " icon=" .. tostring(ic));
 		local st, du, en = GetSpellCooldown(ART_OF_WAR_SPELL);
 		p("GetSpellCooldown -> start=" .. tostring(st)
 			.. " dur=" .. tostring(du) .. " enabled=" .. tostring(en));
 
 		local bIcon = FindSelfBuff();
-		p("buff '" .. SELF_BUFF .. "' encontrado: " .. tostring(bIcon ~= nil));
-		p("proc The Art of War activo: " .. tostring(FindArtOfWar() ~= nil));
+		p("buff '" .. SELF_BUFF .. "' found: " .. tostring(bIcon ~= nil));
+		p("The Art of War proc active: " .. tostring(FindArtOfWar() ~= nil));
 		local _, _, _, who = FindHealDebuff();
-		p("debuff de curacion en el grupo: " .. tostring(who or "no"));
+		p("healing debuff in the group: " .. tostring(who or "no"));
 		return;
 	end
 
@@ -904,7 +904,13 @@ K.RegisterModule("TurnEvil", {
 		if not enabled then
 			events:UnregisterAllEvents();
 			ticker:Hide();
+		else
+			-- El registro de combate y la arena son solo de Turn Evil: con el
+			-- tracker del paladin prendido quedaban escuchando para nada.
+			events:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
+			events:UnregisterEvent("ARENA_OPPONENT_UPDATE");
 		end
+		wipe(teLog);
 	end,
 });
 

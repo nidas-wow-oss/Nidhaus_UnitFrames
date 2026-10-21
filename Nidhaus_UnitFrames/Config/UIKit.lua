@@ -235,6 +235,12 @@ local function StepDecimals(slider)
 end
 
 local function FormatValue(slider, v)
+	-- Un slider puede traer su propio formato (p.ej. "Auto" en vez de un
+	-- numero en una punta). Si no, el de siempre.
+	if slider._nufFormat then
+		local ok, s = pcall(slider._nufFormat, v);
+		if ok and s then return s; end
+	end
 	local d = StepDecimals(slider);
 	if d == 0 then return tostring(math.floor(v + 0.5)); end
 	return string.format("%." .. d .. "f", v);
@@ -327,7 +333,14 @@ function K.UI.AttachSliderValue(slider)
 	slider._nufSyncValue = Sync;
 
 	box:SetScript("OnEnterPressed", function(self)
-		local v = tonumber(self:GetText());
+		-- Y su propia lectura: escribir "auto" en la cajita, por ejemplo.
+		local v;
+		if slider._nufParse then
+			local ok, r = pcall(slider._nufParse, self:GetText() or "");
+			if ok then v = r; end
+		else
+			v = tonumber(self:GetText());
+		end
 		if v then
 			local lo, hi = slider:GetMinMaxValues();
 			if v < lo then v = lo; elseif v > hi then v = hi; end

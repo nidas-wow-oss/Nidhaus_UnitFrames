@@ -9,6 +9,7 @@
 # El orden es el mismo que tenian dentro del addon principal.
 # La configuracion, los textos y el namespace ya estan cargados: esto
 # solo agrega los modulos de arena. Ver Core/ArenaLoader.lua.
+Modules\ArenaModes.lua
 Modules\ArenaFramePositionSaver.lua
 UnitFrames\Arenaflat.lua
 UnitFrames\ArenaFrame.lua

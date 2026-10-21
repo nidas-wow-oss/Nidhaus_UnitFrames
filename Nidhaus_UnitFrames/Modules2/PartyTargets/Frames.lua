@@ -77,6 +77,11 @@ local function ApplyScale()
 		return v;
 	end
 	scalePending = false;
+	-- La version que no mueve los marcos (mas abajo, necesita el anclaje).
+	if PartyTargets_ApplyScale then
+		PartyTargets_ApplyScale();
+		return v;
+	end
 	for i = 1, MAX_PARTY_MEMBERS do
 		local f = _G["PartyTargetFrame" .. i];
 		if f then f:SetScale(v); end
@@ -739,6 +744,12 @@ end
 -- posicion la decide el usuario arrastrando, no el slider.
 function PartyTargets_ApplyScale()
 	local s = GetScale()
+	-- Marcos protegidos: en combate se anota y lo aplica scaleWatcher.
+	if InCombatLockdown() then
+		scalePending = true
+		return
+	end
+	scalePending = false
 
 	local ref = _G["PartyTargetFrame1"]
 	local keepL, keepT

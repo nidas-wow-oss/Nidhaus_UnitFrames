@@ -126,6 +126,8 @@ local function CreateMinimapButton()
 				if K.ToggleOptionsPanel then K.ToggleOptionsPanel(); end
 			end
 		elseif btn == "RightButton" then
+			-- El mover vive en el addon de arena, que se carga a pedido.
+			if K.LoadArenaModules then K.LoadArenaModules(); end
 			if K.ToggleArenaFramesMover then K.ToggleArenaFramesMover(); end
 		end
 	end);

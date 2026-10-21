@@ -52,6 +52,14 @@ local function EnsureArenaMoverDB()
 	end
 end
 
+-- IsShown se guarda entre sesiones: si quedo en true (reload con el Test
+-- abierto), al cargar no hay ningun Test abierto. El PLAYER_ENTERING_WORLD
+-- que lo limpiaba ya paso cuando este addon carga a pedido.
+if NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover then
+	NidhausUnitFramesDB.ArenaMover.IsShown = false;
+end
+K._testModeActive = false;
+
 local function LoadArenaMoverPosition()
 	if not ArenaMover then return; end
 	ArenaMover:ClearAllPoints();
@@ -278,23 +286,18 @@ local function HideTestFrames()
 			frame:Hide();
 		end
 	end
+	-- El Test mostro el contenedor de Blizzard fuera de arena (y con el se
+	-- ocultan las misiones seguidas): al cerrar vuelve a estar oculto.
+	if ArenaEnemyFrames and ArenaEnemyFrames:IsShown() and not InLiveArena()
+		and not InCombatLockdown() then
+		ArenaEnemyFrames:Hide();
+	end
 end
 
 local function RestoreTrinketPositions()
-	local saved = K.GetSavedTrinketPos and K.GetSavedTrinketPos();
-	if not saved then return; end
-	local trinketCore = ns.ArenaFrame_Trinkets;
-	if not trinketCore or not trinketCore.frames then return; end
-	for i = 1, MAX_ARENA_ENEMIES do
-		local tf = trinketCore.frames[i];
-		if tf and tf.border then
-			local arenaFrame = _G["ArenaEnemyFrame"..i];
-			if arenaFrame then
-				tf.border:ClearAllPoints();
-				tf.border:SetPoint(saved[1], arenaFrame, saved[2], saved[3], saved[4]);
-			end
-		end
-	end
+	-- La cuenta (guardado del modo puesto o lugar de fabrica) es una sola,
+	-- en ArenaFrame_Trinkets.lua.
+	if K.PositionArenaTrinkets then K.PositionArenaTrinkets(); end
 end
 
 -- ═══════════════════════════════════════════════════════════
@@ -306,26 +309,44 @@ end
 function K.GetSavedPetFramePos()
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.PetFramePositions;
 	if not db then return nil; end
-	if K.GetArenaPositionKey then
-		local compositeKey = K.GetArenaPositionKey();
-		if db[compositeKey] then return db[compositeKey]; end
-	end
-	local key = C.ArenaMirrorMode and "mirror" or "normal";
+	local key = K.GetArenaPositionKey and K.GetArenaPositionKey()
+		or ((C.ArenaFrameStyle or "Custom") .. (C.ArenaMirrorMode and "_mirror" or "_normal"));
 	return db[key];
+end
+
+-- Donde va la mascota cuando en el modo puesto nunca la moviste. Flat con
+-- su estilo de mascota la pone debajo de la barra de mana; si no, el lugar
+-- de Blizzard (la foto que saca el Test, o el de Blizzard_ArenaUI.xml).
+local function PetDefault(petFrame, arenaFrame, index)
+	if K.IsFlatModeActive and K.IsFlatModeActive() and C.ArenaFlatPetStyle and arenaFrame.manabar then
+		petFrame:SetPoint("TOPLEFT", arenaFrame.manabar, "BOTTOMLEFT", 0, -3);
+		return;
+	end
+	local pts = petFrame._blizzDefaultPoints;
+	if pts and #pts > 0 then
+		for _, pt in ipairs(pts) do petFrame:SetPoint(unpack(pt)); end
+		return;
+	end
+	petFrame:SetPoint("TOPLEFT", arenaFrame, "TOPLEFT", 15, -25);
 end
 
 local function RestorePetFramePositions()
 	-- Lo llaman los OnShow de los marcos de arena, tambien en combate, y el
 	-- marco de mascota es protegido: en ese caso, al terminar la pelea.
 	if K.AfterCombat("RestorePetFramePositions", RestorePetFramePositions) then return; end
+	-- Sin posicion para este modo ya no se sale sin hacer nada: la mascota
+	-- se quedaba donde la habias dejado en el estilo anterior.
 	local saved = K.GetSavedPetFramePos();
-	if not saved then return; end
 	for i = 1, MAX_ARENA_ENEMIES do
 		local petFrame = _G["ArenaEnemyFrame"..i.."PetFrame"];
 		local arenaFrame = _G["ArenaEnemyFrame"..i];
-		if petFrame and arenaFrame then
+		if petFrame and arenaFrame and not petFrame._isMoving then
 			petFrame:ClearAllPoints();
-			petFrame:SetPoint(saved[1], arenaFrame, saved[2], saved[3], saved[4]);
+			if type(saved) == "table" and saved[1] then
+				petFrame:SetPoint(saved[1], arenaFrame, saved[2], saved[3], saved[4]);
+			else
+				PetDefault(petFrame, arenaFrame, i);
+			end
 		end
 	end
 end
@@ -1029,6 +1050,9 @@ eventFrame:RegisterEvent("PLAYER_LEAVING_WORLD");
 
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
 	if event == "PLAYER_LOGOUT" or event == "PLAYER_LEAVING_WORLD" then
+		-- Perfil importado o reset con recarga pendiente: guardar el ancla
+		-- viva pisaria la posicion que se acaba de escribir.
+		if K._nufPendingReload then return; end
 		-- FIX: Guardar desde el ANCHOR (NidhausArenaEnemyFrames), no desde NUF_ArenaMover.
 		-- En test mode el drag overlay mueve el anchor directamente, pero NUF_ArenaMover
 		-- nunca se actualiza. Si guardamos desde NUF_ArenaMover, sobreescribimos la

@@ -85,8 +85,6 @@ local function AnyTrinketEnabled()
 	return IsEnabled() or (C.PartyTrinketsEnabled == true);
 end
 
--- Helper — obtener posición guardada de trinket según mirror mode actual
--- Misma lógica que castbar: guarda posición separada para mirror/normal
 -- Posiciones DE FABRICA del modo Flat.
 --
 -- El modo Flat rearma los marcos por completo, asi que los lugares
@@ -95,27 +93,53 @@ end
 -- son los que se usan mientras Flat este activo y el usuario no haya
 -- movido nada todavia.
 local FLAT_DEFAULT = { "CENTER", "CENTER", 78.2, 9 };
+-- Con el modo espejo la de fabrica va del otro lado del marco.
+local FLAT_DEFAULT_MIRROR = { "CENTER", "CENTER", -78.2, 9 };
 
+-- Lo guardado para el modo puesto (estilo + espejo), o nil.
 function K.GetSavedTrinketPos()
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.TrinketPositions;
-
-	-- Sin nada guardado para Flat, se usa la posicion de fabrica de Flat
-	-- en vez de dejar el trinket donde caiga.
-	local isFlat = (C.ArenaFrameStyle == "Flat") or (C.ArenaFlatMode == true);
-	if isFlat then
-		local key = K.GetArenaPositionKey and K.GetArenaPositionKey() or "Flat_normal";
-		if not (db and db[key]) then return FLAT_DEFAULT; end
-	end
-
 	if not db then return nil; end
-	-- Try composite key first (style + mirror), fallback to legacy keys
-	if K.GetArenaPositionKey then
-		local compositeKey = K.GetArenaPositionKey();
-		if db[compositeKey] then return db[compositeKey]; end
+	local key = K.GetArenaPositionKey and K.GetArenaPositionKey()
+		or ((C.ArenaFrameStyle or "Custom") .. (C.ArenaMirrorMode and "_mirror" or "_normal"));
+	return db[key];
+end
+
+-- DONDE VA EL TRINKET: lo guardado para el modo puesto, o el lugar de
+-- fabrica de ese modo. Es la UNICA cuenta: antes habia cinco copias y no
+-- coincidian (fuera de Flat lo guardado se ignoraba y el trinket volvia
+-- solo a su lugar en cada recarga del marco; y sin nada guardado se
+-- quedaba donde lo habias dejado en el estilo anterior).
+function K.GetArenaTrinketPoint()
+	local saved = K.GetSavedTrinketPos();
+	if type(saved) == "table" and saved[1] then return saved; end
+	if K.IsFlatModeActive and K.IsFlatModeActive() then
+		return C.ArenaMirrorMode and FLAT_DEFAULT_MIRROR or FLAT_DEFAULT;
 	end
-	-- Legacy fallback: mirror/normal keys
-	local key = C.ArenaMirrorMode and "mirror" or "normal";
-	return db[key] or db.global;
+	if C.ArenaMirrorMode then
+		return { "BOTTOMRIGHT", "BOTTOMLEFT", -8, 0 };
+	end
+	return { "BOTTOMLEFT", "BOTTOMRIGHT", 8, 0 };
+end
+
+local function TrinketBorder(index)
+	local b = _G["NidhausArenaTrinketBorder" .. index];
+	if b then return b; end
+	local t = Core.frames and Core.frames[index];
+	return t and t.border;
+end
+
+function K.PositionArenaTrinket(index)
+	local border = TrinketBorder(index);
+	local af = _G["ArenaEnemyFrame" .. index];
+	if not (border and af) or border._isMoving then return; end
+	local p = K.GetArenaTrinketPoint();
+	border:ClearAllPoints();
+	border:SetPoint(p[1], af, p[2], p[3] or 0, p[4] or 0);
+end
+
+function K.PositionArenaTrinkets()
+	for i = 1, (MAX_ARENA_ENEMIES or 5) do K.PositionArenaTrinket(i); end
 end
 
 function Core:CreateTrinket(Frame, Index)
@@ -126,18 +150,10 @@ function Core:CreateTrinket(Frame, Index)
 	local Border = CreateFrame("Frame", "NidhausArenaTrinketBorder"..Index, Frame);
 	Border:SetFrameStrata("MEDIUM");
 
-	-- FIX: Posición inicial según mirror mode y flat mode
-	-- Sin esto, el trinket se crea SIEMPRE a la derecha y las funciones de
-	-- reposicionamiento pueden no ejecutarse a tiempo.
-	local isFlat = K.IsFlatModeActive and K.IsFlatModeActive();
-	if isFlat and C.ArenaMirrorMode then
-		Border:SetPoint("BOTTOMRIGHT", Frame, "BOTTOMLEFT", -8, 0);
-	elseif isFlat then
-		Border:SetPoint("BOTTOMLEFT", Frame, "BOTTOMRIGHT", 8, 0);
-	elseif C.ArenaMirrorMode then
-		Border:SetPoint("BOTTOMRIGHT", Frame, "BOTTOMLEFT", -8, 8);
-	else
-		Border:SetPoint("BOTTOMLEFT", Frame, "BOTTOMRIGHT", 8, 8);
+	-- Ya en su lugar del modo puesto (guardado o de fabrica).
+	do
+		local p = K.GetArenaTrinketPoint();
+		Border:SetPoint(p[1], Frame, p[2], p[3] or 0, p[4] or 0);
 	end
 
 	Border:SetSize(32, 32);
@@ -241,21 +257,6 @@ function Core:CreateTrinket(Frame, Index)
 		end
 	end);
 
-	-- Restaurar posición guardada o aplicar mirror mode en Flat
-	if K.IsFlatModeActive and K.IsFlatModeActive() then
-		local saved = K.GetSavedTrinketPos();
-		if saved then
-			Border:ClearAllPoints();
-			Border:SetPoint(saved[1], Frame, saved[2], saved[3], saved[4]);
-		elseif C.ArenaMirrorMode then
-			Border:ClearAllPoints();
-			Border:SetPoint("BOTTOMRIGHT", Frame, "BOTTOMLEFT", -8, 0);
-		else
-			Border:ClearAllPoints();
-			Border:SetPoint("BOTTOMLEFT", Frame, "BOTTOMRIGHT", 8, 0);
-		end
-	end
-
 	Core["arena"..Index] = CoolDownFrame;
 	Core.frames[Index] = { border = Border, trinket = Trinket };
 	Core.cooldowns["arena"..Index] = CoolDownFrame;
@@ -351,7 +352,8 @@ function Core:HideAll()
 		end
 	end
 
-	if self:IsEventRegistered("COMBAT_LOG_EVENT_UNFILTERED") then
+	-- Los de party usan el mismo combat log: si siguen prendidos, no se corta.
+	if not AnyTrinketEnabled() and self:IsEventRegistered("COMBAT_LOG_EVENT_UNFILTERED") then
 		self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
 	end
 
@@ -368,6 +370,9 @@ function Core:ApplyState()
 		if self.created then
 			self:HideAll();
 		end
+		-- Los trinkets de party no dependen de este interruptor: se arman y
+		-- escuchan igual (sin esto, cargando en la arena no andaban nunca).
+		self:RefreshTracking();
 		return
 	end
 
@@ -406,7 +411,12 @@ function Core:PLAYER_ENTERING_WORLD()
 	-- guard de aca es el que corta la recursion (TryCreate vuelve a llamar
 	-- a esta funcion al terminar).
 	if not self.created then self:Bootstrap(); end
+	self:RefreshTracking();
+end
 
+-- Party + combat log segun donde estes. Va aparte para que ApplyState la
+-- pueda llamar con el rastreo de arena apagado sin volver a Bootstrap.
+function Core:RefreshTracking()
 	-- Los de party se arman SIEMPRE que su propio checkbox este activo,
 	-- sin importar el estado del rastreo de arena.
 	self:SetupPartyTrinkets();
@@ -708,7 +718,8 @@ end
 -- Cada vez que un enemigo aparece o el grupo cambia, actualizar el cache
 function Core:ARENA_OPPONENT_UPDATE()
 	-- Tambien es reintento: aca los marcos enemigos existen con seguridad.
-	if not self.created then self:Bootstrap(); end
+	-- Con el rastreo de arena apagado no hay nada que armar.
+	if not self.created and IsEnabled() then self:Bootstrap(); end
 	if AnyTrinketEnabled() then self:RefreshGUIDCache(); end
 end
 

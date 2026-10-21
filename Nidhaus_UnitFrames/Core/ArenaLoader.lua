@@ -49,9 +49,9 @@ function K.LoadArenaModules()
 		tried = true;
 		local why = reason and (_G["ADDON_" .. reason] or reason) or "?";
 		print("|cffFF5555NUF:|r " .. (L["ARENA_LOAD_FAIL"]
-			or "No se pudieron cargar los modulos de arena") .. " (" .. tostring(why) .. ").");
+			or "Couldn't load the arena modules") .. " (" .. tostring(why) .. ").");
 		print("|cffFF5555NUF:|r " .. (L["ARENA_LOAD_HINT"]
-			or "Revisa que la carpeta Nidhaus_UnitFrames_Arena este junto a la del addon y activada en la lista."));
+			or "Check that the Nidhaus_UnitFrames_Arena folder sits next to the addon's folder and is enabled in the AddOns list."));
 	end
 	return false;
 end

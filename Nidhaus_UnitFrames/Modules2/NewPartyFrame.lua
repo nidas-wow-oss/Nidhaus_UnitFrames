@@ -28,8 +28,9 @@ local function CaptureOriginalFont(nameStr)
 	-- del panel. Si existe, se usa ese: capturar el actual podia congelar
 	-- para siempre un tamaño ya modificado por el usuario.
 	if nameStr._nufBaseSize then
-		f = nameStr._nufBaseFont or f;
-		s = nameStr._nufBaseSize;
+		f  = nameStr._nufBaseFont or f;
+		s  = nameStr._nufBaseSize;
+		fl = nameStr._nufBaseFlags;
 	end
 	if f and s then
 		origFont, origFontSize, origFontFlags = f, s, fl;
@@ -141,11 +142,6 @@ local function CaptureOriginals(id)
 		o.vehTexW, o.vehTexH = vehTex:GetWidth(), vehTex:GetHeight();
 	end
 
-	local pet = _G[fn.."PetFrame"];
-	if pet then
-		o.petPoints = SavePoints(pet);
-	end
-
 	o.debuffPoints = {};
 	for j = 1, 4 do
 		local debuff = _G[fn.."Debuff"..j];
@@ -155,6 +151,18 @@ local function CaptureOriginals(id)
 	end
 
 	originals[id] = o;
+end
+
+-- El anclaje de fabrica de la mascota NO es fijo: PartyMemberFrame_UpdatePet
+-- lo pone en -43 con mascota y en -27 sin ella (asi se cierra el hueco hasta
+-- el siguiente compañero). Una foto vieja lo congelaba; se repite la regla.
+local function BlizzardPetAnchor(id)
+	local frame = _G["PartyMemberFrame"..id];
+	local pet = _G["PartyMemberFrame"..id.."PetFrame"];
+	if not (frame and pet) then return; end
+	local hasPet = UnitIsConnected("party"..id) and UnitExists("partypet"..id) and SHOW_PARTY_PETS == "1";
+	pet:ClearAllPoints();
+	pet:SetPoint("TOPLEFT", frame, "TOPLEFT", 23, hasPet and -43 or -27);
 end
 
 ------------------------------------------------------------------------
@@ -240,10 +248,12 @@ local function RestorePartyMemberFrame(id)
 		vehTex:SetSize(o.vehTexW, o.vehTexH);
 	end
 
+	-- Solo si este estilo la habia corrido (con Party Buffs prendido).
 	local pet = _G[fn.."PetFrame"];
-	if pet and o.petPoints then
-		if not K.AfterCombat("NewPartyPetRestore" .. id, function() RestorePoints(pet, o.petPoints); end) then
-			RestorePoints(pet, o.petPoints);
+	if pet and pet.nufNPFMoved then
+		pet.nufNPFMoved = nil;
+		if not K.AfterCombat("NewPartyPetRestore" .. id, function() BlizzardPetAnchor(id); end) then
+			BlizzardPetAnchor(id);
 		end
 	end
 
@@ -447,12 +457,12 @@ local function StylePartyMemberFrame(id)
 		if K.IsPartyBuffsActive and K.IsPartyBuffsActive() then
 			pet:ClearAllPoints();
 			pet:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 23, 5);
-		else
-			-- Restaurar posición original si fue movido
-			local o = originals[id];
-			if o and o.petPoints then
-				RestorePoints(pet, o.petPoints);
-			end
+			pet.nufNPFMoved = true;
+		elseif pet.nufNPFMoved then
+			-- Se deshace SOLO lo nuestro; si no la movimos, el anclaje es
+			-- de Blizzard y no se toca.
+			pet.nufNPFMoved = nil;
+			BlizzardPetAnchor(id);
 		end
 	end
 
@@ -482,6 +492,19 @@ local function StylePartyMemberFrame(id)
 				end
 			end
 		end
+	end
+end
+
+-- LO DEL PANEL VA DESPUES DE PINTAR. Este estilo le vuelve a poner al
+-- nombre su fuente de fabrica (cara, tamaño -1 y SUS flags) cada vez que
+-- repinta, asi que el contorno elegido en el panel se perdia en cuanto
+-- el grupo se actualizaba. Igual que en Improved y en los de pw, se
+-- termina siempre con K.ApplyPartyTextFont.
+do
+	local paint = StylePartyMemberFrame;
+	StylePartyMemberFrame = function(id)
+		paint(id);
+		if isEnabled and K.ApplyPartyTextFont then K.ApplyPartyTextFont(id); end
 	end
 end
 
@@ -704,17 +727,25 @@ local function NPF_Disable()
 	-- Restaurar todos los frames a su estado original
 	RestoreAllFrames();
 
-	-- Forzar que Blizzard re-aplique su layout (vehiculo, arte, etc)
-	for i = 1, 4 do
-		local frame = _G["PartyMemberFrame"..i];
-		if frame and frame:IsShown() then
-			if PartyMemberFrame_UpdateArt then
-				pcall(PartyMemberFrame_UpdateArt, frame);
-			end
-			if PartyMemberFrame_UpdateMember then
-				pcall(PartyMemberFrame_UpdateMember, frame);
+	-- Forzar que Blizzard re-aplique su layout (vehiculo, arte, etc).
+	-- Llamado desde el addon, UpdateMember hace Show/Hide/SetPoint sobre
+	-- marcos protegidos: en combate el juego lo corta, asi que va al salir.
+	local function BlizzardRefresh()
+		if isEnabled then return; end
+		for i = 1, 4 do
+			local frame = _G["PartyMemberFrame"..i];
+			if frame and frame:IsShown() then
+				if PartyMemberFrame_UpdateArt then
+					pcall(PartyMemberFrame_UpdateArt, frame);
+				end
+				if PartyMemberFrame_UpdateMember then
+					pcall(PartyMemberFrame_UpdateMember, frame);
+				end
 			end
 		end
+	end
+	if not K.AfterCombat("NewPartyBlizzRefresh", BlizzardRefresh) then
+		BlizzardRefresh();
 	end
 
 	-- Notificar a PartyBuffs para volver a posición normal

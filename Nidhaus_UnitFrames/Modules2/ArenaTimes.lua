@@ -153,11 +153,26 @@ local function Init()
     textFrame:SetAllPoints(holder);
   end
 
+  -- El cartel de entrada no siempre es StaticPopup1: si ya habia otro
+  -- abierto (liberar espiritu, invitacion...) cae en el siguiente libre.
+  -- Se busca por tipo y por indice de cola (Blizzard lo pasa como data).
+  local function FindConfirmPopup(idx)
+    local any;
+    for i = 1, (STATICPOPUP_NUMDIALOGS or 4) do
+      local f = _G["StaticPopup" .. i];
+      if f and f:IsShown() and f.which == "CONFIRM_BATTLEFIELD_ENTRY" then
+        if f.data == idx then return f; end
+        any = any or f;
+      end
+    end
+    return any;
+  end
+
   local function StartInviteBar()
-    local popup = _G["StaticPopup1"];
-    if not popup or not popup:IsShown() then StopInviteBar(); return; end
     local idxNow = GetConfirmIndex();
     if not idxNow then StopInviteBar(); return; end
+    local popup = FindConfirmPopup(idxNow);
+    if not popup then StopInviteBar(); return; end
     -- Si ya está corriendo para el mismo índice, no reiniciar
     if enabled and confirmIndex == idxNow then return; end
     confirmIndex = idxNow;
@@ -175,7 +190,8 @@ local function Init()
     -- Usa elapsed para animación suave (server devuelve enteros = saltos feos)
     AT_inviteWarned = false;
     holder:SetScript("OnUpdate", function(self, elapsed)
-      if not popup:IsShown() then
+      -- Cerrado, o el mismo marco ya muestra otro cartel.
+      if not popup:IsShown() or popup.which ~= "CONFIRM_BATTLEFIELD_ENTRY" then
         -- EL REEMPLAZO DEL hideOnEscape.
         --
         -- El cartel se fue pero la invitacion sigue viva. En vez de
@@ -187,7 +203,7 @@ local function Init()
           AT_inviteWarned = true;
           print("|cff4FC3F7NUF:|r " .. string.format(
             L["ARENA_INVITE_STILL_OPEN"]
-              or "Cerraste el cartel de entrada y todavia podes entrar: %d s. Volve a abrirlo con el icono de battleground del minimapa.",
+              or "You closed the entry popup, but you can still join: %d s. Reopen it from the battleground icon on the minimap.",
             math.floor(left)));
         end
         StopInviteBar();

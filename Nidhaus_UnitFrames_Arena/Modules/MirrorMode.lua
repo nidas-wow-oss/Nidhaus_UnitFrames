@@ -167,12 +167,8 @@ end
 
 -- Flat + Mirror ON: trinket IZQUIERDA, cast bar DERECHA (lados opuestos)
 local function ApplyFlatMirrorToExtras(frame, index)
-	-- Trinket IZQUIERDA (Mirror ON). ArenaMirrorMode gana sobre savedPos.
-	local trinketBorder = _G["NidhausArenaTrinketBorder"..index];
-	if trinketBorder then
-		trinketBorder:ClearAllPoints();
-		trinketBorder:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", -8, 0);
-	end
+	-- Trinket: su lugar del modo puesto (guardado o de fabrica).
+	if K.PositionArenaTrinket then K.PositionArenaTrinket(index); end
 
 	-- Cast bar: posicionada por K.PositionArenaCastBar (single source of truth)
 	local castBar = FindCastBar(index);
@@ -184,17 +180,8 @@ end
 
 -- Flat + Mirror OFF: trinket DERECHA, cast bar IZQUIERDA (lados opuestos)
 local function ApplyFlatNormalToExtras(frame, index)
-	-- Trinket DERECHA (Mirror OFF). Respetar savedPos si existe.
-	local trinketBorder = _G["NidhausArenaTrinketBorder"..index];
-	if trinketBorder then
-		local savedT = K.GetSavedTrinketPos and K.GetSavedTrinketPos();
-		trinketBorder:ClearAllPoints();
-		if savedT then
-			trinketBorder:SetPoint(savedT[1], frame, savedT[2], savedT[3], savedT[4]);
-		else
-			trinketBorder:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", 8, 0);
-		end
-	end
+	-- Trinket: su lugar del modo puesto (guardado o de fabrica).
+	if K.PositionArenaTrinket then K.PositionArenaTrinket(index); end
 
 	-- Cast bar: posicionada por K.PositionArenaCastBar (single source of truth)
 	local castBar = FindCastBar(index);
@@ -240,8 +227,38 @@ sharedMirrorTimer:SetScript("OnUpdate", function(self, dt)
 end);
 
 -- Capturar estado original (una sola vez, ANTES de modificar)
+--
+-- Se usa la foto de fabrica de ArenaFrame.lua. Fotografiar aca era sacarla
+-- con el estilo Custom ya puesto, y despues el estilo Blizzard heredaba su
+-- recorte y sus anclas. La captura en vivo queda solo de respaldo.
 local function CaptureArenaOriginals(frame, index)
-	if arenaOrigState[index] then return; end
+	local cur = arenaOrigState[index];
+	if cur and cur.fromSnapshot then return; end
+	local o = K.GetArenaFrameOriginals and K.GetArenaFrameOriginals(index);
+	if o then
+		local s = { fromSnapshot = true };
+		if o.tex then
+			s.texW, s.texH = o.tex.width, o.tex.height;
+			s.texCoords = o.tex.texCoords;
+			s.texPoints = o.tex.points;
+		end
+		s.portW, s.portH = o.portrait.width, o.portrait.height;
+		s.portPoints = o.portrait.points;
+		s.hbW, s.hbH = o.healthbar.width, o.healthbar.height;
+		s.hbPoints = o.healthbar.points;
+		s.namePoints = o.name;
+		s.mbW, s.mbH = o.manabar.width, o.manabar.height;
+		s.mbPoints = o.manabar.points;
+		s.hbTextPoints = o.hbText;
+		s.mbTextPoints = o.mbText;
+		if o.castBar then
+			s.cbPoints = o.castBar.points;
+			s.cbIconPoints = o.castBar.iconPoints;
+		end
+		arenaOrigState[index] = s;
+		return;
+	end
+	if cur then return; end
 	local s = {};
 	local tex = _G["ArenaEnemyFrame"..index.."Texture"];
 	if tex then
@@ -285,15 +302,23 @@ ApplyMirrorToFrame = function(frame, index)
 	local s = arenaOrigState[index];
 	local isCustom = C.ArenaCustomTexture;
 	local Font = C.ArenaFrameFont or {"Fonts\\FRIZQT__.TTF", 7, "OUTLINE"};
+	-- Las medidas del estilo Custom salen de ArenaFrame.lua y aca se voltean:
+	-- tenerlas copiadas dejo al espejo con el arte viejo (124x48, estirado).
+	local CL = K.ArenaCustomLayout or {};
+	local texW, texH = CL.TEX_W or 124, CL.TEX_H or 53;
+	local texX, texY = CL.TEX_X or 0, CL.TEX_Y or 5;
+	local barX, barY, barW = CL.BAR_X or 4, CL.BAR_Y or -8, CL.BAR_W or 62;
+	local hpH, mpH, mpGap = CL.BAR_HP_H or 14, CL.BAR_MP_H or 6, CL.BAR_MP_GAP or -1;
+	local portX, portY = CL.PORT_X or 0, CL.PORT_Y or -4;
 
 	-- Textura: voltear horizontalmente
 	local tex = _G["ArenaEnemyFrame"..index.."Texture"];
 	if tex then
 		tex:ClearAllPoints();
 		if isCustom then
-			tex:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 5);
+			tex:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -texX, texY);
 			tex:SetTexCoord(1.0, 0.09375, 0, 0.78125);
-			tex:SetSize(124, 48);
+			tex:SetSize(texW, texH);
 		elseif s and s.texCoords then
 			-- Espejar cada anchor point de la textura original
 			for _, pt in ipairs(s.texPoints) do
@@ -309,7 +334,7 @@ ApplyMirrorToFrame = function(frame, index)
 	-- Portrait: mover a la izquierda
 	frame.classPortrait:ClearAllPoints();
 	if isCustom then
-		frame.classPortrait:SetPoint("LEFT", frame, "LEFT", 0, 0);
+		frame.classPortrait:SetPoint("LEFT", frame, "LEFT", -portX, portY);
 		frame.classPortrait:SetSize(34, 34);
 	elseif s then
 		-- Espejar posiciones originales del portrait
@@ -322,8 +347,8 @@ ApplyMirrorToFrame = function(frame, index)
 
 	if isCustom then
 		frame.healthbar:ClearAllPoints();
-		frame.healthbar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -6);
-		frame.healthbar:SetSize(62, 14);
+		frame.healthbar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -barX, barY);
+		frame.healthbar:SetSize(barW, hpH);
 	elseif s then
 		-- Espejar posiciones originales de healthbar
 		frame.healthbar:ClearAllPoints();
@@ -346,8 +371,8 @@ ApplyMirrorToFrame = function(frame, index)
 
 	if isCustom then
 		frame.manabar:ClearAllPoints();
-		frame.manabar:SetPoint("TOPRIGHT", frame.healthbar, "BOTTOMRIGHT", 0, 0);
-		frame.manabar:SetSize(62, 6);
+		frame.manabar:SetPoint("TOPRIGHT", frame.healthbar, "BOTTOMRIGHT", 0, mpGap);
+		frame.manabar:SetSize(barW, mpH);
 	elseif s then
 		frame.manabar:ClearAllPoints();
 		for _, pt in ipairs(s.mbPoints) do
@@ -418,6 +443,10 @@ local function ApplyNormalToFrame(frame, index)
 	if C.ArenaCustomTexture and K.StyleSingleArenaFrame then
 		K.StyleSingleArenaFrame(frame, index);
 	else
+		-- Si ya hay foto de fabrica, que reemplace a una captura vieja.
+		if K.GetArenaFrameOriginals and K.GetArenaFrameOriginals(index) then
+			CaptureArenaOriginals(frame, index);
+		end
 		local s = arenaOrigState[index];
 		if s then
 			local tex = _G["ArenaEnemyFrame"..index.."Texture"];
@@ -625,36 +654,10 @@ local function ApplyNormalToPet(index)
 end
 
 UpdateTrinketPositions = function()
-	local trinketCore = ns.ArenaFrame_Trinkets;
-	local isFlat = K.IsFlatModeActive and K.IsFlatModeActive();
-
-	for i = 1, (MAX_ARENA_ENEMIES or 5) do
-		local arenaFrame = _G["ArenaEnemyFrame"..i];
-		if not arenaFrame then break; end
-
-		-- _G primero (más fiable), fallback a ns.ArenaFrame_Trinkets.frames
-		local border = _G["NidhausArenaTrinketBorder"..i];
-		if not border then
-			if trinketCore and trinketCore.frames and trinketCore.frames[i] then
-				border = trinketCore.frames[i].border;
-			end
-		end
-
-		if border then
-			border:ClearAllPoints();
-			-- Posición guardada para el modo actual tiene prioridad
-			local saved = isFlat and K.GetSavedTrinketPos and K.GetSavedTrinketPos();
-			if saved then
-				border:SetPoint(saved[1], arenaFrame, saved[2], saved[3], saved[4]);
-			elseif C.ArenaMirrorMode then
-				-- Mirror ON default: trinket IZQUIERDA
-				border:SetPoint("BOTTOMRIGHT", arenaFrame, "BOTTOMLEFT", -8, 0);
-			else
-				-- Mirror OFF default: trinket DERECHA
-				border:SetPoint("BOTTOMLEFT", arenaFrame, "BOTTOMRIGHT", 8, 0);
-			end
-		end
-	end
+	-- Una sola cuenta para todos los estilos (ArenaFrame_Trinkets.lua):
+	-- antes aca lo guardado solo valia en Flat, y en los demas estilos el
+	-- trinket volvia a la esquina en cada recarga del marco.
+	if K.PositionArenaTrinkets then K.PositionArenaTrinkets(); end
 end
 
 -- FIX: Reposicionar cast bars en Flat mode según mirror state

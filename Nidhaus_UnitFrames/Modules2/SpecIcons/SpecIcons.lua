@@ -268,6 +268,9 @@ end
 -- ══════════════════════════════════════════════════════════════
 
 local function RefreshAllVisibility()
+	-- Apagado no se muestra nada: las casillas siguen clickeables y sin
+	-- eventos el icono quedaba puesto.
+	if not moduleActive then return; end
 	if GetSetting("showOnTargetFocus") then
 		UpdateOnChange("target");
 		UpdateOnChange("focus");

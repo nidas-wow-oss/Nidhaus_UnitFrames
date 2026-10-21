@@ -101,9 +101,14 @@ tip:SetOwner(UIParent, "ANCHOR_NONE");
 -- ---------------------------------------------------------
 -- Posicion / escala
 -- ---------------------------------------------------------
+-- Se guarda TAMBIEN el punto: al soltar el arrastre el cliente reancla el
+-- marco al punto que le queda mas cerca, y los x/y solos no alcanzan.
+-- Sin punto guardado (lo de antes) eran desplazamientos desde BOTTOM.
 local function SavePosition()
 	local db = DB();
-	local _, _, _, x, y = mover:GetPoint();
+	local point, _, relativePoint, x, y = mover:GetPoint();
+	db.point = point;
+	db.relativePoint = relativePoint;
 	db.x = x or 0;
 	db.y = y or 246;
 end
@@ -111,7 +116,8 @@ end
 local function RestorePosition()
 	local db = DB();
 	mover:ClearAllPoints();
-	mover:SetPoint("BOTTOM", UIParent, "BOTTOM", db.x or 0, db.y or 246);
+	mover:SetPoint(db.point or "BOTTOM", UIParent, db.relativePoint or db.point or "BOTTOM",
+		db.x or 0, db.y or 246);
 	mover:SetScale(db.scale or 1.0);
 end
 
@@ -449,6 +455,7 @@ SlashCmdList["NUFAUTOSHOT"] = function(msg)
 		end
 	elseif cmd == "reset" then
 		local db = DB();
+		db.point, db.relativePoint = nil, nil;
 		db.x, db.y, db.scale = 0, 246, 1.0;
 		RestorePosition();
 		Lock();
@@ -482,6 +489,7 @@ K.FramePositionOwners["AutoShot"] = function() SavePosition(); end
 
 function K.ResetAutoShotTimerPosition()
 	local db = DB();
+	db.point, db.relativePoint = nil, nil;
 	db.x, db.y, db.scale = 0, 246, 1.0;
 	RestorePosition();
 	Lock();

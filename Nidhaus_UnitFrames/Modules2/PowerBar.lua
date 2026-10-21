@@ -466,16 +466,24 @@ end);
 -- ---------------------------------------------------------
 local testMode = false;
 
+-- En combate segun los eventos, no segun InCombatLockdown: el bloqueo
+-- arranca DESPUES de PLAYER_REGEN_DISABLED, asi que en ese evento todavia
+-- decia "fuera de combate" y la barra se escondia justo al entrar.
+local inCombat = false;
+local function InCombat()
+	return (inCombat or InCombatLockdown()) and true or false;
+end
+
 local function ShouldBeVisible()
 	if not enabled then return false; end
 	if testMode then return true; end
 	-- Opcional: solo en combate
-	if C.PowerBarCombatOnly and not InCombatLockdown() then return false; end
+	if C.PowerBarCombatOnly and not InCombat() then return false; end
 
 	-- Opcional: esconderla cuando estas "a full" y fuera de combate. Asi no
 	-- ocupa pantalla cuando no aporta nada, y reaparece sola al gastar
 	-- recurso, perder vida o entrar en combate.
-	if C.PowerBarHideWhenFull and not InCombatLockdown() then
+	if C.PowerBarHideWhenFull and not InCombat() then
 		local cur, max = UnitPower("player") or 0, UnitPowerMax("player") or 0;
 		local hp, hpmax = UnitHealth("player") or 0, UnitHealthMax("player") or 0;
 		local powerFull  = (max <= 0) or (cur >= max);
@@ -599,7 +607,13 @@ local function RegisterPowerEvents()
 end
 
 events:SetScript("OnEvent", function(self, event, unit)
+	if event == "PLAYER_REGEN_DISABLED" then
+		inCombat = true;
+	elseif event == "PLAYER_REGEN_ENABLED" then
+		inCombat = false;
+	end
 	if event == "PLAYER_ENTERING_WORLD" then
+		inCombat = UnitAffectingCombat("player") and true or false;
 		RestorePosition();
 		UpdateBar();
 		UpdateAuras();
@@ -665,6 +679,8 @@ K.RegisterModule("PowerBar", {
 	end,
 	onEnable = function()
 		enabled = true;
+		-- Los eventos de combate no se escuchaban mientras estuvo apagado.
+		inCombat = UnitAffectingCombat("player") and true or false;
 		RegisterPowerEvents();
 		RestorePosition();
 		UpdateBar();

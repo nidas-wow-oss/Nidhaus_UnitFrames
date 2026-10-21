@@ -304,6 +304,7 @@ end
 
 -- FIX: Cola de funciones pendientes por combate (antes creaba un frame nuevo cada vez)
 local deferQueue = {};
+local deferQueued = {};   -- cada funcion UNA vez: cada XP/reputacion en combate la volvia a anotar
 local deferFrame = CreateFrame("Frame");
 deferFrame:RegisterEvent("PLAYER_REGEN_ENABLED");
 deferFrame:SetScript("OnEvent", function()
@@ -312,11 +313,15 @@ deferFrame:SetScript("OnEvent", function()
     if n == 0 then return; end
     for i = 1, n do pcall(deferQueue[i]); end
     wipe(deferQueue);
+    wipe(deferQueued);
 end);
 
 local function DeferIfCombat(fn)
     if InCombatLockdown() then
-        table.insert(deferQueue, fn);
+        if not deferQueued[fn] then
+            deferQueued[fn] = true;
+            table.insert(deferQueue, fn);
+        end
         return true;
     end
     return false;
@@ -903,7 +908,7 @@ function K.AttachActionBarButtons()
     if K.GetStanceHolder then SetVehicleHide(K.GetStanceHolder(), true); end
     if C.MiniBarEnabled ~= true then return; end
 
-    local space = tonumber(C.ActionBarButtonSpace) or 6;
+    local space = tonumber(C.ActionBarButtonSpace) or 7;
 
     for row, set in ipairs(ROW_SETS) do
         local holder = K.EnsureBarHolder(row);
@@ -1077,7 +1082,20 @@ function K.BarHolderDefaultPoint(row)
     local hs = holder:GetEffectiveScale() or us;
     if hs == 0 then hs = us; end
 
-    local sx = (((uw - 512) / 2) + ix) * us;
+    -- CENTRADA EN LA PANTALLA, A CUALQUIER ESCALA.
+    --
+    -- Antes el borde izquierdo quedaba fijo donde estaba el boton 1 de
+    -- Blizzard, y al subir "Action Bar Scale" la fila crecia solo hacia la
+    -- derecha. Ahora se centra con su ancho real en pantalla (ancho del
+    -- contenedor por su escala), asi que crece pareja a los dos lados. A
+    -- escala 1 cae a un pixel de donde caia antes.
+    local w = holder:GetWidth() or 0;
+    local sx;
+    if w > 10 then
+        sx = (uw * us - w * hs) / 2;
+    else
+        sx = (((uw - 512) / 2) + ix) * us;   -- todavia sin botones adentro
+    end
 
     -- EL FONDO NO PUEDE QUEDAR DEBAJO DEL BORDE DE LA PANTALLA.
     --
@@ -1447,6 +1465,68 @@ function K.DetachStanceButtons()
     end
 end
 
+-- ──────────────────────────────────────────────────────────────
+--  ESCALAR CRECIENDO HACIA LOS COSTADOS
+--
+--  Un SetScale a secas agranda el marco desde su punto de anclaje: los
+--  contenedores de las barras cuelgan por BOTTOMLEFT, asi que crecian
+--  hacia la derecha. Aca se deja fijo el CENTRO HORIZONTAL y el BORDE DE
+--  ABAJO: la barra se abre pareja a los dos lados y sube, que es lo que
+--  tiene sentido para algo apoyado abajo de la pantalla.
+-- ──────────────────────────────────────────────────────────────
+function K.ScaleKeepingBottomCenter(f, s)
+    if not f then return; end
+    local es0 = f:GetEffectiveScale() or 1;
+    local cx, by = f:GetCenter(), f:GetBottom();
+    local sx, sb = cx and cx * es0, by and by * es0;
+    f:SetScale(s);
+    if not (sx and sb) then return; end
+    local p, rel, rp, x, y = f:GetPoint(1);
+    if not p then return; end
+    local es = f:GetEffectiveScale() or 1;
+    if es == 0 then return; end
+    local ncx, nb = f:GetCenter(), f:GetBottom();
+    if not (ncx and nb) then return; end
+    local dx, dy = (sx - ncx * es) / es, (sb - nb * es) / es;
+    if math.abs(dx) < 0.01 and math.abs(dy) < 0.01 then return; end
+    -- _nufApplying: que el candado de "Mover todo" no reponga el punto viejo.
+    f._nufApplying = true;
+    f:ClearAllPoints();
+    f:SetPoint(p, rel or UIParent, rp, (x or 0) + dx, (y or 0) + dy);
+    f._nufApplying = nil;
+end
+
+-- ──────────────────────────────────────────────────────────────
+--  LA BARRA DE AURAS / POSTURAS SIGUE A "ACTION BAR SCALE"
+--
+--  El contenedor de las posturas cuelga de UIParent, no de MainMenuBar,
+--  asi que no heredaba la escala: subias "Action Bar Scale" a 1.14 y las
+--  barras de accion crecian pero las auras se quedaban chicas. Ahora la
+--  escala se le pone a mano, salvo que le hayas dado una propia con
+--  Ctrl + rueda (y el slider, que es el maestro, esa la borra).
+--
+--  En su lugar de fabrica cuelga de la barra, que escala igual, asi que
+--  basta el SetScale. Con posicion tuya (o con el modo mover abierto)
+--  crece hacia los costados y se guarda el punto nuevo, para que no se
+--  corra al /reload.
+-- ──────────────────────────────────────────────────────────────
+function K.ApplyStanceHolderScale(scale)
+    local h = stanceHolder;
+    if not h or InCombatLockdown() then return; end
+    if type(scale) ~= "number" or scale <= 0 then scale = 1; end
+    local own = K.GetGlobalScale and K.GetGlobalScale("StanceBar");
+    local use = (type(own) == "number" and own > 0) and own or scale;
+    if math.abs((h:GetScale() or 1) - use) < 0.0005 then return; end
+    local custom = K.HasGlobalPos and K.HasGlobalPos("StanceBar");
+    local moving = K.IsGlobalUnlocked and K.IsGlobalUnlocked();
+    if custom or moving then
+        K.ScaleKeepingBottomCenter(h, use);
+        if custom and K.SaveMovablePosition then K.SaveMovablePosition("StanceBar"); end
+    else
+        h:SetScale(use);
+    end
+end
+
 function K.ResetStanceHolder()
     local holder = K.EnsureStanceHolder();
     if not holder then return; end
@@ -1512,7 +1592,7 @@ function K.ApplyActionBarButtonSpace()
     end
 
     local space = tonumber(C.ActionBarButtonSpace);
-    if not space then space = 6; end
+    if not space then space = 7; end
 
     for _, bar in ipairs(SPACED_BARS) do
         for i = 2, bar.count do
@@ -1536,12 +1616,38 @@ function K.ApplyActionBarButtonSpace()
         pcall(K.RefreshMiniBarLayout);
     end
 
-    -- MultiBarBottomRightButton7 tiene ancla propia en el modo unificado
-    -- (arranca la segunda fila), asi que se la vuelve a poner despues del
-    -- bucle o queda pegada al boton 6.
-    if C.UnifyActionBars == true and MultiBarBottomRightButton7 and MainMenuBar then
-        MultiBarBottomRightButton7:ClearAllPoints();
-        MultiBarBottomRightButton7:SetPoint("LEFT", MainMenuBar, "LEFT", 513, -5);
+    -- LA BARRA DE LA DERECHA SE SEPARA DE LA IZQUIERDA SEGUN LA FILA REAL.
+    --
+    -- En Unify, a cada fila de 12 se le pegan 6 botones de
+    -- MultiBarBottomRight: el 1 al 6 al lado de MultiBarBottomLeft, el 7 al
+    -- 12 al lado de los de la barra 1. Esos dos bloques estaban clavados a
+    -- una distancia FIJA (el marco de MultiBarBottomLeft + 5, y MainMenuBar
+    -- + 513), calculada para botones separados por 6: doce botones de 36
+    -- con 6 entre medio ocupan 498, y quedaban 7 px de aire hasta el bloque
+    -- de la derecha.
+    --
+    -- Con la separacion en 7 la fila ocupa 509 y se comia ese aire: la barra
+    -- de la derecha quedaba pegada (y hasta montada) a la de la izquierda.
+    -- Ahora cada bloque se cuelga del ULTIMO boton de su fila, con la misma
+    -- separacion de los botones mas uno -- que es justo la proporcion que
+    -- tenia el diseño original (6 entre botones, 7 entre bloques) --, asi
+    -- que el hueco acompaña a cualquier valor del slider.
+    if C.UnifyActionBars == true then
+        local gap = space + 1;
+        local r1, l1 = MultiBarBottomRightButton1, MultiBarBottomLeftButton12;
+        if r1 and l1 then
+            CaptureButton(r1, "MultiBarBottomRightButton1");
+            r1:ClearAllPoints();
+            r1:SetPoint("LEFT", l1, "RIGHT", gap, 0);
+        end
+        local r7, a12 = MultiBarBottomRightButton7, ActionButton12;
+        if r7 and a12 then
+            r7:ClearAllPoints();
+            r7:SetPoint("LEFT", a12, "RIGHT", gap, 0);
+        elseif r7 and MainMenuBar then
+            r7:ClearAllPoints();
+            r7:SetPoint("LEFT", MainMenuBar, "LEFT", 513, -5);
+        end
     end
 end
 

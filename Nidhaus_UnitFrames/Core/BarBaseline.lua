@@ -148,7 +148,23 @@ end
 -- ---------------------------------------------------------
 -- Volver a la foto
 -- ---------------------------------------------------------
-local function RestoreFrame(frame, snap)
+-- LOS QUE APARECEN Y DESAPARECEN SOLOS NO VUELVEN A LA FOTO.
+--
+-- La barra de mascota, la de posesion, la de totems y el boton de salir
+-- del vehiculo los muestra Blizzard segun lo que pasa en el juego. La foto
+-- se saca una vez por sesion: invocabas la mascota despues, cambiabas de
+-- modo de barras y la foto la escondia. Blizzard no la vuelve a mostrar
+-- (ShowPetActionBar no hace nada si cree que ya esta a la vista), asi que
+-- quedaba sin barra hasta volver a invocarla. Para estos se pregunta lo
+-- mismo que pregunta Blizzard, en el momento.
+local LIVE_VISIBILITY = {
+	PetActionBarFrame = function() return PetHasActionBar and PetHasActionBar() and true or false; end,
+	PossessBarFrame   = function() return IsPossessBarVisible and IsPossessBarVisible() and true or false; end,
+	MultiCastActionBarFrame = function() return HasMultiCastActionBar and HasMultiCastActionBar() and true or false; end,
+	MainMenuBarVehicleLeaveButton = function() return CanExitVehicle and CanExitVehicle() and true or false; end,
+};
+
+local function RestoreFrame(frame, snap, name)
 	if not (frame and snap) then return; end
 
 	-- El parent primero: cambiarlo despues de anclar tirapor la borda los
@@ -174,7 +190,13 @@ local function RestoreFrame(frame, snap)
 	-- CVars. En la practica salio peor: al togglear, las barras se subian.
 	-- Se vuelve a como estaba, que es lo que funciona.
 	if frame.Show and frame.Hide then
-		if snap.shown then frame:Show(); else frame:Hide(); end
+		local shown = snap.shown;
+		local live = name and LIVE_VISIBILITY[name];
+		if live then
+			local ok, v = pcall(live);
+			if ok then shown = v; end
+		end
+		if shown then frame:Show(); else frame:Hide(); end
 	end
 end
 
@@ -191,7 +213,7 @@ function K.RestoreBarBaseline()
 
 	for name, snap in pairs(baseline) do
 		local f = _G[name];
-		if f then pcall(RestoreFrame, f, snap); end
+		if f then pcall(RestoreFrame, f, snap, name); end
 	end
 
 	-- Y que Blizzard recalcule lo suyo encima de un estado limpio.
@@ -201,6 +223,16 @@ function K.RestoreBarBaseline()
 end
 
 function K.HasBarBaseline() return baseline ~= nil; end
+
+-- Un solo marco a la foto (lo usa el Reset de "Mover todo" cuando el
+-- original que tiene guardado es de otro modo de barras). true si pudo.
+function K.RestoreBarBaselineFrame(name)
+	if not (baseline and name and baseline[name]) then return false; end
+	if InCombatLockdown() then return false; end
+	local f = _G[name];
+	if not f then return false; end
+	return pcall(RestoreFrame, f, baseline[name], name) and true or false;
+end
 
 -- ---------------------------------------------------------
 -- Diagnostico

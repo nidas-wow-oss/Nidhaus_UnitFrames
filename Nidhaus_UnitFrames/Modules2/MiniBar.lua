@@ -406,6 +406,11 @@ function K.ApplyActionBarScale(scale)
 	-- el micromenu, asi que no arrastra a nadie mas.
 	if C.MiniBarEnabled == true then
 		K.ApplyBarHolderScales(scale);
+		-- Volver a acomodar las filas con el tamaño nuevo: la 1 centrada en
+		-- la pantalla y las de arriba centradas sobre ella. Sin esto
+		-- crecian solo hacia la derecha hasta el proximo repintado. (Con el
+		-- modo mover abierto no corre: ahi lo hace ApplyBarHolderScales.)
+		if K.RefreshMiniBarLayout then K.RefreshMiniBarLayout(); end
 		if K.ApplyBagPackLayout then K.ApplyBagPackLayout(); end
 		K.SyncExtraBarScale();
 		return;
@@ -428,6 +433,9 @@ function K.ApplyActionBarScale(scale)
 	end
 	if MultiBarRight then MultiBarRight:SetScale(scale); end
 	if MultiBarLeft then MultiBarLeft:SetScale(scale); end
+	-- La barra de auras / posturas: su contenedor cuelga de UIParent y no
+	-- heredaba la escala de MainMenuBar (ver K.ApplyStanceHolderScale).
+	if K.ApplyStanceHolderScale then K.ApplyStanceHolderScale(scale); end
 	-- BagPackFrame is parented to UIParent — needs explicit scale
 	if BagPackFrame and (K._minibarActive or K._unifyActive) then BagPackFrame:SetScale(scale); end
 	-- FIX: Re-apply BagPackLayout for micro buttons (parented to UIParent,
@@ -749,7 +757,7 @@ end
 -- vale para los dos ejes.
 local function RowGap()
 	local v = tonumber(C.ActionBarButtonSpace);
-	if not v or v < 0 then v = 6; end
+	if not v or v < 0 then v = 7; end
 	return v;
 end
 
@@ -763,6 +771,28 @@ function K.RefreshMiniBarLayout(force)
 	if InCombatLockdown() then return; end
 	if MiniBar_UpdateActionBars then MiniBar_UpdateActionBars(force); end
 end
+
+-- LA ESCALA DEL BOTON 1 ES LA DE TODA LA FILA (mascota y posesion).
+--
+-- Con MiniBar la pila coloca PetActionButton1 / PossessButton1, y es ese
+-- boton el que "Mover todo" escala con Ctrl + rueda. Los demas botones
+-- son hijos del marco de Blizzard, no del boton 1: crecia solo el primero
+-- y el resto se corria. Cualquier SetScale sobre el boton 1 (la rueda, el
+-- slider, la foto de fabrica al cambiar de modo) se copia a los demas.
+local function SyncRowScale(prefix, count)
+	local first = _G[prefix .. "1"];
+	if not first or first._nufRowScale then return; end
+	first._nufRowScale = true;
+	hooksecurefunc(first, "SetScale", function(self, scale)
+		if InCombatLockdown() or type(scale) ~= "number" then return; end
+		for i = 2, count do
+			local b = _G[prefix .. i];
+			if b and b.GetScale and b:GetScale() ~= scale then pcall(b.SetScale, b, scale); end
+		end
+	end);
+end
+SyncRowScale("PetActionButton", NUM_PET_ACTION_SLOTS or 10);
+SyncRowScale("PossessButton", NUM_POSSESS_SLOTS or 2);
 
 -- Las cosas que MiniBar apila, de abajo hacia arriba, y la clave con la
 -- que cada una se guarda en "Move Everything". La usan el aplanado y el
@@ -1104,16 +1134,33 @@ function K.ApplyBarHolderScales(scale)
 	if InCombatLockdown() then mbScalePending = true; return; end
 	if type(scale) ~= "number" or scale <= 0 then scale = 1.0; end
 
+	-- HACIA LOS COSTADOS. En su lugar de fabrica las filas se vuelven a
+	-- acomodar enseguida (MiniBar_UpdateActionBars, centradas); con
+	-- posicion tuya, o con el modo mover abierto, no hay quien las
+	-- reacomode: ahi se escala dejando fijo el centro horizontal y el borde
+	-- de abajo, y si la posicion es tuya se guarda el punto nuevo.
+	local moving = K.IsGlobalUnlocked and K.IsGlobalUnlocked();
 	local firstScale = scale;
 	for row = 1, 3 do
 		local h = K.GetBarHolder and K.GetBarHolder(row);
 		if h then
-			local own = K.GetGlobalScale and K.GetGlobalScale(BAR_KEYS[row]);
+			local key = BAR_KEYS[row];
+			local own = K.GetGlobalScale and K.GetGlobalScale(key);
 			local use = (type(own) == "number" and own > 0) and own or scale;
-			h:SetScale(use);
+			local custom = K.HasGlobalPos and K.HasGlobalPos(key);
+			if (custom or moving) and K.ScaleKeepingBottomCenter
+			   and math.abs((h:GetScale() or 1) - use) > 0.0005 then
+				K.ScaleKeepingBottomCenter(h, use);
+				if custom and K.SaveMovablePosition then K.SaveMovablePosition(key); end
+			else
+				h:SetScale(use);
+			end
 			if row == 1 then firstScale = use; end
 		end
 	end
+
+	-- La barra de auras / posturas tambien (antes no la escalaba nadie).
+	if K.ApplyStanceHolderScale then K.ApplyStanceHolderScale(scale); end
 
 	if not MainMenuBar then return; end
 
@@ -1288,10 +1335,25 @@ function MiniBar_UpdateActionBars(force)
 	local baseX, sy, sh = MB_ScreenPos(anchor);
 	local gapScale = (UIParent:GetEffectiveScale() or 1);
 
+	-- LAS DE ARRIBA, CENTRADAS SOBRE LA FILA 1. Antes iban alineadas a su
+	-- borde izquierdo; con la fila 1 centrada (BarHolderDefaultPoint) y
+	-- cada fila con su ancho, eso las dejaba corridas al agrandar.
+	local centerX;
+	if baseX and anchor and anchor.GetWidth then
+		local w1 = anchor:GetWidth() or 0;
+		if w1 > 10 then centerX = baseX + w1 * (anchor:GetEffectiveScale() or 1) / 2; end
+	end
+	local function RowX(h)
+		if not centerX then return baseX; end
+		local w = h:GetWidth() or 0;
+		if w <= 10 then return baseX; end
+		return centerX - w * (h:GetEffectiveScale() or 1) / 2;
+	end
+
 	if h2 and MultiBarBottomLeft:IsShown()
 	   and not (K.HasGlobalPos and K.HasGlobalPos("ActionBar2")) then
 		if baseX then
-			MB_PlaceAtScreen(h2, baseX, sy + sh + (anchorOffset * gapScale));
+			MB_PlaceAtScreen(h2, RowX(h2), sy + sh + (anchorOffset * gapScale));
 			local _, y2, h2h = MB_ScreenPos(h2);
 			sy, sh = y2 or sy, h2h or sh;
 			anchorOffset = RowGap();
@@ -1302,7 +1364,7 @@ function MiniBar_UpdateActionBars(force)
 	if h3 and MultiBarBottomRight:IsShown()
 	   and not (K.HasGlobalPos and K.HasGlobalPos("ActionBar3")) then
 		if baseX then
-			MB_PlaceAtScreen(h3, baseX, sy + sh + (anchorOffset * gapScale));
+			MB_PlaceAtScreen(h3, RowX(h3), sy + sh + (anchorOffset * gapScale));
 			local _, y3, h3h = MB_ScreenPos(h3);
 			sy, sh = y3 or sy, h3h or sh;
 			anchorOffset = RowGap();
@@ -1507,11 +1569,18 @@ local function MiniBar_OnEvent(self, event, unit)
 			end
 		end);
 	elseif event == "PLAYER_ENTERING_WORLD" then
+		-- Reintentos durante 5 s por si Blizzard reacomoda tarde, pero cada
+		-- 0,3 s y no en cada cuadro: eran ~300 rearmados completos de las
+		-- barras por pantalla de carga (tirones justo al entrar).
 		initTime = GetTime();
-		self:SetScript("OnUpdate", function(s)
+		local acc = 0.3;
+		self:SetScript("OnUpdate", function(s, elapsed)
 			if GetTime() > initTime + 5 then
 				s:SetScript("OnUpdate", nil);
 			end
+			acc = acc + (elapsed or 0);
+			if acc < 0.3 then return; end
+			acc = 0;
 			MiniBar_UpdateUI();
 		end);
 	else

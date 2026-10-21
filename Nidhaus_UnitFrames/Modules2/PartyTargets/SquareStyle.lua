@@ -416,6 +416,13 @@ end
 -- se puede y cuando ademas se nota menos.
 local stylePending = false;
 
+local function ApplyStyleOne(f, square)
+	-- La foto SIEMPRE primero, incluso al pedir Square: si no,
+	-- nunca tendriamos con que volver a Classic.
+	Capture(f);
+	if square then ApplySquare(f) else ApplyClassic(f) end
+end
+
 function K.ApplyPartyTargetStyle()
 	if InCombatLockdown() then stylePending = true; return; end
 	stylePending = false;
@@ -424,12 +431,7 @@ function K.ApplyPartyTargetStyle()
 
 	for i = 1, FRAMES do
 		local f = _G[FRAME_NAME .. i];
-		if f then
-			-- La foto SIEMPRE primero, incluso al pedir Square: si no,
-			-- nunca tendriamos con que volver a Classic.
-			Capture(f);
-			if square then ApplySquare(f) else ApplyClassic(f) end
-		end
+		if f then ApplyStyleOne(f, square); end
 	end
 end
 
@@ -469,10 +471,21 @@ events:RegisterEvent("PLAYER_ENTERING_WORLD");
 events:RegisterEvent("PARTY_MEMBERS_CHANGED");
 events:RegisterEvent("UNIT_TARGET");
 events:RegisterEvent("PLAYER_REGEN_ENABLED");
-events:SetScript("OnEvent", function(_, event)
+events:SetScript("OnEvent", function(_, event, unit)
 	if event == "PLAYER_REGEN_ENABLED" then
 		-- Salio de combate: si quedo algo pendiente, ahora si.
 		if stylePending then K.ApplyPartyTargetStyle(); end
+		return;
+	end
+
+	-- UNIT_TARGET llega por CADA unidad (banda, objetivo, foco...): solo
+	-- interesa la de un compañero, y alcanza con rehacer SU marco.
+	if event == "UNIT_TARGET" then
+		local id = type(unit) == "string" and tonumber(string.match(unit, "^party(%d)$"));
+		if not id then return; end
+		if InCombatLockdown() then stylePending = true; return; end
+		local f = _G[FRAME_NAME .. id];
+		if f then ApplyStyleOne(f, K.GetPartyTargetStyle() == "Square"); end
 		return;
 	end
 

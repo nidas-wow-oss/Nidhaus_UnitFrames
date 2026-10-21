@@ -26,11 +26,21 @@ local ICON_AVENGING_WRATH = "Interface\\Icons\\Spell_Holy_DivineIntervention"
 -- nombres que ponen el CD en marcha via SPELL_AURA_APPLIED sobre uno mismo
 -- (se agrego Avenging Wrath, que en el WeakAura original faltaba en esta lista
 -- aunque tenia logica de icono para el - bug del autor)
+-- Los nombres salen de GetSpellInfo (vienen en el idioma del cliente): el
+-- combat log y UnitBuff los dan traducidos, y en ingles fijo no coincidian.
+local function SpellName(id, fallback) return GetSpellInfo(id) or fallback end
+local DIVINE_PROTECTION  = SpellName(498,   "Divine Protection")
+local DIVINE_SHIELD      = SpellName(642,   "Divine Shield")
+local HAND_OF_PROTECTION = SpellName(1022,  "Hand of Protection")
+local AVENGING_WRATH     = SpellName(31884, "Avenging Wrath")
+local LAY_ON_HANDS       = SpellName(633,   "Lay on Hands")
+local FORBEARANCE        = SpellName(25771, "Forbearance")
+
 local WATCHED_SELF_BUFFS = {
-    ["Divine Protection"] = true,
-    ["Divine Shield"] = true,
-    ["Hand of Protection"] = true,
-    ["Avenging Wrath"] = true,
+    [DIVINE_PROTECTION] = true,
+    [DIVINE_SHIELD] = true,
+    [HAND_OF_PROTECTION] = true,
+    [AVENGING_WRATH] = true,
 }
 
 local playerName = UnitName("player")
@@ -141,7 +151,7 @@ local function SetIconGray(gray)
 end
 
 local function SetIconForName(name)
-    if name == "Avenging Wrath" then
+    if name == AVENGING_WRATH then
         frame.icon:SetTexture(ICON_AVENGING_WRATH)
     else
         frame.icon:SetTexture(ICON_DEFAULT)
@@ -199,10 +209,10 @@ ev:SetScript("OnEvent", function(self, event, ...)
             for i = 1, 40 do
                 local name, _, _, _, _, _, expirationTime = UnitDebuff("player", i)
                 if not name then break end
-                if name == "Forbearance" then
+                if name == FORBEARANCE then
                     local remaining = expirationTime - GetTime()
                     if remaining > 0 then
-                        StartCooldown("Lay on Hands", math.min(remaining, DURATION))
+                        StartCooldown(LAY_ON_HANDS, math.min(remaining, DURATION))
                     end
                     break
                 end
@@ -220,7 +230,7 @@ ev:SetScript("OnEvent", function(self, event, ...)
         end
     elseif subevent == "SPELL_CAST_SUCCESS" then
         local spellName = a2
-        if sourceName == playerName and destName == playerName and spellName == "Lay on Hands" then
+        if sourceName == playerName and destName == playerName and spellName == LAY_ON_HANDS then
             StartCooldown(spellName)
         end
     end
@@ -287,8 +297,9 @@ end
 SLASH_PALADINICD1 = "/paladinicd"
 SlashCmdList["PALADINICD"] = function()
     local on = K.TogglePaladinICDMove()
-    print(on and "|cff00ff00PaladinICD|r: modo mover activado, arrastra. /paladinicd de nuevo para fijar."
-        or "|cff00ff00PaladinICD|r: posicion fijada.")
+    print("|cff00ff00PaladinICD|r: " .. (on
+        and (L["PALADINICD_MOVE_ON"] or "Move mode on: drag it, then /paladinicd again to lock it.")
+        or (L["PALADINICD_MOVE_OFF"] or "Position locked.")))
 end
 
 -- Muestra el icono "listo" (a color) cuando la opcion de dejarlo a la vista

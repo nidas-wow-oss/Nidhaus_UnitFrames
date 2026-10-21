@@ -372,6 +372,42 @@ function StyleOne(i)
 
 	Capture(i);
 
+	-- DE COMPACT 2 A BIG BLIZZARD NO PASA POR RestoreOne: se repinta encima.
+	-- Big Blizzard no toca el tamaño del arte, el retrato, el ancho de las
+	-- barras ni la fuente de los numeros, asi que lo que dejo Compact 2 se
+	-- devuelve a la foto aca, una sola vez.
+	local wantPW2 = (K.GetPartyFrameStyle and K.GetPartyFrameStyle() == "PW2");
+	if wantPW2 then
+		f.nufPW2Applied = true;
+	elseif f.nufPW2Applied then
+		f.nufPW2Applied = nil;
+		local s = orig[fn];
+		local t0 = _G[fn .. "Texture"];
+		if t0 then
+			if s.texSize then t0:SetSize(s.texSize[1], s.texSize[2]); end
+			RestorePoint(t0, s.texPoint);
+		end
+		local p0 = _G[fn .. "Portrait"];
+		RestorePoint(p0, s.portPoint);
+		if p0 and s.portSize then p0:SetSize(s.portSize[1], s.portSize[2]); end
+		local h0, m0 = _G[fn .. "HealthBar"], _G[fn .. "ManaBar"];
+		if h0 then
+			if s.hpW then h0:SetWidth(s.hpW); end
+			if s.hpTex then h0:SetStatusBarTexture(s.hpTex); end
+			if h0.TextString and s.healthFont and s.healthFont[1] then
+				h0.TextString:SetFont(unpack(s.healthFont));
+			end
+		end
+		if m0 then
+			if s.mpW then m0:SetWidth(s.mpW); end
+			if s.mana and s.mana.h and s.mana.h > 0 then m0:SetHeight(s.mana.h); end
+			if s.mpTex then m0:SetStatusBarTexture(s.mpTex); end
+			if m0.TextString and s.manaFont and s.manaFont[1] then
+				m0.TextString:SetFont(unpack(s.manaFont));
+			end
+		end
+	end
+
 	local tex = _G[fn .. "Texture"];
 	if tex then
 		tex:SetTexture(PWTex());
@@ -558,10 +594,25 @@ function StyleOne(i)
 	if not pbDebuffs then DropAura(fn, "Debuff1", orig[fn].debuff1); end
 end
 
+-- LO DEL PANEL VA DESPUES DE PINTAR. Compact 2 le pone a los numeros la
+-- fuente de arena en cada actualizacion del grupo (ArenaTextFont), asi
+-- que el tamaño elegido en "Text size" se perdia al primer golpe. Se
+-- envuelve StyleOne para que siempre termine con K.ApplyPartyTextFont.
+do
+	local paint = StyleOne;
+	StyleOne = function(i)
+		paint(i);
+		if K.ApplyPartyTextFont and not InPartyVehicle(i) then
+			K.ApplyPartyTextFont(i);
+		end
+	end
+end
+
 function RestoreOne(i)
 	local fn = "PartyMemberFrame" .. i;
 	local s  = orig[fn];
 	if not s then return; end
+	if _G[fn] then _G[fn].nufPW2Applied = nil; end
 
 	local tex = _G[fn .. "Texture"];
 	if tex then
@@ -663,6 +714,8 @@ local function Reapply()
 	if InCombatLockdown() then return; end
 	for i = 1, MAX_PARTY do StyleOne(i); end
 end
+-- Para el panel (K.RefreshPartyText): repintar con lo nuevo.
+K.PartyFramePW_Restyle = Reapply;
 
 -- ---------------------------------------------------------
 -- LAS TRANSICIONES DE VEHICULO SI PASAN EN COMBATE
@@ -1007,7 +1060,7 @@ SlashCmdList["NUFPW2"] = function(msg)
 		return;
 	end
 
-	print("|cff4FC3F7NUF:|r /nufpw2 tex <w h x y> | bars <w x hy my> | portrait <lado x y> | aura <n> | reset");
+	print("|cff4FC3F7NUF:|r /nufpw2 tex <w h x y> | bars <w x hy my> | portrait <size x y> | aura <n> | reset");
 end
 
 -- Los valores guardados se cargan al entrar, antes de aplicar el estilo.
@@ -1030,49 +1083,49 @@ end);
 local panel;
 
 local ROWS = {
-	{ label = "TODO  X",       get = function() return PW2.blockX end,
+	{ label = "All  X",        get = function() return PW2.blockX end,
 	  set = function(v) PW2.blockX = v end, key = "block" },
 
-	{ label = "Marco  ancho",  get = function() return PW2.tex.w end,
+	{ label = "Frame  width",  get = function() return PW2.tex.w end,
 	  set = function(v) PW2.tex.w = v end, key = "tex" },
-	{ label = "Marco  alto",   get = function() return PW2.tex.h end,
+	{ label = "Frame  height", get = function() return PW2.tex.h end,
 	  set = function(v) PW2.tex.h = v end, key = "tex" },
-	{ label = "Marco  X",      get = function() return PW2.tex.x end,
+	{ label = "Frame  X",      get = function() return PW2.tex.x end,
 	  set = function(v) PW2.tex.x = v end, key = "tex" },
-	{ label = "Marco  Y",      get = function() return PW2.tex.y end,
+	{ label = "Frame  Y",      get = function() return PW2.tex.y end,
 	  set = function(v) PW2.tex.y = v end, key = "tex" },
 
-	{ label = "Barras  ancho", get = function() return PW2.bars.w end,
+	{ label = "Bars  width",   get = function() return PW2.bars.w end,
 	  set = function(v) PW2.bars.w = v end, key = "bars" },
-	{ label = "Barras  X",     get = function() return PW2.bars.x end,
+	{ label = "Bars  X",       get = function() return PW2.bars.x end,
 	  set = function(v) PW2.bars.x = v end, key = "bars" },
-	{ label = "Vida  Y",       get = function() return PW2.bars.hy end,
+	{ label = "Health  Y",     get = function() return PW2.bars.hy end,
 	  set = function(v) PW2.bars.hy = v end, key = "bars" },
 	{ label = "Mana  Y",       get = function() return PW2.bars.my end,
 	  set = function(v) PW2.bars.my = v end, key = "bars" },
 
-	{ label = "Vida  alto",    get = function() return PW2.bars.hh end,
+	{ label = "Health  height",get = function() return PW2.bars.hh end,
 	  set = function(v) PW2.bars.hh = v end, key = "bars" },
-	{ label = "Mana  alto",    get = function() return PW2.bars.mh end,
+	{ label = "Mana  height",  get = function() return PW2.bars.mh end,
 	  set = function(v) PW2.bars.mh = v end, key = "bars" },
 
-	{ label = "Retrato  lado", get = function() return PW2.portrait.size end,
+	{ label = "Portrait  size", get = function() return PW2.portrait.size end,
 	  set = function(v) PW2.portrait.size = v end, key = "portrait" },
-	{ label = "Retrato  X",    get = function() return PW2.portrait.x end,
+	{ label = "Portrait  X",   get = function() return PW2.portrait.x end,
 	  set = function(v) PW2.portrait.x = v end, key = "portrait" },
-	{ label = "Retrato  Y",    get = function() return PW2.portrait.y end,
+	{ label = "Portrait  Y",   get = function() return PW2.portrait.y end,
 	  set = function(v) PW2.portrait.y = v end, key = "portrait" },
 
-	{ label = "Fondo  ancho",  get = function() return PW2.bg.w end,
+	{ label = "Background  width", get = function() return PW2.bg.w end,
 	  set = function(v) PW2.bg.w = math.max(0, v) end, key = "bg" },
-	{ label = "Fondo  alto",   get = function() return PW2.bg.h end,
+	{ label = "Background  height",get = function() return PW2.bg.h end,
 	  set = function(v) PW2.bg.h = math.max(0, v) end, key = "bg" },
-	{ label = "Fondo  opacidad", get = function() return PW2.bg.alpha end,
+	{ label = "Background  opacity", get = function() return PW2.bg.alpha end,
 	  set = function(v) PW2.bg.alpha = math.max(0, math.min(100, v)) end, key = "bg" },
 
-	{ label = "Fondo  X",      get = function() return PW2.bg.x end,
+	{ label = "Background  X", get = function() return PW2.bg.x end,
 	  set = function(v) PW2.bg.x = v end, key = "bg" },
-	{ label = "Fondo  Y",      get = function() return PW2.bg.y end,
+	{ label = "Background  Y", get = function() return PW2.bg.y end,
 	  set = function(v) PW2.bg.y = v end, key = "bg" },
 
 	{ label = "Auras  Y",      get = function() return AURA_DROP_PW2 end,
@@ -1118,7 +1171,7 @@ local function BuildPanel()
 
 	local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 	title:SetPoint("TOP", panel, "TOP", 0, -14);
-	title:SetText("Compact 2  -  ajuste de marcos");
+	title:SetText("Compact 2  -  frame tuning");
 
 	local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton");
 	close:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -4, -4);
@@ -1158,7 +1211,7 @@ local function BuildPanel()
 	local reset = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate");
 	reset:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 18, 14);
 	reset:SetSize(120, 22);
-	reset:SetText("Valores de fabrica");
+	reset:SetText("Factory values");
 	reset:SetScript("OnClick", function()
 		local db = PW2DB();
 		db.tex, db.bars, db.aura, db.portrait, db.bg, db.blockX = nil, nil, nil, nil, nil, nil;
@@ -1174,7 +1227,7 @@ local function BuildPanel()
 
 	local hint = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall");
 	hint:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -18, 20);
-	hint:SetText("se aplica al instante");
+	hint:SetText("applies instantly");
 
 	return panel;
 end

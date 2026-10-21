@@ -235,10 +235,9 @@ local function CreateOptionsPanel()
 		value = math.floor(value * 20 + 0.5) / 20
 		-- Se guarda en el estilo activo, no en un unico numero compartido.
 		if K and K.SavePartyTargetScale then K.SavePartyTargetScale(value) end
-		for i = 1, MAX_PARTY_MEMBERS do
-			local frame = _G["PartyTargetFrame"..i]
-			if frame then frame:SetScale(value) end
-		end
+		-- Por la funcion del modulo: en combate lo deja para despues (son
+		-- marcos protegidos) y no corre los marcos al cambiar la escala.
+		if K and K.ApplyPartyTargetScale then K.ApplyPartyTargetScale() end
 	end)
 
 	-- Lo llama SetPartyTargetStyle al cambiar de estilo, para que el slider
@@ -288,7 +287,7 @@ local function CreateOptionsPanel()
 		if InCombatLockdown() then
 			-- Los marcos son protegidos: en combate no se tocan.
 			print("|cff4FC3F7NUF:|r " .. (L["PT_TEST_COMBAT"]
-				or "El modo prueba no se puede prender en combate."))
+				or "Test mode can't be turned on in combat."))
 			return
 		end
 		testOn = on and true or false
@@ -364,7 +363,9 @@ local function CreateOptionsPanel()
 	-- ========================
 	-- OnHide: disable config drag
 	-- ========================
-	f:SetScript("OnHide", function(self)
+	-- HookScript y no SetScript: SetScript borraba el gancho de arriba que
+	-- apaga el modo prueba al cerrar, y los marcos de mentira quedaban.
+	f:HookScript("OnHide", function(self)
 		PartyTargets_configOpen = false
 	end)
 

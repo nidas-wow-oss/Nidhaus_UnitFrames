@@ -195,9 +195,12 @@ local function ApplyState()
 		-- Ocultar: guardamos SOLO los que estaban visibles.
 		-- Los que ya estaban ocultos (correo sin correo, voice chat apagado,
 		-- battlefield sin cola) ni los tocamos, asi no reaparecen despues.
+		-- Lo que ya escondimos y alguien volvio a mostrar (LibDBIcon:Refresh
+		-- al cambiar la forma o al entrar al mundo) se vuelve a esconder:
+		-- sigue anotado en savedShown, asi que al mostrar vuelve igual.
 		local targets = CollectTargets();
 		for _, f in ipairs(targets) do
-			if f:IsShown() and savedShown[f] == nil then
+			if f:IsShown() then
 				savedShown[f] = true;
 				f:Hide();
 			end

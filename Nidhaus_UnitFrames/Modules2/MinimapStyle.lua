@@ -102,6 +102,9 @@ function K.NudgeMinimapIcons()
 		for name in pairs(ldb.objects) do
 			pcall(ldb.Refresh, ldb, name);
 		end
+		-- Refresh hace Show() de cada icono: si el modo los tenia ocultos,
+		-- que el dueño (MinimapIconToggle) los vuelva a esconder.
+		if K.ApplyMinimapIconState then pcall(K.ApplyMinimapIconState); end
 	end
 end
 

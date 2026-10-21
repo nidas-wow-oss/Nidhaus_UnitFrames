@@ -208,7 +208,104 @@ end
 --
 -- Solo toca la posicion AUTOMATICA: si vos moviste los buffs a mano, esa
 -- posicion es tuya y no se pisa.
+-- ---------------------------------------------------------
+-- LOS BUFFS SE CORREN CUANDO EL MINIMAPA CRECE (y vuelven cuando achica)
+--
+-- MinimapInset ya calculaba cuanto habia que correrlos, pero solo movia
+-- el ancla, que es invisible: en la posicion de fabrica los iconos los
+-- acomoda Blizzard colgados de BuffFrame, y BuffFrame no lo movia nadie.
+-- Agrandabas el minimapa y se te subia encima de los buffs.
+--
+-- Ahora se corre el bloque de Blizzard entero: BuffFrame y, si cuelgan
+-- de la pantalla, ConsolidatedBuffs y TemporaryEnchantFrame. Todo lo
+-- demas (los iconos, las filas, los encantamientos de arma, y los
+-- debuffs, que Blizzard cuelga de TempEnchant1) viene detras solo, sin
+-- tocar boton por boton. El ancla de buffs cuelga de BuffFrame, asi que
+-- el drag del modo mover tambien acompaña.
+--
+-- Cuanto se corre: lo justo para que el borde derecho de los buffs quede
+-- a CLUSTER_PAD del borde izquierdo del minimapa. Solo si el minimapa
+-- esta arriba a la derecha, a la altura de los buffs: si lo moviste a
+-- otro lado no hay nada que esquivar y los buffs quedan en su lugar de
+-- fabrica.
+-- ---------------------------------------------------------
+local ROOT_NAMES = { "BuffFrame", "ConsolidatedBuffs", "TemporaryEnchantFrame" };
+local rootBase   = {};     -- punto de Blizzard SIN correr, o false si no cuelga de UIParent
+local rootShift  = 0;      -- cuanto estan corridos a la izquierda, en unidades de UIParent
+local applyingRoots = false;
+
+local function CaptureRoot(name, f)
+	local p, rel, rp, x, y = f:GetPoint(1);
+	if p and (rel == nil or rel == UIParent) then
+		rootBase[name] = { p, rp or p, x or 0, y or 0 };
+	else
+		rootBase[name] = false;
+	end
+end
+
+local function PlaceRoot(name)
+	local f, b = _G[name], rootBase[name];
+	if not (f and b) then return; end
+	local s = f:GetScale() or 1;
+	if s == 0 then s = 1; end
+	applyingRoots = true;
+	f:ClearAllPoints();
+	f:SetPoint(b[1], UIParent, b[2], b[3] - rootShift / s, b[4]);
+	applyingRoots = false;
+end
+
+local function HookRoot(name)
+	local f = _G[name];
+	if not f or not f.GetPoint or f._nufRootHook then return; end
+	f._nufRootHook = true;
+	CaptureRoot(name, f);
+	-- Si Blizzard lo reacomoda por su cuenta (el aviso de ticket mueve
+	-- ConsolidatedBuffs), ese pasa a ser su punto de fabrica y se le
+	-- vuelve a aplicar el corrimiento.
+	hooksecurefunc(f, "SetPoint", function(self)
+		if applyingRoots then return; end
+		CaptureRoot(name, self);
+		if rootShift ~= 0 then PlaceRoot(name); end
+	end);
+end
+
+local function MinimapShift()
+	local mc, bf = MinimapCluster, _G["BuffFrame"];
+	if not (mc and bf and mc.GetLeft and bf.GetRight) then return 0; end
+	local ui = UIParent:GetEffectiveScale();
+	if not ui or ui == 0 then return 0; end
+	local l, r, tp, bo = mc:GetLeft(), mc:GetRight(), mc:GetTop(), mc:GetBottom();
+	local br, bt = bf:GetRight(), bf:GetTop();
+	if not (l and r and tp and bo and br and bt) then return 0; end
+	local ms = (mc:GetEffectiveScale() or 1) / ui;
+	local bs = (bf:GetEffectiveScale() or 1) / ui;
+	l, r, tp, bo = l * ms, r * ms, tp * ms, bo * ms;
+	-- La esquina de los buffs SIN el corrimiento actual.
+	local baseRight, baseTop = br * bs + rootShift, bt * bs;
+	-- Las primeras dos filas son las que pueden chocar con el mapa.
+	local bandBottom = baseTop - 2 * (30 + 12) * (BuffScale() or 1);
+	local sameHeight = tp > bandBottom and bo < baseTop;
+	local onTheRight = r > baseRight;
+	if not (sameHeight and onTheRight) then return 0; end
+	local shift = baseRight - (l - CLUSTER_PAD);
+	if shift < 0 then shift = 0; end
+	return shift;
+end
+
+local function ApplyMinimapAvoidance()
+	for _, n in ipairs(ROOT_NAMES) do HookRoot(n); end
+	local new = MinimapShift();
+	if math.abs(new - rootShift) < 0.5 then return; end
+	rootShift = new;
+	for _, n in ipairs(ROOT_NAMES) do PlaceRoot(n); end
+	if K.RequestMoverRefresh then K.RequestMoverRefresh(); end
+end
+K.ApplyBuffMinimapAvoidance = ApplyMinimapAvoidance;
+
 function K.RefreshAuraAnchorDefault()
+	-- El bloque de Blizzard esquiva el minimapa aunque tengas posicion
+	-- propia: sin ella es lo que ves; con ella no molesta.
+	ApplyMinimapAvoidance();
 	if HasCustomPosition() then return; end
 	ApplyDefaultAnchorPos();
 	-- Sin BuffFrame_UpdateAllBuffAnchors: llamada desde el addon corre
@@ -264,6 +361,7 @@ local function ApplyDefaultDebuffPos()
 end
 
 local function RestoreAnchorPosition()
+	ApplyMinimapAvoidance();
 	-- Una escala vieja guardada aca pasa al slider (una sola vez). Se lee
 	-- de la RAIZ y no del sub-registro por modo: la escala nunca dependio
 	-- del modo de barras, solo la posicion.
@@ -386,6 +484,22 @@ local function ReanchorDebuffs()
 end
 K.ReanchorDebuffs = ReanchorDebuffs;
 K.ReanchorAuras = ReanchorAuras;
+
+-- UN SOLO DUEÑO DE LA POSICION: ESTE MODULO.
+--
+-- "Mover todo" ademas guardaba los dos bloques en globalPos, sin modo de
+-- barras, y les ponia el candado de SetPoint: cada vez que aca se ponia
+-- la posicion del modo activo (o la de fabrica) el candado reponia la
+-- otra. Anotados como dueños, al soltar el arrastre "Mover todo" guarda
+-- por aca (una posicion por modo) y no escribe globalPos ni pone candado.
+if type(K.FramePositionOwners) ~= "table" then K.FramePositionOwners = {}; end
+K.FramePositionOwners["Buffs"]   = function() K.SaveAuraAnchorPosition();   ReanchorAuras();   end
+K.FramePositionOwners["Debuffs"] = function() K.SaveDebuffAnchorPosition(); ReanchorDebuffs(); end
+-- Y si la posicion es propia o la de fabrica: con la propia, escalar
+-- mantiene el punto (GlobalUnlock hace la cuenta y la guarda por aca).
+if type(K.FramePositionIsCustom) ~= "table" then K.FramePositionIsCustom = {}; end
+K.FramePositionIsCustom["Buffs"]   = HasCustomPosition;
+K.FramePositionIsCustom["Debuffs"] = HasCustomDebuffPosition;
 
 -- ---------------------------------------------------------
 -- LA ESCALA VA EN LOS ICONOS, NO EN EL ANCLA

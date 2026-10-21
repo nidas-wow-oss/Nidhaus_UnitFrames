@@ -63,11 +63,15 @@ end
 -- regla de Core/API.lua: Light, Dark o Compact) porque esta funcion esta
 -- antes que BigTextOn en el archivo. Al tocar la opcion o el tema, el skin
 -- del jugador se reaplica y vuelve a pasar por aca.
+--
+-- Y CON ASURI TAMPOCO: ese marco pone el nombre pegado arriba de la barra,
+-- justo donde cae "Group N", y no tiene lugar para los dos.
 local function UpdateGroupIndicator()
 	if not PlayerFrameGroupIndicatorText then return; end
 	local _, instanceType = IsInInstance();
 	local big = K.BigStatusTextOn and K.BigStatusTextOn("player");
-	PlayerFrameGroupIndicatorText:SetAlpha((instanceType == "arena" or big) and 0 or 1);
+	local hide = (instanceType == "arena") or big or AsuriOn();
+	PlayerFrameGroupIndicatorText:SetAlpha(hide and 0 or 1);
 end
 
 -- El hook a PlayerFrame_UpdateGroupIndicator cubre el rearmado del grupo,
@@ -221,14 +225,16 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 		K.RestoreTexture(PlayerPVPIcon, "PlayerPVPIcon");
 	elseif C.AsuriFrames then
 		PlayerFrameTexture:SetTexture(ASURI.."AsuriFrame");
-		-- Asuri tambien toma Lorti (la casilla o la fila "Player" del
-		-- color); sin Lorti, su gris de siempre.
+		-- SIN FILTRO DE COLOR. Antes, sin Lorti, al marco se le ponia un
+		-- gris oscuro (0.25) encima de su textura. Ahora va con sus colores,
+		-- como los otros estilos. Si prendes Lorti para "Player", Asuri
+		-- toma ese color igual que los demas.
 		local lr, lg, lb;
 		if K.LortiTint then lr, lg, lb = K.LortiTint("LortiUI_PlayerTargetFocus", "Player"); end
 		if lr then
 			PlayerFrameTexture:SetVertexColor(lr, lg, lb);
 		else
-			PlayerFrameTexture:SetVertexColor(0.25, 0.25, 0.25);
+			PlayerFrameTexture:SetVertexColor(1, 1, 1);
 		end
 		PlayerPVPIcon:SetTexture("Interface\\TargetingFrame\\UI-PVP-FFA");
 	else
@@ -250,7 +256,7 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 	-- se dispara todo el tiempo) y le borraba el tinte oscuro que Lorti
 	-- pone una sola vez al cargar. Ahora se le pregunta a Lorti primero.
 	if IcyOn() then
-		-- El hielo va a su color, sin tinte de Lorti ni el gris de Asuri.
+		-- El hielo va a su color, sin tinte de Lorti.
 		PlayerFrameTexture:SetVertexColor(1, 1, 1);
 	elseif not C.AsuriFrames then
 		if not (K.ApplyLortiTint and K.ApplyLortiTint(PlayerFrameTexture,
@@ -431,7 +437,12 @@ end
 function K.ApplyPlayerFrameScale(scale)
 	if not isInitialized then return; end
 	if type(scale) ~= "number" or scale <= 0 or scale > 3 then return; end
-	
+	-- Marco protegido: cualquier opcion tocada en combate dispara
+	-- CONFIG_CHANGED y este SetScale quedaba bloqueado. Se aplica al salir.
+	if K.AfterCombat("PlayerFrameScale", function() K.ApplyPlayerFrameScale(C.PlayerFrameScale); end) then
+		return;
+	end
+
 	if NidhausPlayerFrame then
 		NidhausPlayerFrame:SetScale(scale);
 	end
@@ -458,6 +469,9 @@ end
 -- Escala del marco de la mascota (Frames > Pet)
 function K.ApplyPetFrameScale(scale)
 	scale = scale or C.PetFrameScale or 1.0;
+	if K.AfterCombat("PetFrameScale", function() K.ApplyPetFrameScale(C.PetFrameScale); end) then
+		return;
+	end
 	if PetFrame then PetFrame:SetScale(scale); end
 end
 

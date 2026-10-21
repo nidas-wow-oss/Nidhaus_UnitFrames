@@ -347,6 +347,16 @@ L["SWING_USE_GLOBAL"]            = "Move Everything is on: drag the blue box fro
 L["CHATCOPY_DISABLED"]           = "Chat copy is disabled in the options.";
 L["URL_POPUP_TEXT"]              = "Copy the link (Ctrl+C):";
 
+-- Avisos sueltos en el chat (antes salian en español en los dos idiomas)
+L["ARENA_INVITE_STILL_OPEN"]     = "You closed the entry popup, but you can still join: %d s. Reopen it from the battleground icon on the minimap.";
+L["ARENA_LOAD_FAIL"]             = "Couldn't load the arena modules";
+L["ARENA_LOAD_HINT"]             = "Check that the Nidhaus_UnitFrames_Arena folder sits next to the addon's folder and is enabled in the AddOns list.";
+L["PT_TEST_COMBAT"]              = "Test mode can't be turned on in combat.";
+L["UNC_FORCED_MODE"]             = "Name color mode set to %s.";
+L["PALADINICD_MOVE_ON"]          = "Move mode on: drag it, then /paladinicd again to lock it.";
+L["PALADINICD_MOVE_OFF"]         = "Position locked.";
+L["RESET_AFTER_COMBAT"]          = "You're in combat: the reset will apply when combat ends.";
+
 -- Module collapse
 
 -- Tab 6 - About
@@ -1153,5 +1163,15 @@ L["MOVER_LBL_ArenaEnd"]          = "Tiempo de arena";
 L["MOVER_LBL_ShadowSight"]       = "Ojo (Shadow Sight)";
 L["MOVER_LBL_WaterEle"]          = "Elemental de agua";
 L["MOVER_LBL_MirrorImg"]         = "Reflejo exacto";
+
+-- Avisos sueltos en el chat
+L["ARENA_INVITE_STILL_OPEN"]     = "Cerraste el cartel de entrada y todav\195\173a pod\195\169s entrar: %d s. Volv\195\169 a abrirlo con el \195\173cono de battleground del minimapa.";
+L["ARENA_LOAD_FAIL"]             = "No se pudieron cargar los m\195\179dulos de arena";
+L["ARENA_LOAD_HINT"]             = "Revis\195\161 que la carpeta Nidhaus_UnitFrames_Arena est\195\169 junto a la del addon y activada en la lista de AddOns.";
+L["PT_TEST_COMBAT"]              = "El modo prueba no se puede prender en combate.";
+L["UNC_FORCED_MODE"]             = "Color de nombres: modo %s.";
+L["PALADINICD_MOVE_ON"]          = "Modo mover activado: arrastralo y escrib\195\173 /paladinicd de nuevo para fijarlo.";
+L["PALADINICD_MOVE_OFF"]         = "Posici\195\179n fijada.";
+L["RESET_AFTER_COMBAT"]          = "Est\195\161s en combate: el reset se aplica cuando termine.";
 
 end -- isSpanish

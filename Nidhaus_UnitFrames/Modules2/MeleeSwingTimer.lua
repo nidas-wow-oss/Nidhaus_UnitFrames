@@ -97,9 +97,14 @@ unlockText:Hide();
 -- ---------------------------------------------------------
 -- Posicion / escala
 -- ---------------------------------------------------------
+-- Se guarda TAMBIEN el punto: al soltar el arrastre el cliente reancla el
+-- marco al punto que le queda mas cerca, y los x/y solos no alcanzan.
+-- Sin punto guardado (lo de antes) eran desplazamientos desde BOTTOM.
 local function SavePosition()
 	local db = DB();
-	local _, _, _, x, y = mover:GetPoint();
+	local point, _, relativePoint, x, y = mover:GetPoint();
+	db.point = point;
+	db.relativePoint = relativePoint;
 	db.x = x or 0;
 	db.y = y or 222;
 end
@@ -107,7 +112,8 @@ end
 local function RestorePosition()
 	local db = DB();
 	mover:ClearAllPoints();
-	mover:SetPoint("BOTTOM", UIParent, "BOTTOM", db.x or 0, db.y or 222);
+	mover:SetPoint(db.point or "BOTTOM", UIParent, db.relativePoint or db.point or "BOTTOM",
+		db.x or 0, db.y or 222);
 	mover:SetScale(db.scale or 1.0);
 end
 
@@ -449,6 +455,7 @@ SlashCmdList["NUFSWING"] = function(msg)
 		end
 	elseif cmd == "reset" then
 		local db = DB();
+		db.point, db.relativePoint = nil, nil;
 		db.x, db.y, db.scale = 0, 222, 1.0;
 		RestorePosition();
 		Lock();
@@ -468,6 +475,7 @@ K.FramePositionOwners["SwingTimer"] = function() SavePosition(); end
 
 function K.ResetMeleeSwingTimerPosition()
 	local db = DB();
+	db.point, db.relativePoint = nil, nil;
 	db.x, db.y, db.scale = 0, 222, 1.0;
 	RestorePosition();
 	Lock();
@@ -510,6 +518,9 @@ K.RegisterModule("MeleeSwingTimer", {
 		enabled = true;
 		playerGUID = UnitGUID("player");
 		RestorePosition();
+		-- El estilo guardado tambien al prenderlo a mitad de sesion: antes
+		-- solo se aplicaba en PLAYER_ENTERING_WORLD.
+		ApplyBorderStyle();
 		events:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
 		events:RegisterEvent("PLAYER_REGEN_ENABLED");
 		events:RegisterEvent("PLAYER_ENTERING_WORLD");

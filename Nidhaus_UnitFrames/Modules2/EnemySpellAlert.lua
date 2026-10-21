@@ -372,6 +372,14 @@ local function ClearAll()
 	for _, k in ipairs(keys) do Remove(k); end
 end
 
+-- El ancla es invisible: con el mouse prendido y sin icono a la vista se
+-- comia los clicks en el centro de la pantalla. Solo agarra el mouse en
+-- el modo mover o, desbloqueada, mientras hay un icono que arrastrar.
+local function UpdateMouse()
+	local on = preview or (enabled and not IsLocked() and next(states) ~= nil);
+	anchor:EnableMouse(on and true or false);
+end
+
 -- ---------------------------------------------------------
 -- Ticker de expiracion (solo corre mientras hay iconos)
 -- ---------------------------------------------------------
@@ -394,6 +402,7 @@ ticker:SetScript("OnUpdate", function(self, e)
 	if rm then
 		for _, k in ipairs(rm) do Remove(k); end
 		Layout();
+		UpdateMouse();
 	end
 	if not next(states) then self:Hide(); end
 end);
@@ -419,6 +428,7 @@ local function Trigger(name)
 	st.widget:Show();
 	ticker:Show();
 	Layout();
+	UpdateMouse();
 end
 
 -- ---------------------------------------------------------
@@ -444,7 +454,6 @@ function K.SetEnemyAlertPreview(state)
 	preview = state and true or false;
 	BuildWatch();
 	RestorePosition();
-	anchor:EnableMouse(preview or not IsLocked());
 
 	ClearAll();
 	if preview then
@@ -463,12 +472,13 @@ function K.SetEnemyAlertPreview(state)
 		anchor.bg:Hide();
 		ticker:Hide();
 	end
+	UpdateMouse();
 end
 
 function K.IsEnemyAlertPreview() return preview; end
 
 function K.ApplyEnemyAlertLock()
-	anchor:EnableMouse(preview or not IsLocked());
+	UpdateMouse();
 end
 
 function K.ResetEnemyAlertPosition()
@@ -803,7 +813,7 @@ local function SetEnabled(on)
 		BuildWatch();
 		RestorePosition();
 		clog:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
-		anchor:EnableMouse(preview or not IsLocked());
+		UpdateMouse();
 	else
 		clog:UnregisterAllEvents();
 		ClearAll();

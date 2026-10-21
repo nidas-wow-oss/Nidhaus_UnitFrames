@@ -29,11 +29,21 @@ local NidhausPartyFrame;
 local Path;
 local isInitialized = false;
 
+-- La carpeta del tema se lee en cada uso: si se calculara una sola vez,
+-- cambiar Light/Dark dejaba el grupo con las texturas del tema viejo.
+local function ThemePath()
+	if C.darkFrames then
+		return "Interface\\AddOns\\"..AddOnName.."\\Media\\Dark\\";
+	end
+	return "Interface\\AddOns\\"..AddOnName.."\\Media\\Light\\";
+end
+
 --	Party frame
 local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 	local partyFrame = _G["PartyMemberFrame"..id];
 	if not partyFrame then return; end
-	
+	Path = ThemePath();
+
 	-- ── Escala ───────────────────────────────────────────────────
 	-- El modo 3v3 tiene su PROPIA escala por miembro (1.5 para los dos
 	-- primeros, 1.3 para los otros). Aplicar C.PartyFrameScale a ciegas la
@@ -64,6 +74,10 @@ local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 	if pstyle == "Default" then
 		_G["PartyMemberFrame"..id.."Texture"]:SetTexture(Path.."UI-PartyFrame");
 	end
+	-- La mascota la pinta el gancho de UpdatePet, que solo corre cuando
+	-- Blizzard la actualiza: al cambiar de tema se repinta aca tambien.
+	local petTex = _G["PartyMemberFrame"..id.."PetFrameTexture"];
+	if petTex then petTex:SetTexture(Path.."UI-PartyFrame"); end
 
 	local hpTxt = _G["PartyMemberFrame"..id.."HealthBarText"];
 	local mpTxt = _G["PartyMemberFrame"..id.."ManaBarText"];
@@ -88,12 +102,14 @@ local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 	-- fuente y el anclaje originales de Blizzard, igual que el modo Default.
 	local style = pstyle;
 	if style ~= "Default" and style ~= "Improved" then
-		if hpTxt then
-			hpTxt:ClearAllPoints();
-			hpTxt:SetPoint("CENTER", partyFrame, "CENTER", 19, 10);
-			hpTxt:SetFont(unpack(C.PartyFrameFont));
+		-- El LUGAR del numero lo pone cada estilo (New y los dos de pw lo
+		-- reanclan al pintar); si se anclaba aca, un restyle suelto (cambio
+		-- de tema) lo dejaba corrido hasta el proximo repintado del estilo.
+		-- Compact 2 pone ademas su propia fuente (la de arena).
+		if style ~= "PW2" then
+			if hpTxt then hpTxt:SetFont(unpack(C.PartyFrameFont)); end
+			if mpTxt then mpTxt:SetFont(unpack(C.PartyFrameFont)); end
 		end
-		if mpTxt then mpTxt:SetFont(unpack(C.PartyFrameFont)); end
 	else
 		-- Volver EXACTO al default de Blizzard
 		if hpTxt and hpTxt._nufOrig then
@@ -113,66 +129,10 @@ local function Nidhaus_UnitFrames_Style_PartyMemberFrame(id)
 	
 	-- ── Fuente del grupo ──────────────────────────────────────────
 	-- VA AL FINAL a proposito: la rama de arriba restaura la fuente
-	-- original, asi que si esto corriera antes lo pisaria.
-	--
-	-- Con el estilo "Blizzard" NO se toca nada: queda el default del juego.
-	-- Por eso el panel esconde esta seccion cuando ese estilo esta activo.
-	--
-	-- Reparto: el CONTORNO es solo para el nombre; el TAMAÑO es solo para
-	-- vida y mana. Antes los dos se aplicaban a los tres textos por igual.
-	local isCustomStyle = (pstyle == "New" or pstyle == "Improved");
-	if isCustomStyle then
-		local outline = C.PartyFontOutline;
-		if outline == "" or outline == "Blizz" then outline = nil; end
-
-		-- 0 = automatico. Por debajo de 6 el texto es ilegible y ademas
-		-- otros modulos le restan puntos, quedando en 0 (SetFont tira
-		-- error con altura 0).
-		local fsize = tonumber(C.PartyFontSize) or 0;
-		if fsize > 0 and fsize < 6 then fsize = 6; end
-
-		-- Modo "Blizz": misma fuente y sombra que el texto de vida/mana.
-		local blizzMode = (C.PartyFontOutline == "Blizz");
-		local bFont, bFlags;
-		if blizzMode then bFont, bFlags = BlizzStatusFont(); end
-
-		-- Guarda el tamaño y la fuente de fabrica de cada texto, una vez.
-		local function Base(fs)
-			if not fs._nufBaseSize then
-				local f0, sz0 = fs:GetFont();
-				fs._nufBaseSize = sz0 or 10;
-				fs._nufBaseFont = f0;
-			end
-			return fs._nufBaseFont, fs._nufBaseSize;
-		end
-
-		-- NOMBRE: solo el contorno. El tamaño lo sigue poniendo el estilo.
-		if nameTxt then
-			local bf, bs = Base(nameTxt);
-			local f, sz = nameTxt:GetFont();
-			if blizzMode and bFont then
-				-- bFlags sale del propio FontObject: si el cliente le pone
-				-- contorno, se copia el contorno. Poner solo sombra a mano
-				-- daba un sombreado que no se parecia al original.
-				pcall(nameTxt.SetFont, nameTxt, bFont, sz or bs, bFlags);
-				pcall(nameTxt.SetShadowOffset, nameTxt, 1, -1);
-				pcall(nameTxt.SetShadowColor, nameTxt, 0, 0, 0, 1);
-			elseif f then
-				pcall(nameTxt.SetFont, nameTxt, bf or f, sz or bs, outline);
-			end
-		end
-
-		-- VIDA Y MANA: solo el tamaño. El contorno queda como lo dejo el
-		-- estilo, para no pisarle el look a New Party / Improved.
-		for _, fs in ipairs({ hpTxt, mpTxt }) do
-			if fs then
-				local bf, bs = Base(fs);
-				local f, sz, fl = fs:GetFont();
-				local target = (fsize > 0) and fsize or bs;
-				if f then pcall(fs.SetFont, fs, f, target, fl); end
-			end
-		end
-	end
+	-- original, asi que si esto corriera antes lo pisaria. La cuenta vive
+	-- en K.ApplyPartyTextFont (abajo), que tambien llaman Improved y los
+	-- dos estilos de pw al terminar de pintar.
+	if K.ApplyPartyTextFont then K.ApplyPartyTextFont(id); end
 
 	-- ── Posicion del PartyMemberFrame ────────────────────────────
 	-- OJO: esta funcion la llama K.RestylePartyFrames, y a esa la llaman
@@ -210,6 +170,7 @@ local function partyPvpIcon(self)
 	local unit = "party"..id;
 	local icon = _G["PartyMemberFrame"..id.."PVPIcon"];
 	local factionGroup = UnitFactionGroup(unit);
+	Path = ThemePath();
 	if UnitIsPVPFreeForAll(unit) then
 		icon:SetTexture(Path.."UI-PVP-FFA");
 	elseif factionGroup and UnitIsPVP(unit) then
@@ -220,6 +181,7 @@ end;
 -- PetFrame;
 local function Nidhaus_UnitFrames_PartyMemberFrame_UpdatePet(self, id)
 	if id then return; end;
+	Path = ThemePath();
 	_G[self:GetName().."PetFrameTexture"]:SetTexture(Path.."UI-PartyFrame");
 	-- Si el usuario apago las mascotas del grupo, se ocultan de nuevo aca:
 	-- Blizzard las vuelve a mostrar en cada update del miembro.
@@ -256,9 +218,11 @@ function K.ApplyPartyPetFrames()
 	for i = 1, 4 do
 		local pf = _G["PartyMemberFrame" .. i .. "PetFrame"];
 		if pf then
-			-- Solo se muestra si ese compañero TIENE mascota; si no,
-			-- apareceria un marco vacio.
-			local want = show and UnitExists("partypet" .. i) and true or false;
+			-- La misma regla que PartyMemberFrame_UpdatePet: compañero
+			-- conectado, con mascota y la opcion de Blizzard de mascotas
+			-- del grupo prendida. Si no, se le pisaba esa opcion.
+			local want = show and UnitIsConnected("party" .. i) and UnitExists("partypet" .. i)
+				and SHOW_PARTY_PETS == "1" and true or false;
 			if want and not pf:IsShown() then
 				pf:Show();
 			elseif (not want) and pf:IsShown() then
@@ -272,11 +236,7 @@ local function InitializePartyFrames()
 	if isInitialized then return; end
 	
 	-- Determinar path de texturas
-	if C.darkFrames then 
-		Path = "Interface\\AddOns\\"..AddOnName.."\\Media\\Dark\\";
-	else
-		Path = "Interface\\AddOns\\"..AddOnName.."\\Media\\Light\\";
-	end
+	Path = ThemePath();
 	
 	-- Crear frame contenedor solo si SetPositions está activo Y no existe aún
 	if C.SetPositions and not NidhausPartyFrame then
@@ -305,6 +265,123 @@ K.InitializePartyFrames = InitializePartyFrames;
 
 -- La llama PartyFrameStyle al cambiar de estilo, para que los textos se
 -- adapten (fuente propia con estilos custom, default con Blizzard).
+-- ---------------------------------------------------------
+-- TEXTO DEL GRUPO: NOMBRE Y NUMEROS, CADA UNO CON SU CONTORNO Y SU TAMAÑO
+--
+-- Una sola funcion, y la llama cada estilo AL TERMINAR de pintar su
+-- marco: este archivo (New Party), Improved y los dos de pw (Big Blizzard
+-- y Compact 2). Asi ninguno le pisa al otro lo que elegiste.
+--
+--   * NOMBRE:  contorno (PartyFontOutline) y tamaño (PartyNameSize_<estilo>).
+--   * NUMEROS: contorno (PartyNumOutline)  y tamaño (PartyNumSize_<estilo>).
+--
+-- El tamaño es POR ESTILO: Improved tiene el marco grande y Compact 2 el
+-- angosto, asi que no les queda bien el mismo numero. 0 = "Auto", el que
+-- pone el estilo. En los numeros y en el contorno "Style", lo del estilo
+-- tambien: no se toca, y como cada estilo vuelve a poner su fuente antes
+-- de llamar aca, volver a Auto devuelve lo suyo solo.
+--
+-- El nombre en Big Blizzard y Compact 2 es la excepcion: esos estilos no
+-- le ponen fuente, asi que "Auto" lo devuelve a su tamaño de fabrica, que
+-- se fotografia al cargar (antes de que nadie lo toque).
+--
+-- Con el estilo "Blizzard" no se toca nada: manda el default del juego.
+-- ---------------------------------------------------------
+local MIN_PARTY_FONT = 6;    -- por debajo es ilegible, y SetFont con 0 tira error
+
+-- La foto de fabrica del nombre, AL CARGAR: los marcos del grupo vienen
+-- del XML de Blizzard, asi que ya existen. New Party la usa al apagarse.
+for i = 1, (MAX_PARTY_MEMBERS or 4) do
+	local n = _G["PartyMemberFrame" .. i .. "Name"];
+	if n and n.GetFont and not n._nufBaseSize then
+		local f0, s0, fl0 = n:GetFont();
+		n._nufBaseFont, n._nufBaseSize, n._nufBaseFlags = f0, s0, fl0;
+	end
+end
+
+local function PartySize(kind, style)
+	local v = tonumber(C["Party" .. kind .. "Size_" .. tostring(style)]) or 0;
+	if v <= 0 then return 0; end
+	if v < MIN_PARTY_FONT then v = MIN_PARTY_FONT; end
+	return v;
+end
+K.GetPartyTextSize = PartySize;
+
+function K.ApplyPartyTextFont(id)
+	local style = (K.GetPartyFrameStyle and K.GetPartyFrameStyle()) or "Default";
+	local fn = "PartyMemberFrame" .. id;
+	if style == "Default" then
+		-- Volviendo a Blizzard: si le habiamos cambiado el nombre (contorno o
+		-- tamaño en otro estilo), vuelve a como venia. Los numeros ya los
+		-- devuelve el estilo (rama "Default" de arriba).
+		local n = _G[fn .. "Name"];
+		if n and n._nufTouched and n._nufBaseFont and n._nufBaseSize then
+			pcall(n.SetFont, n, n._nufBaseFont, n._nufBaseSize, n._nufBaseFlags);
+			n._nufTouched = nil;
+		end
+		return;
+	end
+
+	-- NOMBRE
+	local nameTxt = _G[fn .. "Name"];
+	if nameTxt then
+		if not nameTxt._nufBaseSize then
+			local f0, s0, fl0 = nameTxt:GetFont();
+			nameTxt._nufBaseFont, nameTxt._nufBaseSize, nameTxt._nufBaseFlags = f0, s0, fl0;
+		end
+		local f, sz = nameTxt:GetFont();
+		local want = PartySize("Name", style);
+		if want == 0 and (style == "PW" or style == "PW2") then
+			want = nameTxt._nufBaseSize or sz;
+		end
+		if want == 0 then want = sz; end
+		local mode = C.PartyFontOutline;
+		if mode == nil then mode = "OUTLINE"; end
+		if mode == "Blizz" then
+			-- Misma cara, contorno y sombra que el numero de vida/mana.
+			local bFont, bFlags = BlizzStatusFont();
+			if bFont and want then
+				nameTxt._nufTouched = true;
+				pcall(nameTxt.SetFont, nameTxt, bFont, want, bFlags);
+				pcall(nameTxt.SetShadowOffset, nameTxt, 1, -1);
+				pcall(nameTxt.SetShadowColor, nameTxt, 0, 0, 0, 1);
+			end
+		elseif f and want then
+			nameTxt._nufTouched = true;
+			pcall(nameTxt.SetFont, nameTxt, f, want, (mode ~= "") and mode or nil);
+		end
+	end
+
+	-- NUMEROS DE VIDA Y MANA
+	local size = PartySize("Num", style);
+	local nmode = C.PartyNumOutline;
+	if nmode == nil then nmode = "Style"; end
+	if size == 0 and nmode == "Style" then return; end
+	for _, fs in ipairs({ _G[fn .. "HealthBarText"], _G[fn .. "ManaBarText"] }) do
+		if fs then
+			local f, cur, fl = fs:GetFont();
+			if f then
+				local target = (size > 0) and size or cur;
+				local flags = fl;
+				if nmode ~= "Style" then flags = (nmode ~= "") and nmode or nil; end
+				if target and (math.abs((cur or 0) - target) > 0.05 or flags ~= fl) then
+					pcall(fs.SetFont, fs, f, target, flags);
+				end
+			end
+		end
+	end
+end
+
+-- Lo que llaman el desplegable y el slider del panel: que cada estilo
+-- vuelva a pintar lo suyo (y con eso su fuente de base) y que al final
+-- se aplique lo del panel. Cada uno sabe si es el activo.
+function K.RefreshPartyText()
+	if K.RestylePartyFrames   then K.RestylePartyFrames();   end
+	if K.UpdateNewPartyFrames then K.UpdateNewPartyFrames(); end
+	if K.PFI_Restyle          then K.PFI_Restyle();          end
+	if K.PartyFramePW_Restyle then K.PartyFramePW_Restyle(); end
+end
+
 function K.RestylePartyFrames()
 	if not isInitialized then return; end
 	-- En combate se aplica lo que se puede (fuentes y texturas) y la escala
@@ -328,7 +405,18 @@ end
 function K.ApplyPartyFrameScale(scale)
 	if not isInitialized then return; end
 	if type(scale) ~= "number" or scale <= 0 or scale > 3 then return; end
-	
+	-- Marcos protegidos: en combate SetScale lo bloquea el juego (cualquier
+	-- opcion del panel dispara esto). Se repite al salir, con lo que valga
+	-- en ese momento y respetando el 3v3.
+	if InCombatLockdown() then
+		if K.AfterCombat then
+			K.AfterCombat("ApplyPartyFrameScale", function()
+				if not (K.Is3v3Active and K.Is3v3Active()) then K.ApplyPartyFrameScale(C.PartyFrameScale); end
+			end);
+		end
+		return;
+	end
+
 	for i = 1, MAX_PARTY_MEMBERS do
 		local partyFrame = _G["PartyMemberFrame"..i];
 		if partyFrame then
@@ -340,7 +428,12 @@ end
 -- FIX: Aplicar spacing en tiempo real
 function K.ApplyPartyFrameSpacing()
 	if not isInitialized then return; end
-	
+	-- Mover marcos protegidos en combate lo corta el juego: al salir.
+	if InCombatLockdown() then
+		if K.AfterCombat then K.AfterCombat("ApplyPartyFrameSpacing", K.ApplyPartyFrameSpacing); end
+		return;
+	end
+
 	local spacing = C.PartyMemberFrameSpacing;
 	if type(spacing) ~= "number" then spacing = 0; end
 	

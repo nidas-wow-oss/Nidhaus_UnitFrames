@@ -383,6 +383,10 @@ eventFrame:RegisterEvent("ADDON_LOADED");
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
 	if event == "ADDON_LOADED" and arg1 == AddOnName then
+		-- Con el modulo apagado no se toca la fuente: el cliente la lee una
+		-- sola vez al arrancar, y si no apagarlo nunca tenia efecto.
+		local mods = NidhausUnitFramesDB and NidhausUnitFramesDB.Modules;
+		if type(mods) == "table" and mods.NiceDamage == false then return; end
 		-- Load saved choice and set DAMAGE_TEXT_FONT immediately
 		LoadChoice();
 		local path = GetFontPath(dmgFontIndex);
@@ -415,7 +419,7 @@ SlashCmdList["NICEDAMAGE"] = function(msg)
 		local d = fontList[dmgFontIndex]  and fontList[dmgFontIndex].name  or "?";
 		local h = fontList[healFontIndex] and fontList[healFontIndex].name or "?";
 		DEFAULT_CHAT_FRAME:AddMessage("|cff88aaffNiceDamage DEBUG:|r");
-		DEFAULT_CHAT_FRAME:AddMessage("  Dano: [" .. dmgFontIndex .. "] " .. d);
+		DEFAULT_CHAT_FRAME:AddMessage("  Damage: [" .. dmgFontIndex .. "] " .. d);
 		DEFAULT_CHAT_FRAME:AddMessage("  Heals: [" .. healFontIndex .. "] " .. h);
 		DEFAULT_CHAT_FRAME:AddMessage("  DAMAGE_TEXT_FONT = " .. tostring(DAMAGE_TEXT_FONT));
 		if CombatTextFont then

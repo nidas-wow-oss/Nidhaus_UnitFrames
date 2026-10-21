@@ -65,36 +65,40 @@ function K.SetPartyFrameStyle(style, skipSave)
 	end
 	C.PartyFrameStyle = style;
 
-	-- ── NewPartyFrame ──
-	local wantNew = (style == STYLE_NEW);
+	local wantNew      = (style == STYLE_NEW);
+	local wantImproved = (style == STYLE_IMPROVED);
+	local wantPW       = (style == STYLE_PW) or (style == STYLE_PW2);
+	local hasImproved  = K.Modules and K.Modules["PartyFramesImproved"];
+
 	if C.NewPartyFrame ~= wantNew then
 		C.NewPartyFrame = wantNew;
 		if K.SaveConfig then K.SaveConfig("NewPartyFrame", wantNew); end
 	end
-	if wantNew then
-		if K.EnableNewPartyFrame then pcall(K.EnableNewPartyFrame); end
-	else
-		if K.DisableNewPartyFrame then pcall(K.DisableNewPartyFrame); end
+
+	-- PRIMERO SE APAGAN TODOS, DESPUES SE PRENDE EL ELEGIDO.
+	-- New e Improved sacan su foto "de fabrica" la primera vez que pintan:
+	-- si el estilo viejo seguia puesto, fotografiaban SU marco, y al volver
+	-- a Blizzard lo restauraban (de Compact 2 a New y a Blizzard quedaba
+	-- el marco de Compact 2).
+	if not wantNew and K.DisableNewPartyFrame then pcall(K.DisableNewPartyFrame); end
+	if hasImproved and not wantImproved and K.IsModuleEnabled("PartyFramesImproved") then
+		K.SetModuleEnabled("PartyFramesImproved", false);
 	end
+	if not wantPW and K.DisablePartyFramePW then pcall(K.DisablePartyFramePW); end
+
+	-- ── NewPartyFrame ──
+	if wantNew and K.EnableNewPartyFrame then pcall(K.EnableNewPartyFrame); end
 
 	-- ── PartyFramesImproved ──
-	local wantImproved = (style == STYLE_IMPROVED);
-	if K.Modules and K.Modules["PartyFramesImproved"] then
-		if K.IsModuleEnabled("PartyFramesImproved") ~= wantImproved then
-			K.SetModuleEnabled("PartyFramesImproved", wantImproved);
+	if hasImproved then
+		if wantImproved and not K.IsModuleEnabled("PartyFramesImproved") then
+			K.SetModuleEnabled("PartyFramesImproved", true);
 		end
 		if K.RefreshModuleCheckbox then K.RefreshModuleCheckbox("PartyFramesImproved"); end
 	end
 
 	-- ── PW ──
-	-- Va DESPUES de los otros dos: si se apagan despues de aplicarlo,
-	-- su restauracion le pisa la textura.
-	local wantPW = (style == STYLE_PW) or (style == STYLE_PW2);
-	if wantPW then
-		if K.EnablePartyFramePW then pcall(K.EnablePartyFramePW); end
-	else
-		if K.DisablePartyFramePW then pcall(K.DisablePartyFramePW); end
-	end
+	if wantPW and K.EnablePartyFramePW then pcall(K.EnablePartyFramePW); end
 
 	-- (el estilo ya quedo guardado al principio de la funcion)
 

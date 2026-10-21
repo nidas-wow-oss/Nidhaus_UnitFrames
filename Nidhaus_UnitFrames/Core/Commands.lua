@@ -95,21 +95,31 @@ SlashCmdList["NUF"] = function(msg)
 		if K.ToggleOptionsPanel then K.ToggleOptionsPanel(); end
 	elseif string_lower(msg) == "boss" then
 		ShowBossFrames();
-	elseif string_lower(msg) == "arena" then
-		if K.ToggleArenaFramesMover then K.ToggleArenaFramesMover(); end
-	-- /nuf arena 2 | 3 | 5  -> modo test con esa cantidad de marcos.
-	-- /nuf arena clear      -> esconderlos. Misma idea que sArena.
-	elseif string_lower(msg) == "arena 2" or string_lower(msg) == "arena2" then
-		if K.SetArenaTestCount then K.SetArenaTestCount(2); end
-	elseif string_lower(msg) == "arena 3" or string_lower(msg) == "arena3" then
-		if K.SetArenaTestCount then K.SetArenaTestCount(3); end
-	elseif string_lower(msg) == "arena 5" or string_lower(msg) == "arena5" then
-		if K.SetArenaTestCount then K.SetArenaTestCount(5); end
-	elseif string_lower(msg) == "arena clear" then
-		if K.ClearArenaTestFrames then K.ClearArenaTestFrames(); end
+	elseif string_lower(msg):find("^arena") then
+		-- El mover y el modo prueba viven en el addon de arena (se carga a
+		-- pedido): sin esto, fuera de una arena estos comandos no hacian nada.
+		if K.LoadArenaModules then K.LoadArenaModules(); end
+		if string_lower(msg) == "arena" and K.ToggleArenaFramesMover then
+			K.ToggleArenaFramesMover();
+		end
+		-- /nuf arena 2 | 3 | 5  -> modo test con esa cantidad de marcos.
+		-- /nuf arena clear      -> esconderlos. Misma idea que sArena.
+		local sub = string_lower(msg);
+		if sub == "arena 2" or sub == "arena2" then
+			if K.SetArenaTestCount then K.SetArenaTestCount(2); end
+		elseif sub == "arena 3" or sub == "arena3" then
+			if K.SetArenaTestCount then K.SetArenaTestCount(3); end
+		elseif sub == "arena 5" or sub == "arena5" then
+			if K.SetArenaTestCount then K.SetArenaTestCount(5); end
+		elseif sub == "arena clear" then
+			if K.ClearArenaTestFrames then K.ClearArenaTestFrames(); end
+		end
 	elseif string_lower(msg) == "modules" then
 		if K.ListModules then K.ListModules(); end
 	elseif string_lower(msg) == "reset" then
+		-- El cartel de confirmacion lo define el panel (se carga a pedido):
+		-- sin cargarlo antes, StaticPopup_Show no encontraba nada y callaba.
+		if K.LoadConfigPanel then K.LoadConfigPanel(); end
 		StaticPopup_Show("NIDHAUS_RESET_CONFIRM");
 	end
 end

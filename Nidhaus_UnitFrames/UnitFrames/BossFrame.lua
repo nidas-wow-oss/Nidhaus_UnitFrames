@@ -69,6 +69,15 @@ local function Nidhaus_UnitFrames_Style_BossFrame(self)
 	self.threatIndicator:SetHeight(93);
 	self.threatIndicator:SetPoint(K.SetOffset(self.threatIndicator, 0, 0));
 
+	-- K.SetOffset SUMA al punto actual. Desde que el tema se reaplica
+	-- (K.RestyleBossFrames) cada pasada corria el nivel 51 px mas y el
+	-- nombre 1 px: se parte siempre de los anclajes de fabrica.
+	local id = self:GetName() or tostring(self);
+	K.CaptureAnchors(self.name, id .. "Name");
+	K.CaptureAnchors(self.levelText, id .. "Level");
+	K.RestoreAnchors(self.name, id .. "Name");
+	K.RestoreAnchors(self.levelText, id .. "Level");
+
 	self.nameBackground:Hide();
 	self.name:SetPoint(K.SetOffset(self.name, 0, 1));
 	self.name:SetFont("Fonts\\FRIZQT__.TTF", 12);
@@ -82,6 +91,12 @@ local function Nidhaus_UnitFrames_Style_BossFrame(self)
 	
 	self.portrait = _G[self:GetName().."Portrait"];
 
+	-- SetScale en un marco protegido no se puede en combate (el cambio de
+	-- tema puede llegar con el jefe pegando): la escala queda para despues.
+	if InCombatLockdown() then
+		K.AfterCombat("BossFrameScale", function() K.ApplyBossFrameScale(C.BossFrameScale); end);
+		return;
+	end
 	local scale = C.BossFrameScale or 0.65;
 	if type(scale) == "number" and scale > 0 and scale <= 3 then
 		self:SetScale(scale);

@@ -633,6 +633,7 @@ local function CaptureOriginals()
 				pts[i] = { point = p, rel = rel, relPoint = rp, x = x, y = y };
 			end
 			originals[entry.key] = {
+				frame  = f,
 				points = pts,
 				scale  = f:GetScale() or 1,
 			};
@@ -646,6 +647,21 @@ local function RestoreOriginal(entry)
 	local f = ResolveFrame(entry);
 	if not f or not orig then return; end
 	if entry.protected and InCombatLockdown() then return; end
+
+	-- EL ORIGINAL ES DE OTRO MARCO. Se captura una vez, en el modo de
+	-- barras con el que entraste: con MiniBar la barra 1 es su contenedor;
+	-- sin MiniBar, MainMenuBar. Resetear en el otro modo le ponia a un
+	-- marco el punto y la escala del otro (la barra quedaba ~260 px corrida
+	-- hasta el /reload). En ese caso vale la foto de fabrica de las barras,
+	-- y si el marco no esta en ella, lo acomoda el rearmado que sigue.
+	if orig.frame and orig.frame ~= f then
+		if K.RestoreBarBaselineFrame and f.GetName and f:GetName() then
+			f._nufApplying = true;
+			pcall(K.RestoreBarBaselineFrame, f:GetName());
+			f._nufApplying = nil;
+		end
+		return;
+	end
 
 	f._nufApplying = true;
 	pcall(f.SetScale, f, orig.scale or 1);
@@ -975,8 +991,11 @@ local function SavePartyMemberPosition(entry, frame)
 	local relName = "UIParent";
 	if relativeTo and relativeTo.GetName then relName = relativeTo:GetName() or "UIParent"; end
 
+	-- Con la escala: el 3v3 y el modo normal comparten esta posicion y cada
+	-- uno la repone a su escala (K.SavedPointOffsets convierte).
 	NidhausUnitFramesDB.positions["PartyMemberFrame" .. entry.partyIndex] = {
 		point = point, relativeTo = relName, relativePoint = relativePoint, x = x, y = y,
+		scale = frame:GetScale(),
 	};
 
 	if not C.PartyIndividualMove then
@@ -1386,7 +1405,9 @@ local MAINBAR_RANGE = { 0.65, 1.14 };
 -- borran las escalas propias que cada barra tenga de Ctrl + rueda (en el
 -- modo de barras actual). Si no, la que tuviera la suya no lo seguia.
 function K.ClearBarOwnScales()
-	for _, k in ipairs({ "MainBar", "ActionBar2", "ActionBar3" }) do
+	-- La barra de auras / posturas tambien: "Action Bar Scale" la escala
+	-- junto con las de accion (K.ApplyStanceHolderScale).
+	for _, k in ipairs({ "MainBar", "ActionBar2", "ActionBar3", "StanceBar" }) do
 		ClearSavedScale(k);
 	end
 end
@@ -1573,6 +1594,25 @@ local function CenteredScaleAndSave(entry, frame, newScale)
 	end
 end
 
+-- Guardar donde quedo un movible, sin tocar su escala. Lo usan las barras
+-- al crecer hacia los costados con "Action Bar Scale" (ActionBars/MiniBar):
+-- el punto cambia y, si no se guardara, al /reload volveria el de antes.
+function K.SaveMovablePosition(key)
+	local entry = BY_KEY[key];
+	if not entry then return false; end
+	local f = ResolveFrame(entry);
+	if not f then return false; end
+	if OwnsItsPosition and OwnsItsPosition(entry.key) then
+		return SaveToOwner(entry, f);
+	end
+	SavePosition(entry, f);
+	if not unlocked and f.NUFPoint then
+		local saved = DB()[EntryKey(entry)];
+		if saved and saved.point then LockFramePoint(f, entry, saved); end
+	end
+	return true;
+end
+
 local function HasSavedPoint(entry)
 	local saved = DB()[EntryKey(entry)];
 	return type(saved) == "table" and saved.point ~= nil;
@@ -1659,6 +1699,14 @@ local function SetOwnedScaleFromControl(entry, frame, owner, newScale)
 	if frame then
 		local owned = OwnsItsPosition and OwnsItsPosition(entry.key);
 		local keep  = (owned and unlocked) or ((not owned) and HasSavedPoint(entry));
+		-- El dueño que sabe decir si la posicion es suya o la de fabrica
+		-- (buffs y debuffs) decide: con la propia se mantiene el punto,
+		-- abierto o cerrado el modo mover; con la de fabrica la acomoda el.
+		local isCustom = type(K.FramePositionIsCustom) == "table" and K.FramePositionIsCustom[entry.key];
+		if owned and type(isCustom) == "function" then
+			local ok, v = pcall(isCustom);
+			keep = (ok and v) and true or false;
+		end
 		if keep then
 			local p, rel, rp, x, y = frame:GetPoint();
 			if p then
@@ -2779,6 +2827,11 @@ end
 			-- quedo este, y reancla los cuatro.
 			pcall(PartyTargets_AnchorFromFrame, self.target);
 		end
+		-- Mover el minimapa puede dejarlo encima de los buffs, o sacarlo
+		-- de ahi: que los buffs lo esquiven (o vuelvan a su lugar).
+		if self.entry.key == "Minimap" and K.RefreshAuraAnchorDefault then
+			pcall(K.RefreshAuraAnchorDefault);
+		end
 		self:AnchorOverlay();
 	end);
 
@@ -3425,6 +3478,14 @@ local function DropLegacyFocusPos()
 end
 
 function K.ResetGlobalPositions(only)
+	-- Repone escalas y puntos de marcos protegidos (barras, contenedores):
+	-- en combate se cortaba a la mitad con "Interface action failed". /move
+	-- reset y los botones del panel andan en combate, asi que va al final.
+	if K.AfterCombat and K.AfterCombat("ResetGlobalPositions", function() K.ResetGlobalPositions(only); end) then
+		print("|cff4FC3F7NUF:|r " .. (L["RESET_AFTER_COMBAT"]
+			or "You're in combat: the reset will apply when combat ends."));
+		return;
+	end
 	CaptureOriginals();
 
 	-- "only" SE PASA CON CLAVES SIMPLES ("MainBar"), no con las del modo.
@@ -3560,6 +3621,8 @@ function K.ResetGlobalPositions(only)
 	local settle = CreateFrame("Frame");
 	settle:SetScript("OnUpdate", function(self)
 		self:SetScript("OnUpdate", nil);
+		-- El minimapa pudo volver a su lugar: los buffs, a esquivarlo o no.
+		if K.RefreshAuraAnchorDefault then pcall(K.RefreshAuraAnchorDefault); end
 		if Wanted("Buffs") or Wanted("Debuffs") then
 			if K.ResetAuraAnchor then pcall(K.ResetAuraAnchor); end
 		end

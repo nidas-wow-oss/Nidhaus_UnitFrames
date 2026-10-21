@@ -39,9 +39,9 @@ local function LoadPanel()
 	-- se lea en el idioma del cliente.
 	local why = reason and (_G["ADDON_" .. reason] or reason) or "?";
 	print("|cffFF5555NUF:|r " .. (L["PANEL_LOAD_FAIL"]
-		or "No se pudo cargar el panel de opciones") .. " (" .. tostring(why) .. ").");
+		or "Could not load the options panel") .. " (" .. tostring(why) .. ").");
 	print("|cffFF5555NUF:|r " .. (L["PANEL_LOAD_HINT"]
-		or "Revisa que la carpeta Nidhaus_UnitFrames_Config este junto a la del addon y activada en la lista."));
+		or "Check that the Nidhaus_UnitFrames_Config folder sits next to the addon folder and is enabled in the addon list."));
 	return false;
 end
 

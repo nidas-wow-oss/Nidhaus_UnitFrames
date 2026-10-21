@@ -896,10 +896,11 @@ function K.SetArenaDRCategoryPreset(which)
 	SaveHidden(set);
 end
 
--- Vuelve la fila a su lugar automatico (encima de la cast bar), en todos
--- los estilos.
+-- Vuelve la fila a su lugar automatico (encima de la cast bar) en el modo
+-- puesto: cada estilo (y cada lado del espejo) guarda su lugar.
 function K.ResetArenaDRPosition()
-	if NidhausUnitFramesDB then NidhausUnitFramesDB.ArenaDRPositions = nil; end
+	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaDRPositions;
+	if type(db) == "table" then db[PosKey()] = nil; end
 	RefreshAll();
 end
 

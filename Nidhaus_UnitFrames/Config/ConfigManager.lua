@@ -133,8 +133,15 @@ local defaults = {
 	BigTextManaSize = 10,             -- Big text: tamaño del texto de mana (8-16)
 	PartyHideHealthManaText = false,  -- esconde los numeros solo en el party
 	PetHideHealthManaText = false,    -- esconde los numeros de tu mascota (Frames > Pet)
-	PartyFontSize = 0,                -- 0 = tamaño original de cada estilo
-	PartyFontOutline = "OUTLINE", -- contorno del texto de los del grupo
+	PartyFontSize = 0,                -- (viejo: un solo tamaño para todo; ver PartyTextV2)
+	PartyFontOutline = "OUTLINE", -- contorno del NOMBRE de los del grupo
+	-- TEXTO DEL GRUPO: nombre y numeros por separado, y un tamaño POR
+	-- ESTILO (Improved tiene el marco grande, Compact 2 el angosto). 0 = el
+	-- tamaño que pone el estilo. "Style" = el contorno que pone el estilo.
+	PartyNumOutline = "Style",
+	PartyNameSize_New = 0, PartyNameSize_Improved = 0, PartyNameSize_PW = 0, PartyNameSize_PW2 = 0,
+	PartyNumSize_New  = 0, PartyNumSize_Improved  = 0, PartyNumSize_PW  = 0, PartyNumSize_PW2  = 0,
+	PartyTextV2 = false,          -- ya se paso el tamaño unico viejo a los cuatro estilos
 
 	-- NOTA: las opciones monocromas se sacaron. Si quedaron guardadas de
 	-- antes, la tabla DEAD de LoadConfig las devuelve a un valor valido.
@@ -257,9 +264,18 @@ local defaults = {
 
 	-- ACTION BARS
 	UnifyActionBars = false,
-	-- Separacion entre botones de las barras, en pixeles. Solo se aplica
-	-- con Unify o MiniBar puestos (Modules/ActionBars.lua).
-	ActionBarButtonSpace = 6,
+	-- Separacion entre botones de las barras (y de la barra de auras /
+	-- posturas), en pixeles. Solo se aplica con Unify o MiniBar puestos
+	-- (Modules/ActionBars.lua). De fabrica 7: con 6 los iconos de aura
+	-- quedaban demasiado juntos.
+	ActionBarButtonSpace = 7,
+	-- Ya se paso el 6 viejo de fabrica al 7 nuevo (una sola vez).
+	ActionBarSpace7 = false,
+
+	-- Tamaño de la ventana de opciones. Sin estas dos claves SaveConfig las
+	-- rechazaba y el panel volvia a 820x620 en cada /reload.
+	PanelWidth  = 820,
+	PanelHeight = 620,
 	MiniBarEnabled = false,
 	-- Ocultar el arte de fondo de las barras en modo MiniBar
 	MiniBarHideBackground = false,
@@ -469,6 +485,39 @@ local function LoadConfigFromDB()
 		end
 	end
 
+	-- TEXTO DEL GRUPO: EL TAMAÑO UNICO VIEJO PASA A LOS CUATRO ESTILOS.
+	--
+	-- Antes habia un solo "Text size" para los numeros de vida/mana, el
+	-- mismo para todos los estilos. Ahora cada estilo tiene el suyo. Para
+	-- no perder lo que tenias, ese numero se copia una vez a los cuatro.
+	if C.PartyTextV2 ~= true then
+		local old = tonumber(C.PartyFontSize) or 0;
+		if old > 0 then
+			for _, s in ipairs({ "New", "Improved", "PW", "PW2" }) do
+				C["PartyNumSize_" .. s] = old;
+				NidhausUnitFramesDB["PartyNumSize_" .. s] = old;
+			end
+		end
+		C.PartyTextV2 = true;
+		NidhausUnitFramesDB.PartyTextV2 = true;
+	end
+
+	-- LA SEPARACION DE FABRICA PASO DE 6 A 7.
+	--
+	-- Esta DB guarda TODOS los valores, tambien los de fabrica, asi que
+	-- cambiar el default solo le llegaria a una instalacion nueva: quien ya
+	-- tenia el addon seguiria con el 6 guardado. Una sola vez, el 6 (que
+	-- era el de fabrica) pasa a 7. Si habias puesto otro numero, no se toca,
+	-- y si despues volves a 6 a mano, se respeta.
+	if C.ActionBarSpace7 ~= true then
+		if tonumber(C.ActionBarButtonSpace) == 6 then
+			C.ActionBarButtonSpace = 7;
+			NidhausUnitFramesDB.ActionBarButtonSpace = 7;
+		end
+		C.ActionBarSpace7 = true;
+		NidhausUnitFramesDB.ActionBarSpace7 = true;
+	end
+
 	configLoaded = true;
 	
 	-- DISPARAR EVENTO: Config lista
@@ -611,11 +660,21 @@ local function ResetConfig()
 
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 
-	-- Apartar lo que sobrevive
+	-- Apartar lo que sobrevive. Tambien las marcas internas ("_algo"): sin
+	-- "_emgReset_v36d" el reset de emergencia de Init.lua volvia a correr en
+	-- el reload y se llevaba puestos los perfiles que aca se cuidan.
 	local guardado = {};
 	for key in pairs(PRESERVE_ON_RESET) do
 		guardado[key] = NidhausUnitFramesDB[key];
 	end
+	for key, value in pairs(NidhausUnitFramesDB) do
+		if type(key) == "string" and string.sub(key, 1, 1) == "_" then
+			guardado[key] = value;
+		end
+	end
+	-- Lo que se guarda al salir (la posicion de arena) no tiene que pisar
+	-- el reset en el reload que viene.
+	K._nufPendingReload = true;
 
 	-- Vaciar de verdad
 	for key in pairs(NidhausUnitFramesDB) do
@@ -697,6 +756,35 @@ function K.FlushConfigChanges()
 	FireConfigEvent("CONFIG_CHANGED");
 end
 
+-- PARA LOS SLIDERS: GUARDA YA, AVISA DE A RATOS.
+--
+-- Cada tick de un slider hacia SaveConfig, o sea un CONFIG_CHANGED, y de
+-- ese evento cuelgan el 3v3, los colores de clase, la barra de casteo,
+-- los iconos... decenas de rearmados por segundo mientras arrastrabas.
+-- Aca el valor se guarda en el acto y el aviso sale como mucho cada
+-- 0,15 s, mas uno al final: la vista previa sigue en vivo, sin el costo.
+local throttleFrame = CreateFrame("Frame");
+throttleFrame:Hide();
+local throttleLeft = 0;
+throttleFrame:SetScript("OnUpdate", function(self, elapsed)
+	throttleLeft = throttleLeft - (elapsed or 0);
+	if throttleLeft > 0 then return; end
+	self:Hide();
+	FireConfigEvent("CONFIG_CHANGED");
+end);
+
+function K.SaveConfigThrottled(key, value)
+	local ok = K.SaveConfigSilent(key, value);
+	if ok then
+		if K.RefreshSettingCheckboxes then K.RefreshSettingCheckboxes(key); end
+		if not throttleFrame:IsShown() then
+			throttleLeft = 0.15;
+			throttleFrame:Show();
+		end
+	end
+	return ok;
+end
+
 -- =========================================================
 -- PROFILE SERIALIZER (Export / Import)
 -- =========================================================
@@ -728,6 +816,14 @@ local function SerializeValue(val)
 end
 
 -- Serialize the full config DB to a copyable string
+-- Lo de arena que se guarda por estilo (escalas, tamaños) y por modo
+-- (estilo + espejo: posiciones). Viaja con el perfil.
+local ARENA_LAYOUT_TABLES = {
+	"ArenaStyleValues", "ArenaModeAnchors",
+	"CastBarPositions", "TrinketPositions", "PetFramePositions",
+	"ArenaDRPositions", "ArenaDoTPositions", "ArenaToTPositions",
+};
+
 function K.ExportProfile()
 	if not configLoaded or not NidhausUnitFramesDB then
 		return nil, "Config not loaded";
@@ -758,6 +854,12 @@ function K.ExportProfile()
 	-- pasaba por encima: el marco con un tamano y el slider con otro.
 	if NidhausUnitFramesDB.globalPos then
 		exportData.globalPos = NidhausUnitFramesDB.globalPos;
+	end
+	-- Y lo de arena que se guarda por estilo / por modo.
+	for _, name in ipairs(ARENA_LAYOUT_TABLES) do
+		if type(NidhausUnitFramesDB[name]) == "table" then
+			exportData[name] = NidhausUnitFramesDB[name];
+		end
 	end
 
 	return "return " .. SerializeValue(exportData);
@@ -794,6 +896,10 @@ function K.ImportProfile(str)
 		return false, "Data doesn't look like a NUF profile (too few known keys)";
 	end
 
+	-- Despues de importar viene un ReloadUI: lo que se guarda al salir (la
+	-- posicion de arena) no tiene que pisar lo importado.
+	K._nufPendingReload = true;
+
 	-- Apply: overwrite settings
 	for key, defaultValue in pairs(defaults) do
 		if result[key] ~= nil then
@@ -816,6 +922,13 @@ function K.ImportProfile(str)
 	-- Overwrite ArenaMover if present
 	if result.ArenaMover and type(result.ArenaMover) == "table" then
 		NidhausUnitFramesDB.ArenaMover = result.ArenaMover;
+	end
+
+	-- Arena por estilo / por modo: lo del perfil, si lo trae.
+	for _, name in ipairs(ARENA_LAYOUT_TABLES) do
+		if type(result[name]) == "table" then
+			NidhausUnitFramesDB[name] = result[name];
+		end
 	end
 
 	-- Modo mover: el del perfil. Si la cadena es vieja y no lo trae, al

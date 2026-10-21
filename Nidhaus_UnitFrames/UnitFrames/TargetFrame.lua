@@ -263,13 +263,14 @@ local function Nidhaus_UnitFrames_TargetFrame_CheckClassification(self, forceNor
 	local part = (self == FocusFrame) and "Focus" or "Target";
 	if AsuriOn() then
 		self.borderTexture:SetTexture(ASURI.."AsuriFrame");
-		-- Asuri tambien toma Lorti; sin Lorti, su gris de siempre.
+		-- Sin filtro de color: sus colores, como los otros estilos (antes
+		-- un gris 0.25 encima). Con Lorti prendido toma ese color.
 		local lr, lg, lb;
 		if K.LortiTint then lr, lg, lb = K.LortiTint("LortiUI_PlayerTargetFocus", part); end
 		if lr then
 			self.borderTexture:SetVertexColor(lr, lg, lb);
 		else
-			self.borderTexture:SetVertexColor(0.25, 0.25, 0.25);
+			self.borderTexture:SetVertexColor(1, 1, 1);
 		end
 		return;
 	end
@@ -395,17 +396,25 @@ local function InitializeTargetFrame()
 	isInitialized = true;
 end
 
+-- Target y Focus son protegidos: en combate (cualquier opcion tocada
+-- dispara CONFIG_CHANGED) el SetScale quedaba bloqueado. Se aplica al salir.
 function K.ApplyTargetFrameScale(scale)
 	if not isInitialized then return; end
 	if type(scale) ~= "number" or scale <= 0 or scale > 3 then return; end
-	
+	if K.AfterCombat("TargetFrameScale", function() K.ApplyTargetFrameScale(C.TargetFrameScale); end) then
+		return;
+	end
+
 	TargetFrame:SetScale(scale);
 end
 
 function K.ApplyFocusFrameScale(scale)
 	if not isInitialized then return; end
 	if type(scale) ~= "number" or scale <= 0 or scale > 3 then return; end
-	
+	if K.AfterCombat("FocusFrameScale", function() K.ApplyFocusFrameScale(C.FocusScale); end) then
+		return;
+	end
+
 	FocusFrame:SetScale(scale);
 end
 

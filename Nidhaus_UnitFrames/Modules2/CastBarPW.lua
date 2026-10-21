@@ -460,7 +460,9 @@ local function ReapplyPlayerPosition()
 	end
 end
 
-function K.ApplyCastBarPWScale(value)
+-- targetOnly: la del jugador ya quedo puesta (Ctrl + rueda, un reset) y
+-- solo falta que la del objetivo la acompañe.
+function K.ApplyCastBarPWScale(value, targetOnly)
 	if type(value) ~= "number" then value = C.CastBarPWScale; end
 	if type(value) ~= "number" then return; end
 
@@ -468,7 +470,9 @@ function K.ApplyCastBarPWScale(value)
 	-- juego, pero mezclar las dos formas hace que un cambio en un lado
 	-- no se note en el otro.
 	local player = _G["CastingBarFrame"];
-	if K.SetGlobalFrameScale then
+	if targetOnly then
+		-- nada: la del jugador no se toca
+	elseif K.SetGlobalFrameScale then
 		K.SetGlobalFrameScale("CastBar", value);
 	elseif player then
 		pcall(player.SetScale, player, value);

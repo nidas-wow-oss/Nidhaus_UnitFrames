@@ -222,6 +222,9 @@ function K.SetComboWatchPreview(state)
 	else
 		animFrame:SetAlpha(0);
 		lastValue = 0;
+		-- Con el modulo apagado, Update no hace nada: el "5" de prueba
+		-- quedaba en pantalla comiendose los clicks.
+		if not enabled then frame:Hide(); end
 		Update();
 	end
 end

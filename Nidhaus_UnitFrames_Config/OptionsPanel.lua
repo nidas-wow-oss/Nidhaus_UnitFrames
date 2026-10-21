@@ -156,9 +156,10 @@ local function CreateMainFrame()
 		mainFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
 		mainFrame:SetWidth(820);
 		mainFrame:SetHeight(620);
-		if K.SaveConfig then
-			K.SaveConfig("PanelWidth",  820);
-			K.SaveConfig("PanelHeight", 620);
+		-- Sin CONFIG_CHANGED: el tamaño del panel no le importa a nadie mas.
+		if K.SaveConfigSilent then
+			K.SaveConfigSilent("PanelWidth",  820);
+			K.SaveConfigSilent("PanelHeight", 620);
 		end
 	end
 
@@ -197,9 +198,9 @@ local function CreateMainFrame()
 		mainFrame:SetClampedToScreen(true);
 		ClampPanelSize();
 		EnsureOnScreen();
-		if K.SaveConfig then
-			K.SaveConfig("PanelWidth",  math.floor(mainFrame:GetWidth()  + 0.5));
-			K.SaveConfig("PanelHeight", math.floor(mainFrame:GetHeight() + 0.5));
+		if K.SaveConfigSilent then
+			K.SaveConfigSilent("PanelWidth",  math.floor(mainFrame:GetWidth()  + 0.5));
+			K.SaveConfigSilent("PanelHeight", math.floor(mainFrame:GetHeight() + 0.5));
 		end
 	end
 
@@ -752,7 +753,11 @@ local function CreateCheckBox(parent, labelText, setting, xOffset, yOffset)
 		elseif setting == "ArenaFrame_Trinkets" then
 			if K.ToggleArenaTrinketsTracking then K.ToggleArenaTrinketsTracking(boolValue); end
 		elseif setting == "ArenaMirrorMode" then
+			-- Cada lado del espejo tiene su lugar (ver ArenaModes.lua): se
+			-- voltea y despues el marco y cada pieza van a su sitio.
+			if K.SwapArenaModeData then K.SwapArenaModeData(); end
 			if K.ToggleMirrorMode then K.ToggleMirrorMode(boolValue); end
+			if K.SyncArenaMode then K.SyncArenaMode(); end
 		elseif setting == "ArenaCustomTexture" then
 			if K.ToggleArenaCustomTexture then K.ToggleArenaCustomTexture(boolValue); end
 		elseif setting == "SetPositions" then
@@ -860,7 +865,10 @@ local function CreateSlider(parent, labelText, setting, minVal, maxVal, step, xO
 		-- Puesta al dia desde afuera (Ctrl + rueda, un reset): el numero ya
 		-- esta guardado y aplicado, solo hay que mostrarlo.
 		if self._nufRefreshing then return; end
-		K.SaveConfig(setting, value);
+		-- Un tick = guardar; el CONFIG_CHANGED sale de a ratos (ver
+		-- K.SaveConfigThrottled), no uno por tick.
+		if K.SaveConfigThrottled then K.SaveConfigThrottled(setting, value);
+		else K.SaveConfig(setting, value); end
 		if setting == "ActionBarScale" then
 			-- EL MAESTRO DE LAS TRES BARRAS: lo que cada una tuviera de
 			-- Ctrl + rueda se borra, si no esa no seguia al slider.
@@ -1180,6 +1188,13 @@ local function PopulateTabs()
 		or (C.pwFrames and "Compact")
 		or (C.darkFrames and "Dark")
 		or "Light";
+	-- En la caja, el nombre traducido de la opcion y no la clave interna.
+	local function ThemeText(value)
+		for _, opt in ipairs(themeOptions) do
+			if opt.value == value then return opt.text; end
+		end
+		return tostring(value);
+	end
 
 	dropdownCount = dropdownCount + 1;
 	local themeDD = CreateFrame("Frame", "NidhausUFDropdown"..dropdownCount, paneGen, "UIDropDownMenuTemplate");
@@ -1193,7 +1208,7 @@ local function PopulateTabs()
 			info.value = opt.value;
 			info.func  = function(btn)
 				UIDropDownMenu_SetSelectedValue(themeDD, btn.value);
-				UIDropDownMenu_SetText(themeDD, btn.value);
+				UIDropDownMenu_SetText(themeDD, ThemeText(btn.value));
 				currentTheme = btn.value;
 
 				-- Se guardan los TRES, siempre. Poner solo el elegido dejaba
@@ -1219,7 +1234,7 @@ local function PopulateTabs()
 		end
 	end);
 	UIDropDownMenu_SetSelectedValue(themeDD, currentTheme);
-	UIDropDownMenu_SetText(themeDD, currentTheme);
+	UIDropDownMenu_SetText(themeDD, ThemeText(currentTheme));
 
 	local function UpdateThemeVisibility()
 		local on = C.UnitFrameCustomTexture and true or false;
@@ -2213,6 +2228,14 @@ local function PopulateTabs()
 	local castScaleSlider = CreateSlider(paneCast, L["SLIDER_CASTBAR_PW_SCALE"] or "Cast Bar Scale",
 		"CastBarPWScale", 0.5, 2.0, 0.05, xL + 20, kY);
 	castScaleSlider:HookScript("OnValueChanged", function(self, value)
+		-- Puesta al dia desde afuera (Ctrl + rueda, un reset): el numero ya
+		-- esta guardado y la barra del jugador escalada. Solo la del
+		-- objetivo tiene que acompañar; volver a guardar repetia el
+		-- CONFIG_CHANGED y, en el reset, reescribia la escala recien borrada.
+		if self._nufRefreshing then
+			if K.ApplyCastBarPWScale then K.ApplyCastBarPWScale(value, true); end
+			return;
+		end
 		-- Ojo: NO llamamos a SetScale desde aca. La escala de la barra del
 		-- jugador la guarda Move Everything, y si la escribieramos por
 		-- afuera el proximo login volveria al valor viejo y pareceria que
@@ -2229,7 +2252,9 @@ local function PopulateTabs()
 		local v = C.CastBarPWScale;
 		if type(v) ~= "number" then return; end
 		if castScaleSlider:GetValue() ~= v then
+			castScaleSlider._nufRefreshing = true;
 			castScaleSlider:SetValue(v);
+			castScaleSlider._nufRefreshing = nil;
 		end
 	end
 
@@ -2992,7 +3017,7 @@ local function InitializePanel()
 		built = true;
 		local ok, err = pcall(PopulateTabs);
 		if not ok then
-			print("|cffFF0000NUF:|r error armando el panel: " .. tostring(err));
+			print("|cffFF0000NUF:|r error building the options panel: " .. tostring(err));
 		end
 		-- Todos los sliders del addon reciben la cajita con el valor debajo.
 		-- Se hace en UNA pasada al final en vez de slider por slider: son 17
@@ -3063,7 +3088,7 @@ SlashCmdList["NUFCONFIG"] = function(msg)
 		if K.ResetOptionsPanelSize then
 			K.ResetOptionsPanelSize();
 			print("|cff4FC3F7NUF:|r " .. (L["PANEL_SIZE_RESET"]
-				or "Ventana de opciones restaurada a 820x620 y centrada."));
+				or "Options window restored to 820x620 and centered."));
 			if mainFrame and not mainFrame:IsShown() then mainFrame:Show(); end
 		end
 	else

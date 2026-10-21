@@ -92,10 +92,10 @@ function K.SetOffset(Obj, x, y)
 end;
 
 -- ═══════════════════════════════════════════════════════════
--- GetArenaPositionKey — composite key per style + mirror mode
--- Used by CastBarPositions and TrinketPositions to save/load
--- positions independently per arena style (Blizzard/Custom/Flat)
--- and per mirror mode (normal/mirror).
+-- GetArenaPositionKey — el "modo" de arena: estilo + espejo.
+-- Cada modo guarda sus posiciones: marcos, barra de casteo, trinket,
+-- mascota y las filas de DR y DoT. Escalas y tamaños van por estilo.
+-- Ver Nidhaus_UnitFrames_Arena/Modules/ArenaModes.lua.
 -- ═══════════════════════════════════════════════════════════
 function K.GetArenaPositionKey()
 	local style = C.ArenaFrameStyle or "Custom";

@@ -154,9 +154,10 @@ local FORCE_OFF_ONCE = {
 
 -- Lo mismo pero para opciones sueltas (no son modulos, viven en la DB
 -- directamente). Misma logica: el default nuevo no pisa lo ya guardado.
+-- (PartyShowPetFrames salio de la lista: ahora las mascotas se ven de
+-- fabrica, y forzarlo en false las ocultaba en cada instalacion nueva.)
 local FORCE_OFF_SETTINGS_ONCE = {
 	"PartyTargetsEnabled",
-	"PartyShowPetFrames",
 	"HealthPercentage",
 };
 
