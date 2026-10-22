@@ -1557,19 +1557,22 @@ end
 --  sobre las barras de Blizzard, que vienen con los botones pegados a
 --  mano en su XML, asi que se los vuelve a anclar uno por uno.
 --
---  Las barras verticales (MultiBarRight / MultiBarLeft) crecen hacia
---  ABAJO, de ahi que usen TOP/BOTTOM en vez de LEFT/RIGHT.
+--  LAS LATERALES (MultiBarRight / MultiBarLeft) NO SE TOCAN.
+--
+--  Antes tambien se reanclaban con este valor. Mientras el de fabrica era
+--  6 no se notaba (Blizzard las arma con 6), pero con el 7 nuevo, al
+--  prender MiniBar o Unify cada boton de las laterales se separaba un
+--  pixel del de arriba y al apagarlo volvian: un salto en barras que no
+--  tienen nada que ver con la fila de abajo. Quedan como las arma el juego.
 --
 --  OJO CON EL COMBATE: los botones de accion son frames protegidos.
 --  Reubicarlos en combate lo bloquea el juego, asi que si estamos
 --  peleando se sale y se vuelve a intentar al terminar.
 -- ──────────────────────────────────────────────────────────────
 local SPACED_BARS = {
-    { prefix = "ActionButton",              count = 12, vertical = false },
-    { prefix = "MultiBarBottomLeftButton",  count = 12, vertical = false },
-    { prefix = "MultiBarBottomRightButton", count = 12, vertical = false },
-    { prefix = "MultiBarRightButton",       count = 12, vertical = true  },
-    { prefix = "MultiBarLeftButton",        count = 12, vertical = true  },
+    { prefix = "ActionButton",              count = 12 },
+    { prefix = "MultiBarBottomLeftButton",  count = 12 },
+    { prefix = "MultiBarBottomRightButton", count = 12 },
 };
 
 local spaceWaiter;
@@ -1601,11 +1604,7 @@ function K.ApplyActionBarButtonSpace()
             if btn and prev then
                 CaptureButton(btn, bar.prefix .. i);
                 btn:ClearAllPoints();
-                if bar.vertical then
-                    btn:SetPoint("TOP", prev, "BOTTOM", 0, -space);
-                else
-                    btn:SetPoint("LEFT", prev, "RIGHT", space, 0);
-                end
+                btn:SetPoint("LEFT", prev, "RIGHT", space, 0);
             end
         end
     end
