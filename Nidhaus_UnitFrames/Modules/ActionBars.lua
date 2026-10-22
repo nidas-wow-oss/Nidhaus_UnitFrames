@@ -285,6 +285,10 @@ local function CaptureOriginals()
         "PossessBackground1","PossessBackground2",
         "BonusActionBarTexture0","BonusActionBarTexture1",
         "MainMenuBarPageNumber","MainMenuBarPerformanceBarFrame",
+        -- El arte de la barra de auras: Blizzard lo muestra cuando cree que
+        -- no tenes la barra inferior izquierda, y quedaba como un borde gris
+        -- alrededor de las auras. MiniBar ya lo escondia; Unify no.
+        "ShapeshiftBarLeft","ShapeshiftBarMiddle","ShapeshiftBarRight",
     };
     for _, name in ipairs(texNames) do
         SaveTexture(_G[name]);
@@ -1182,6 +1186,9 @@ end
 --  Esta caja mide solo los botones que se ven, igual que la de las
 --  barras de accion.
 -- ──────────────────────────────────────────────────────────────
+-- Separacion entre las auras / posturas en los dos modos de barras.
+local STANCE_SPACING = 7;
+
 -- Cuanto esta corrido ShapeshiftButton1 DENTRO de ShapeshiftBarFrame.
 --
 -- Importa porque el Holder reemplaza a ese frame: si lo anclaramos en el
@@ -1189,25 +1196,6 @@ end
 -- quedaria desplazada respecto de donde la deja el modo unificado, justo
 -- por ese margen interno. Sale de la foto que se toma antes de tocar
 -- nada, asi que es el valor real, no uno estimado.
--- Separacion ORIGINAL entre dos botones de posturas.
---
--- El arte del marco de Blizzard trae las casillas dibujadas a una
--- distancia fija. Si encadenamos los botones con el valor del slider
--- (que es para las barras de accion), cada uno se corre un poco mas que
--- el anterior: el primero coincide con su casilla y el ultimo termina
--- afuera. Es exactamente el desfase acumulado que se ve en pantalla.
---
--- Este valor sale de la foto de fabrica: la distancia real entre el
--- boton 2 y el 1 antes de que nadie los tocara.
-local function StanceButtonPitch()
-    local o2 = btnOrig["ShapeshiftButton2"];
-    if o2 and o2.points and o2.points[1] then
-        local x = o2.points[1][4];
-        if type(x) == "number" then return x; end
-    end
-    return 6;   -- respaldo, por si la foto no llego a tomarse
-end
-
 local function StanceButtonInset()
     local o = btnOrig["ShapeshiftButton1"];
     if not o or not o.points or not o.points[1] then return 0, 0; end
@@ -1383,11 +1371,12 @@ function K.AttachStanceButtons()
         StanceDefaultPoint(holder);
     end
 
-    -- LA SEPARACION DE LAS AURAS ES LA DEL SLIDER "Buttons space" (7 de
-    -- fabrica), la misma que las filas de accion. Las laterales no lo
-    -- siguen; esta barra si. Si el slider no existe todavia, 7.
-    local space = tonumber(C.ActionBarButtonSpace);
-    if not space then space = 7; end
+    -- LA SEPARACION DE LAS AURAS ES 7, SIEMPRE.
+    --
+    -- No sigue al slider "Buttons space": con el slider en 6 (o en lo que
+    -- uses para las filas de accion) las auras quedaban mas juntas. Es la
+    -- misma en Unify y en MiniBar.
+    local space = STANCE_SPACING;
     local shown, w, h = 0, 0, 0;
 
     for i = 1, 10 do
