@@ -1205,7 +1205,7 @@ local function StanceButtonPitch()
         local x = o2.points[1][4];
         if type(x) == "number" then return x; end
     end
-    return 6;   -- respaldo, por si la foto no llego a tomarse
+    return 8;   -- respaldo: la de Blizzard (BonusActionBarFrame.xml), por si la foto no llego a tomarse
 end
 
 local function StanceButtonInset()
@@ -1383,23 +1383,20 @@ function K.AttachStanceButtons()
         StanceDefaultPoint(holder);
     end
 
-    -- OJO: aca NO se usa el slider de separacion. Estos botones tienen
-    -- que caer sobre las casillas del arte de Blizzard, que estan a una
-    -- distancia fija. El slider vale para las barras de accion, que no
-    -- tienen ese arte detras.
-    -- LA SEPARACION LA ELEGIS VOS, CON EL SLIDER.
+    -- LA SEPARACION ES LA DE BLIZZARD, NO LA DEL SLIDER.
     --
-    -- Antes se usaba SIEMPRE la de fabrica de Blizzard, que se leia de la
-    -- foto. Se midio y esa separacion es 8, y el arte que supuestamente
-    -- habia que respetar (ShapeshiftBarFrame) mide 29 px: no envuelve
-    -- nada, asi que no habia tal referencia que cuidar.
-    --
-    -- Con el slider "Buttons space" mandando, la barra de posturas queda
-    -- igual de junta que las de accion en los tres modos, y podes
-    -- ajustarla sin tocar codigo. Si el slider no existe todavia, se cae a
-    -- la de fabrica, que es lo que habia.
-    local space = tonumber(C.ActionBarButtonSpace);
-    if not space then space = StanceButtonPitch(); end
+    -- ShapeshiftBarFrame va detras del Holder (mas abajo) y trae dibujadas
+    -- las casillas de la barra a una distancia fija. Con el slider "Buttons
+    -- space" (7) los botones quedaban mas juntos que esas casillas: el
+    -- primero calzaba y cada uno se corria un poco mas, y al prender o
+    -- apagar Unify / MiniBar la barra de auras cambiaba de separacion. Va
+    -- la de fabrica de Blizzard, la misma que tiene sin ningun modo puesto.
+    -- La foto de los botones primero: de ahi sale esa distancia.
+    for i = 1, 10 do
+        local btn = _G["ShapeshiftButton" .. i];
+        if btn then CaptureButton(btn, "ShapeshiftButton" .. i); end
+    end
+    local space = StanceButtonPitch();
     local shown, w, h = 0, 0, 0;
 
     for i = 1, 10 do
