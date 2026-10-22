@@ -285,10 +285,8 @@ local function CaptureOriginals()
         "PossessBackground1","PossessBackground2",
         "BonusActionBarTexture0","BonusActionBarTexture1",
         "MainMenuBarPageNumber","MainMenuBarPerformanceBarFrame",
-        -- El arte de la barra de auras: Blizzard lo muestra cuando cree que
-        -- no tenes la barra inferior izquierda, y quedaba como un borde gris
-        -- alrededor de las auras. MiniBar ya lo escondia; Unify no.
-        "ShapeshiftBarLeft","ShapeshiftBarMiddle","ShapeshiftBarRight",
+        -- OJO: el fondo de la barra de auras (ShapeshiftBarLeft / Middle /
+        -- Right) NO va en esta lista: en Unify se deja el de Blizzard.
     };
     for _, name in ipairs(texNames) do
         SaveTexture(_G[name]);
@@ -1375,7 +1373,8 @@ function K.AttachStanceButtons()
     --
     -- No sigue al slider "Buttons space": con el slider en 6 (o en lo que
     -- uses para las filas de accion) las auras quedaban mas juntas. Es la
-    -- misma en Unify y en MiniBar.
+    -- misma en Unify y en MiniBar. Con 7 cada boton cae en su casilla del
+    -- fondo de Blizzard (las casillas del medio miden 37 = 30 + 7).
     local space = STANCE_SPACING;
     local shown, w, h = 0, 0, 0;
 
