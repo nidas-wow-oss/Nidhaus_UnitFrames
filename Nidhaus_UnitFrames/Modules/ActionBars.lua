@@ -910,7 +910,7 @@ function K.AttachActionBarButtons()
     if K.GetStanceHolder then SetVehicleHide(K.GetStanceHolder(), true); end
     if C.MiniBarEnabled ~= true then return; end
 
-    local space = tonumber(C.ActionBarButtonSpace) or 7;
+    local space = tonumber(C.ActionBarButtonSpace) or 6;
 
     for row, set in ipairs(ROW_SETS) do
         local holder = K.EnsureBarHolder(row);
@@ -1597,7 +1597,7 @@ function K.ApplyActionBarButtonSpace()
     end
 
     local space = tonumber(C.ActionBarButtonSpace);
-    if not space then space = 7; end
+    if not space then space = 6; end
 
     for _, bar in ipairs(SPACED_BARS) do
         for i = 2, bar.count do

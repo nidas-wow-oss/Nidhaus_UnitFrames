@@ -264,13 +264,14 @@ local defaults = {
 
 	-- ACTION BARS
 	UnifyActionBars = false,
-	-- Separacion entre botones de las barras (y de la barra de auras /
-	-- posturas), en pixeles. Solo se aplica con Unify o MiniBar puestos
-	-- (Modules/ActionBars.lua). De fabrica 7: con 6 los iconos de aura
-	-- quedaban demasiado juntos.
-	ActionBarButtonSpace = 7,
-	-- Ya se paso el 6 viejo de fabrica al 7 nuevo (una sola vez).
-	ActionBarSpace7 = false,
+	-- Separacion entre botones de las barras de accion, en pixeles. Solo se
+	-- aplica con Unify o MiniBar puestos (Modules/ActionBars.lua). De
+	-- fabrica 6: los grifos y las flechas de pagina estan medidos para 6;
+	-- con 7 la fila crecia 11 px y el grifo derecho pisaba el ultimo boton.
+	-- La barra de auras no usa este numero: va siempre a 7.
+	ActionBarButtonSpace = 6,
+	-- Ya se devolvio a 6 el 7 que quedo de fabrica (una sola vez).
+	ActionBarSpace6 = false,
 
 	-- Tamaño de la ventana de opciones. Sin estas dos claves SaveConfig las
 	-- rechazaba y el panel volvia a 820x620 en cada /reload.
@@ -502,20 +503,22 @@ local function LoadConfigFromDB()
 		NidhausUnitFramesDB.PartyTextV2 = true;
 	end
 
-	-- LA SEPARACION DE FABRICA PASO DE 6 A 7.
+	-- LA SEPARACION DE FABRICA VUELVE A 6.
 	--
 	-- Esta DB guarda TODOS los valores, tambien los de fabrica, asi que
 	-- cambiar el default solo le llegaria a una instalacion nueva: quien ya
-	-- tenia el addon seguiria con el 6 guardado. Una sola vez, el 6 (que
-	-- era el de fabrica) pasa a 7. Si habias puesto otro numero, no se toca,
-	-- y si despues volves a 6 a mano, se respeta.
-	if C.ActionBarSpace7 ~= true then
-		if tonumber(C.ActionBarButtonSpace) == 6 then
-			C.ActionBarButtonSpace = 7;
-			NidhausUnitFramesDB.ActionBarButtonSpace = 7;
+	-- tenia el addon seguiria con el 7 que quedo guardado. Una sola vez, el
+	-- 7 (que era el de fabrica) pasa a 6. Si habias puesto otro numero, no
+	-- se toca, y si despues volves a 7 a mano, se respeta.
+	if C.ActionBarSpace6 ~= true then
+		if tonumber(C.ActionBarButtonSpace) == 7 then
+			C.ActionBarButtonSpace = 6;
+			NidhausUnitFramesDB.ActionBarButtonSpace = 6;
 		end
-		C.ActionBarSpace7 = true;
-		NidhausUnitFramesDB.ActionBarSpace7 = true;
+		C.ActionBarSpace6 = true;
+		NidhausUnitFramesDB.ActionBarSpace6 = true;
+		-- La marca del cambio anterior (6 -> 7) ya no sirve.
+		NidhausUnitFramesDB.ActionBarSpace7 = nil;
 	end
 
 	configLoaded = true;

@@ -757,7 +757,7 @@ end
 -- vale para los dos ejes.
 local function RowGap()
 	local v = tonumber(C.ActionBarButtonSpace);
-	if not v or v < 0 then v = 7; end
+	if not v or v < 0 then v = 6; end
 	return v;
 end
 
