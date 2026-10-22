@@ -1335,6 +1335,30 @@ holderInit:SetScript("OnEvent", function(self)
     end
 end);
 
+-- EL BORDE DE LAS AURAS, EL MISMO QUE EN LA INTERFAZ DE BLIZZARD.
+--
+-- UIParent_ManageFramePositions agranda el marco de cada boton de aura
+-- (UI-Quickslot2) a 64 cuando cree que la barra inferior izquierda no
+-- esta, y con Unify cae en ese caso: quedaba un borde grueso alrededor de
+-- cada aura. Va a 50, lo que pone Blizzard en su interfaz normal y lo que
+-- se ve en MiniBar. El fondo de las casillas no se toca.
+--
+-- Es una textura, no un frame protegido: se puede tambien en combate.
+local STANCE_BORDER_SIZE = 50;
+local function FixStanceBorder()
+    if not K._unifyActive then return; end
+    -- Con Lorti el borde es el suyo (lo pega al boton entero): no se toca.
+    if K.IsModuleEnabled and K.IsModuleEnabled("LortiUI") then return; end
+    for i = 1, 10 do
+        local tex = _G["ShapeshiftButton" .. i .. "NormalTexture"];
+        if tex then
+            tex:SetWidth(STANCE_BORDER_SIZE);
+            tex:SetHeight(STANCE_BORDER_SIZE);
+        end
+    end
+end
+K.FixStanceBorder = FixStanceBorder;
+
 function K.AttachStanceButtons()
     if InCombatLockdown() then return; end
 
@@ -1424,6 +1448,8 @@ function K.AttachStanceButtons()
         -- quedar en un nivel de dibujo distinto y tapar los iconos.
         holder:SetFrameLevel((ShapeshiftBarFrame:GetFrameLevel() or 0) + 5);
     end
+
+    FixStanceBorder();
 end
 
 local stanceBox;
@@ -1838,6 +1864,11 @@ function K.EnableUnifyActionBars()
     -- de zona, entrar/salir de vehículo, etc. y mueve MainMenuBar y barras de XP
     if UIParent_ManageFramePositions and not K._uabManageHooked then
         hooksecurefunc("UIParent_ManageFramePositions", function()
+            -- El borde de las auras va primero y sin mirar el combate:
+            -- Blizzard lo vuelve a 64 cada vez que pasa por aca.
+            if isEnabled and not (UnitInVehicle and UnitInVehicle("player")) then
+                FixStanceBorder();
+            end
             if isEnabled and not InCombatLockdown() then
                 -- FIX: Skip during vehicle — Blizzard manages all frame positions
                 if UnitInVehicle and UnitInVehicle("player") then return; end
