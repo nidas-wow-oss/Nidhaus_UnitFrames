@@ -1205,7 +1205,7 @@ local function StanceButtonPitch()
         local x = o2.points[1][4];
         if type(x) == "number" then return x; end
     end
-    return 8;   -- respaldo: la de Blizzard (BonusActionBarFrame.xml), por si la foto no llego a tomarse
+    return 6;   -- respaldo, por si la foto no llego a tomarse
 end
 
 local function StanceButtonInset()
@@ -1383,20 +1383,11 @@ function K.AttachStanceButtons()
         StanceDefaultPoint(holder);
     end
 
-    -- LA SEPARACION ES LA DE BLIZZARD, NO LA DEL SLIDER.
-    --
-    -- ShapeshiftBarFrame va detras del Holder (mas abajo) y trae dibujadas
-    -- las casillas de la barra a una distancia fija. Con el slider "Buttons
-    -- space" (7) los botones quedaban mas juntos que esas casillas: el
-    -- primero calzaba y cada uno se corria un poco mas, y al prender o
-    -- apagar Unify / MiniBar la barra de auras cambiaba de separacion. Va
-    -- la de fabrica de Blizzard, la misma que tiene sin ningun modo puesto.
-    -- La foto de los botones primero: de ahi sale esa distancia.
-    for i = 1, 10 do
-        local btn = _G["ShapeshiftButton" .. i];
-        if btn then CaptureButton(btn, "ShapeshiftButton" .. i); end
-    end
-    local space = StanceButtonPitch();
+    -- LA SEPARACION DE LAS AURAS ES LA DEL SLIDER "Buttons space" (7 de
+    -- fabrica), la misma que las filas de accion. Las laterales no lo
+    -- siguen; esta barra si. Si el slider no existe todavia, 7.
+    local space = tonumber(C.ActionBarButtonSpace);
+    if not space then space = 7; end
     local shown, w, h = 0, 0, 0;
 
     for i = 1, 10 do
