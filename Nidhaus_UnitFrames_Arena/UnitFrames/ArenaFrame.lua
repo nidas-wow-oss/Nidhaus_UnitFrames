@@ -92,7 +92,54 @@ K.ArenaCustomLayout = {
 	TEX_W = TEX_W, TEX_H = TEX_H, TEX_X = TEX_X, TEX_Y = TEX_Y,
 	BAR_X = BAR_X, BAR_Y = BAR_Y, BAR_W = BAR_W, BAR_HP_H = BAR_HP_H, BAR_MP_H = BAR_MP_H,
 	BAR_MP_GAP = BAR_MP_GAP, PORT_X = PORT_X, PORT_Y = PORT_Y,
+	PORT_SIZE = 34,
+	COORDS  = { 0.09375, 1.0, 0, 0.78125 },
+	MCOORDS = { 1.0, 0.09375, 0, 0.78125 },   -- el mismo recorte, espejado
 };
+
+-- BIG BLIZZARD: EL MARCO DE GRUPO "Big Blizzard" PUESTO EN ARENA.
+--
+-- Es el arte de pw (Media\pw\UI-PartyFrame) con las barras grandes de
+-- ese estilo, pero dado vuelta: el marco de grupo tiene el retrato a la
+-- izquierda y el de arena lo lleva a la derecha. Las medidas salen del
+-- marco de grupo de Blizzard (arte 128x64, retrato 37 en 7,-6) y de
+-- PartyFramePW (vida en 46,-13 de 12 de alto, mana en 46,-25), contadas
+-- desde el borde de la textura y espejadas.
+local BIG_LAYOUT = {
+	TEX_W = 128, TEX_H = 64, TEX_X = -8, TEX_Y = 2,
+	BAR_X = 4, BAR_Y = -9, BAR_W = 70, BAR_HP_H = 12, BAR_MP_H = 8,
+	BAR_MP_GAP = 0, PORT_X = 11, PORT_Y = -4,
+	PORT_SIZE = 37,
+	COORDS  = { 1, 0, 0, 1 },   -- espejada: retrato a la derecha
+	MCOORDS = { 0, 1, 0, 1 },   -- en el modo espejo, como el de grupo
+};
+
+-- Las medidas del estilo puesto. Las lee tambien MirrorMode.lua.
+local function ActiveLayout()
+	if C.ArenaFrameStyle == "BigBlizzard" then return BIG_LAYOUT; end
+	return K.ArenaCustomLayout;
+end
+K.GetArenaCustomLayout = ActiveLayout;
+
+-- LA LETRA DE LOS NUMEROS.
+--
+-- Big Blizzard lleva la del juego: la misma de los numeros de vida/mana de
+-- los marcos de Blizzard (plantilla TextStatusBarText), como el estilo Big
+-- Blizzard del grupo. Los demas estilos siguen con la chica con contorno.
+local blizzNumFont;
+local function ArenaNumFont()
+	if C.ArenaFrameStyle == "BigBlizzard" then
+		if not blizzNumFont then
+			local probe = UIParent:CreateFontString(nil, "BACKGROUND", "TextStatusBarText");
+			local f, s, fl = probe:GetFont();
+			probe:Hide();
+			if f then blizzNumFont = { f, s, fl }; end
+		end
+		if blizzNumFont then return blizzNumFont; end
+	end
+	return C.ArenaFrameFont or {"Fonts\\FRIZQT__.TTF", 7, "OUTLINE"};
+end
+K.GetArenaNumFont = ArenaNumFont;
 
 local function GetArenaTexturePath()
 	-- Compact 2: EXACTAMENTE la misma textura que usan el PlayerFrame en
@@ -107,6 +154,9 @@ local function GetArenaTexturePath()
 	-- arena ya lleva el retrato a la derecha, que es como esta dibujada.
 	if C.ArenaFrameStyle == "Compact2" then
 		return "Interface\\AddOns\\"..MEDIA_ADDON.."\\Media\\pw\\UI-TargetingFrame";
+	end
+	if C.ArenaFrameStyle == "BigBlizzard" then
+		return "Interface\\AddOns\\"..MEDIA_ADDON.."\\Media\\pw\\UI-PartyFrame";
 	end
 	if C.darkFrames then
 		return "Interface\\AddOns\\"..MEDIA_ADDON.."\\Media\\Dark\\UI-TargetingFrame";
@@ -359,7 +409,7 @@ local function ApplyArenaTextures()
 	-- esconde mas abajo.
 	local isCompact = (style == "Compact");
 	local isCustom = isCompact or (style == "Custom") or (style == "Compact2")
-		or (C.ArenaCustomTexture and not isFlat);
+		or (style == "BigBlizzard") or (C.ArenaCustomTexture and not isFlat);
 
 	if isFlat then
 		RestoreDefaultArenaTextures();
@@ -374,9 +424,10 @@ local function ApplyArenaTextures()
 		return;
 	end
 
-	local Font = C.ArenaFrameFont or {"Fonts\\FRIZQT__.TTF", 7, "OUTLINE"};
+	local Font = ArenaNumFont();
 	local statusbarOn = C.statusbarOn;
 	local statusbarTexture = C.statusbarTexture;
+	local LY = ActiveLayout();
 
 	for i = 1, MAX_ARENA_ENEMIES do
 		local arenaFrame = _G["ArenaEnemyFrame"..i];
@@ -388,29 +439,29 @@ local function ApplyArenaTextures()
 		elseif tex then
 			tex:SetTexture(Path);
 			tex:ClearAllPoints();
-			tex:SetPoint("TOPLEFT", arenaFrame, "TOPLEFT", TEX_X, TEX_Y);
-			tex:SetTexCoord(0.09375, 1.0, 0, 0.78125);
-			tex:SetSize(TEX_W, TEX_H);
+			tex:SetPoint("TOPLEFT", arenaFrame, "TOPLEFT", LY.TEX_X, LY.TEX_Y);
+			tex:SetTexCoord(unpack(LY.COORDS));
+			tex:SetSize(LY.TEX_W, LY.TEX_H);
 			ApplyArenaTint(tex);
 			tex:Show();
 		end
 
 		-- Sin limpiar, el TOPRIGHT del modo espejo quedaba sumado y estiraba la barra.
 		arenaFrame.healthbar:ClearAllPoints();
-		arenaFrame.healthbar:SetPoint("TOPLEFT", arenaFrame, "TOPLEFT", BAR_X, BAR_Y);
-		arenaFrame.healthbar:SetSize(BAR_W, BAR_HP_H);
+		arenaFrame.healthbar:SetPoint("TOPLEFT", arenaFrame, "TOPLEFT", LY.BAR_X, LY.BAR_Y);
+		arenaFrame.healthbar:SetSize(LY.BAR_W, LY.BAR_HP_H);
 		arenaFrame.name:ClearAllPoints();
 		arenaFrame.name:SetPoint("BOTTOM", arenaFrame.healthbar, "TOP", 0, 1);
-		arenaFrame.manabar:SetSize(BAR_W, BAR_MP_H);
+		arenaFrame.manabar:SetSize(LY.BAR_W, LY.BAR_MP_H);
 		arenaFrame.manabar:ClearAllPoints();
-		arenaFrame.manabar:SetPoint("TOPLEFT", arenaFrame.healthbar, "BOTTOMLEFT", 0, BAR_MP_GAP);
+		arenaFrame.manabar:SetPoint("TOPLEFT", arenaFrame.healthbar, "BOTTOMLEFT", 0, LY.BAR_MP_GAP);
 		arenaFrame.healthbar.TextString:SetPoint("CENTER", arenaFrame.healthbar);
 		arenaFrame.manabar.TextString:SetPoint("CENTER", arenaFrame.manabar);
 		arenaFrame.healthbar.TextString:SetFont(unpack(Font));
 		arenaFrame.manabar.TextString:SetFont(unpack(Font));
-		arenaFrame.classPortrait:SetSize(34, 34);
+		arenaFrame.classPortrait:SetSize(LY.PORT_SIZE, LY.PORT_SIZE);
 		arenaFrame.classPortrait:ClearAllPoints();
-		arenaFrame.classPortrait:SetPoint("RIGHT", arenaFrame, "RIGHT", PORT_X, PORT_Y);
+		arenaFrame.classPortrait:SetPoint("RIGHT", arenaFrame, "RIGHT", LY.PORT_X, LY.PORT_Y);
 
 		if statusbarOn and statusbarTexture then
 			arenaFrame.healthbar:SetStatusBarTexture(statusbarTexture);
@@ -575,10 +626,11 @@ K.StyleSingleArenaFrame = function(frame, index)
 	-- la textura, en vez de duplicar cuarenta lineas de posicionamiento.
 	local isCompact = (style == "Compact");
 	local isCustom  = isCompact or (style == "Custom") or (style == "Compact2")
-		or C.ArenaCustomTexture;
+		or (style == "BigBlizzard") or C.ArenaCustomTexture;
 	if not isCustom then return; end
 
-	local Font = C.ArenaFrameFont or {"Fonts\\FRIZQT__.TTF", 7, "OUTLINE"};
+	local Font = ArenaNumFont();
+	local LY = ActiveLayout();
 	local tex = _G["ArenaEnemyFrame"..index.."Texture"];
 	if tex then
 		if isCompact then
@@ -586,30 +638,30 @@ K.StyleSingleArenaFrame = function(frame, index)
 		else
 			tex:SetTexture(Path);
 			tex:ClearAllPoints();
-			tex:SetPoint("TOPLEFT", frame, "TOPLEFT", TEX_X, TEX_Y);
-			tex:SetTexCoord(0.09375, 1.0, 0, 0.78125);
-			tex:SetSize(TEX_W, TEX_H);
+			tex:SetPoint("TOPLEFT", frame, "TOPLEFT", LY.TEX_X, LY.TEX_Y);
+			tex:SetTexCoord(unpack(LY.COORDS));
+			tex:SetSize(LY.TEX_W, LY.TEX_H);
 			ApplyArenaTint(tex);
 			tex:Show();
 		end
 	end
 	frame.healthbar:ClearAllPoints();
-	frame.healthbar:SetPoint("TOPLEFT", frame, "TOPLEFT", BAR_X, BAR_Y);
-	frame.healthbar:SetSize(BAR_W, BAR_HP_H);
+	frame.healthbar:SetPoint("TOPLEFT", frame, "TOPLEFT", LY.BAR_X, LY.BAR_Y);
+	frame.healthbar:SetSize(LY.BAR_W, LY.BAR_HP_H);
 	frame.name:ClearAllPoints();
 	frame.name:SetPoint("BOTTOM", frame.healthbar, "TOP", 0, 1);
-	frame.manabar:SetSize(BAR_W, BAR_MP_H);
+	frame.manabar:SetSize(LY.BAR_W, LY.BAR_MP_H);
 	frame.manabar:ClearAllPoints();
-	frame.manabar:SetPoint("TOPLEFT", frame.healthbar, "BOTTOMLEFT", 0, BAR_MP_GAP);
+	frame.manabar:SetPoint("TOPLEFT", frame.healthbar, "BOTTOMLEFT", 0, LY.BAR_MP_GAP);
 	frame.healthbar.TextString:ClearAllPoints();
 	frame.healthbar.TextString:SetPoint("CENTER", frame.healthbar);
 	frame.manabar.TextString:ClearAllPoints();
 	frame.manabar.TextString:SetPoint("CENTER", frame.manabar);
 	frame.healthbar.TextString:SetFont(unpack(Font));
 	frame.manabar.TextString:SetFont(unpack(Font));
-	frame.classPortrait:SetSize(34, 34);
+	frame.classPortrait:SetSize(LY.PORT_SIZE, LY.PORT_SIZE);
 	frame.classPortrait:ClearAllPoints();
-	frame.classPortrait:SetPoint("RIGHT", frame, "RIGHT", PORT_X, PORT_Y);
+	frame.classPortrait:SetPoint("RIGHT", frame, "RIGHT", LY.PORT_X, LY.PORT_Y);
 	if C.statusbarOn and C.statusbarTexture then
 		frame.healthbar:SetStatusBarTexture(C.statusbarTexture);
 		frame.manabar:SetStatusBarTexture(C.statusbarTexture);

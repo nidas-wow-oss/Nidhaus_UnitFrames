@@ -197,7 +197,9 @@ local function RestorePartyMemberFrame(id)
 
 	local name = _G[fn.."Name"];
 	if name and o.namePoints then
-		RestorePoints(name, o.namePoints);
+		if not (K.RestorePartyNamePoint and K.RestorePartyNamePoint(id)) then
+			RestorePoints(name, o.namePoints);
+		end
 		if o.nameFont and o.nameFont[1] then
 			name:SetFont(unpack(o.nameFont));
 		end

@@ -99,6 +99,106 @@ local function Header(parent, text, x, y)
 	return fs;
 end
 
+-- ---------------------------------------------------------
+-- PLEGAR CADA OPCION
+--
+-- Cada bloque de la pestaña PvP y de la de clase tiene a la derecha un
+-- boton - / + que lo pliega: queda el titulo y lo de abajo sube. Se
+-- recuerda por bloque (NidhausUnitFramesDB.PanelCollapsed), asi que al
+-- volver a abrir el panel sigue como lo dejaste.
+-- ---------------------------------------------------------
+local function CollapsedDB()
+	if type(NidhausUnitFramesDB) ~= "table" then NidhausUnitFramesDB = {}; end
+	if type(NidhausUnitFramesDB.PanelCollapsed) ~= "table" then NidhausUnitFramesDB.PanelCollapsed = {}; end
+	return NidhausUnitFramesDB.PanelCollapsed;
+end
+
+local function IsFolded(key) return key and CollapsedDB()[key] and true or false; end
+
+local function FoldButton(parent, key, onToggle)
+	local b = CreateFrame("Button", nil, parent);
+	b:SetSize(16, 16);
+	local function Sync()
+		local folded = IsFolded(key);
+		local tex = folded and "Interface\\Buttons\\UI-PlusButton-" or "Interface\\Buttons\\UI-MinusButton-";
+		b:SetNormalTexture(tex .. "Up");
+		b:SetPushedTexture(tex .. "Down");
+		b:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight", "ADD");
+	end
+	b.Sync = Sync;
+	b:SetScript("OnClick", function()
+		CollapsedDB()[key] = not IsFolded(key) or nil;
+		Sync();
+		if onToggle then onToggle(); end
+	end);
+	b:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+		GameTooltip:SetText(IsFolded(key) and (L["FOLD_OPEN"] or "Show the options")
+			or (L["FOLD_CLOSE"] or "Hide the options"), 1, 1, 1);
+		GameTooltip:Show();
+	end);
+	b:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+	Sync();
+	return b;
+end
+
+-- SECCIONES DE LAS PAGINAS DE CLASE ARMADAS A COORDENADAS FIJAS.
+--
+-- Esas paginas (picaro, druida, mago, cazador) ponen cada control en un x/y
+-- fijo de la hoja. Para poder plegarlas sin rehacerlas, cada seccion es un
+-- marco pegado a la esquina de la hoja (0,0): sus controles conservan las
+-- mismas coordenadas. Plegar una esconde su cuerpo y corre hacia arriba
+-- las secciones de abajo lo que medía ese cuerpo.
+--
+--   local pane = FoldSection(pane, "Timers", x, y, "MageTimers")
+--   ... los controles de la seccion se crean con ese pane ...
+--   FinishFolds(hoja, yFinal)   -- al terminar la pagina
+local function LayoutFolds(root)
+	local shift = 0;
+	for _, sec in ipairs(root._nufFolds or {}) do
+		sec:ClearAllPoints();
+		sec:SetPoint("TOPLEFT", root, "TOPLEFT", 0, shift);
+		local folded = IsFolded(sec.key);
+		if folded then sec.body:Hide(); else sec.body:Show(); end
+		if sec.fold then sec.fold.Sync(); end
+		if folded and sec.bottom then
+			shift = shift + math.max(0, (sec.top - 24) - sec.bottom);
+		end
+	end
+end
+
+local function FoldSection(pane, title, x, y, key)
+	local root = pane._nufFoldRoot or pane;
+	root._nufFolds = root._nufFolds or {};
+	local prevSec = root._nufFolds[#root._nufFolds];
+	if prevSec and not prevSec.bottom then prevSec.bottom = y; end
+
+	local sec = CreateFrame("Frame", nil, root);
+	sec:SetPoint("TOPLEFT", root, "TOPLEFT", 0, 0);
+	sec:SetSize(1, 1);
+	sec.top, sec.key = y, "class:" .. key;
+	Header(sec, title, x, y);
+	sec.fold = FoldButton(sec, sec.key, function() LayoutFolds(root); end);
+	sec.fold:SetPoint("TOPLEFT", sec, "TOPLEFT", x + 454, y + 2);
+
+	local body = CreateFrame("Frame", nil, sec);
+	body:SetPoint("TOPLEFT", sec, "TOPLEFT", 0, 0);
+	body:SetSize(1, 1);
+	body._nufFoldRoot = root;
+	sec.body = body;
+	table.insert(root._nufFolds, sec);
+	return body;
+end
+
+local function FinishFolds(root, y)
+	local list = root._nufFolds;
+	if not list or #list == 0 then return; end
+	local last = list[#list];
+	if not last.bottom then last.bottom = y; end
+	LayoutFolds(root);
+	root:HookScript("OnShow", function() LayoutFolds(root); end);
+end
+
 local function Note(parent, text, x, y, width)
 	local fs = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
 	fs:SetPoint("TOPLEFT", x, y);
@@ -278,15 +378,23 @@ local function ModuleBlock(pane, prev, moduleId, label, desc, tip)
 		body:SetHeight(math.max(1, self._bodyH));
 	end
 
+	-- El - / + de la derecha: pliega las opciones aunque el modulo este
+	-- prendido. Con el modulo apagado no se muestra (ya esta plegado).
+	local foldKey = "mod:" .. moduleId;
+	local fold = FoldButton(blk, foldKey, function() blk:Refresh(); end);
+	fold:SetPoint("TOPLEFT", BLOCK_W - 16, -14);
+
 	function blk:Refresh()
 		local on = K.IsModuleEnabled and K.IsModuleEnabled(moduleId);
-		if on then
+		if on and not IsFolded(foldKey) then
 			body:Show();
 			self:SetHeight(self._headH + self._bodyH + 4);
 		else
 			body:Hide();
 			self:SetHeight(self._headH);
 		end
+		if on then fold:Show(); else fold:Hide(); end
+		fold.Sync();
 	end
 
 	cb:HookScript("OnClick", function() blk:Refresh(); end);
@@ -343,7 +451,7 @@ local CLASS_COLORS = {
 	-- Picaro y druida comparten el mismo bloque: son las unicas dos
 	-- clases con puntos de combo, asi que la UI es identica.
 	local function ComboSection(pane, x, y)
-		Header(pane, L["PVP_COMBO"] or "Combo Points", x, y);
+		local pane = FoldSection(pane, L["PVP_COMBO"] or "Combo Points", x, y, "Combo");
 		y = y - 24;
 
 		local _, cwH = ModuleCB(pane, L["MOD_COMBOWATCH"] or "Combo Points", "ComboWatch",
@@ -397,7 +505,7 @@ local CLASS_MODULES = {
 
 
 	MAGE = function(pane, x, y)
-		Header(pane, L["PVP_TIMERS"] or "Timers", x, y);
+		local pane = FoldSection(pane, L["PVP_TIMERS"] or "Timers", x, y, "MageTimers");
 		y = y - 24;
 
 		SettingCB(pane, L["BAR_WATER_ELE"] or "Water Elemental", "MageWaterEleTimer",
@@ -464,7 +572,7 @@ local CLASS_MODULES = {
 		y = y - 44;
 
 		-- ── Apariencia: skin "Icy Portrait" del marco del jugador ──
-		Header(pane, L["PVP_MAGE_APPEARANCE"] or "Appearance", x, y);
+		local pane = FoldSection(pane, L["PVP_MAGE_APPEARANCE"] or "Appearance", x, y, "MageLook");
 		y = y - 24;
 		-- El tooltip decia "necesita Custom Skin activado". Ya no: Icy es un
 		-- skin propio y se aplica solo. Dejarlo habria mandado a la gente a
@@ -480,7 +588,7 @@ local CLASS_MODULES = {
 	end,
 
 	HUNTER = function(pane, x, y)
-		Header(pane, L["PVP_SHOOTING"] or "Shooting", x, y);
+		local pane = FoldSection(pane, L["PVP_SHOOTING"] or "Shooting", x, y, "HunterShooting");
 		y = y - 24;
 
 		local asCB, asH = ModuleCB(pane, L["MOD_AUTOSHOT"] or "Auto Shot Timer", "AutoShotTimer",
@@ -511,7 +619,7 @@ local CLASS_MODULES = {
 		y = y - 42 - (acH or 0);
 
 		-- ── Buffs de la mascota ──
-		Header(pane, L["PVP_HUNTER_PETSECTION"] or "Pet", x, y);
+		local pane = FoldSection(pane, L["PVP_HUNTER_PETSECTION"] or "Pet", x, y, "HunterPet");
 		y = y - 24;
 
 		local pbCB, pbH = ModuleCB(pane, L["MOD_PETBUFFS"] or "Pet Buffs", "HunterPetBuffs",
@@ -665,7 +773,8 @@ local CLASS_MODULES = {
 			-- Mover / Reset a la derecha del checkbox
 			local moveBtn = CreateFrame("Button", nil, blk, "UIPanelButtonTemplate");
 			moveBtn:SetSize(MOVE_W, 22);
-			moveBtn:SetPoint("TOPLEFT", BLOCK_W - MOVE_W - RESET_W - 6, -12);
+			-- 22 px a la izquierda: a la derecha va el - / + de plegar.
+			moveBtn:SetPoint("TOPLEFT", BLOCK_W - MOVE_W - RESET_W - 6 - 22, -12);
 			local resetBtn = CreateFrame("Button", nil, blk, "UIPanelButtonTemplate");
 			resetBtn:SetSize(RESET_W, 22);
 			resetBtn:SetPoint("LEFT", moveBtn, "RIGHT", 6, 0);
@@ -1227,53 +1336,63 @@ function K.BuildPvPSection(pane)
 		L["MOD_GARGOYLE"] or "Gargoyle Tracker", L["MOD_GARGOYLE_DESC"]);
 	prev = gtBlk;
 	do
-		-- Estilo: Blizzard / Custom
+		-- Estilo (desplegable) y espejo, en la misma fila.
 		local styleLbl = gtBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
-		styleLbl:SetPoint("TOPLEFT", 24, -4);
+		styleLbl:SetPoint("TOPLEFT", 24, -8);
 		styleLbl:SetText((K.UI and K.UI.Label(L["GARG_MODE"] or "Style"))
 			or (L["GARG_MODE"] or "Style"));
-
-		local styleBtns = {};
-		local function RefreshStyle()
-			local cur = (K.GetGargoyleMode and K.GetGargoyleMode()) or "blizzard";
-			for _, b in ipairs(styleBtns) do
-				if b.value == cur then
-					b:SetBackdropColor(0.10, 0.35, 0.60, 0.90);
-					b:SetBackdropBorderColor(0.35, 0.70, 1.00, 0.95);
-					b.labelFS:SetTextColor(1, 1, 1);
-				else
-					b:SetBackdropColor(0.07, 0.07, 0.07, 0.65);
-					b:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.60);
-					b.labelFS:SetTextColor(0.55, 0.55, 0.55);
-				end
-			end
-		end
 
 		local modes = {
 			{ value = "blizzard", text = L["GARG_MODE_BLIZZ"]  or "Blizzard" },
 			{ value = "custom",   text = L["GARG_MODE_CUSTOM"] or "Custom" },
 		};
-		for i, m in ipairs(modes) do
-			local b = CreateFrame("Button", nil, gtBody);
-			b:SetSize(84, 22);
-			b:SetPoint("TOPLEFT", 90 + (i - 1) * 90, -2);
-			b:SetBackdrop({
-				bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
-				edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-				tile = true, tileSize = 16, edgeSize = 12,
-				insets = { left = 3, right = 3, top = 3, bottom = 3 },
-			});
-			b.value = m.value;
-			b.labelFS = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-			b.labelFS:SetPoint("CENTER");
-			b.labelFS:SetText(m.text);
-			b:SetScript("OnClick", function(self)
-				if K.SetGargoyleMode then K.SetGargoyleMode(self.value); end
-				RefreshStyle();
-			end);
-			table.insert(styleBtns, b);
+		local function ModeText(v)
+			for _, m in ipairs(modes) do if m.value == v then return m.text; end end
+			return tostring(v);
 		end
+		local styleDD = CreateFrame("Frame", "NidhausGargStyleDD", gtBody, "UIDropDownMenuTemplate");
+		styleDD:SetPoint("TOPLEFT", 60, 0);
+		UIDropDownMenu_SetWidth(styleDD, 110);
+		local function RefreshStyle()
+			local cur = (K.GetGargoyleMode and K.GetGargoyleMode()) or "blizzard";
+			UIDropDownMenu_SetSelectedValue(styleDD, cur);
+			UIDropDownMenu_SetText(styleDD, ModeText(cur));
+		end
+		UIDropDownMenu_Initialize(styleDD, function(self, level)
+			for _, m in ipairs(modes) do
+				local info = UIDropDownMenu_CreateInfo();
+				info.text, info.value = m.text, m.value;
+				info.checked = ((K.GetGargoyleMode and K.GetGargoyleMode()) == m.value);
+				info.func = function(btn)
+					if K.SetGargoyleMode then K.SetGargoyleMode(btn.value); end
+					RefreshStyle();
+				end;
+				UIDropDownMenu_AddButton(info, level);
+			end
+		end);
 		RefreshStyle();
+		gtBody:HookScript("OnShow", RefreshStyle);
+
+		checkboxCount = checkboxCount + 1;
+		local mirName = "NidhausGargMirrorCB" .. checkboxCount;
+		local mirCB = CreateFrame("CheckButton", mirName, gtBody, "InterfaceOptionsCheckButtonTemplate");
+		mirCB:SetPoint("TOPLEFT", 236, -2);
+		mirCB:SetHitRectInsets(0, -60, 0, 0);
+		if _G[mirName .. "Text"] then _G[mirName .. "Text"]:SetText(L["GARG_MIRROR"] or "Mirror"); end
+		local function SyncMirror() mirCB:SetChecked(K.GetGargoyleMirror and K.GetGargoyleMirror()); end
+		SyncMirror();
+		gtBody:HookScript("OnShow", SyncMirror);
+		mirCB:SetScript("OnClick", function(self)
+			local v = (self:GetChecked() == 1 or self:GetChecked() == true);
+			if K.SetGargoyleMirror then K.SetGargoyleMirror(v); end
+		end);
+		mirCB:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(L["GARG_MIRROR"] or "Mirror", 1, 1, 1);
+			GameTooltip:AddLine(L["TIP_GARG_MIRROR"] or "Flips the frame: the icon goes to the other side and the bars too. Works with both styles.", nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		mirCB:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 
 		-- Donde mostrarse
 		local whereLbl = gtBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
@@ -1393,6 +1512,7 @@ function K.BuildClassSection(pane)
 	local builder = CLASS_MODULES[class];
 	if builder then
 		y = builder(pane, x, y);
+		FinishFolds(pane, y);
 	else
 		Note(pane, L["PVP_NO_CLASS_MODULES"]
 			or "There are no class specific modules for this class yet. The list grows as they get added.",

@@ -568,9 +568,20 @@ end
 -- Se lee lo GUARDADO (NEB_DB.Settings) y no los botones: nExtraBars los
 -- carga recien en PLAYER_ENTERING_WORLD, despues del guardado automatico
 -- del login, y a esa altura los botones todavia estan vacios.
+--
+-- Las versiones viejas de nExtraBars no tenian NEB_DB: guardaban todo en
+-- NEB_ButtonSettings y NEB_Config sueltos. Con una de esas el export salia
+-- sin las barras extra, sin avisar.
 local function NEBSettings()
-	if type(NEB_DB) ~= "table" or type(NEB_DB.Settings) ~= "table" then return nil; end
-	return NEB_DB.Settings;
+	if type(NEB_DB) == "table" and type(NEB_DB.Settings) == "table" then return NEB_DB.Settings; end
+	if type(NEB_ButtonSettings) == "table" then return NEB_ButtonSettings; end
+	return nil;
+end
+
+local function NEBConfig()
+	if type(NEB_DB) == "table" and type(NEB_DB.Config) == "table" then return NEB_DB.Config; end
+	if type(NEB_Config) == "table" then return NEB_Config; end
+	return nil;
 end
 
 -- Para APLICAR si hacen falta los botones vivos.
@@ -647,7 +658,7 @@ local function NEBSectionString()
 	end
 
 	local cfg = {};
-	local c = NEB_DB.Config;
+	local c = NEBConfig();
 	if type(c) == "table" then
 		for key, kind in pairs(NEB_CONFIG_KEYS) do
 			if type(c[key]) == kind then
@@ -981,24 +992,39 @@ function K.SlotImport(text)
 
 	SaveBackup();
 
+	-- Cada casilla por separado (pcall): si una falla (por ejemplo, ya no
+	-- entran mas macros), las demas y las barras de nExtraBars se aplican
+	-- igual. Antes un solo error cortaba todo lo que venia despues.
 	local placed = 0;
 	for slot = 1, MAX_ACTION_SLOTS do
 		local entry = profile[slot];
 		if entry ~= nil then
-			PlaceOnSlot(slot, entry);
-			placed = placed + 1;
+			if pcall(PlaceOnSlot, slot, entry) then placed = placed + 1; end
 		elseif GetActionInfo(slot) then
 			-- Vaciar SOLO lo que el formato sabe guardar. Lo que no (un
 			-- hechizo o macro que no se pudo leer) nunca viaja en la cadena,
 			-- ni en el backup: borrarlo era perderlo sin vuelta.
 			local okR, cur = pcall(ReadSlot, slot);
-			if okR and cur then PlaceOnSlot(slot, nil); end
+			if okR and cur then pcall(PlaceOnSlot, slot, nil); end
 		end
 	end
 
 	-- nExtraBars, despues de las barras: las macros que comparten ya
-	-- estan creadas y no se duplican.
-	placed = placed + NEBImport(profile[NEB_KEY]);
+	-- estan creadas y no se duplican. Se avisa en el chat que paso con
+	-- ellas, porque no se ven en el conteo del panel.
+	local nebSec = profile[NEB_KEY];
+	if type(nebSec) == "table" then
+		if NEBLive() then
+			local okN, n = pcall(NEBImport, nebSec);
+			n = (okN and n) or 0;
+			placed = placed + n;
+			Print(string.format(L["SLOT_NEB_DONE"] or "nExtraBars: %d buttons applied.", n));
+		else
+			Print(L["SLOT_NEB_MISSING"] or "This string has nExtraBars buttons, but nExtraBars is not loaded on this character.");
+		end
+	elseif NEBLive() then
+		Print(L["SLOT_NEB_NONE"] or "This string has no nExtraBars buttons (it was exported without nExtraBars, or with an older version).");
+	end
 
 	local bound = 0;
 	local binds = profile[KEYBIND_KEY];

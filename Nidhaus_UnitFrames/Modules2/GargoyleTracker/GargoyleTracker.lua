@@ -44,6 +44,7 @@ local function GTDB()
   if db.inBG    == nil then db.inBG    = true end
   if db.inDuel  == nil then db.inDuel  = true end
   if db.inWorld == nil then db.inWorld = true end
+  if db.mirror  == nil then db.mirror  = false end
   return db
 end
 
@@ -660,6 +661,64 @@ local function SetActiveMode(mode)
 end
 
 SetActiveMode(currentMode)
+
+-- =====================================================
+-- ESPEJO
+--
+-- Da vuelta el marco entero, en los dos estilos: el icono pasa del otro
+-- lado y las barras tambien. Cada pieza guarda sus anclajes de fabrica la
+-- primera vez, y el espejo se arma siempre desde esos (LEFT <-> RIGHT y
+-- la x con el signo cambiado), asi que prender y apagar no acumula nada.
+-- El arte del estilo Blizzard ya venia volteado: en espejo va derecho.
+-- =====================================================
+local mirrorOrig = {}
+
+local function MirrorPoint(p)
+  if not p then return p end
+  return (p:gsub("LEFT", "\001"):gsub("RIGHT", "LEFT"):gsub("\001", "RIGHT"))
+end
+
+local function MirrorFrame(root, on)
+  local objs = { root:GetChildren() }
+  for _, r in ipairs({ root:GetRegions() }) do objs[#objs + 1] = r end
+  for _, o in ipairs(objs) do
+    local t = mirrorOrig[o]
+    if not t then
+      t = {}
+      for n = 1, (o:GetNumPoints() or 0) do t[n] = { o:GetPoint(n) } end
+      mirrorOrig[o] = t
+    end
+    if #t > 0 then
+      o:ClearAllPoints()
+      for _, a in ipairs(t) do
+        local x, y = a[4] or 0, a[5] or 0
+        local rel = a[2] or o:GetParent()
+        if on then
+          o:SetPoint(MirrorPoint(a[1]), rel, MirrorPoint(a[3] or a[1]), -x, y)
+        else
+          o:SetPoint(a[1], rel, a[3] or a[1], x, y)
+        end
+      end
+    end
+  end
+end
+
+local function ApplyGargMirror()
+  local on = GTDB().mirror and true or false
+  MirrorFrame(uiBlizz, on)
+  MirrorFrame(uiCustom, on)
+  if on then bOverlay:SetTexCoord(0, 1, 0, 1) else bOverlay:SetTexCoord(1, 0, 0, 1) end
+end
+ApplyGargMirror()
+
+function K.SetGargoyleMirror(on)
+  GTDB().mirror = on and true or false
+  ApplyGargMirror()
+end
+
+function K.GetGargoyleMirror()
+  return GTDB().mirror and true or false
+end
 
 -- =====================================================
 -- ESTADO
@@ -1288,6 +1347,10 @@ SlashCmdList.GT = function(msg)
       ui:SetPoint(oldPoint[1], oldPoint[2], oldPoint[3], oldPoint[4], oldPoint[5])
       ui:Show()
     end
+
+  elseif msg == "mirror" then
+    K.SetGargoyleMirror(not K.GetGargoyleMirror())
+    print("GT: mirror " .. (K.GetGargoyleMirror() and "on" or "off"))
 
   elseif msg == "debug" then
     GT_DEBUG = not GT_DEBUG

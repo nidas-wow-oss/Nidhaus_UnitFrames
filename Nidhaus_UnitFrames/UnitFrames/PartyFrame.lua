@@ -297,6 +297,26 @@ for i = 1, (MAX_PARTY_MEMBERS or 4) do
 		local f0, s0, fl0 = n:GetFont();
 		n._nufBaseFont, n._nufBaseSize, n._nufBaseFlags = f0, s0, fl0;
 	end
+	-- Y el lugar de fabrica, por el mismo motivo: si cada estilo sacaba su
+	-- propia foto al pintar por primera vez, la del que llegaba despues de
+	-- otro se quedaba con el lugar del anterior (y cada marco con uno
+	-- distinto, segun cuando se fotografio).
+	if n and n.GetPoint and not n._nufBasePoint then
+		local p, rel, rp, x, y = n:GetPoint(1);
+		if p then n._nufBasePoint = { p, rel, rp, x or 0, y or 0 }; end
+	end
+end
+
+-- Devuelve el nombre del miembro i a su lugar de fabrica. Lo usan los
+-- estilos al apagarse o cuando el suyo es el de Blizzard. false si no hay
+-- foto (y entonces cada estilo usa la suya).
+function K.RestorePartyNamePoint(i)
+	local n = _G["PartyMemberFrame" .. i .. "Name"];
+	local p = n and n._nufBasePoint;
+	if not p then return false; end
+	n:ClearAllPoints();
+	n:SetPoint(p[1], p[2] or n:GetParent(), p[3] or p[1], p[4], p[5]);
+	return true;
 end
 
 local function PartySize(kind, style)
@@ -356,11 +376,33 @@ function K.ApplyPartyTextFont(id)
 	local size = PartySize("Num", style);
 	local nmode = C.PartyNumOutline;
 	if nmode == nil then nmode = "Style"; end
-	if size == 0 and nmode == "Style" then return; end
 	for _, fs in ipairs({ _G[fn .. "HealthBarText"], _G[fn .. "ManaBarText"] }) do
 		if fs then
+			-- La sombra que pone "Blizz" se devuelve al elegir otra opcion:
+			-- los estilos reponen su fuente, pero no la sombra.
+			if nmode ~= "Blizz" and fs._nufShadow then
+				local sh = fs._nufShadow;
+				pcall(fs.SetShadowOffset, fs, sh[1] or 0, sh[2] or 0);
+				pcall(fs.SetShadowColor, fs, sh[3] or 0, sh[4] or 0, sh[5] or 0, sh[6] or 0);
+				fs._nufShadow = nil;
+			end
 			local f, cur, fl = fs:GetFont();
-			if f then
+			if f and nmode == "Blizz" then
+				-- Misma cara, contorno y sombra que el texto de vida/mana de
+				-- Blizzard (igual que la opcion del nombre).
+				local bFont, bFlags = BlizzStatusFont();
+				local target = (size > 0) and size or cur;
+				if bFont and target then
+					if not fs._nufShadow then
+						local ox, oy = fs:GetShadowOffset();
+						local r, g, b, a = fs:GetShadowColor();
+						fs._nufShadow = { ox, oy, r, g, b, a };
+					end
+					pcall(fs.SetFont, fs, bFont, target, bFlags);
+					pcall(fs.SetShadowOffset, fs, 1, -1);
+					pcall(fs.SetShadowColor, fs, 0, 0, 0, 1);
+				end
+			elseif f and not (size == 0 and nmode == "Style") then
 				local target = (size > 0) and size or cur;
 				local flags = fl;
 				if nmode ~= "Style" then flags = (nmode ~= "") and nmode or nil; end

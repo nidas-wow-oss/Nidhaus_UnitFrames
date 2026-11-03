@@ -301,10 +301,13 @@ ApplyMirrorToFrame = function(frame, index)
 	CaptureArenaOriginals(frame, index);
 	local s = arenaOrigState[index];
 	local isCustom = C.ArenaCustomTexture;
-	local Font = C.ArenaFrameFont or {"Fonts\\FRIZQT__.TTF", 7, "OUTLINE"};
+	-- La del estilo puesto (Big Blizzard lleva la letra del juego).
+	local Font = (K.GetArenaNumFont and K.GetArenaNumFont())
+		or C.ArenaFrameFont or {"Fonts\\FRIZQT__.TTF", 7, "OUTLINE"};
 	-- Las medidas del estilo Custom salen de ArenaFrame.lua y aca se voltean:
 	-- tenerlas copiadas dejo al espejo con el arte viejo (124x48, estirado).
-	local CL = K.ArenaCustomLayout or {};
+	-- La del estilo puesto: Big Blizzard tiene otras medidas y otro arte.
+	local CL = (K.GetArenaCustomLayout and K.GetArenaCustomLayout()) or K.ArenaCustomLayout or {};
 	local texW, texH = CL.TEX_W or 124, CL.TEX_H or 53;
 	local texX, texY = CL.TEX_X or 0, CL.TEX_Y or 5;
 	local barX, barY, barW = CL.BAR_X or 4, CL.BAR_Y or -8, CL.BAR_W or 62;
@@ -317,7 +320,7 @@ ApplyMirrorToFrame = function(frame, index)
 		tex:ClearAllPoints();
 		if isCustom then
 			tex:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -texX, texY);
-			tex:SetTexCoord(1.0, 0.09375, 0, 0.78125);
+			tex:SetTexCoord(unpack(CL.MCOORDS or { 1.0, 0.09375, 0, 0.78125 }));
 			tex:SetSize(texW, texH);
 		elseif s and s.texCoords then
 			-- Espejar cada anchor point de la textura original
@@ -335,7 +338,7 @@ ApplyMirrorToFrame = function(frame, index)
 	frame.classPortrait:ClearAllPoints();
 	if isCustom then
 		frame.classPortrait:SetPoint("LEFT", frame, "LEFT", -portX, portY);
-		frame.classPortrait:SetSize(34, 34);
+		frame.classPortrait:SetSize(CL.PORT_SIZE or 34, CL.PORT_SIZE or 34);
 	elseif s then
 		-- Espejar posiciones originales del portrait
 		for _, pt in ipairs(s.portPoints) do

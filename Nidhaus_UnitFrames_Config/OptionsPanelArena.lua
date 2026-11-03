@@ -538,6 +538,8 @@ function K.PopulateArenaTab(panel)
 
 	local styleOptions = {
 		{text = "Blizzard", value = "Blizzard"},
+		-- El marco "Big Blizzard" del grupo, puesto en arena.
+		{text = L["ARENA_STYLE_BIGBLIZZ"] or "Big Blizzard", value = "BigBlizzard"},
 		{text = "Custom",   value = "Custom"},
 		-- Compact: el mismo armado que Custom pero sin el marco decorado.
 		-- Es el equivalente del estilo Compact que ya existia en el party.
@@ -785,7 +787,7 @@ function K.PopulateArenaTab(panel)
 		-- ACA ESTABA EL BUG: Compact caia en el "else" de abajo, que apaga
 		-- ArenaCustomTexture y devuelve las texturas de Blizzard. Por eso
 		-- elegirlo no hacia absolutamente nada.
-		if value == "Custom" or value == "Compact" or value == "Compact2" then
+		if value == "Custom" or value == "Compact" or value == "Compact2" or value == "BigBlizzard" then
 			K.SaveConfig("ArenaCustomTexture", true);
 			K.SaveConfig("ArenaFlatMode", false);
 			if K.ToggleArenaCustomTexture then K.ToggleArenaCustomTexture(true); end

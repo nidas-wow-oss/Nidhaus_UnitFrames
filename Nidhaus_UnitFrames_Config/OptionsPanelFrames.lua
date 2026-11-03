@@ -1132,6 +1132,7 @@ function K.PopulateFramesTab(panel)
 		{ value = "",             text = L["OUTLINE_NONE"]   or "None" },
 		{ value = "OUTLINE",      text = L["OUTLINE_NORMAL"] or "Outline" },
 		{ value = "THICKOUTLINE", text = L["OUTLINE_THICK"]  or "Thick outline" },
+		{ value = "Blizz",        text = L["OUTLINE_BLIZZ"]  or "Like health / mana text" },
 	};
 
 	local COL2 = 250;
@@ -1561,7 +1562,7 @@ function K.PopulateFramesTab(panel)
 	-- El CC en el retrato y sus segundos van siempre (sin casilla) y el
 	-- objetivo de la mascota se saco. "Duelos" tambien: en un duelo no hay
 	-- compas con mascota; mazmorras, bandas y duelos van con Mundo abierto.
-	local PPF_H = 226;
+	local PPF_H = 248;
 	ppfBody = K.UI.Collapsible(panePartyPet, 0, 0, 440, PPF_H, function()
 		return (K.IsModuleEnabled and K.IsModuleEnabled("PartyPetFrame")) or false;
 	end);
@@ -1646,19 +1647,30 @@ function K.PopulateFramesTab(panel)
 		-- Estilo de los bordes de buffs / debuffs: tres botones redondos (uno
 		-- solo marcado). Hechos a mano con la textura de los radio buttons de
 		-- Blizzard, que esta en todos los clientes.
-		local bl = ppfBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
-		bl:SetPoint("TOPLEFT", 0, -98);
-		bl:SetText((K.UI and K.UI.Label(L["PPF_BORDER_LABEL"] or "Aura borders:")) or (L["PPF_BORDER_LABEL"] or "Aura borders:"));
+		-- Fila de estilo del marco (arriba) y de bordes de las auras: el
+		-- mismo boton redondo, cada fila con su opcion.
+		local function RowLabel(y, key, default)
+			local fs = ppfBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
+			fs:SetPoint("TOPLEFT", 0, y);
+			local t = L[key] or default;
+			fs:SetText((K.UI and K.UI.Label(t)) or t);
+		end
+		RowLabel(-98, "PPF_STYLE_LABEL", "Frame style:");
+		RowLabel(-120, "PPF_BORDER_LABEL", "Aura borders:");
 		local radios = {};
 		local function SyncRadios()
 			local cur = K.GetPartyPetOption and K.GetPartyPetOption("borderStyle") or "fino";
-			for _, rb in ipairs(radios) do rb:SetChecked(rb.value == cur); end
+			local curStyle = K.GetPartyPetOption and K.GetPartyPetOption("frameStyle") or "compact";
+			for _, rb in ipairs(radios) do
+				rb:SetChecked(rb.value == ((rb.optKey == "frameStyle") and curStyle or cur));
+			end
 		end
 		local RADIO = "Interface\\Buttons\\UI-RadioButton";
-		local function Radio(x, value, text, tip)
+		local function Radio(x, value, text, tip, optKey, ry)
+			optKey = optKey or "borderStyle";
 			local rb = CreateFrame("CheckButton", nil, ppfBody);
 			rb:SetSize(16, 16);
-			rb:SetPoint("TOPLEFT", x, -96);
+			rb:SetPoint("TOPLEFT", x, ry or -118);
 			rb:SetNormalTexture(RADIO);
 			rb:GetNormalTexture():SetTexCoord(0, 0.25, 0, 1);
 			rb:SetCheckedTexture(RADIO);
@@ -1671,8 +1683,9 @@ function K.PopulateFramesTab(panel)
 			-- El texto tambien se puede clickear.
 			rb:SetHitRectInsets(0, -((fs:GetStringWidth() or 40) + 6), 0, 0);
 			rb.value = value;
+			rb.optKey = optKey;
 			rb:SetScript("OnClick", function()
-				if K.SetPartyPetOption then K.SetPartyPetOption("borderStyle", value); end
+				if K.SetPartyPetOption then K.SetPartyPetOption(optKey, value); end
 				SyncRadios();
 			end);
 			Tip(rb, text, tip);
@@ -1684,6 +1697,14 @@ function K.PopulateFramesTab(panel)
 			L["PPF_TIP_BORDER_LORTI"] or "The gloss and shadow of the Lorti UI buttons. The shadow takes the color of the \"Party pets\" row of Lorti UI, if it has one.");
 		Radio(298, "blizzard", L["PPF_BORDER_BLIZZ"] or "Blizzard",
 			L["PPF_TIP_BORDER_BLIZZ"] or "Like the target frame: buffs without a border, debuffs with their colored ring just outside the icon.");
+		Radio(118, "compact", L["PPF_STYLE_COMPACT"] or "Compact",
+			L["PPF_TIP_STYLE_COMPACT"] or "The pet frame as always: its own art, a big round portrait and wide bars.", "frameStyle", -96);
+		Radio(208, "blizzard", L["PPF_STYLE_BLIZZ"] or "Blizzard",
+			L["PPF_TIP_STYLE_BLIZZ"] or "Blizzard's party frame: same art, portrait and bars as your party members.", "frameStyle", -96);
+		Radio(298, "bigblizzard", L["PPF_STYLE_BIGBLIZZ"] or "Big Blizzard",
+			L["PPF_TIP_STYLE_BIGBLIZZ"] or "The Big Blizzard party frame: Blizzard's art with a taller health bar.", "frameStyle", -96);
+		Radio(400, "compact2", L["PPF_STYLE_COMPACT2"] or "Compact 2",
+			L["PPF_TIP_STYLE_COMPACT2"] or "The Compact 2 party frame: the compact player frame art, a small portrait and slim bars.", "frameStyle", -96);
 		SyncRadios();
 		ppfBody:HookScript("OnShow", SyncRadios);
 
@@ -1701,21 +1722,21 @@ function K.PopulateFramesTab(panel)
 			optCBs[key] = cb;
 			return cb;
 		end
-		Opt(L["PPF_OPT_BUFFS"] or "Buffs", "showBuffs", 0, -118,
+		Opt(L["PPF_OPT_BUFFS"] or "Buffs", "showBuffs", 0, -140,
 			L["PPF_TIP_BUFFS"] or "The pet's buffs (above the portrait).");
-		Opt(L["PPF_OPT_DEBUFFS"] or "Debuffs", "showDebuffs", 0, -144,
+		Opt(L["PPF_OPT_DEBUFFS"] or "Debuffs", "showDebuffs", 0, -166,
 			L["PPF_TIP_DEBUFFS"] or "The pet's debuffs, with the color of their school.");
-		Opt(L["PPF_OPT_TIMERS"] or "Aura timers", "auraTimers", 0, -170,
+		Opt(L["PPF_OPT_TIMERS"] or "Aura timers", "auraTimers", 0, -192,
 			L["PPF_TIP_TIMERS"] or "The clock sweep and the seconds left on each buff and debuff (red in the last 5 seconds), plus the stack count.");
-		Opt(L["PPF_OPT_DISPEL"] or "Highlight what you can dispel", "dispelGlow", 0, -196,
+		Opt(L["PPF_OPT_DISPEL"] or "Highlight what you can dispel", "dispelGlow", 0, -218,
 			L["PPF_TIP_DISPEL"] or "A debuff your class can remove from the pet glows in the color of its school. Priest: magic and disease. Paladin: magic, poison and disease. Shaman: poison, disease and curse. Druid: curse and poison. Mage: curse. Warlock: magic (felhunter).");
-		Opt(L["PPF_OPT_CAST"] or "Cast bar", "showCast", 230, -118,
+		Opt(L["PPF_OPT_CAST"] or "Cast bar", "showCast", 230, -140,
 			L["PPF_TIP_CAST"] or "The pet's cast bar (Spell Lock, Seduction, Gnaw...).");
-		Opt(L["PPF_OPT_CLICK"] or "Click to target", "clickable", 230, -144,
+		Opt(L["PPF_OPT_CLICK"] or "Click to target", "clickable", 230, -166,
 			L["PPF_TIP_CLICK"] or "Left click on a frame targets that pet. Changes outside combat.");
-		Opt(L["PPF_OPT_OWNER"] or "Owner's class color", "ownerColor", 230, -170,
+		Opt(L["PPF_OPT_OWNER"] or "Owner's class color", "ownerColor", 230, -192,
 			L["PPF_TIP_OWNER"] or "The pet's health bar takes the class color of its owner, so you know at a glance whose pet it is.");
-		Opt(L["PPF_OPT_RANGE"] or "Fade out of range", "rangeFade", 230, -196,
+		Opt(L["PPF_OPT_RANGE"] or "Fade out of range", "rangeFade", 230, -218,
 			L["PPF_TIP_RANGE"] or "The frame turns see-through when the pet is far from you. Healers measure it with their heal; other classes, by the owner's distance.");
 
 		-- "Resaltar lo que dispeleas" depende de "Debuffs", y no sirve en

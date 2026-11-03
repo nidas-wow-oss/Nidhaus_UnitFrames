@@ -228,6 +228,11 @@ local function RestorePoint(region, s)
 	if not region or not s then return; end
 	region:ClearAllPoints();
 	region:SetPoint(s.point, s.relTo, s.relPoint, s.x, s.y);
+	-- A los textos NO se les fija el alto: un nombre con alto fijo y una
+	-- fuente mas grande que ese alto se dibuja corrido hacia abajo y pisa
+	-- el borde de la barra. Pasaba al cambiar de estilo, y en cada marco
+	-- distinto segun el alto que tenia cuando se fotografio.
+	if region.GetObjectType and region:GetObjectType() == "FontString" then return; end
 	if s.h and s.h > 0 and region.SetHeight then region:SetHeight(s.h); end
 end
 
@@ -505,7 +510,9 @@ function StyleOne(i)
 		-- Big Blizzard: de vuelta al anclaje de fabrica. Hace falta
 		-- hacerlo y no solo "no tocarlo", porque se puede llegar aca
 		-- viniendo de Compact 2, que si lo habia subido.
-		RestorePoint(nameFS, orig[fn].name);
+		if not (K.RestorePartyNamePoint and K.RestorePartyNamePoint(i)) then
+			RestorePoint(nameFS, orig[fn].name);
+		end
 	end
 
 	-- FONDO DEL MARCO
@@ -667,7 +674,9 @@ function RestoreOne(i)
 	end
 
 	-- El nombre vuelve adentro del marco.
-	RestorePoint(_G[fn .. "Name"], s.name);
+	if not (K.RestorePartyNamePoint and K.RestorePartyNamePoint(i)) then
+		RestorePoint(_G[fn .. "Name"], s.name);
+	end
 
 	local mp = _G[fn .. "ManaBar"];
 	RestorePoint(mp, s.mana);

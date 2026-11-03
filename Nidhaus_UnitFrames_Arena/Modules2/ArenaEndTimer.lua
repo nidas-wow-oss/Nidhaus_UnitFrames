@@ -311,6 +311,24 @@ end
 
 function K.AreArenaTimersLocked() return K.ArenaTimersLocked and true or false; end
 
+-- FIJADO = TRANSPARENTE AL MOUSE.
+--
+-- Fijados no se pueden mover, pero seguian agarrando el mouse: un click
+-- encima del contador no llegaba al mundo (ni a lo que hubiera debajo).
+-- Fijados dejan pasar los clicks; sin fijar (Alt + arrastrar, o el modo
+-- mover) lo vuelven a tomar. No son marcos protegidos: vale en combate.
+local TIMER_FRAMES = {
+	"NUF_ArenaEndTimer", "NUF_DalaranPipeTimer",
+	"NUF_RoVPillarTimer", "NUF_ShadowSightTimer",
+};
+function K.ApplyArenaTimersMouse()
+	local on = not K.ArenaTimersLocked;
+	for _, name in ipairs(TIMER_FRAMES) do
+		local f = _G[name];
+		if f and f.EnableMouse then f:EnableMouse(on); end
+	end
+end
+
 -- La SavedVariable recien existe en ADDON_LOADED: de ahi se repone.
 local lockLoad = CreateFrame("Frame");
 lockLoad:RegisterEvent("ADDON_LOADED");
@@ -318,6 +336,7 @@ lockLoad:SetScript("OnEvent", function(self, _, addon)
 	if addon ~= AddOnName then return; end
 	self:UnregisterEvent("ADDON_LOADED");
 	K.ArenaTimersLocked = LockedDB();
+	K.ApplyArenaTimersMouse();
 end);
 
 function K.StopArenaTimerTests()
@@ -350,6 +369,7 @@ function K.ExitArenaTimersMoving()
 	moveMode = false;
 	K.ArenaTimersUnlocked = false;
 	K.ArenaTimersLocked = LockedDB();
+	K.ApplyArenaTimersMouse();
 	testTimer:Hide();
 	RunAll(K.ArenaTimerTestStop);
 	-- El boton del panel (si esta abierto) vuelve a decir "Mover".
@@ -364,6 +384,7 @@ function K.SetArenaTimersMoving(on)
 	-- Mover = desbloquear; Fijar = bloquear (y se guarda).
 	K.ArenaTimersLocked = not on;
 	LockedDB(not on);
+	K.ApplyArenaTimersMouse();
 	testTimer:Hide();
 	if on then
 		RunAll(K.ArenaTimerTestStart);

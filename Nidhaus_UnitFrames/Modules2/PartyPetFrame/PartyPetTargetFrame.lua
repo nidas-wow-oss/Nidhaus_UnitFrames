@@ -92,8 +92,12 @@ local OPT_DEFAULTS = {
 	auraTimers = true, borderStyle = "fino",
 	dispelGlow = true, ownerColor = true, rangeFade = true,
 	clickable = true, locked = false,
+	frameStyle = "compact",
 }
 local BORDER_STYLES = { fino = true, lorti = true, blizzard = true }
+-- El aspecto del marco: el de siempre (compact) o el del marco de grupo de
+-- Blizzard, normal o con las barras grandes de Big Blizzard.
+local FRAME_STYLES  = { compact = true, compact2 = true, blizzard = true, bigblizzard = true }
 
 local function PPF_Opts()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {} end
@@ -106,6 +110,7 @@ local function PPF_Opts()
 		if db[k] == nil then db[k] = v end
 	end
 	if not BORDER_STYLES[db.borderStyle] then db.borderStyle = "fino" end
+	if not FRAME_STYLES[db.frameStyle] then db.frameStyle = "compact" end
 	-- Las opciones que se sacaron no quedan dando vueltas en el guardado.
 	db.showCC, db.ccTimer, db.showTarget = nil, nil, nil
 	-- Zonas. Antes habia una sola opcion, "solo en arena" (PartyPetArenaOnly,
@@ -679,6 +684,112 @@ local function ApplyPetLortiTint(pf)
 end
 
 -- =========================================================
+-- ESTILOS DEL MARCO
+--
+--   compact     el de siempre: UI-PetFrame (160x80), retrato de 40 y
+--               barras de 85 de ancho.
+--   blizzard    el marco de grupo de Blizzard (UI-PartyFrame): arte de
+--               128x64 en 0,-2, retrato de 37 en 7,-6, vida y mana de
+--               70x8 (PartyFrameTemplates.xml).
+--   bigblizzard el mismo arte de pw con las barras de Big Blizzard: vida
+--               de 12 de alto en 46,-13 y mana en 46,-25 (PartyFramePW).
+--   compact2    el Compact 2 del grupo: el arte del PlayerFrame compacto
+--               (pw\\UI-TargetingFrame) recortado y espejado, retrato de 30
+--               y barras de 61 (la tabla PW2 de PartyFramePW, sin el
+--               corrimiento por el icono de PvP, que la mascota no tiene).
+--
+-- El marco sigue midiendo 160x80 en los tres: la pila, el lugar guardado
+-- y el modo mover no cambian. Los buffs, debuffs y la barra de casteo
+-- cuelgan del retrato y de las barras, asi que siguen solos.
+-- =========================================================
+local PET_STYLES = {
+	compact = {
+		bg = "Interface\\AddOns\\Nidhaus_UnitFrames\\Modules2\\PartyPetFrame\\Media\\UI-PetFrame",
+		port = { size = 40, point = "LEFT", x = 12, y = 12 },
+		name = { "TOPLEFT", 65, -10 },
+		hp = { w = 85, h = 24, x = 60, y = -10 }, mp = { w = 85, h = 10, gap = -4 },
+	},
+	blizzard = {
+		bg = "Interface\\TargetingFrame\\UI-PartyFrame", w = 128, h = 64, x = 0, y = -2,
+		port = { size = 37, point = "TOPLEFT", x = 7, y = -6 },
+		hp = { w = 70, h = 8, x = 47, y = -12 }, mp = { w = 70, h = 8, gap = -1 },
+		barBG = true,
+	},
+	bigblizzard = {
+		bg = "Interface\\AddOns\\Nidhaus_UnitFrames\\Media\\pw\\UI-PartyFrame", w = 128, h = 64, x = 0, y = -2,
+		port = { size = 37, point = "TOPLEFT", x = 7, y = -6 },
+		hp = { w = 70, h = 12, x = 46, y = -13 }, mp = { w = 70, h = 8, gap = 0 },
+		barBG = true,
+	},
+	compact2 = {
+		bg = "Interface\\AddOns\\Nidhaus_UnitFrames\\Media\\pw\\UI-TargetingFrame", w = 121, h = 52, x = 0, y = 0,
+		coords = { 1.0, 0.09375, 0, 0.78125 },
+		port = { size = 30, point = "TOPLEFT", x = 25, y = -8 },
+		hp = { w = 61, h = 14, x = 57, y = -13 }, mp = { w = 61, h = 6, gap = 0 },
+		barBG = true,
+	},
+}
+
+local function ApplyPetFrameStyle(pf)
+	if not pf then return end
+	-- Las barras son marcos hijos de un boton seguro: fuera de combate.
+	if InCombatLockdown() then
+		if K.AfterCombat then K.AfterCombat("PPFStyle" .. (pf.index or 0), function() ApplyPetFrameStyle(pf) end) end
+		return
+	end
+	local st = PET_STYLES[PPF_Opts().frameStyle] or PET_STYLES.compact
+
+	pf.bg:SetTexture(st.bg)
+	pf.bg:SetTexCoord(unpack(st.coords or { 0, 1, 0, 1 }))
+	pf.bg:ClearAllPoints()
+	if st.w then
+		pf.bg:SetPoint("TOPLEFT", pf, "TOPLEFT", st.x or 0, st.y or 0)
+		pf.bg:SetSize(st.w, st.h)
+	else
+		pf.bg:SetAllPoints(pf)
+	end
+	ApplyPetLortiTint(pf)
+
+	local pr = pf.portraitFrame
+	pr:ClearAllPoints()
+	pr:SetPoint(st.port.point, pf, st.port.point, st.port.x, st.port.y)
+	pr:SetSize(st.port.size, st.port.size)
+	if pf.ccGlow then pf.ccGlow:SetSize(st.port.size * 1.9, st.port.size * 1.9) end
+
+	pf.healthBar:ClearAllPoints()
+	pf.healthBar:SetPoint("TOPLEFT", pf, "TOPLEFT", st.hp.x, st.hp.y)
+	pf.healthBar:SetSize(st.hp.w, st.hp.h)
+	pf.manaBar:ClearAllPoints()
+	pf.manaBar:SetPoint("TOPLEFT", pf.healthBar, "BOTTOMLEFT", 0, st.mp.gap)
+	pf.manaBar:SetSize(st.mp.w, st.mp.h)
+
+	-- El nombre: en el de siempre adentro, a la derecha del retrato; en los
+	-- de Blizzard arriba de la vida, donde lo lleva el marco de grupo.
+	pf.name:ClearAllPoints()
+	if st.name then
+		pf.name:SetPoint(st.name[1], pf, st.name[1], st.name[2], st.name[3])
+	else
+		pf.name:SetPoint("BOTTOMLEFT", pf.healthBar, "TOPLEFT", 1, 1)
+	end
+
+	-- El arte de Blizzard tiene la ventana de las barras vacia: un fondo
+	-- oscuro detras, como el del marco de grupo.
+	--
+	-- VA ADENTRO DE CADA BARRA, en su capa de fondo. Puesto en el marco
+	-- quedaba por ENCIMA de las barras (estan en el nivel 0, debajo del
+	-- marco) y las oscurecia: el verde de la vida se veia apagado.
+	for _, bar in ipairs({ pf.healthBar, pf.manaBar }) do
+		if not bar.nufBG then
+			bar.nufBG = bar:CreateTexture(nil, "BACKGROUND")
+			bar.nufBG:SetAllPoints(bar)
+			bar.nufBG:SetTexture(0, 0, 0, 0.5)
+		end
+		if st.barBG then bar.nufBG:Show() else bar.nufBG:Hide() end
+	end
+	if pf.barBG then pf.barBG:Hide() end
+end
+
+-- =========================================================
 -- LA FABRICA
 -- =========================================================
 local function PPF_Build(i)
@@ -718,6 +829,7 @@ local function PPF_Build(i)
 	petFrame.bg:SetAllPoints(true)
 	petFrame.bg:SetTexture("Interface\\AddOns\\Nidhaus_UnitFrames\\Modules2\\PartyPetFrame\\Media\\UI-PetFrame")
 	petFrame.bg:SetDrawLayer("BACKGROUND", 0)
+
 
 	-- Indicador de bloqueo
 	petFrame.lockIndicator = petFrame:CreateTexture(nil, "OVERLAY")
@@ -881,6 +993,7 @@ local function PPF_Build(i)
 		self.timeText:SetFormattedText("%.1f", self.endTime - now)   -- sin basura
 	end)
 
+	ApplyPetFrameStyle(petFrame)
 	return petFrame
 end
 
@@ -1446,6 +1559,10 @@ function K.SetPartyPetOption(key, v)
 	if key == "borderStyle" then
 		if not BORDER_STYLES[v] then return end
 		o.borderStyle = v
+	elseif key == "frameStyle" then
+		if not FRAME_STYLES[v] then return end
+		o.frameStyle = v
+		for n = 1, NUM_PETS do ApplyPetFrameStyle(petFrames[n]) end
 	else
 		o[key] = v and true or false
 	end

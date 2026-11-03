@@ -123,8 +123,11 @@ local function StyleFrame(i)
 	if nameOutline == "" or nameOutline == "Blizz" then nameOutline = nil; end
 	name:SetFont("Fonts\\FRIZQT__.TTF", 7, nameOutline);
 
+	-- EL NOMBRE VA ARRIBA DEL MARCO, no adentro: adentro quedaba encima de
+	-- la barra de vida y tapaba los numeros. Alineado con la barra (50) y
+	-- apoyado justo sobre el borde de arriba del arte.
 	name:ClearAllPoints();
-	name:SetPoint("TOPLEFT", 50, -4);   -- 4px mas arriba (antes -8)
+	name:SetPoint("BOTTOMLEFT", _G["PartyMemberFrame" .. i], "TOPLEFT", 50, 3);
 
 	-- Vida y mana NO se tocan: van con la fuente original de Blizzard.
 	-- Antes se forzaban a 7 y los numeros quedaban ilegibles en un marco
@@ -181,7 +184,9 @@ local function RestoreFrame(i)
 
 	if name and o.nameFont then
 		name:SetFont(o.nameFont[1], o.nameFont[2], o.nameFont[3]);
-		SafeSetPoint(name, o.namePoint);
+		if not (K.RestorePartyNamePoint and K.RestorePartyNamePoint(i)) then
+			SafeSetPoint(name, o.namePoint);
+		end
 	end
 	-- hptext / manatext ya no se tocan al aplicar el estilo, asi que
 	-- tampoco hay nada que restaurar aca.

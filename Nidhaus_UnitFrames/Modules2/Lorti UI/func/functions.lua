@@ -325,6 +325,46 @@ end
 -- llama K.ApplyLortiColor al cambiar el color o la casilla). De paso deja
 -- el borde de adentro en su negro (por si quedo pintado de la version
 -- anterior, sin tener que hacer /reload).
+-- =========================================================
+-- nExtraBars: SUS BOTONES TAMBIEN LLEVAN EL COLOR
+--
+-- nExtraBars le pone a sus 24 botones su propio fondo de Lorti, con el
+-- contorno siempre negro. Ese contorno es el mismo que aca lleva el color
+-- de "Barras de accion", asi que se le pone el mismo: si no, al cambiar
+-- el color las barras de Blizzard cambiaban y las de nExtraBars no.
+-- =========================================================
+local function ColorNEBButtons()
+	if not lortiEnabled then return end
+	local sr, sg, sb, sa = ShadowColor()
+	for _, side in ipairs({ "Left", "Right" }) do
+		for i = 1, 12 do
+			local bu = _G["NEB_Bar" .. side .. "Button" .. i]
+			local bg = bu and bu._nebLortiBG
+			if bg and bg.SetBackdropBorderColor then
+				bg:SetBackdropBorderColor(sr, sg, sb, sa)
+			end
+		end
+	end
+end
+K.LortiColorNEB = ColorNEBButtons
+
+-- nExtraBars arma su fondo al entrar al mundo: se pinta despues de eso,
+-- en el cuadro siguiente y otra vez al segundo (por si tarda).
+do
+	local nebWait = CreateFrame("Frame")
+	local t = 0
+	nebWait:Hide()
+	nebWait:SetScript("OnUpdate", function(self, dt)
+		t = t + dt
+		if t > 0 and not self.first then self.first = true; ColorNEBButtons() end
+		if t >= 1 then self:Hide(); ColorNEBButtons() end
+	end)
+	nebWait:RegisterEvent("PLAYER_ENTERING_WORLD")
+	nebWait:SetScript("OnEvent", function(self)
+		t = 0; self.first = nil; self:Show()
+	end)
+end
+
 function K.ApplyLortiButtonColor()
 	if not lortiEnabled then return end
 	local sr, sg, sb, sa = ShadowColor()
@@ -347,6 +387,7 @@ function K.ApplyLortiButtonColor()
 	end
 	rActionButtonStyler_AB_styleshapeshift()
 	rActionButtonStyler_AB_stylepet()
+	ColorNEBButtons()
 end
 
 -- Lo llama Button Range en cada chequeo de rango (cada 0.2 s por boton).
