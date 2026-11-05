@@ -63,6 +63,9 @@ end
 
 -- API pública para el panel de opciones
 function K.ApplyPartyTargetsState(enabled)
+	-- Son botones seguros: Hide/Show y UnitWatch en combate se bloquean.
+	-- Se deja para cuando termine (vale el ultimo pedido).
+	if K.AfterCombat("PartyTargetsState", function() K.ApplyPartyTargetsState(enabled); end) then return; end
 	for i = 1, MAX_PARTY_MEMBERS do
 		local frame = _G["PartyTargetFrame"..i];
 		if frame then

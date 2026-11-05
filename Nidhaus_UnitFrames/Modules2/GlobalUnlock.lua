@@ -242,6 +242,10 @@ local MOVABLES = {
 	{ key = "SwingTimer", group = "extra", frames = {"NUF_SwingMover"},        label = "Auto attack", scalable = true,
 	  module = "MeleeSwingTimer" },
 	-- Modulos con marco propio: tambien se acomodan desde "Mover todo".
+	-- Mascotas del grupo (Party pet enhanced): se agarra la de arriba y
+	-- las otras tres cuelgan de ella. Botones seguros: protected.
+	{ key = "PartyPets",  group = "extra", frames = {"CustomParty1PetFrame"},  label = "Party pets", scalable = true,
+	  protected = true, preview = "SetPartyPetPreview", module = "PartyPetFrame" },
 	{ key = "PaladinICD", group = "extra", frames = {"PaladinICDFrame"},       label = "Paladin ICD", scalable = true,
 	  preview = "SetPaladinICDPreview", module = "PaladinICD", class = "PALADIN" },
 	{ key = "PalAuras",   group = "extra", frames = {"NUF_PaladinAuras"},      label = "Paladin tracker", scalable = true,
@@ -1194,6 +1198,7 @@ local MODULE_SCALE_ID = {
 	SSTracker    = "SacredShieldTracker",
 	PaladinICD   = "PaladinICD",
 	Seduction    = "SeductionAlert",
+	PartyPets    = "PartyPetFrame",
 };
 
 -- Movible -> escala en la DB propia del modulo (funciones de K).
@@ -3164,7 +3169,7 @@ local function BuildConsole()
 		local b = CreateFrame("Button", nil, console, "UIPanelButtonTemplate");
 		b:SetPoint("TOPLEFT", console, "TOPLEFT", gx, -48);
 		b:SetSize((step == 0) and 44 or 50, 22);
-		b:SetText((step == 0) and (L["BTN_GRID_OFF"] or "Sin") or ("x" .. step));
+		b:SetText((step == 0) and (L["BTN_GRID_OFF"] or "Off") or ("x" .. step));
 		b:SetScript("OnClick", function()
 			-- Apretar el que YA esta puesto lo apaga: vuelve a 0, o sea
 			-- movimiento libre. Apretar otro cambia de paso, como siempre.
@@ -3261,6 +3266,19 @@ function K.SetGlobalUnlock(state, scope)
 	if unlocked then
 		if K.IsMeleeSwingUnlocked and K.IsMeleeSwingUnlocked() then
 			pcall(K.ToggleMeleeSwingUnlock);
+		end
+	end
+
+	-- Trabar con un recuadro todavia agarrado (entrar en combate a mitad de
+	-- un arrastre): al ocultarlo no llega OnDragStop, el marco quedaba con
+	-- _nufDragging puesto para siempre y el lugar sin guardar. Se suelta y
+	-- se guarda aca, igual que si soltaras el mouse.
+	if not unlocked then
+		for _, ov in ipairs(overlays) do
+			if ov.isMoving then
+				local stop = ov:GetScript("OnDragStop");
+				if stop then pcall(stop, ov); end
+			end
 		end
 	end
 

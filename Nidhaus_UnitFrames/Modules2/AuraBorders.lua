@@ -206,41 +206,56 @@ local function Restyle(self)
 	local glow = C.AuraBordersPurge ~= false
 		and unit and UnitExists(unit) and UnitIsEnemy("player", unit);
 
+	-- NO SE CORTA EN EL PRIMER HUECO. Con "solo mis debuffs" (o en un
+	-- enemigo con debuffs ajenos) Blizzard esconde ranuras del medio y
+	-- deja visibles las de despues: cortando ahi, esas quedaban sin
+	-- borde. Se corta recien donde el marco no existe.
+
 	-- ── Buffs ──
 	for i = 1, MAX_BUFFS do
 		local name = base .. "Buff" .. i;
 		local frame = _G[name];
-		if not frame or not frame:IsShown() then break; end
-
-		StyleIcon(name, NEUTRAL[1], NEUTRAL[2], NEUTRAL[3]);
-
-		local _, _, _, _, debuffType = UnitBuff(unit, i);
-		UpdateSteal(name, glow and debuffType == "Magic");
+		if not frame then break; end
+		if frame:IsShown() then
+			StyleIcon(name, NEUTRAL[1], NEUTRAL[2], NEUTRAL[3]);
+			-- isStealable: el robo de hechizos del mago se respeta
+			-- aunque el resplandor de purga este apagado.
+			local _, _, _, _, debuffType, _, _, _, isStealable = UnitBuff(unit, i);
+			UpdateSteal(name, (glow and debuffType == "Magic") or (isStealable and true or false));
+		end
 	end
 
 	-- ── Debuffs ──
 	for i = 1, MAX_DEBUFFS do
 		local name = base .. "Debuff" .. i;
 		local frame = _G[name];
-		if not frame or not frame:IsShown() then break; end
+		if not frame then break; end
+		if frame:IsShown() then
+			-- El color se lee del aro de Blizzard, que lo acaba de pintar
+			-- para ESTE icono. Antes se pedia UnitDebuff(unit, i), y cuando
+			-- Blizzard filtra ranuras el numero no coincide: el borde salia
+			-- con la escuela de otro debuff. Se recalcula en cada pasada
+			-- (el bug de pw era pintarlo una sola vez).
+			local blizz = _G[name .. "Border"];
+			local r, g, b;
+			if blizz and blizz.GetVertexColor then r, g, b = blizz:GetVertexColor(); end
+			if not r then r, g, b = NEUTRAL[1], NEUTRAL[2], NEUTRAL[3]; end
+			StyleIcon(name, r, g, b);
 
-		-- El color se recalcula SIEMPRE. Este es el bug de pw: alla
-		-- se pinta una sola vez y se queda con la escuela del primer
-		-- debuff que ocupo la ranura.
-		local _, _, _, _, debuffType = UnitDebuff(unit, i);
-		local color = (DebuffTypeColor and (DebuffTypeColor[debuffType]
-			or DebuffTypeColor["none"])) or nil;
-
-		if color then
-			StyleIcon(name, color.r, color.g, color.b);
-		else
-			StyleIcon(name, NEUTRAL[1], NEUTRAL[2], NEUTRAL[3]);
+			-- Esconder el aro gordo de Blizzard: con los dos puestos el
+			-- icono queda con doble marco y no se ve nada.
+			if blizz then blizz:Hide(); end
 		end
+	end
+end
 
-		-- Esconder el aro gordo de Blizzard: con los dos puestos el
-		-- icono queda con doble marco y no se ve nada.
-		local blizz = _G[name .. "Border"];
-		if blizz then blizz:Hide(); end
+-- Pedirle a Blizzard que vuelva a dibujar las auras (con lo nuestro o sin).
+local function RedrawBlizzard()
+	for _, base in ipairs(UNITS) do
+		local f = _G[base];
+		if f and f.unit and UnitExists(f.unit) and type(TargetFrame_UpdateAuras) == "function" then
+			pcall(TargetFrame_UpdateAuras, f);
+		end
 	end
 end
 
@@ -262,6 +277,9 @@ function K.DisableAuraBorders()
 		for i = 1, MAX_BUFFS   do RestoreIcon(base .. "Buff" .. i);   end
 		for i = 1, MAX_DEBUFFS do RestoreIcon(base .. "Debuff" .. i); end
 	end
+	-- RestoreIcon esconde el resplandor; Blizzard lo vuelve a poner donde
+	-- corresponde (robo de hechizos del mago).
+	RedrawBlizzard();
 end
 
 function K.IsAuraBordersActive()
@@ -291,10 +309,70 @@ if type(TargetFrame_UpdateAuras) == "function" then
 	hooksecurefunc("TargetFrame_UpdateAuras", Restyle);
 end
 
+-- =========================================================
+-- AURAS MAS GRANDES EN OBJETIVO Y FOCO (idea de FriskesUI)
+--
+-- Blizzard las dibuja a 17 (buffs) y 21 (debuffs propios). Con la opcion
+-- se re-ubican a 22 y 26. Va en un hook DESPUES del de Blizzard: se
+-- vuelve a llamar a su propia funcion de anclaje (updateFunc) con otros
+-- tamaños, asi el ancla de la barra de casteo y las filas quedan bien.
+--
+-- Diferencia con FriskesUI: ahi el ancho de fila se fuerza a 126 siempre
+-- y, con el objetivo del objetivo visible, los iconos se meten debajo de
+-- el. Aca se respeta el ancho angosto que Blizzard usa en ese caso.
+-- =========================================================
+local BIG_SMALL, BIG_LARGE, BIG_GAP = 22, 26, 2.5;
+
+local function BigAuraPositions(self, auraName, numAuras, numOppositeAuras,
+		largeAuraList, updateFunc, maxRowWidth, offsetX)
+	if not C.BigTargetAuras then return; end
+	if type(updateFunc) ~= "function" or type(largeAuraList) ~= "table" then return; end
+	offsetX = offsetX or 3;
+	maxRowWidth = maxRowWidth or 122;
+	if maxRowWidth >= 122 then maxRowWidth = 126; end
+
+	local rowWidth, firstOnRow, offsetY = 0, 1, BIG_GAP;
+	for i = 1, (numAuras or 0) do
+		local size;
+		if largeAuraList[i] then
+			size = BIG_LARGE;
+			offsetY = BIG_GAP + BIG_GAP;
+		else
+			size = BIG_SMALL;
+		end
+		if i == 1 then rowWidth = size; else rowWidth = rowWidth + size + offsetX; end
+
+		if rowWidth > maxRowWidth then
+			updateFunc(self, auraName, i, numOppositeAuras, firstOnRow, size, offsetX, offsetY);
+			rowWidth = size;
+			firstOnRow = i;
+			offsetY = BIG_GAP;
+		else
+			updateFunc(self, auraName, i, numOppositeAuras, i - 1, size, offsetX, offsetY);
+		end
+	end
+end
+
+if type(TargetFrame_UpdateAuraPositions) == "function" then
+	hooksecurefunc("TargetFrame_UpdateAuraPositions", function(...)
+		pcall(BigAuraPositions, ...);
+	end);
+end
+
+local lastBig;
+function K.ApplyBigTargetAuras()
+	local want = C.BigTargetAuras and true or false;
+	if want == lastBig then return; end
+	lastBig = want;
+	RedrawBlizzard();
+end
+
 K.RegisterConfigEvent("CONFIG_LOADED", function()
 	K.ApplyAuraBorders();
+	K.ApplyBigTargetAuras();
 end);
 
 K.RegisterConfigEvent("CONFIG_CHANGED", function()
 	K.ApplyAuraBorders();
+	K.ApplyBigTargetAuras();
 end);

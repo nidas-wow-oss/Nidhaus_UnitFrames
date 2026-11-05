@@ -358,8 +358,9 @@ local function RestoreDefaultArenaTextures()
 
 		if orig.hbFont[1] then arenaFrame.healthbar.TextString:SetFont(unpack(orig.hbFont)); end
 		if orig.mbFont[1] then arenaFrame.manabar.TextString:SetFont(unpack(orig.mbFont)); end
-		arenaFrame.healthbar.TextString:Show();
-		arenaFrame.manabar.TextString:Show();
+		-- Lo decide Interface > Status Text > Party, no un Show() a secas.
+		K.ArenaShowStatusText(arenaFrame.healthbar);
+		K.ArenaShowStatusText(arenaFrame.manabar);
 
 		arenaFrame.classPortrait:ClearAllPoints();
 		for _, pt in ipairs(orig.portrait.points) do

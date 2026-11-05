@@ -60,6 +60,42 @@ function K.IsScalable(id)
 	return registry[id] ~= nil;
 end
 
+-- CRECER DESDE EL CENTRO (opcional, por modulo).
+--
+-- SetScale agranda el marco desde su punto de anclaje, y ademas multiplica
+-- el desplazamiento del ancla: un timer anclado arriba se iba para abajo y
+-- para el costado al subirle la escala. Con esto el centro queda quieto en
+-- la pantalla y el marco crece parejo hacia afuera.
+--
+-- onMoved(frame) se llama despues de reanclar, para que el modulo guarde
+-- la posicion nueva con su propio sistema (si no, al /reload volveria).
+function K.SetScalableCentered(id, onMoved)
+	local entry = registry[id];
+	if not entry then return; end
+	entry.centered = true;
+	entry.onMoved = onMoved;
+end
+
+local function ApplyScale(entry, value)
+	for _, f in ipairs(entry.frames or { entry.frame }) do
+		local cx, cy;
+		if entry.centered and (f:GetNumPoints() or 0) > 0 then cx, cy = f:GetCenter(); end
+		if cx then
+			local s0 = f:GetEffectiveScale();
+			pcall(f.SetScale, f, value);
+			local s1 = f:GetEffectiveScale();
+			if s1 and s1 > 0 then
+				f:ClearAllPoints();
+				f:SetPoint("CENTER", UIParent, "BOTTOMLEFT", cx * s0 / s1, cy * s0 / s1);
+			end
+			if entry.onMoved then pcall(entry.onMoved, f); end
+		else
+			pcall(f.SetScale, f, value);
+			if entry.centered and entry.onMoved then pcall(entry.onMoved, f); end
+		end
+	end
+end
+
 function K.GetModuleScale(id)
 	local entry = registry[id];
 	local saved = ScaleDB()[id];
@@ -74,9 +110,7 @@ function K.SetModuleScale(id, value)
 	if value < 0.3 then value = 0.3; end
 	if value > 3.0 then value = 3.0; end
 	ScaleDB()[id] = value;
-	for _, f in ipairs(entry.frames or { entry.frame }) do
-		pcall(f.SetScale, f, value);
-	end
+	ApplyScale(entry, value);
 	-- Que su slider muestre el numero nuevo, venga de donde venga (el
 	-- propio slider, Ctrl + rueda en "Mover todo", un reset).
 	if K.RefreshModuleScaleSliders then K.RefreshModuleScaleSliders(id); end
@@ -96,9 +130,7 @@ function K.ResetModuleScale(id)
 	local entry = registry[id];
 	if not entry then return; end
 	ScaleDB()[id] = nil;
-	for _, f in ipairs(entry.frames or { entry.frame }) do
-		pcall(f.SetScale, f, entry.default or 1.0);
-	end
+	ApplyScale(entry, entry.default or 1.0);
 	if K.RefreshModuleScaleSliders then K.RefreshModuleScaleSliders(id); end
 	-- Y el recuadro del modo mover, que muestra el mismo numero y mide el
 	-- marco (GlobalUnlock: RequestOverlayRefresh). Es el "avisar" de

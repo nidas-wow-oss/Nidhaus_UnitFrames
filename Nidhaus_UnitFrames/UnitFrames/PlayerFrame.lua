@@ -70,8 +70,18 @@ local function UpdateGroupIndicator()
 	if not PlayerFrameGroupIndicatorText then return; end
 	local _, instanceType = IsInInstance();
 	local big = K.BigStatusTextOn and K.BigStatusTextOn("player");
-	local hide = (instanceType == "arena") or big or AsuriOn();
+	-- La casilla "Hide the group number" (Frames > Player) lo apaga siempre,
+	-- con su fondo incluido (sin Custom skin, Blizzard le pone un recuadro).
+	local always = (C.HidePlayerGroupNumber == true);
+	local hide = always or (instanceType == "arena") or big or AsuriOn();
 	PlayerFrameGroupIndicatorText:SetAlpha(hide and 0 or 1);
+	if PlayerFrameGroupIndicator then PlayerFrameGroupIndicator:SetAlpha(always and 0 or 1); end
+end
+K.UpdatePlayerGroupIndicator = UpdateGroupIndicator;
+
+-- Blizzard lo vuelve a mostrar en cada cambio de grupo: corremos despues.
+if type(PlayerFrame_UpdateGroupIndicator) == "function" then
+	hooksecurefunc("PlayerFrame_UpdateGroupIndicator", UpdateGroupIndicator);
 end
 
 -- El hook a PlayerFrame_UpdateGroupIndicator cubre el rearmado del grupo,
@@ -229,10 +239,10 @@ local function Nidhaus_UnitFrames_Style_PlayerFrame(self)
 		-- gris oscuro (0.25) encima de su textura. Ahora va con sus colores,
 		-- como los otros estilos. Si prendes Lorti para "Player", Asuri
 		-- toma ese color igual que los demas.
-		local lr, lg, lb;
-		if K.LortiTint then lr, lg, lb = K.LortiTint("LortiUI_PlayerTargetFocus", "Player"); end
+		local lr, lg, lb, la;
+		if K.LortiTint then lr, lg, lb, la = K.LortiTint("LortiUI_PlayerTargetFocus", "Player"); end
 		if lr then
-			PlayerFrameTexture:SetVertexColor(lr, lg, lb);
+			PlayerFrameTexture:SetVertexColor(lr, lg, lb, la or 1);
 		else
 			PlayerFrameTexture:SetVertexColor(1, 1, 1);
 		end

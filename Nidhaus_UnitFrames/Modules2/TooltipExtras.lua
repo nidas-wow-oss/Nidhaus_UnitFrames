@@ -163,6 +163,7 @@ local function GatherTalents(isInspect)
 	cache[#cache + 1] = {
 		name = current.name, tree = current.tree, format = current.format,
 		current[1], current[2], current[3],
+		t = GetTime(),   -- cuando se leyo: para no re-inspeccionar enseguida
 	};
 end
 
@@ -197,7 +198,20 @@ local function TalentsOnSetUnit()
 	-- Si la ventana de inspeccion esta abierta, NotifyInspect se la rompe.
 	local allowInspect = (not InspectFrame or not InspectFrame:IsShown())
 		and (not Examiner or not Examiner:IsShown());
-	if allowInspect then
+
+	-- Visto hace menos de un minuto: alcanza con el cache. Antes se
+	-- inspeccionaba en CADA pasada del mouse, y en Dalaran eso era una
+	-- consulta al servidor por jugador (el servidor las frena y pisa la
+	-- inspeccion de otros addons). Pasado el minuto se refresca, por si
+	-- cambio de talentos.
+	local fresh = false;
+	for _, entry in ipairs(cache) do
+		if entry.name == current.name and entry.t and (GetTime() - entry.t) < 60 then
+			fresh = true; break;
+		end
+	end
+
+	if allowInspect and not fresh then
 		talFrame:RegisterEvent("INSPECT_TALENT_READY");
 		NotifyInspect(unit);
 	end

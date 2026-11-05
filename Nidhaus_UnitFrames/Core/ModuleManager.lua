@@ -10,13 +10,27 @@ K.ModuleOrder = {};
 -- K.RegisterModule para prender en el acto a los que llegan tarde.
 local modulesInitialized = false;
 
+-- Cuerpos de los modulos diferidos que todavia no corrieron (id -> funcion).
+-- Ver K.DeferModule mas abajo.
+local deferredBodies = {};
+
 function K.RegisterModule(id, info)
 	if not id or not info then
 		print(L["MM_REGISTER_ERROR"]);
 		return;
 	end
 
-	if K.Modules[id] then
+	local existing = K.Modules[id];
+	if existing then
+		-- Un modulo diferido se vuelve a registrar cuando corre su cuerpo:
+		-- ahi trae sus funciones y completa la ficha que dejo K.DeferModule.
+		-- El default queda el de la ficha, que es el que ya uso la DB.
+		if existing._deferred and not existing._filled then
+			existing._filled = true;
+			for k, v in pairs(info) do
+				if k ~= "default" then existing[k] = v; end
+			end
+		end
 		return;
 	end
 
@@ -32,6 +46,7 @@ function K.RegisterModule(id, info)
 		-- (normalmente: mostrar el frame y desbloquearlo para moverlo)
 		configFunc  = info.configFunc,
 		configLabel = info.configLabel,
+		_deferred   = deferredBodies[id] ~= nil,
 	};
 
 	table.insert(K.ModuleOrder, id);
@@ -48,10 +63,76 @@ function K.RegisterModule(id, info)
 		if NidhausUnitFramesDB.Modules[id] == nil then
 			NidhausUnitFramesDB.Modules[id] = K.Modules[id].default;
 		end
+		if NidhausUnitFramesDB.Modules[id] then K.LoadModuleBody(id); end
 		if NidhausUnitFramesDB.Modules[id] and K.Modules[id].onEnable then
 			local ok, err = pcall(K.Modules[id].onEnable);
 			if not ok then print((L["MM_ERROR_INIT"] or "") .. id .. ": " .. tostring(err)); end
 		end
+	end
+end
+
+-- ---------------------------------------------------------
+-- CARGA DIFERIDA
+--
+-- Antes cada archivo de modulo creaba sus marcos, eventos y hooks al
+-- cargar el addon, estuviera tildado o no: apagado solo queria decir
+-- "no hace nada", pero todo eso seguia en memoria.
+--
+-- Con DeferModule el modulo deja anotados nombre y descripcion (para el
+-- panel) y guarda el resto en una funcion que corre recien la primera vez
+-- que se prende. Apagado y con /reload, no crea nada.
+--
+--     K.DeferModule("Id", { name = ..., desc = ..., default = false }, function()
+--         ...el archivo de siempre, con su K.RegisterModule al final...
+--     end);
+--
+-- Si un archivo trae dos modulos, se le pasa la misma funcion a los dos
+-- DeferModule: corre una sola vez, apenas se prende cualquiera.
+--
+-- No se puede saltear el archivo entero: WoW lee todos los .lua antes de
+-- cargar la DB, asi que en ese momento todavia no se sabe que esta tildado.
+-- ---------------------------------------------------------
+function K.DeferModule(id, info, body)
+	if not id or not info or type(body) ~= "function" then
+		print(L["MM_REGISTER_ERROR"]);
+		return;
+	end
+	if K.Modules[id] then return; end
+	deferredBodies[id] = body;
+	K.RegisterModule(id, info);
+end
+
+-- Corre el cuerpo de un modulo diferido, una sola vez. Los que no son
+-- diferidos (o ya corrieron) pasan de largo.
+function K.LoadModuleBody(id)
+	local body = deferredBodies[id];
+	if not body then return true; end
+	-- Se borra antes de correr: si falla, no se reintenta en cada clic.
+	-- Un archivo con dos modulos (PaladinAuras + TurnEvil) les pasa el
+	-- mismo cuerpo a los dos: se borra para todos los que lo comparten.
+	for other, b in pairs(deferredBodies) do
+		if b == body then deferredBodies[other] = nil; end
+	end
+	local ok, err = pcall(body);
+	if not ok then
+		print((L["MM_ERROR_INIT"] or "") .. id .. ": " .. tostring(err));
+		return false;
+	end
+	-- Su comando recien existe ahora: CommandGuard tiene que envolverlo.
+	if K.GuardModuleCommands then pcall(K.GuardModuleCommands); end
+	return true;
+end
+
+function K.IsModuleLoaded(id)
+	return K.Modules[id] ~= nil and deferredBodies[id] == nil;
+end
+
+-- El panel llama a funciones de los modulos aunque esten apagados
+-- (vistas previas, estilos, boton Mover). Se cargan todos antes de
+-- abrirlo; cargar no es prender, eso lo sigue decidiendo la casilla.
+function K.LoadAllModuleBodies()
+	for _, id in ipairs(K.ModuleOrder) do
+		if deferredBodies[id] then K.LoadModuleBody(id); end
 	end
 end
 
@@ -120,6 +201,8 @@ function K.SetModuleEnabled(id, enabled)
 	if not NidhausUnitFramesDB.Modules then NidhausUnitFramesDB.Modules = {}; end
 
 	NidhausUnitFramesDB.Modules[id] = enabled;
+
+	if enabled then K.LoadModuleBody(id); end
 
 	local mod = K.Modules[id];
 	if enabled and mod.onEnable then
@@ -191,6 +274,8 @@ function K.InitializeModules()
 		end
 
 		local enabled = NidhausUnitFramesDB.Modules[id];
+
+		if enabled then K.LoadModuleBody(id); end
 
 		if enabled and mod.onEnable then
 			local ok, err = pcall(mod.onEnable);

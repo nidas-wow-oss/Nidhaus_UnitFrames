@@ -7,265 +7,263 @@ local K, C, L = unpack(ns);
 -- Estilos: default (Blizzard circles), modern, hs, ex
 -- ============================================================
 
-local isActive = false;
-local iconStyle = "default";
+-- Diferido: apagado no crea sus marcos ni engancha los retratos (ver K.DeferModule).
+K.DeferModule("ClassIcons", {
+    name = L["MOD_CLASS_ICONS"] or "Class Icons",
+    desc = L["MOD_CLASS_ICONS_DESC"] or "Replaces portraits with class icons (default, modern, hs, ex)",
+    default = false,
+}, function()
+    local isActive = false;
+    local iconStyle = "default";
 
-local _G = _G;
-local unpack = unpack;
-local CLASS_ICON_TCOORDS = CLASS_ICON_TCOORDS;
-local GetNumArenaOpponents = GetNumArenaOpponents;
-local SetPortraitToTexture = SetPortraitToTexture;
-local UnitClass = UnitClass;
-local UnitIsPlayer = UnitIsPlayer;
-local UnitExists = UnitExists;
+    local _G = _G;
+    local unpack = unpack;
+    local CLASS_ICON_TCOORDS = CLASS_ICON_TCOORDS;
+    local GetNumArenaOpponents = GetNumArenaOpponents;
+    local SetPortraitToTexture = SetPortraitToTexture;
+    local UnitClass = UnitClass;
+    local UnitIsPlayer = UnitIsPlayer;
+    local UnitExists = UnitExists;
 
--- Ruta a las texturas dentro de Nidhaus_UnitFrames
-local TEXTURE_PATH = "Interface\\AddOns\\" .. AddOnName .. "\\Modules2\\ClassIcons\\Textures\\";
+    -- Ruta a las texturas dentro de Nidhaus_UnitFrames
+    local TEXTURE_PATH = "Interface\\AddOns\\" .. AddOnName .. "\\Modules2\\ClassIcons\\Textures\\";
 
--- ──────────────────────────────────────────────────────────────
---  CORE: Set Portrait
--- ──────────────────────────────────────────────────────────────
+    -- ──────────────────────────────────────────────────────────────
+    --  CORE: Set Portrait
+    -- ──────────────────────────────────────────────────────────────
 
-local function SetPortrait(self)
-    if not isActive then return; end
+    local function SetPortrait(self)
+        if not isActive then return; end
 
-    local portrait = self and (self.portrait or self.classPortrait);
-    if not portrait then return; end
+        local portrait = self and (self.portrait or self.classPortrait);
+        if not portrait then return; end
 
-    if UnitIsPlayer(self.unit) then
-        local _, playerClass = UnitClass(self.unit);
-        if playerClass then
-            if iconStyle == "default" then
-                portrait:SetTexture("Interface\\TargetingFrame\\UI-Classes-Circles");
-                portrait:SetTexCoord(unpack(CLASS_ICON_TCOORDS[playerClass]));
-            else
-                SetPortraitToTexture(portrait, TEXTURE_PATH .. iconStyle .. "\\" .. playerClass);
-                portrait:SetTexCoord(0, 1, 0, 1);
+        if UnitIsPlayer(self.unit) then
+            local _, playerClass = UnitClass(self.unit);
+            if playerClass then
+                if iconStyle == "default" then
+                    portrait:SetTexture("Interface\\TargetingFrame\\UI-Classes-Circles");
+                    portrait:SetTexCoord(unpack(CLASS_ICON_TCOORDS[playerClass]));
+                else
+                    SetPortraitToTexture(portrait, TEXTURE_PATH .. iconStyle .. "\\" .. playerClass);
+                    portrait:SetTexCoord(0, 1, 0, 1);
+                end
             end
+        else
+            if not UnitExists(self.unit) then
+                portrait:SetTexture("Interface\\CharacterFrame\\TempPortrait");
+            end
+            portrait:SetTexCoord(0, 1, 0, 1);
         end
-    else
-        if not UnitExists(self.unit) then
-            portrait:SetTexture("Interface\\CharacterFrame\\TempPortrait");
-        end
-        portrait:SetTexCoord(0, 1, 0, 1);
-    end
-end
-
--- ──────────────────────────────────────────────────────────────
---  ARENA OnUpdate (solo en arena)
--- ──────────────────────────────────────────────────────────────
-
-local arenaFrame = CreateFrame("Frame");
-arenaFrame:Hide();
-
--- Este OnUpdate corria 60 veces por segundo de forma permanente y, dentro de
--- una arena, repintaba el retrato de hasta 5 frames en CADA fotograma. Los
--- retratos no cambian tan rapido: con revisarlos 5 veces por segundo sobra.
-local ARENA_THROTTLE = 0.2;
-
-local function ArenaUpdate(self, elapsed)
-    self.acc = (self.acc or 0) + (elapsed or 0);
-    if self.acc < ARENA_THROTTLE then return; end
-    self.acc = 0;
-
-    if not isActive or iconStyle == "default" then return; end
-    if not _G.ArenaEnemyFrames or not _G.ArenaEnemyFrames:IsShown() then return; end
-
-    for i = 1, GetNumArenaOpponents() do
-        SetPortrait(_G["ArenaEnemyFrame" .. i]);
-    end
-end
-
-arenaFrame:SetScript("OnUpdate", ArenaUpdate);
-
--- ──────────────────────────────────────────────────────────────
---  REFRESH: Aplicar a todos los frames visibles
--- ──────────────────────────────────────────────────────────────
-
-local function RefreshAllPortraits()
-    if not isActive then return; end
-
-    SetPortrait(PlayerFrame);
-    SetPortrait(TargetFrame);
-    SetPortrait(FocusFrame);
-
-    for i = 1, (GetNumPartyMembers and GetNumPartyMembers() or 0) do
-        SetPortrait(_G["PartyMemberFrame" .. i]);
     end
 
-    if IsAddOnLoaded("Blizzard_ArenaUI") then
+    -- ──────────────────────────────────────────────────────────────
+    --  ARENA OnUpdate (solo en arena)
+    -- ──────────────────────────────────────────────────────────────
+
+    local arenaFrame = CreateFrame("Frame");
+    arenaFrame:Hide();
+
+    -- Este OnUpdate corria 60 veces por segundo de forma permanente y, dentro de
+    -- una arena, repintaba el retrato de hasta 5 frames en CADA fotograma. Los
+    -- retratos no cambian tan rapido: con revisarlos 5 veces por segundo sobra.
+    local ARENA_THROTTLE = 0.2;
+
+    local function ArenaUpdate(self, elapsed)
+        self.acc = (self.acc or 0) + (elapsed or 0);
+        if self.acc < ARENA_THROTTLE then return; end
+        self.acc = 0;
+
+        if not isActive or iconStyle == "default" then return; end
+        if not _G.ArenaEnemyFrames or not _G.ArenaEnemyFrames:IsShown() then return; end
+
         for i = 1, GetNumArenaOpponents() do
             SetPortrait(_G["ArenaEnemyFrame" .. i]);
         end
     end
-end
 
--- ──────────────────────────────────────────────────────────────
---  STYLE: Guardar y cargar estilo
--- ──────────────────────────────────────────────────────────────
+    arenaFrame:SetScript("OnUpdate", ArenaUpdate);
 
-local function GetStyle()
-    if NidhausUnitFramesDB and NidhausUnitFramesDB.ClassIconsStyle then
-        return NidhausUnitFramesDB.ClassIconsStyle;
-    end
-    return "default";
-end
+    -- ──────────────────────────────────────────────────────────────
+    --  REFRESH: Aplicar a todos los frames visibles
+    -- ──────────────────────────────────────────────────────────────
 
-local function SetStyle(style)
-    iconStyle = style;
-    if NidhausUnitFramesDB then
-        NidhausUnitFramesDB.ClassIconsStyle = style;
-    end
-    RefreshAllPortraits();
-end
+    local function RefreshAllPortraits()
+        if not isActive then return; end
 
--- Exponer para uso externo
-K.ClassIcons_SetStyle = SetStyle;
-K.ClassIcons_GetStyle = GetStyle;
+        SetPortrait(PlayerFrame);
+        SetPortrait(TargetFrame);
+        SetPortrait(FocusFrame);
 
--- ──────────────────────────────────────────────────────────────
---  EVENTS: Detectar arena para OnUpdate
--- ──────────────────────────────────────────────────────────────
-
-local eventFrame = CreateFrame("Frame");
-eventFrame:Hide();
-
-eventFrame:SetScript("OnEvent", function(self, event)
-    if event == "PLAYER_ENTERING_WORLD" then
-        local _, instanceType = IsInInstance();
-        if instanceType == "arena" and isActive then
-            arenaFrame:Show();
-        else
-            arenaFrame:Hide();
-        end
-    end
-end);
-
--- ──────────────────────────────────────────────────────────────
---  HOOK (una sola vez, permanente)
--- ──────────────────────────────────────────────────────────────
-
-local hooked = false;
-
-local function EnsureHook()
-    if hooked then return; end
-    hooksecurefunc("UnitFramePortrait_Update", SetPortrait);
-    hooked = true;
-end
-
--- ──────────────────────────────────────────────────────────────
---  MODULE REGISTRATION
--- ──────────────────────────────────────────────────────────────
-
-K.RegisterModule("ClassIcons", {
-    name = L["MOD_CLASS_ICONS"] or "Class Icons",
-    desc = L["MOD_CLASS_ICONS_DESC"] or "Replaces portraits with class icons (default, modern, hs, ex)",
-    default = false,
-
-    onEnable = function()
-        isActive = true;
-        iconStyle = GetStyle();
-        EnsureHook();
-        eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
-        eventFrame:Show();
-
-        -- Activar arena OnUpdate si ya estamos en arena
-        local _, instanceType = IsInInstance();
-        if instanceType == "arena" then
-            arenaFrame:Show();
-        end
-
-        RefreshAllPortraits();
-    end,
-
-    onDisable = function()
-        isActive = false;
-        eventFrame:UnregisterAllEvents();
-        eventFrame:Hide();
-        arenaFrame:Hide();
-
-        -- Restaurar portraits originales manualmente
-        local function RestorePortrait(frame)
-            if not frame or not frame.portrait or not frame.unit then return; end
-            if not UnitExists(frame.unit) then return; end
-            frame.portrait:SetTexCoord(0, 1, 0, 1);
-            SetPortraitTexture(frame.portrait, frame.unit);
-        end
-
-        RestorePortrait(PlayerFrame);
-        RestorePortrait(TargetFrame);
-        RestorePortrait(FocusFrame);
         for i = 1, (GetNumPartyMembers and GetNumPartyMembers() or 0) do
-            RestorePortrait(_G["PartyMemberFrame" .. i]);
+            SetPortrait(_G["PartyMemberFrame" .. i]);
         end
-    end,
 
-    -- UI extra: dropdown de estilos (llamado por OptionsPanel)
-    createUI = function(parent, yPos)
-        local STYLES = {
-            { value = "default", label = L["CLASSICON_DEFAULT"] or "Default" },
-            { value = "modern",  label = L["CLASSICON_MODERN"] or "Modern" },
-            { value = "hs",      label = "HS" },
-            { value = "ex",      label = L["CLASSICON_EX"] or "Exprmtl" },
-        };
+        if IsAddOnLoaded("Blizzard_ArenaUI") then
+            for i = 1, GetNumArenaOpponents() do
+                SetPortrait(_G["ArenaEnemyFrame" .. i]);
+            end
+        end
+    end
 
-        local label = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
-        label:SetPoint("TOPLEFT", 36, yPos);
-        label:SetText("|cffAAAAAA" .. (L["LBL_STYLE"] or "Style:") .. "|r");
+    -- ──────────────────────────────────────────────────────────────
+    --  STYLE: Guardar y cargar estilo
+    -- ──────────────────────────────────────────────────────────────
 
-        local btnX = 85;
-        local styleBtns = {};
+    local function GetStyle()
+        if NidhausUnitFramesDB and NidhausUnitFramesDB.ClassIconsStyle then
+            return NidhausUnitFramesDB.ClassIconsStyle;
+        end
+        return "default";
+    end
 
-        for _, s in ipairs(STYLES) do
-            local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate");
-            btn:SetPoint("TOPLEFT", btnX, yPos + 3);
-            btn:SetSize(72, 18);
-            btn:SetText(s.label);
+    local function SetStyle(style)
+        iconStyle = style;
+        if NidhausUnitFramesDB then
+            NidhausUnitFramesDB.ClassIconsStyle = style;
+        end
+        RefreshAllPortraits();
+    end
 
-            local fs = btn:GetFontString();
-            if fs then fs:SetFont("Fonts\\FRIZQT__.TTF", 9, ""); end
+    -- Exponer para uso externo
+    K.ClassIcons_SetStyle = SetStyle;
+    K.ClassIcons_GetStyle = GetStyle;
 
-            btn.style = s.value;
-            styleBtns[#styleBtns + 1] = btn;
+    -- ──────────────────────────────────────────────────────────────
+    --  EVENTS: Detectar arena para OnUpdate
+    -- ──────────────────────────────────────────────────────────────
 
-            btn:SetScript("OnClick", function(self)
-                SetStyle(self.style);
-                -- Highlight botón activo
-                for _, b in ipairs(styleBtns) do
-                    if b.style == iconStyle then
-                        b:GetFontString():SetTextColor(0, 1, 0);
-                    else
-                        b:GetFontString():SetTextColor(1, 1, 1);
-                    end
-                end
-            end);
+    local eventFrame = CreateFrame("Frame");
+    eventFrame:Hide();
 
-            -- Highlight inicial
-            if s.value == iconStyle then
-                fs:SetTextColor(0, 1, 0);
+    eventFrame:SetScript("OnEvent", function(self, event)
+        if event == "PLAYER_ENTERING_WORLD" then
+            local _, instanceType = IsInInstance();
+            if instanceType == "arena" and isActive then
+                arenaFrame:Show();
+            else
+                arenaFrame:Hide();
+            end
+        end
+    end);
+
+    -- ──────────────────────────────────────────────────────────────
+    --  HOOK (una sola vez, permanente)
+    -- ──────────────────────────────────────────────────────────────
+
+    local hooked = false;
+
+    local function EnsureHook()
+        if hooked then return; end
+        hooksecurefunc("UnitFramePortrait_Update", SetPortrait);
+        hooked = true;
+    end
+
+    -- ──────────────────────────────────────────────────────────────
+    --  MODULE REGISTRATION
+    -- ──────────────────────────────────────────────────────────────
+
+    K.RegisterModule("ClassIcons", {
+        onEnable = function()
+            isActive = true;
+            iconStyle = GetStyle();
+            EnsureHook();
+            eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
+            eventFrame:Show();
+
+            -- Activar arena OnUpdate si ya estamos en arena
+            local _, instanceType = IsInInstance();
+            if instanceType == "arena" then
+                arenaFrame:Show();
             end
 
-            btnX = btnX + 78;
-        end
+            RefreshAllPortraits();
+        end,
 
-        -- FIX: tiene que devolver el ALTO USADO (positivo). Antes devolvia
-        -- yPos - 28, o sea un negativo, y el contenedor quedaba con altura
-        -- invalida: por eso Class Icons se pisaba con Spec Icons.
-        return 28;
-    end,
-});
+        onDisable = function()
+            isActive = false;
+            eventFrame:UnregisterAllEvents();
+            eventFrame:Hide();
+            arenaFrame:Hide();
 
--- ──────────────────────────────────────────────────────────────
---  MIGRACIÓN: Si el usuario tenía ClassIcons standalone con
---  ClassIconsSV, migrar el estilo
--- ──────────────────────────────────────────────────────────────
+            -- Restaurar portraits originales manualmente
+            local function RestorePortrait(frame)
+                if not frame or not frame.portrait or not frame.unit then return; end
+                if not UnitExists(frame.unit) then return; end
+                frame.portrait:SetTexCoord(0, 1, 0, 1);
+                SetPortraitTexture(frame.portrait, frame.unit);
+            end
 
-local migrateFrame = CreateFrame("Frame");
-migrateFrame:RegisterEvent("PLAYER_LOGIN");
-migrateFrame:SetScript("OnEvent", function(self)
-    self:UnregisterEvent("PLAYER_LOGIN");
+            RestorePortrait(PlayerFrame);
+            RestorePortrait(TargetFrame);
+            RestorePortrait(FocusFrame);
+            for i = 1, (GetNumPartyMembers and GetNumPartyMembers() or 0) do
+                RestorePortrait(_G["PartyMemberFrame" .. i]);
+            end
+        end,
 
-    -- Migrar desde ClassIconsSV si existe y no hay estilo guardado
+        -- UI extra: dropdown de estilos (llamado por OptionsPanel)
+        createUI = function(parent, yPos)
+            local STYLES = {
+                { value = "default", label = L["CLASSICON_DEFAULT"] or "Default" },
+                { value = "modern",  label = L["CLASSICON_MODERN"] or "Modern" },
+                { value = "hs",      label = "HS" },
+                { value = "ex",      label = L["CLASSICON_EX"] or "Exprmtl" },
+            };
+
+            local label = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
+            label:SetPoint("TOPLEFT", 36, yPos);
+            label:SetText("|cffAAAAAA" .. (L["LBL_STYLE"] or "Style:") .. "|r");
+
+            local btnX = 85;
+            local styleBtns = {};
+
+            for _, s in ipairs(STYLES) do
+                local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate");
+                btn:SetPoint("TOPLEFT", btnX, yPos + 3);
+                btn:SetSize(72, 18);
+                btn:SetText(s.label);
+
+                local fs = btn:GetFontString();
+                if fs then fs:SetFont("Fonts\\FRIZQT__.TTF", 9, ""); end
+
+                btn.style = s.value;
+                styleBtns[#styleBtns + 1] = btn;
+
+                btn:SetScript("OnClick", function(self)
+                    SetStyle(self.style);
+                    -- Highlight botón activo
+                    for _, b in ipairs(styleBtns) do
+                        if b.style == iconStyle then
+                            b:GetFontString():SetTextColor(0, 1, 0);
+                        else
+                            b:GetFontString():SetTextColor(1, 1, 1);
+                        end
+                    end
+                end);
+
+                -- Highlight inicial
+                if s.value == iconStyle then
+                    fs:SetTextColor(0, 1, 0);
+                end
+
+                btnX = btnX + 78;
+            end
+
+            -- FIX: tiene que devolver el ALTO USADO (positivo). Antes devolvia
+            -- yPos - 28, o sea un negativo, y el contenedor quedaba con altura
+            -- invalida: por eso Class Icons se pisaba con Spec Icons.
+            return 28;
+        end,
+    });
+
+    -- ──────────────────────────────────────────────────────────────
+    --  MIGRACIÓN: Si el usuario tenía ClassIcons standalone con
+    --  ClassIconsSV, migrar el estilo
+    -- ──────────────────────────────────────────────────────────────
+
+    -- Ya no espera PLAYER_LOGIN: el cuerpo diferido corre en el login o
+    -- despues, con la DB cargada, y ese evento ya habria pasado.
     if ClassIconsSV and ClassIconsSV.style and NidhausUnitFramesDB then
         if not NidhausUnitFramesDB.ClassIconsStyle then
             NidhausUnitFramesDB.ClassIconsStyle = ClassIconsSV.style;

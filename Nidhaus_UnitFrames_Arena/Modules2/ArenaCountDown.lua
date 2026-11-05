@@ -35,7 +35,23 @@ local function ACDScale(base)
 end
 ACDNumFrame:SetHeight(256)
 ACDNumFrame:SetWidth(256)
-ACDNumFrame:SetPoint("CENTER", 0, 128)
+
+-- Los numeros tienen lugar fijo (128 por encima del centro de la pantalla).
+-- El desplazamiento del ancla se mide en la escala del marco, asi que con
+-- escala 2 se iba a 256: se divide por la escala para que quede quieto y
+-- el numero crezca parejo desde su centro.
+local function AnchorACD()
+	local s = ACDNumFrame:GetScale() or 1;
+	if s <= 0 then s = 1; end
+	ACDNumFrame:ClearAllPoints();
+	ACDNumFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 128 / s);
+end
+local function SetACDScale(base)
+	ACDNumFrame:SetScale(ACDScale(base));
+	AnchorACD();
+end
+AnchorACD();
+if K.SetScalableCentered then K.SetScalableCentered("ArenaCountDown", AnchorACD); end
 ACDNumFrame:Show()
 
 local ACDNumTens = ACDNumFrame:CreateTexture("ACDNumTens", "HIGH")
@@ -66,7 +82,7 @@ ACDFrame:SetScript("OnUpdate", function(self, elapse )
 				ACDNumOnes:Hide();
 				ACDNumOne:Show();
 				ACDNumOne:SetTexture("Interface\\AddOns\\Nidhaus_UnitFrames\\Artwork\\fight");
-				ACDNumFrame:SetScale(ACDScale(1.0));
+				SetACDScale(1.0);
 				if EyeFromCountdown then EyeFromCountdown(); end
 			elseif (string.len(str) == 2) then
 				-- Display has 2 digits
@@ -75,14 +91,14 @@ ACDFrame:SetScript("OnUpdate", function(self, elapse )
 
 				ACDNumTens:SetTexture("Interface\\AddOns\\Nidhaus_UnitFrames\\Artwork\\".. string.sub(str,0,1));
 				ACDNumOnes:SetTexture("Interface\\AddOns\\Nidhaus_UnitFrames\\Artwork\\".. string.sub(str,2,2));
-				ACDNumFrame:SetScale(ACDScale(0.7))
+				SetACDScale(0.7)
 			elseif (string.len(str) == 1) then
 				-- Display has 1 digit
 				ACDNumOne:Show();
 				ACDNumOne:SetTexture("Interface\\AddOns\\Nidhaus_UnitFrames\\Artwork\\".. string.sub(str,0,1));
 				ACDNumOnes:Hide();
 				ACDNumTens:Hide();
-				ACDNumFrame:SetScale(ACDScale(1.0))
+				SetACDScale(1.0)
 			end
 		end
 		countdown = countdown - elapse;
@@ -234,6 +250,8 @@ local function SaveEyePosition()
 		point = point, relativePoint = relativePoint, x = x, y = y,
 	}
 end
+
+if K.SetScalableCentered then K.SetScalableCentered("ShadowSightTimer", function() SaveEyePosition() end) end
 
 local function RestoreEyePosition()
 	local pos = NidhausUnitFramesDB and NidhausUnitFramesDB.timerPos

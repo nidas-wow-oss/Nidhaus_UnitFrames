@@ -45,6 +45,62 @@ local classColors = {
 	DEATHKNIGHT = {0.77, 0.12, 0.23},
 };
 
+-- ---------------------------------------------------------
+-- COLOR Y TEXTO DE LOS MARCOS DE PRUEBA
+--
+-- En una arena de verdad el color lo pone ClassColor.lua y el texto al
+-- pasar el mouse lo maneja Blizzard, los dos a partir de la unidad. Los
+-- marcos de prueba no tienen unidad, asi que ninguno de los dos hace nada:
+-- el estilo y cada SetValue (HealthBar_OnValueChanged) los dejaban verdes,
+-- y el mouse encima no mostraba los numeros. Aca se hace a mano, solo
+-- mientras dura el modo prueba.
+-- ---------------------------------------------------------
+local testClasses = {};   -- healthbar -> clase falsa que le toco
+
+local function PaintTestBar(bar)
+	local cc = classColors[testClasses[bar]];
+	if not cc then return; end
+	if K.ArenaUsesClassColor and K.ArenaUsesClassColor() then
+		bar:SetStatusBarColor(cc[1], cc[2], cc[3]);
+	else
+		bar:SetStatusBarColor(0, 1, 0);
+	end
+end
+
+function K.RefreshArenaTestColors()
+	if not K._testModeActive then return; end
+	for bar in pairs(testClasses) do PaintTestBar(bar); end
+end
+
+hooksecurefunc("HealthBar_OnValueChanged", function(self)
+	if K._testModeActive and testClasses[self] then PaintTestBar(self); end
+end);
+
+-- El estilo repinta la barra: el color va despues.
+if K.StyleSingleArenaFrame then
+	hooksecurefunc(K, "StyleSingleArenaFrame", function(frame)
+		if K._testModeActive and frame and frame.healthbar and testClasses[frame.healthbar] then
+			PaintTestBar(frame.healthbar);
+		end
+	end);
+end
+
+local hoverHooked = {};
+local function HookTestHover(frame)
+	if hoverHooked[frame] then return; end
+	hoverHooked[frame] = true;
+	frame:HookScript("OnEnter", function(self)
+		if not K._testModeActive then return; end
+		if self.healthbar and self.healthbar.TextString then self.healthbar.TextString:Show(); end
+		if self.manabar and self.manabar.TextString then self.manabar.TextString:Show(); end
+	end);
+	frame:HookScript("OnLeave", function(self)
+		if not K._testModeActive or not K.ArenaShowStatusText then return; end
+		K.ArenaShowStatusText(self.healthbar);
+		K.ArenaShowStatusText(self.manabar);
+	end);
+end
+
 local function EnsureArenaMoverDB()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.ArenaMover then
@@ -688,17 +744,17 @@ local function ToggleTestMode()
 					end
 				end
 
-				local cc = classColors[randomClass] or {0, 1, 0};
+				HookTestHover(frame);
 				if frame.healthbar then
+					-- La clase se anota ANTES del SetValue: el gancho de
+					-- HealthBar_OnValueChanged ya la pinta con su color.
+					testClasses[frame.healthbar] = randomClass;
 					frame.healthbar:SetMinMaxValues(0, 100);
 					frame.healthbar:SetValue(100);
-					if C.classColor then
-						frame.healthbar:SetStatusBarColor(cc[1], cc[2], cc[3]);
-					else
-						frame.healthbar:SetStatusBarColor(0, 1, 0);
-					end
+					PaintTestBar(frame.healthbar);
 					if frame.healthbar.TextString then
 						frame.healthbar.TextString:SetText("28000 / 35000");
+						if K.ArenaShowStatusText then K.ArenaShowStatusText(frame.healthbar); end
 					end
 				end
 				if frame.manabar then
@@ -707,6 +763,7 @@ local function ToggleTestMode()
 					frame.manabar:SetStatusBarColor(0, 0, 1);
 					if frame.manabar.TextString then
 						frame.manabar.TextString:SetText("100 / 100");
+						if K.ArenaShowStatusText then K.ArenaShowStatusText(frame.manabar); end
 					end
 				end
 
@@ -868,6 +925,9 @@ local function ToggleTestMode()
 
 		if K.SetTrinketMouseState then K.SetTrinketMouseState(true); end
 
+		-- Al final de todo: espejo, Flat y demas tambien tocan las barras.
+		K.RefreshArenaTestColors();
+
 		NidhausUnitFramesDB.ArenaMover.IsShown = true;
 	else
 		-- CERRAR TEST MODE
@@ -897,6 +957,7 @@ local function ToggleTestMode()
 		HidePetFrameDragOverlays();
 		NidhausUnitFramesDB.ArenaMover.IsShown = false;
 		K._testModeActive = false;
+		wipe(testClasses);
 		if K.SetTrinketMouseState then K.SetTrinketMouseState(false); end
 	end
 end

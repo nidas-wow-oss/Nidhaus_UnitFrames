@@ -9,6 +9,25 @@ local CUSTOM_CLASS_COLORS, RAID_CLASS_COLORS, FACTION_BAR_COLORS = CUSTOM_CLASS_
 
 local isInitialized = false;
 
+-- La regla de la arena, sola, para que el modo prueba pinte igual que una
+-- arena de verdad. CADA ESTILO TIENE SU CASILLA: Blizzard la de siempre
+-- (apagada de fabrica: son los marcos de fabrica) y los retocados una
+-- propia, "ArenaClassColor_<estilo>", prendida de fabrica (sin guardar =
+-- prendida, como era antes de que tuvieran casilla).
+function K.ArenaClassColorKey(style)
+	style = style or C.ArenaFrameStyle or "Custom";
+	if style == "Blizzard" then return "ArenaBlizzardClassColor"; end
+	return "ArenaClassColor_" .. style;
+end
+
+function K.ArenaUsesClassColor()
+	local style = C.ArenaFrameStyle or "Custom";
+	if style == "Blizzard" then
+		return C.ArenaBlizzardClassColor == true;
+	end
+	return C[K.ArenaClassColorKey(style)] ~= false;
+end
+
 -- FIX: local para evitar colisiones con otros addons
 local function unitClassColors(healthbar, unit)
 	if not healthbar or not unit then return; end
@@ -20,9 +39,9 @@ local function unitClassColors(healthbar, unit)
 	-- Los marcos de arena no tienen coloreo propio en ningun otro lado:
 	-- dependen de este mismo hook, asi que la regla entera vive aca.
 	--
-	--   Arena, estilo retocado -> SIEMPRE por clase. Ahi el color no es
-	--     decoracion: es como identificas de un vistazo a quien le estas
-	--     pegando, y apagarlo deja los tres marcos iguales.
+	--   Arena, estilo retocado -> su propia casilla (prendida de fabrica).
+	--     Ahi el color es como identificas de un vistazo a quien le estas
+	--     pegando; quien lo apaga lo elige a sabiendas.
 	--
 	--   Arena, estilo Blizzard -> manda su casilla, y manda SOLA. Los
 	--     marcos son los de fabrica y hay quien los quiere tal cual,
@@ -30,16 +49,17 @@ local function unitClassColors(healthbar, unit)
 	--     la interfaz. Por eso no se mira C.classColor aca: si se mirara,
 	--     con la opcion general puesta la casilla no podria apagar nada.
 	--
+	--   Grupo (party1-4) -> su propia casilla (Frames > Party). Vale para
+	--     todos los estilos: todos pintan la misma barra de Blizzard.
+	--
 	--   Cualquier otro marco -> la opcion general de siempre.
 	local isArena = unit and string.find(unit, "^arena%d") ~= nil;
 	local useClass;
 
 	if isArena then
-		if (C.ArenaFrameStyle or "Custom") == "Blizzard" then
-			useClass = (C.ArenaBlizzardClassColor == true);
-		else
-			useClass = true;
-		end
+		useClass = K.ArenaUsesClassColor();
+	elseif string.find(unit, "^party%d") then
+		useClass = (C.PartyClassColor == true);
 	else
 		useClass = C.classColor and true or false;
 	end
@@ -140,6 +160,10 @@ local function ForceUpdateAllFrames()
 		local bossFrame = _G["Boss"..i.."TargetFrame"];
 		if bossFrame then Recolor(bossFrame.healthbar); end
 	end
+
+	-- Los de prueba de arena no tienen unidad y Recolor los saltea.
+	if K.RefreshArenaTestColors then K.RefreshArenaTestColors(); end
+	if K.RefreshPartyTestMode then K.RefreshPartyTestMode(); end
 end
 
 local function InitializeClassColors()

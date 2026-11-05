@@ -44,7 +44,9 @@ local DEFAULTS = {
 -- OJO: en este archivo el namespace de NUF es _nufK, no K.
 -- ---------------------------------------------------------
 local function StyleKey()
-	return (PartyTargetsDB.style == "Square") and "Square" or "Classic";
+	local v = PartyTargetsDB.style;
+	if v == "Square" or v == "Icon" then return v; end
+	return "Classic";
 end
 
 local function GetScale(style)
@@ -854,7 +856,7 @@ local function StyleNameText(self)
 
 	-- El estilo Square le pone su propia fuente y posicion. Si aca se
 	-- forzara la de Classic, cambiar de objetivo se la pisaria.
-	if PartyTargetsDB.style ~= "Square" then
+	if PartyTargetsDB.style == "Classic" or PartyTargetsDB.style == nil then
 		nameText:SetFont("Fonts\\FRIZQT__.TTF", 7)
 		nameText:SetTextColor(1.0, 0.82, 0)
 		nameText:SetShadowOffset(0.6, -0.6)
@@ -870,7 +872,7 @@ function PartyTargets_ApplyNameVisibility()
 	-- al destildar aparecia en la posicion de Classic hasta el proximo
 	-- cambio de objetivo. Va ANTES del bucle para que el ultimo en tocar
 	-- el nombre sea StyleNameText.
-	if PartyTargetsDB.style == "Square" and _nufK and _nufK.ApplyPartyTargetStyle then
+	if (PartyTargetsDB.style == "Square" or PartyTargetsDB.style == "Icon") and _nufK and _nufK.ApplyPartyTargetStyle then
 		_nufK.ApplyPartyTargetStyle()
 	end
 	for i = 1, MAX_PARTY_MEMBERS do
@@ -1058,8 +1060,15 @@ addon.HealthCheck = function(self, value)
 	addon.HideBarText(self:GetParent())
 end
 
+-- SIN UIDropDownMenu_Initialize AL CARGAR.
+-- Esa funcion escribe las globales UIDROPDOWNMENU_* de Blizzard. Hecho
+-- desde el addon en cada login, quedaban manchadas (taint) y despues el
+-- codigo de Blizzard que las lee en combate (RaidPullout en arena,
+-- PartyMemberFrame...) fallaba con "action blocked". Solo se dejan los
+-- datos en NUESTRO marco; ToggleDropDownMenu inicializa al abrir el menu.
 addon.DropDownOnLoad = function(self)
-	UIDropDownMenu_Initialize(self, addon.DropDownInitialize, "MENU")
+	self.initialize = addon.DropDownInitialize
+	self.displayMode = "MENU"
 end
 
 addon.DropDownInitialize = function(self)

@@ -36,7 +36,7 @@ local GUARDED = {
 	{ key = "PARTYBUFFS",    module = "PartyBuffs"           },  -- /pbuffs, /partybuffs
 	{ key = "NUFPOWERBAR",   module = "PowerBar"             },  -- /nufpower
 	{ key = "NUFCOMBO",      module = "ComboWatch",     optional = true },  -- picaro / druida  -- /nufcombo
-	{ key = "GT",            module = "GargoyleTracker"      },  -- /gt
+	{ key = "GT",            module = "GargoyleTracker", optional = true },  -- /gt (diferido: existe recien al prenderlo)
 	{ key = "NICEDAMAGE",    module = "NiceDamage"           },  -- /nicedamage, /nd
 	{ key = "DTSU",          module = "DTSU"                 },  -- /dtsu
 	{ key = "PALADINICD",    module = "PaladinICD",     optional = true },  -- solo paladin  -- /paladinicd
@@ -104,17 +104,21 @@ local function GuardOne(entry)
 	return true;
 end
 
-local guard = CreateFrame("Frame");
-guard:RegisterEvent("PLAYER_LOGIN");
-guard:SetScript("OnEvent", function(self)
-	self:UnregisterEvent("PLAYER_LOGIN");
+-- Un modulo diferido y apagado todavia no corrio su cuerpo, asi que su
+-- comando no existe. Es lo esperado, igual que un modulo opcional.
+local function NotLoadedYet(mod)
+	if not K.IsModuleLoaded then return false; end
+	local id = (type(mod) == "table") and mod[1] or mod;
+	return K.Modules and K.Modules[id] ~= nil and not K.IsModuleLoaded(id);
+end
 
+local function GuardAll()
 	local ok, total, miss = 0, 0, {};
 	for _, entry in ipairs(GUARDED) do
 		if GuardOne(entry) then
 			ok    = ok + 1;
 			total = total + 1;
-		elseif entry.optional then
+		elseif entry.optional or NotLoadedYet(entry.module) then
 			-- El modulo no esta cargado. Esperable, no cuenta como faltante.
 		else
 			total = total + 1;
@@ -125,5 +129,20 @@ guard:SetScript("OnEvent", function(self)
 	K._cmdGuardOK    = ok;
 	K._cmdGuardTotal = total;
 	K._cmdGuardMiss  = miss;
+end
+
+-- Lo llama K.LoadModuleBody cuando un modulo diferido arranca tarde y
+-- recien ahi deja su comando. Envolver dos veces no pasa: GuardOne lo sabe.
+local guardReady = false;
+function K.GuardModuleCommands()
+	if guardReady then GuardAll(); end
+end
+
+local guard = CreateFrame("Frame");
+guard:RegisterEvent("PLAYER_LOGIN");
+guard:SetScript("OnEvent", function(self)
+	self:UnregisterEvent("PLAYER_LOGIN");
+	guardReady = true;
+	GuardAll();
 end);
 

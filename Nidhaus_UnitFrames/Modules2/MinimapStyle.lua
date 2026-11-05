@@ -395,16 +395,19 @@ function K.ApplyMinimapBorderStyle()
 	-- "local tb = GetThinBorder()" que le pisaba el azul con un marco. El
 	-- borde de Tooltip / Thin / Flat recibia un objeto como azul y salia
 	-- teñido de amarillo aunque Lorti no tuviera nada que ver.
-	local bR, bG, bB = 1, 1, 1;
+	local bR, bG, bB, bA = 1, 1, 1, 1;
 	if lorti then
 		if K.LortiMinimapTint then
-			bR, bG, bB = K.LortiMinimapTint();
+			bR, bG, bB, bA = K.LortiMinimapTint();
 		else
 			bR, bG, bB = LORTI_TINT, LORTI_TINT, LORTI_TINT;
 		end
+	elseif K.TextureColorTint and K.TextureColorTint() then
+		-- Sin Lorti en el minimapa: el Texture color, si esta prendido.
+		bR, bG, bB, bA = K.TextureColorTint();
 	end
-	if MinimapBorder then MinimapBorder:SetVertexColor(bR, bG, bB); end
-	if MinimapBorderTop then MinimapBorderTop:SetVertexColor(bR, bG, bB); end
+	if MinimapBorder then MinimapBorder:SetVertexColor(bR, bG, bB, bA or 1); end
+	if MinimapBorderTop then MinimapBorderTop:SetVertexColor(bR, bG, bB, bA or 1); end
 
 	-- "DEFAULT" EN CUADRADO: LA TEXTURA EXISTE, SOLO NO SE PEDIA.
 	--

@@ -31,8 +31,8 @@ local function ShadowColor()
 	local C = ns[2];
 	local sc = cfg.background.shadowcolor;
 	if K.LortiZoneColor then
-		local r, g, b = K.LortiZoneColor("ActionBars");
-		if r then return r, g, b, sc.a or 0.9; end
+		local r, g, b, a = K.LortiZoneColor("ActionBars");
+		if r then return r, g, b, (a or 1) * (sc.a or 0.9); end
 	end
 	return sc.r, sc.g, sc.b, sc.a;
 end

@@ -29,6 +29,8 @@ local tooltips = {
 	ArenaFlatMirrored       = "TIP_ArenaFlatMirrored",
 	ArenaFlatStatusText     = "TIP_ArenaFlatStatusText",
 	ArenaToTSquare          = "TIP_ArenaToTSquare",
+	ArenaToTHideName        = "TIP_ArenaToTHideName",
+	ArenaToTIconOnly        = "TIP_ArenaToTIconOnly",
 	ArenaCastBarEnable      = "TIP_ArenaCastBarEnable",
 	ArenaCastBarScale       = "TIP_ArenaCastBarScale",
 	ArenaCastBarWidth       = "TIP_ArenaCastBarWidth",
@@ -98,7 +100,7 @@ local function CreateCheckBox(parent, label, setting, xOffset, yOffset)
 			if K.UpdateFlatStyle then K.UpdateFlatStyle(); end
 		elseif setting == "ArenaFlatStatusText" then
 			if K.UpdateFlatStyle then K.UpdateFlatStyle(); end
-		elseif setting == "ArenaToTSquare" or setting == "ArenaToTMirrored" then
+		elseif setting == "ArenaToTSquare" or setting == "ArenaToTMirrored" or setting == "ArenaToTIconOnly" then
 			if K.RefreshArenaToTLayout then K.RefreshArenaToTLayout(); end
 		elseif setting == "ArenaCastBarEnable" then
 			if K.ToggleArenaCastBar then K.ToggleArenaCastBar(checked); end
@@ -860,10 +862,16 @@ function K.PopulateArenaTab(panel)
 	blizzCCBox.text = blizzCCBox:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
 	blizzCCBox.text:SetPoint("LEFT", blizzCCBox, "RIGHT", 2, 0);
 	blizzCCBox.text:SetText(L["CB_ARENA_BLIZZ_CLASSCOLOR"] or "Class color");
+	-- Cada estilo guarda la suya (ver K.ArenaClassColorKey en ClassColor.lua).
+	local function CCKey()
+		if K.ArenaClassColorKey then return K.ArenaClassColorKey(); end
+		return "ArenaBlizzardClassColor";
+	end
 	blizzCCBox:SetScript("OnClick", function(self)
 		local checked = self:GetChecked() == 1 or self:GetChecked() == true;
-		K.SaveConfig("ArenaBlizzardClassColor", checked);
+		K.SaveConfig(CCKey(), checked);
 		if K.ToggleClassColors then K.ToggleClassColors(checked); end
+		if K.RefreshArenaTestColors then K.RefreshArenaTestColors(); end
 	end);
 
 	local function UpdateBlizzClassColorBox()
@@ -880,12 +888,10 @@ function K.PopulateArenaTab(panel)
 			return;
 		end
 
-		if (C.ArenaFrameStyle or "Custom") == "Blizzard" then
-			blizzCCBox:SetChecked(C.ArenaBlizzardClassColor or false);
-			blizzCCBox:Show();
-		else
-			blizzCCBox:Hide();
-		end
+		-- Todos los estilos la muestran; cada uno con su valor.
+		local on = K.ArenaUsesClassColor and K.ArenaUsesClassColor();
+		blizzCCBox:SetChecked(on and true or false);
+		blizzCCBox:Show();
 	end
 	UpdateBlizzClassColorBox();
 	-- La llama OnStyleChange, que se define mas arriba y no la tiene en scope.
@@ -1208,7 +1214,7 @@ function K.PopulateArenaTab(panel)
 	local totSection = CreateFrame("Frame", "NidhausArenaToTSection", mPane);
 	totSection:SetPoint("TOPLEFT", 0, mY);
 	totSection:SetWidth(540);
-	totSection:SetHeight(86);
+	totSection:SetHeight(136);
 
 	local totScaleSlider = CreateSlider(totSection, L["SLIDER_ARENA_TOT_SCALE"] or "Target of Target Scale",
 		"ArenaToTScale", 0.5, 2.0, 0.1, fCol1, -16);
@@ -1226,6 +1232,9 @@ function K.PopulateArenaTab(panel)
 	CreateCheckBox(totSection, L["CB_ARENA_TOT_SQUARE"] or "Square Style",
 		"ArenaToTSquare", fCol1, -44);
 
+	CreateCheckBox(totSection, L["CB_ARENA_TOT_ICONONLY"] or "Class icon only",
+		"ArenaToTIconOnly", fCol2 + 130, -44);
+
 	local totResetBtn = CreateFrame("Button", nil, totSection, "UIPanelButtonTemplate");
 	totResetBtn:SetPoint("TOPLEFT", fCol2, -44);
 	totResetBtn:SetSize(80, 20);
@@ -1237,6 +1246,15 @@ function K.PopulateArenaTab(panel)
 		if K.ResetArenaToTPositions then K.ResetArenaToTPositions(); end
 		if K.ApplyArenaToTScale then K.ApplyArenaToTScale(def); end
 	end);
+
+	-- El nombre: ocultarlo, o elegir su color. La barra de vida no cambia.
+	CreateCheckBox(totSection, L["CB_ARENA_TOT_HIDENAME"] or "Hide Name",
+		"ArenaToTHideName", fCol1, -76);
+	CreateDropdown(totSection, L["LABEL_ARENA_TOT_NAMECOLOR"] or "Name Color", "ArenaToTNameColor", {
+		{ text = L["OPT_TOT_NAME_CLASS"] or "Class color",          value = "class" },
+		{ text = L["OPT_TOT_NAME_BLIZZARD"] or "Blizzard (yellow)", value = "blizzard" },
+		{ text = L["OPT_TOT_NAME_WHITE"] or "White",                value = "white" },
+	}, fCol2, -74);
 
 	local function RefreshToTSection()
 		local on = K.IsModuleEnabled and K.IsModuleEnabled("ArenaToT");
@@ -1252,7 +1270,7 @@ function K.PopulateArenaTab(panel)
 		end);
 	end
 
-	mY = mY - 90;
+	mY = mY - 140;
 
 	-- ═══════════════════════════════════════════════════════════
 	-- PESTAÑAS DR y DoT  (opciones + vista previa)

@@ -33,6 +33,26 @@ hooksecurefunc("TextStatusBar_UpdateTextString", function(bar)
 	if ts and forcedTexts[ts] then ts:Show(); end
 end);
 
+-- MOSTRAR EL TEXTO SOLO SI BLIZZARD LO MOSTRARIA.
+--
+-- Al volver un estilo a como venia, el texto se mostraba con un Show() a
+-- secas. Eso ignoraba Interface > Status Text > Party (la casilla que
+-- decide el texto de los marcos de arena) y peleaba con Blizzard: el addon
+-- lo mostraba, el siguiente repintado lo escondia, y en el modo prueba se
+-- veia parpadear. Aca se hace la misma cuenta que TextStatusBar_UpdateTextString:
+-- casilla tildada, forzado, o el mouse encima (lockShow). No se llama a esa
+-- funcion desde el addon porque escribe en la barra y la dejaria manchada.
+function K.ArenaShowStatusText(bar)
+	local ts = bar and bar.TextString;
+	if not ts then return; end
+	if forcedTexts[ts] then ts:Show(); return; end
+	local on = (bar.cvar and GetCVar(bar.cvar) == "1")
+		or (not bar.cvar and GetCVar("partyStatusText") == "1")
+		or bar.forceShow
+		or (tonumber(bar.lockShow) or 0) > 0;
+	if on then ts:Show(); else ts:Hide(); end
+end
+
 -- Compatibilidad con Cataclysm: definir MAX_ARENA_ENEMIES si no existe
 local MAX_ARENA_ENEMIES = MAX_ARENA_ENEMIES or 5;
 
@@ -297,8 +317,8 @@ function K.RemoveFlatStyle(index)
 	forcedTexts[arenaFrame.healthbar.TextString] = nil;
 	forcedTexts[arenaFrame.manabar.TextString]   = nil;
 
-	arenaFrame.healthbar.TextString:Show();
-	arenaFrame.manabar.TextString:Show();
+	K.ArenaShowStatusText(arenaFrame.healthbar);
+	K.ArenaShowStatusText(arenaFrame.manabar);
 
 	if orig.hbStatusBar then arenaFrame.healthbar:SetStatusBarTexture(orig.hbStatusBar); end
 	if orig.mbStatusBar then arenaFrame.manabar:SetStatusBarTexture(orig.mbStatusBar); end

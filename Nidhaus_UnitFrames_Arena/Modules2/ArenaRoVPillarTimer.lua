@@ -128,6 +128,9 @@ local function SavePosition()
 	};
 end
 
+-- La escala crece desde el centro y la posicion nueva se guarda.
+if K.SetScalableCentered then K.SetScalableCentered("ArenaRoVPillarTimer", function() SavePosition(); end); end
+
 local function RestorePosition()
 	local pos = NidhausUnitFramesDB and NidhausUnitFramesDB.timerPos and NidhausUnitFramesDB.timerPos[KEY];
 	frame:ClearAllPoints();

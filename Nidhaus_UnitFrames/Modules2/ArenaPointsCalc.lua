@@ -14,490 +14,8 @@ local K, C, L = unpack(ns);
 --   * La ventana usa la DB de NUF, no una SavedVariable propia.
 -- =========================================================
 
-local apcEnabled = false;
-
--- FontString del boton que vive en la ventana de PvP. Lo llena
--- AddPvPButton() y lo refresca UpdatePvPButton().
-local pvpBtnLabel;
-
-local function APC_DB()
-	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
-	if not NidhausUnitFramesDB.ArenaPointsCalc then
-		NidhausUnitFramesDB.ArenaPointsCalc = {};
-	end
-	return NidhausUnitFramesDB.ArenaPointsCalc;
-end
-
-local ADDON_NAME = "ArenaPointsCalc"
-local APC = CreateFrame("Frame", "ArenaPointsCalcFrame")
-
--- OJO: aca habia "ArenaPointsCalcDB = APC_DB()".
---
--- Esa linea corre cuando el archivo se CARGA, y en ese momento
--- NidhausUnitFramesDB todavia no existe: las SavedVariables llegan recien en
--- ADDON_LOADED, despues de que todos los .lua terminaron de ejecutarse.
---
--- Asi que APC_DB() creaba una tabla nueva y vacia, y el alias global quedaba
--- apuntando a ELLA. Cuando WoW despues reemplazaba NidhausUnitFramesDB por lo
--- guardado, el alias seguia mirando la tabla vieja — huerfana, que nadie
--- guarda. Resultado: la posicion de la calculadora nunca se conservaba entre
--- sesiones, y era imposible de notar porque dentro de la misma sesion
--- funcionaba perfecto.
---
--- Se llama APC_DB() en cada uso. Es una busqueda de tabla, no cuesta nada.
-
--- ============================================================
--- SERVER DETECTION
--- ============================================================
-local serverMult = 1.0
-local realmName = ""
-
-local function DetectServer()
-    realmName = GetRealmName() or ""
-    serverMult = string.find(realmName, "Blackrock") and 2.0 or 1.0
-end
-
--- ============================================================
--- FORMULA (WotLK 3.3.5)
--- ============================================================
-local BRACKET_MULT = { [2] = 0.76, [3] = 0.88, [5] = 1.00 }
-local BRACKET_NAMES = { [2] = "2v2", [3] = "3v3", [5] = "5v5" }
-
-local function CalcPoints(rating, bracketSize)
-    if rating < 0 then rating = 0 end
-    local bMult = BRACKET_MULT[bracketSize] or 1.0
-    local baseRating = math.max(rating, 1500)
-    local base = 1511.26 / (1 + 1639.28 * math.exp(-0.00412 * baseRating))
-    return math.floor(base * bMult * serverMult)
-end
-
--- ============================================================
--- MAIN WINDOW
--- ============================================================
-local mainFrame = CreateFrame("Frame", "APC_MainFrame", UIParent)
--- Sin escala a proposito: es una ventana con su propio tamaño, no un
--- elemento de HUD que convenga agrandar o achicar.
-mainFrame:SetWidth(300)
-mainFrame:SetHeight(248)
-mainFrame:SetMovable(true)
-mainFrame:EnableMouse(true)
-mainFrame:RegisterForDrag("LeftButton")
-mainFrame:SetScript("OnDragStart", mainFrame.StartMoving)
-mainFrame:SetScript("OnDragStop", function(self)
-    self:StopMovingOrSizing()
-    local point, _, relPoint, x, y = self:GetPoint()
-    local db = APC_DB()
-    db.point = point
-    db.relPoint = relPoint
-    db.x = x
-    db.y = y
-end)
-mainFrame:SetClampedToScreen(true)
-mainFrame:Hide()
-
--- Escape cierra la ventana, como cualquier panel del juego. UISpecialFrames
--- es la lista que mira el cliente al apretar Escape; alcanza con estar en
--- ella y tener nombre global (APC_MainFrame).
-tinsert(UISpecialFrames, "APC_MainFrame")
-mainFrame:SetBackdrop({
-    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-    tile = true, tileSize = 32, edgeSize = 32,
-    insets = { left = 11, right = 12, top = 12, bottom = 11 },
-})
-
-local titleTex = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-titleTex:SetPoint("TOP", mainFrame, "TOP", 0, -16)
-titleTex:SetText("|cff00ccff" .. (L["APC_TITLE"] or "Arena Points Calculator") .. "|r")
-
-local serverInfo = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-serverInfo:SetPoint("TOP", mainFrame, "TOP", 0, -32)
-
-local closeBtn = CreateFrame("Button", nil, mainFrame, "UIPanelCloseButton")
-closeBtn:SetPoint("TOPRIGHT", -5, -5)
-closeBtn:SetScript("OnClick", function() mainFrame:Hide() end)
-
-local function MakeSep(y)
-    local s = mainFrame:CreateTexture(nil, "ARTWORK")
-    s:SetTexture(0.4, 0.4, 0.4, 0.5)
-    s:SetHeight(1)
-    s:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 18, y)
-    s:SetPoint("TOPRIGHT", mainFrame, "TOPRIGHT", -18, y)
-end
-
--- === AUTO SECTION ===
-MakeSep(-46)
-
-local autoHeader = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-autoHeader:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -54)
-autoHeader:SetText("|cffFFD700" .. (L["APC_MY_POINTS"] or "My Points This Week") .. "|r")
-
-local teamLines = {}
-for i = 1, 3 do
-    local line = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    line:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 24, -70 - (i - 1) * 16)
-    line:SetWidth(260)
-    line:SetJustifyH("LEFT")
-    teamLines[i] = line
-end
-
-local noTeamsText = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-noTeamsText:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 24, -70)
-noTeamsText:SetWidth(260)
-noTeamsText:SetJustifyH("LEFT")
-noTeamsText:SetText("|cffff8080" .. (L["APC_NO_TEAMS"] or "You are not in any arena team.") .. "|r")
-noTeamsText:Hide()
-
-local bestPointsText = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-bestPointsText:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -122)
-bestPointsText:SetWidth(260)
-bestPointsText:SetJustifyH("LEFT")
-
--- === CALCULATOR SECTION ===
-MakeSep(-146)
-
-local calcHeader = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-calcHeader:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -154)
-calcHeader:SetText("|cff00ccff" .. (L["APC_MANUAL"] or "Manual Calculator") .. "|r")
-
-local inputLabel = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-inputLabel:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -176)
-inputLabel:SetText(L["APC_RATING"] or "Rating:")
-
-local ratingInput = CreateFrame("EditBox", "APC_RatingInput", mainFrame, "InputBoxTemplate")
-ratingInput:SetWidth(80)
-ratingInput:SetHeight(20)
-ratingInput:SetPoint("LEFT", inputLabel, "RIGHT", 8, 0)
-ratingInput:SetNumeric(true)
-ratingInput:SetMaxLetters(4)
-ratingInput:SetAutoFocus(false)
-
-local calcBtn = CreateFrame("Button", nil, mainFrame, "GameMenuButtonTemplate")
-calcBtn:SetWidth(85)
-calcBtn:SetHeight(22)
-calcBtn:SetPoint("LEFT", ratingInput, "RIGHT", 6, 0)
-calcBtn:SetText(L["APC_CALCULATE"] or "Calculate")
-
-local resultText = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-resultText:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 18, -200)
-resultText:SetWidth(268)
-resultText:SetJustifyH("LEFT")
-resultText:SetText("")
-
--- ============================================================
--- AUTO DETECTION LOGIC
--- ============================================================
--- Lee los equipos de arena del personaje y los devuelve ordenados de mas
--- a menos puntos. Se usa desde tres lados: la ventana, el texto del boton
--- y su tooltip, asi que vive aparte en vez de estar metido en la ventana.
-local function GetTeams()
-    local teams, hasTeam = {}, false
-    for i = 1, MAX_ARENA_TEAMS do
-        local teamName, teamSize, teamRating, teamPlayed, teamWins, seasonPlayed, seasonWins, playerPlayed, seasonPlayerPlayed, teamRank, playerRating = GetArenaTeam(i)
-        if teamName and teamName ~= "" then
-            hasTeam = true
-            teams[#teams + 1] = {
-                size = teamSize, rating = teamRating,
-                points = CalcPoints(teamRating, teamSize),
-                played = seasonPlayerPlayed or playerPlayed or 0,
-                playerRating = playerRating or 0,
-                qualified = (seasonPlayerPlayed and seasonPlayerPlayed >= 1) or (playerPlayed and playerPlayed >= 1),
-            }
-        end
-    end
-    table.sort(teams, function(a, b) return a.points > b.points end)
-    return teams, hasTeam
-end
-
--- Solo cobras los puntos del mejor equipo en el que hayas jugado al menos
--- una partida, asi que los que no califican no cuentan para este numero.
-local function GetBest(teams)
-    local bestPts, bestBracket = 0, ""
-    for _, t in ipairs(teams) do
-        if t.qualified and t.points > bestPts then
-            bestPts = t.points
-            bestBracket = BRACKET_NAMES[t.size] or "?"
-        end
-    end
-    return bestPts, bestBracket
-end
-
--- Texto del boton que aparece dentro de la ventana de PvP.
--- Muestra los puntos de la semana directamente, sin tener que abrir nada.
-local function UpdatePvPButton()
-    if not pvpBtnLabel then return end
-    DetectServer()
-    local teams, hasTeam = GetTeams()
-    if not hasTeam then
-        pvpBtnLabel:SetText("|cffcccccc" .. (L["APC_SHORT"] or "Arena Calculator") .. "|r")
-        return
-    end
-    local bestPts, bestBracket = GetBest(teams)
-    if bestPts > 0 then
-        pvpBtnLabel:SetText(string.format("|cff00ff00%d|r  |cffaaaaaa%s|r", bestPts, bestBracket))
-    else
-        pvpBtnLabel:SetText("|cffff4444" .. (L["APC_BTN_NO_GAMES"] or "No games") .. "|r")
-    end
-end
-
-local function UpdateAutoSection()
-    local teams, hasTeam = GetTeams()
-
-    if not hasTeam then
-        noTeamsText:Show()
-        for i = 1, 3 do teamLines[i]:SetText("") end
-        bestPointsText:SetText("")
-        UpdatePvPButton()
-        return
-    end
-    noTeamsText:Hide()
-
-    for i = 1, 3 do
-        local t = teams[i]
-        if t then
-            local qualTag = t.qualified and "" or " |cffff4444(no games)|r"
-            teamLines[i]:SetText(string.format(
-                "%s |cffffff00%d|r rating -> |cff00ff00%d pts|r (PR: %d, %d played)%s",
-                BRACKET_NAMES[t.size] or "?", t.rating, t.points, t.playerRating, t.played, qualTag))
-        else
-            teamLines[i]:SetText("")
-        end
-    end
-
-    local bestPts, bestBracket = GetBest(teams)
-    if bestPts > 0 then
-        local multTag = (serverMult ~= 1.0) and string.format(" |cffFFD700(x%.0f)|r", serverMult) or ""
-        bestPointsText:SetText(string.format(
-            "|cffFFD700>>> You will receive: |cff00ff00%d|r |cffFFD700arena points%s|r (from %s)", bestPts, multTag, bestBracket))
-    else
-        bestPointsText:SetText("|cffff4444" .. (L["APC_NEED_GAMES"] or ">>> 0 points - you need to play games!") .. "|r")
-    end
-
-    UpdatePvPButton()
-end
-
--- ============================================================
--- REPOSITIONING
--- ============================================================
-local TEAM_FRAME_NAMES = { "ArenaTeamFrame", "PVPArenaTeamFrame", "ArenaTeamRosterFrame", "ArenaRosterFrame" }
-local teamFrame, teamWindowOpen = nil, false
-
--- Busca la ventana de equipo de arena SOLO por nombre conocido.
---
--- El addon original, si no encontraba ninguno, recorria TODOS los frames
--- de la interfaz con EnumerateFrames() adivinando por ancho y alto. Eso
--- son cientos de frames (los del juego mas los de todos tus addons)
--- barridos cada 0.3 segundos: carisimo y ademas fragil, porque cualquier
--- ventana de otro addon del tamaño parecido daba un falso positivo.
-local function FindTeamFrame()
-    for _, name in ipairs(TEAM_FRAME_NAMES) do
-        local f = _G[name]; if f and f:IsShown() then return f end
-    end
-    return nil
-end
-
-local function RepositionMainFrame()
-    -- Acoplada dentro del panel, la posicion la manda el panel. Sin esto,
-    -- abrir la ventana de PvP la arrancaba de ahi de un tiron.
-    if K.APC_IsDocked and K.APC_IsDocked() then return end
-    if not mainFrame:IsShown() then return end
-    if APC_DB().point and not teamWindowOpen then return end
-    mainFrame:ClearAllPoints()
-    if teamWindowOpen and teamFrame and teamFrame:IsShown() then
-        mainFrame:SetPoint("TOPLEFT", teamFrame, "TOPRIGHT", 6, 0)
-    elseif PVPFrame and PVPFrame:IsShown() then
-        mainFrame:SetPoint("TOPLEFT", PVPFrame, "TOPRIGHT", 6, 0)
-    elseif APC_DB().point then
-        local db = APC_DB()
-        mainFrame:SetPoint(db.point, UIParent, db.relPoint, db.x, db.y)
-    else
-        mainFrame:SetPoint("CENTER")
-    end
-end
-
-local scanTimer = 0
-local scanFrame = CreateFrame("Frame")
-scanFrame:Hide()
-scanFrame:SetScript("OnUpdate", function(self, dt)
-    -- Solo tiene sentido mirar mientras la ventana de PvP esta abierta
-    if not apcEnabled or not (PVPFrame and PVPFrame:IsShown()) then
-        self:Hide()
-        return
-    end
-    scanTimer = scanTimer + dt
-    if scanTimer < 0.3 then return end
-    scanTimer = 0
-    local found = FindTeamFrame()
-    local nowOpen = found ~= nil
-    if nowOpen ~= teamWindowOpen then
-        teamWindowOpen = nowOpen
-        if nowOpen then teamFrame = found end
-        RepositionMainFrame()
-    end
-end)
-
--- ============================================================
--- CALCULATOR
--- ============================================================
-local function UpdateServerInfo()
-    if serverMult == 2.0 then
-        serverInfo:SetText("|cffFFD700" .. (L["APC_SERVER_X2"] or "Warmane Blackrock \226\128\148 Points x2") .. "|r")
-    else
-        serverInfo:SetText(string.format("|cffaaaaaa%s \226\128\148 Points x1|r", realmName))
-    end
-end
-
-calcBtn:SetScript("OnClick", function()
-    local val = tonumber(ratingInput:GetText())
-    if not val then resultText:SetText("|cffff4444" .. (L["APC_INVALID_RATING"] or "Enter a valid rating.") .. "|r"); return end
-    local p2, p3, p5 = CalcPoints(val, 2), CalcPoints(val, 3), CalcPoints(val, 5)
-    local tag = (serverMult ~= 1.0) and string.format(" |cffaaaaaa(x%.0f)|r", serverMult) or ""
-    resultText:SetText(string.format(
-        "|cffffff00Rating %d%s|r\n  2v2: |cff00ff00%d pts|r   3v3: |cff00ff00%d pts|r   5v5: |cff00ff00%d pts|r",
-        val, tag, p2, p3, p5))
-end)
-ratingInput:SetScript("OnEnterPressed", function() calcBtn:Click(); ratingInput:ClearFocus() end)
-mainFrame:SetScript("OnShow", function() DetectServer(); UpdateServerInfo(); UpdateAutoSection(); RepositionMainFrame() end)
-
--- ============================================================
--- PVP BUTTON
--- ============================================================
-local pvpBtnAdded = false
-local function AddPvPButton()
-    if pvpBtnAdded or not PVPFrame then return end
-    pvpBtnAdded = true
-    local b = CreateFrame("Button", "APC_PvPButton", PVPFrame)
-    b:SetWidth(95); b:SetHeight(18)
-    b:SetAlpha(0.9)
-    -- ESTE BOTON NO SE MUEVE.
-    --
-    -- Se podia arrastrar con Alt y la posicion quedaba guardada en
-    -- btnX / btnY. Ahora va fijo en su lugar dentro de la ventana de PvP:
-    -- 233, -132 desde la esquina superior izquierda, que es justo debajo
-    -- de la linea de ARENA y donde se lee como una fila mas de esa
-    -- ventana.
-    --
-    -- Un btnX/btnY de antes se BORRA en vez de respetarse: si alguien lo
-    -- habia arrastrado, al sacar el drag se quedaria clavado ahi para
-    -- siempre y ya sin forma de acomodarlo.
-    local db = APC_DB()
-    if db.btnX or db.btnY then db.btnX, db.btnY = nil, nil end
-    b:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", 233, -132)
-    b:SetMovable(false)
-    b:SetFrameLevel(PVPFrame:GetFrameLevel() + 5)
-    -- Sin fondo ni borde: el numero tiene que leerse como una linea mas de
-    -- la ventana de PvP, al lado de HONOR y ARENA, no como un boton pegado.
-    -- GameFontNormal es la fuente estandar de la interfaz (Friz Quadrata),
-    -- la misma con la que la ventana escribe HONOR y ARENA. No se le pisa
-    -- con SetFont a proposito, para que combine.
-    local l = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    l:SetPoint("CENTER")
-    l:SetText("|cffcccccc" .. (L["APC_SHORT"] or "Arena Calculator") .. "|r")
-    pvpBtnLabel = l
-    b:EnableMouse(true)
-    b:SetScript("OnEnter", function(self)
-        self:SetAlpha(1)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText(L["APC_TITLE"] or "Arena Points Calculator", 0, 0.8, 1)
-        DetectServer()
-        local teams, hasTeam = GetTeams()
-        if not hasTeam then
-            GameTooltip:AddLine(L["APC_NO_TEAMS"] or "You are not in any arena team.", 1, 0.5, 0.5, true)
-        else
-            for _, t in ipairs(teams) do
-                local qualTag = t.qualified and "" or " |cffff4444*|r"
-                GameTooltip:AddDoubleLine(
-                    string.format("%s  |cffffff00%d|r", BRACKET_NAMES[t.size] or "?", t.rating),
-                    string.format("|cff00ff00%d|r |cffcccccc%s|r%s", t.points, L["APC_BTN_PTS"] or "pts", qualTag))
-            end
-            local bestPts, bestBracket = GetBest(teams)
-            GameTooltip:AddLine(" ")
-            if bestPts > 0 then
-                local multTag = (serverMult ~= 1.0) and string.format(" (x%.0f)", serverMult) or ""
-                GameTooltip:AddLine(string.format("%s: |cff00ff00%d|r%s  (%s)",
-                    L["APC_BTN_TIP_BEST"] or "Points you will receive this week", bestPts, multTag, bestBracket), 1, 0.84, 0, true)
-            else
-                GameTooltip:AddLine(L["APC_NEED_GAMES"] or ">>> 0 points - you need to play games!", 1, 0.3, 0.3, true)
-            end
-        end
-        GameTooltip:AddLine(" ")
-        GameTooltip:AddLine(L["APC_BTN_TIP_CLICK"] or "Click to open the calculator", 0.6, 0.6, 0.6)
-        GameTooltip:Show()
-    end)
-    b:SetScript("OnLeave", function(self) self:SetAlpha(0.9); GameTooltip:Hide() end)
-    b:SetScript("OnClick", function() if mainFrame:IsShown() then mainFrame:Hide() else mainFrame:Show() end end)
-    UpdatePvPButton()
-end
-
--- ============================================================
--- SLASH
--- ============================================================
-SLASH_ARENACALC1 = "/apc"
-SLASH_ARENACALC2 = "/arenapts"
-SlashCmdList["ARENACALC"] = function(msg)
-    msg = strtrim(msg or "")
-    if msg == "auto" then
-        DetectServer()
-        local found = false
-        for i = 1, MAX_ARENA_TEAMS do
-            local tn, ts, tr, _, _, _, _, _, sp = GetArenaTeam(i)
-            if tn and tn ~= "" then
-                found = true
-                print(string.format("|cff00ccff[APC]|r %s %s: |cffffff00%d|r -> |cff00ff00%d pts|r (%d played)",
-                    BRACKET_NAMES[ts] or "?", tn, tr, CalcPoints(tr, ts), sp or 0))
-            end
-        end
-        if not found then print("|cff00ccff[APC]|r |cffff8080" .. (L["APC_NO_TEAMS"] or "No arena teams.") .. "|r") end
-        return
-    end
-    -- Aca vivian /apc btnpos y /apc btnreset. Solo servian con el boton
-    -- movible: ahora esta fijo, btnpos siempre diria "default" y btnreset
-    -- no tendria nada que resetear.
-    local r = tonumber(msg)
-    if r then
-        DetectServer()
-        local tag = (serverMult ~= 1.0) and string.format(" (x%.0f)", serverMult) or ""
-        print(string.format("|cff00ccff[APC]|r Rating |cffffff00%d%s|r -> 2v2:|cff00ff00%d|r  3v3:|cff00ff00%d|r  5v5:|cff00ff00%d|r",
-            r, tag, CalcPoints(r, 2), CalcPoints(r, 3), CalcPoints(r, 5)))
-        return
-    end
-    if mainFrame:IsShown() then mainFrame:Hide() else mainFrame:Show() end
-end
-
--- ============================================================
--- EVENTS
--- ============================================================
--- Los eventos los engancha el modulo al prenderse (ver onEnable)
-APC:SetScript("OnEvent", function(self, event, arg1)
-    if event == "PLAYER_ENTERING_WORLD" then
-        if not apcEnabled then return end
-        DetectServer()
-        local e = 0
-        local t = CreateFrame("Frame")
-        t:SetScript("OnUpdate", function(f, dt) e = e + dt; if e >= 2 then f:SetScript("OnUpdate", nil); f:Hide(); AddPvPButton(); UpdatePvPButton(); teamFrame = FindTeamFrame() end end)
-    elseif event == "ARENA_TEAM_UPDATE" or event == "ARENA_TEAM_ROSTER_UPDATE" then
-        if mainFrame:IsShown() then
-            UpdateAutoSection()
-        else
-            -- El boton muestra los puntos aunque la ventana este cerrada,
-            -- asi que hay que refrescarlo igual.
-            UpdatePvPButton()
-        end
-    end
-end)
-
--- El escaneo se despierta al abrir la ventana de PvP y se duerme solo
-if PVPFrame then
-    PVPFrame:HookScript("OnShow", function()
-        if apcEnabled then scanTimer = 0; scanFrame:Show(); UpdatePvPButton(); end
-    end)
-end
-
--- =========================================================
--- Registro del modulo en NUF
--- Vive en: Arena > Timers
--- =========================================================
-K.RegisterModule("ArenaPointsCalc", {
+-- Diferido: apagado no crea nada hasta que se prende (ver K.DeferModule).
+K.DeferModule("ArenaPointsCalc", {
 	name    = L["MOD_APC"] or "Arena Points Calculator",
 	desc    = L["MOD_APC_DESC"]
 		or "Calculates the arena points you will get each week from your rating. /apc",
@@ -505,103 +23,589 @@ K.RegisterModule("ArenaPointsCalc", {
 	-- que la abris con /apc o desde la pestana Arena.
 	default = true,
 	configLabel = L["BTN_MODULE_OPEN"] or "Open",
-	configFunc = function()
-		if mainFrame:IsShown() then mainFrame:Hide() else mainFrame:Show() end
-	end,
-	onEnable = function()
-		apcEnabled = true;
-		APC:RegisterEvent("PLAYER_ENTERING_WORLD");
-		APC:RegisterEvent("ARENA_TEAM_UPDATE");
-		APC:RegisterEvent("ARENA_TEAM_ROSTER_UPDATE");
-		DetectServer();
-		AddPvPButton();
-		if APC_PvPButton then APC_PvPButton:Show(); end
-		UpdatePvPButton();
-		if PVPFrame and PVPFrame:IsShown() then scanTimer = 0; scanFrame:Show(); end
-	end,
-	onDisable = function()
-		apcEnabled = false;
-		scanFrame:Hide();
-		APC:UnregisterAllEvents();
-		mainFrame:Hide();
-		if APC_PvPButton then APC_PvPButton:Hide(); end
-	end,
-});
+}, function()
+	local apcEnabled = false;
 
--- =========================================================
--- ACOPLARLA DENTRO DEL PANEL DE ARENA
---
--- Mismo patron que se uso para PAB, y por el mismo motivo: NO se hace una
--- segunda calculadora, se MUDA la que ya existe. SetParent se lleva todos
--- los hijos, asi que la ventana entera entra y sale del hueco sin
--- reconstruir nada -- y con un solo juego de controles no hay dos estados
--- que se puedan desincronizar.
---
--- Lo que se le saca es la ropa de VENTANA: el marco, la cruz de cerrar y
--- el poder arrastrarla. Todo eso ya lo pone el panel que la contiene, y
--- repetirlo adentro se ve como una ventana dentro de otra.
--- =========================================================
-local apcDocked = false
-local apcPrev   = nil
+	-- FontString del boton que vive en la ventana de PvP. Lo llena
+	-- AddPvPButton() y lo refresca UpdatePvPButton().
+	local pvpBtnLabel;
 
-function K.APC_IsDocked() return apcDocked end
+	local function APC_DB()
+		if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
+		if not NidhausUnitFramesDB.ArenaPointsCalc then
+			NidhausUnitFramesDB.ArenaPointsCalc = {};
+		end
+		return NidhausUnitFramesDB.ArenaPointsCalc;
+	end
 
-function K.APC_Dock(host)
-    if not host or apcDocked then return end
-    apcDocked = true
+	local ADDON_NAME = "ArenaPointsCalc"
+	local APC = CreateFrame("Frame", "ArenaPointsCalcFrame")
 
-    -- Foto de como estaba, para poder devolverla exactamente igual.
-    apcPrev = {
-        parent = mainFrame:GetParent(),
-        shown  = mainFrame:IsShown(),
-        strata = mainFrame:GetFrameStrata(),
-    }
+	-- OJO: aca habia "ArenaPointsCalcDB = APC_DB()".
+	--
+	-- Esa linea corre cuando el archivo se CARGA, y en ese momento
+	-- NidhausUnitFramesDB todavia no existe: las SavedVariables llegan recien en
+	-- ADDON_LOADED, despues de que todos los .lua terminaron de ejecutarse.
+	--
+	-- Asi que APC_DB() creaba una tabla nueva y vacia, y el alias global quedaba
+	-- apuntando a ELLA. Cuando WoW despues reemplazaba NidhausUnitFramesDB por lo
+	-- guardado, el alias seguia mirando la tabla vieja — huerfana, que nadie
+	-- guarda. Resultado: la posicion de la calculadora nunca se conservaba entre
+	-- sesiones, y era imposible de notar porque dentro de la misma sesion
+	-- funcionaba perfecto.
+	--
+	-- Se llama APC_DB() en cada uso. Es una busqueda de tabla, no cuesta nada.
 
-    mainFrame:SetBackdrop(nil)
-    if closeBtn then closeBtn:Hide() end
-    mainFrame:SetMovable(false)
-    mainFrame:SetClampedToScreen(false)
+	-- ============================================================
+	-- SERVER DETECTION
+	-- ============================================================
+	local serverMult = 1.0
+	local realmName = ""
 
-    mainFrame:SetParent(host)
-    mainFrame:ClearAllPoints()
-    mainFrame:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
-    mainFrame:SetFrameStrata(host:GetFrameStrata())
-    mainFrame:SetFrameLevel((host:GetFrameLevel() or 0) + 1)
-    mainFrame:Show()
-end
+	local function DetectServer()
+	    realmName = GetRealmName() or ""
+	    serverMult = string.find(realmName, "Blackrock") and 2.0 or 1.0
+	end
 
-function K.APC_Undock()
-    if not apcDocked then return end
-    apcDocked = false
+	-- ============================================================
+	-- FORMULA (WotLK 3.3.5)
+	-- ============================================================
+	local BRACKET_MULT = { [2] = 0.76, [3] = 0.88, [5] = 1.00 }
+	local BRACKET_NAMES = { [2] = "2v2", [3] = "3v3", [5] = "5v5" }
 
-    -- Le vuelve la ropa de ventana.
-    mainFrame:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 32, edgeSize = 32,
-        insets = { left = 11, right = 12, top = 12, bottom = 11 },
-    })
-    if closeBtn then closeBtn:Show() end
-    mainFrame:SetMovable(true)
-    mainFrame:SetClampedToScreen(true)
+	local function CalcPoints(rating, bracketSize)
+	    if rating < 0 then rating = 0 end
+	    local bMult = BRACKET_MULT[bracketSize] or 1.0
+	    local baseRating = math.max(rating, 1500)
+	    local base = 1511.26 / (1 + 1639.28 * math.exp(-0.00412 * baseRating))
+	    return math.floor(base * bMult * serverMult)
+	end
 
-    mainFrame:SetParent((apcPrev and apcPrev.parent) or UIParent)
-    mainFrame:SetFrameStrata((apcPrev and apcPrev.strata) or "DIALOG")
-    mainFrame:ClearAllPoints()
-    -- Su tamaño propio: al acoplarla no se toco, pero se repone por las
-    -- dudas de que el panel se lo haya cambiado.
-    mainFrame:SetWidth(300)
-    mainFrame:SetHeight(248)
-    local db = APC_DB()
-    if db.point then
-        mainFrame:SetPoint(db.point, UIParent, db.relPoint, db.x, db.y)
-    else
-        mainFrame:SetPoint("CENTER")
-    end
+	-- ============================================================
+	-- MAIN WINDOW
+	-- ============================================================
+	local mainFrame = CreateFrame("Frame", "APC_MainFrame", UIParent)
+	-- Sin escala a proposito: es una ventana con su propio tamaño, no un
+	-- elemento de HUD que convenga agrandar o achicar.
+	mainFrame:SetWidth(300)
+	mainFrame:SetHeight(248)
+	mainFrame:SetMovable(true)
+	mainFrame:EnableMouse(true)
+	mainFrame:RegisterForDrag("LeftButton")
+	mainFrame:SetScript("OnDragStart", mainFrame.StartMoving)
+	mainFrame:SetScript("OnDragStop", function(self)
+	    self:StopMovingOrSizing()
+	    local point, _, relPoint, x, y = self:GetPoint()
+	    local db = APC_DB()
+	    db.point = point
+	    db.relPoint = relPoint
+	    db.x = x
+	    db.y = y
+	end)
+	mainFrame:SetClampedToScreen(true)
+	mainFrame:Hide()
 
-    -- Se cierra: mientras estuvo acoplada la estabas viendo DENTRO del
-    -- panel, no como ventana suelta. Dejarla abierta al salir del panel
-    -- seria abrirte una ventana que no pediste.
-    mainFrame:Hide()
-    apcPrev = nil
-end
+	-- Escape cierra la ventana, como cualquier panel del juego. UISpecialFrames
+	-- es la lista que mira el cliente al apretar Escape; alcanza con estar en
+	-- ella y tener nombre global (APC_MainFrame).
+	tinsert(UISpecialFrames, "APC_MainFrame")
+	mainFrame:SetBackdrop({
+	    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+	    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+	    tile = true, tileSize = 32, edgeSize = 32,
+	    insets = { left = 11, right = 12, top = 12, bottom = 11 },
+	})
+
+	local titleTex = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	titleTex:SetPoint("TOP", mainFrame, "TOP", 0, -16)
+	titleTex:SetText("|cff00ccff" .. (L["APC_TITLE"] or "Arena Points Calculator") .. "|r")
+
+	local serverInfo = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	serverInfo:SetPoint("TOP", mainFrame, "TOP", 0, -32)
+
+	local closeBtn = CreateFrame("Button", nil, mainFrame, "UIPanelCloseButton")
+	closeBtn:SetPoint("TOPRIGHT", -5, -5)
+	closeBtn:SetScript("OnClick", function() mainFrame:Hide() end)
+
+	local function MakeSep(y)
+	    local s = mainFrame:CreateTexture(nil, "ARTWORK")
+	    s:SetTexture(0.4, 0.4, 0.4, 0.5)
+	    s:SetHeight(1)
+	    s:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 18, y)
+	    s:SetPoint("TOPRIGHT", mainFrame, "TOPRIGHT", -18, y)
+	end
+
+	-- === AUTO SECTION ===
+	MakeSep(-46)
+
+	local autoHeader = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	autoHeader:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -54)
+	autoHeader:SetText("|cffFFD700" .. (L["APC_MY_POINTS"] or "My Points This Week") .. "|r")
+
+	local teamLines = {}
+	for i = 1, 3 do
+	    local line = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	    line:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 24, -70 - (i - 1) * 16)
+	    line:SetWidth(260)
+	    line:SetJustifyH("LEFT")
+	    teamLines[i] = line
+	end
+
+	local noTeamsText = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	noTeamsText:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 24, -70)
+	noTeamsText:SetWidth(260)
+	noTeamsText:SetJustifyH("LEFT")
+	noTeamsText:SetText("|cffff8080" .. (L["APC_NO_TEAMS"] or "You are not in any arena team.") .. "|r")
+	noTeamsText:Hide()
+
+	local bestPointsText = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	bestPointsText:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -122)
+	bestPointsText:SetWidth(260)
+	bestPointsText:SetJustifyH("LEFT")
+
+	-- === CALCULATOR SECTION ===
+	MakeSep(-146)
+
+	local calcHeader = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	calcHeader:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -154)
+	calcHeader:SetText("|cff00ccff" .. (L["APC_MANUAL"] or "Manual Calculator") .. "|r")
+
+	local inputLabel = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	inputLabel:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -176)
+	inputLabel:SetText(L["APC_RATING"] or "Rating:")
+
+	local ratingInput = CreateFrame("EditBox", "APC_RatingInput", mainFrame, "InputBoxTemplate")
+	ratingInput:SetWidth(80)
+	ratingInput:SetHeight(20)
+	ratingInput:SetPoint("LEFT", inputLabel, "RIGHT", 8, 0)
+	ratingInput:SetNumeric(true)
+	ratingInput:SetMaxLetters(4)
+	ratingInput:SetAutoFocus(false)
+
+	local calcBtn = CreateFrame("Button", nil, mainFrame, "GameMenuButtonTemplate")
+	calcBtn:SetWidth(85)
+	calcBtn:SetHeight(22)
+	calcBtn:SetPoint("LEFT", ratingInput, "RIGHT", 6, 0)
+	calcBtn:SetText(L["APC_CALCULATE"] or "Calculate")
+
+	local resultText = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	resultText:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 18, -200)
+	resultText:SetWidth(268)
+	resultText:SetJustifyH("LEFT")
+	resultText:SetText("")
+
+	-- ============================================================
+	-- AUTO DETECTION LOGIC
+	-- ============================================================
+	-- Lee los equipos de arena del personaje y los devuelve ordenados de mas
+	-- a menos puntos. Se usa desde tres lados: la ventana, el texto del boton
+	-- y su tooltip, asi que vive aparte en vez de estar metido en la ventana.
+	local function GetTeams()
+	    local teams, hasTeam = {}, false
+	    for i = 1, MAX_ARENA_TEAMS do
+	        local teamName, teamSize, teamRating, teamPlayed, teamWins, seasonPlayed, seasonWins, playerPlayed, seasonPlayerPlayed, teamRank, playerRating = GetArenaTeam(i)
+	        if teamName and teamName ~= "" then
+	            hasTeam = true
+	            teams[#teams + 1] = {
+	                size = teamSize, rating = teamRating,
+	                points = CalcPoints(teamRating, teamSize),
+	                played = seasonPlayerPlayed or playerPlayed or 0,
+	                playerRating = playerRating or 0,
+	                qualified = (seasonPlayerPlayed and seasonPlayerPlayed >= 1) or (playerPlayed and playerPlayed >= 1),
+	            }
+	        end
+	    end
+	    table.sort(teams, function(a, b) return a.points > b.points end)
+	    return teams, hasTeam
+	end
+
+	-- Solo cobras los puntos del mejor equipo en el que hayas jugado al menos
+	-- una partida, asi que los que no califican no cuentan para este numero.
+	local function GetBest(teams)
+	    local bestPts, bestBracket = 0, ""
+	    for _, t in ipairs(teams) do
+	        if t.qualified and t.points > bestPts then
+	            bestPts = t.points
+	            bestBracket = BRACKET_NAMES[t.size] or "?"
+	        end
+	    end
+	    return bestPts, bestBracket
+	end
+
+	-- Texto del boton que aparece dentro de la ventana de PvP.
+	-- Muestra los puntos de la semana directamente, sin tener que abrir nada.
+	local function UpdatePvPButton()
+	    if not pvpBtnLabel then return end
+	    DetectServer()
+	    local teams, hasTeam = GetTeams()
+	    if not hasTeam then
+	        pvpBtnLabel:SetText("|cffcccccc" .. (L["APC_SHORT"] or "Arena Calculator") .. "|r")
+	        return
+	    end
+	    local bestPts, bestBracket = GetBest(teams)
+	    if bestPts > 0 then
+	        pvpBtnLabel:SetText(string.format("|cff00ff00%d|r  |cffaaaaaa%s|r", bestPts, bestBracket))
+	    else
+	        pvpBtnLabel:SetText("|cffff4444" .. (L["APC_BTN_NO_GAMES"] or "No games") .. "|r")
+	    end
+	end
+
+	local function UpdateAutoSection()
+	    local teams, hasTeam = GetTeams()
+
+	    if not hasTeam then
+	        noTeamsText:Show()
+	        for i = 1, 3 do teamLines[i]:SetText("") end
+	        bestPointsText:SetText("")
+	        UpdatePvPButton()
+	        return
+	    end
+	    noTeamsText:Hide()
+
+	    for i = 1, 3 do
+	        local t = teams[i]
+	        if t then
+	            local qualTag = t.qualified and "" or " |cffff4444(no games)|r"
+	            teamLines[i]:SetText(string.format(
+	                "%s |cffffff00%d|r rating -> |cff00ff00%d pts|r (PR: %d, %d played)%s",
+	                BRACKET_NAMES[t.size] or "?", t.rating, t.points, t.playerRating, t.played, qualTag))
+	        else
+	            teamLines[i]:SetText("")
+	        end
+	    end
+
+	    local bestPts, bestBracket = GetBest(teams)
+	    if bestPts > 0 then
+	        local multTag = (serverMult ~= 1.0) and string.format(" |cffFFD700(x%.0f)|r", serverMult) or ""
+	        bestPointsText:SetText(string.format(
+	            "|cffFFD700>>> You will receive: |cff00ff00%d|r |cffFFD700arena points%s|r (from %s)", bestPts, multTag, bestBracket))
+	    else
+	        bestPointsText:SetText("|cffff4444" .. (L["APC_NEED_GAMES"] or ">>> 0 points - you need to play games!") .. "|r")
+	    end
+
+	    UpdatePvPButton()
+	end
+
+	-- ============================================================
+	-- REPOSITIONING
+	-- ============================================================
+	local TEAM_FRAME_NAMES = { "ArenaTeamFrame", "PVPArenaTeamFrame", "ArenaTeamRosterFrame", "ArenaRosterFrame" }
+	local teamFrame, teamWindowOpen = nil, false
+
+	-- Busca la ventana de equipo de arena SOLO por nombre conocido.
+	--
+	-- El addon original, si no encontraba ninguno, recorria TODOS los frames
+	-- de la interfaz con EnumerateFrames() adivinando por ancho y alto. Eso
+	-- son cientos de frames (los del juego mas los de todos tus addons)
+	-- barridos cada 0.3 segundos: carisimo y ademas fragil, porque cualquier
+	-- ventana de otro addon del tamaño parecido daba un falso positivo.
+	local function FindTeamFrame()
+	    for _, name in ipairs(TEAM_FRAME_NAMES) do
+	        local f = _G[name]; if f and f:IsShown() then return f end
+	    end
+	    return nil
+	end
+
+	local function RepositionMainFrame()
+	    -- Acoplada dentro del panel, la posicion la manda el panel. Sin esto,
+	    -- abrir la ventana de PvP la arrancaba de ahi de un tiron.
+	    if K.APC_IsDocked and K.APC_IsDocked() then return end
+	    if not mainFrame:IsShown() then return end
+	    if APC_DB().point and not teamWindowOpen then return end
+	    mainFrame:ClearAllPoints()
+	    if teamWindowOpen and teamFrame and teamFrame:IsShown() then
+	        mainFrame:SetPoint("TOPLEFT", teamFrame, "TOPRIGHT", 6, 0)
+	    elseif PVPFrame and PVPFrame:IsShown() then
+	        mainFrame:SetPoint("TOPLEFT", PVPFrame, "TOPRIGHT", 6, 0)
+	    elseif APC_DB().point then
+	        local db = APC_DB()
+	        mainFrame:SetPoint(db.point, UIParent, db.relPoint, db.x, db.y)
+	    else
+	        mainFrame:SetPoint("CENTER")
+	    end
+	end
+
+	local scanTimer = 0
+	local scanFrame = CreateFrame("Frame")
+	scanFrame:Hide()
+	scanFrame:SetScript("OnUpdate", function(self, dt)
+	    -- Solo tiene sentido mirar mientras la ventana de PvP esta abierta
+	    if not apcEnabled or not (PVPFrame and PVPFrame:IsShown()) then
+	        self:Hide()
+	        return
+	    end
+	    scanTimer = scanTimer + dt
+	    if scanTimer < 0.3 then return end
+	    scanTimer = 0
+	    local found = FindTeamFrame()
+	    local nowOpen = found ~= nil
+	    if nowOpen ~= teamWindowOpen then
+	        teamWindowOpen = nowOpen
+	        if nowOpen then teamFrame = found end
+	        RepositionMainFrame()
+	    end
+	end)
+
+	-- ============================================================
+	-- CALCULATOR
+	-- ============================================================
+	local function UpdateServerInfo()
+	    if serverMult == 2.0 then
+	        serverInfo:SetText("|cffFFD700" .. (L["APC_SERVER_X2"] or "Warmane Blackrock \226\128\148 Points x2") .. "|r")
+	    else
+	        serverInfo:SetText(string.format("|cffaaaaaa%s \226\128\148 Points x1|r", realmName))
+	    end
+	end
+
+	calcBtn:SetScript("OnClick", function()
+	    local val = tonumber(ratingInput:GetText())
+	    if not val then resultText:SetText("|cffff4444" .. (L["APC_INVALID_RATING"] or "Enter a valid rating.") .. "|r"); return end
+	    local p2, p3, p5 = CalcPoints(val, 2), CalcPoints(val, 3), CalcPoints(val, 5)
+	    local tag = (serverMult ~= 1.0) and string.format(" |cffaaaaaa(x%.0f)|r", serverMult) or ""
+	    resultText:SetText(string.format(
+	        "|cffffff00Rating %d%s|r\n  2v2: |cff00ff00%d pts|r   3v3: |cff00ff00%d pts|r   5v5: |cff00ff00%d pts|r",
+	        val, tag, p2, p3, p5))
+	end)
+	ratingInput:SetScript("OnEnterPressed", function() calcBtn:Click(); ratingInput:ClearFocus() end)
+	mainFrame:SetScript("OnShow", function() DetectServer(); UpdateServerInfo(); UpdateAutoSection(); RepositionMainFrame() end)
+
+	-- ============================================================
+	-- PVP BUTTON
+	-- ============================================================
+	local pvpBtnAdded = false
+	local function AddPvPButton()
+	    if pvpBtnAdded or not PVPFrame then return end
+	    pvpBtnAdded = true
+	    local b = CreateFrame("Button", "APC_PvPButton", PVPFrame)
+	    b:SetWidth(95); b:SetHeight(18)
+	    b:SetAlpha(0.9)
+	    -- ESTE BOTON NO SE MUEVE.
+	    --
+	    -- Se podia arrastrar con Alt y la posicion quedaba guardada en
+	    -- btnX / btnY. Ahora va fijo en su lugar dentro de la ventana de PvP:
+	    -- 233, -132 desde la esquina superior izquierda, que es justo debajo
+	    -- de la linea de ARENA y donde se lee como una fila mas de esa
+	    -- ventana.
+	    --
+	    -- Un btnX/btnY de antes se BORRA en vez de respetarse: si alguien lo
+	    -- habia arrastrado, al sacar el drag se quedaria clavado ahi para
+	    -- siempre y ya sin forma de acomodarlo.
+	    local db = APC_DB()
+	    if db.btnX or db.btnY then db.btnX, db.btnY = nil, nil end
+	    b:SetPoint("TOPLEFT", PVPFrame, "TOPLEFT", 233, -132)
+	    b:SetMovable(false)
+	    b:SetFrameLevel(PVPFrame:GetFrameLevel() + 5)
+	    -- Sin fondo ni borde: el numero tiene que leerse como una linea mas de
+	    -- la ventana de PvP, al lado de HONOR y ARENA, no como un boton pegado.
+	    -- GameFontNormal es la fuente estandar de la interfaz (Friz Quadrata),
+	    -- la misma con la que la ventana escribe HONOR y ARENA. No se le pisa
+	    -- con SetFont a proposito, para que combine.
+	    local l = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	    l:SetPoint("CENTER")
+	    l:SetText("|cffcccccc" .. (L["APC_SHORT"] or "Arena Calculator") .. "|r")
+	    pvpBtnLabel = l
+	    b:EnableMouse(true)
+	    b:SetScript("OnEnter", function(self)
+	        self:SetAlpha(1)
+	        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+	        GameTooltip:SetText(L["APC_TITLE"] or "Arena Points Calculator", 0, 0.8, 1)
+	        DetectServer()
+	        local teams, hasTeam = GetTeams()
+	        if not hasTeam then
+	            GameTooltip:AddLine(L["APC_NO_TEAMS"] or "You are not in any arena team.", 1, 0.5, 0.5, true)
+	        else
+	            for _, t in ipairs(teams) do
+	                local qualTag = t.qualified and "" or " |cffff4444*|r"
+	                GameTooltip:AddDoubleLine(
+	                    string.format("%s  |cffffff00%d|r", BRACKET_NAMES[t.size] or "?", t.rating),
+	                    string.format("|cff00ff00%d|r |cffcccccc%s|r%s", t.points, L["APC_BTN_PTS"] or "pts", qualTag))
+	            end
+	            local bestPts, bestBracket = GetBest(teams)
+	            GameTooltip:AddLine(" ")
+	            if bestPts > 0 then
+	                local multTag = (serverMult ~= 1.0) and string.format(" (x%.0f)", serverMult) or ""
+	                GameTooltip:AddLine(string.format("%s: |cff00ff00%d|r%s  (%s)",
+	                    L["APC_BTN_TIP_BEST"] or "Points you will receive this week", bestPts, multTag, bestBracket), 1, 0.84, 0, true)
+	            else
+	                GameTooltip:AddLine(L["APC_NEED_GAMES"] or ">>> 0 points - you need to play games!", 1, 0.3, 0.3, true)
+	            end
+	        end
+	        GameTooltip:AddLine(" ")
+	        GameTooltip:AddLine(L["APC_BTN_TIP_CLICK"] or "Click to open the calculator", 0.6, 0.6, 0.6)
+	        GameTooltip:Show()
+	    end)
+	    b:SetScript("OnLeave", function(self) self:SetAlpha(0.9); GameTooltip:Hide() end)
+	    b:SetScript("OnClick", function() if mainFrame:IsShown() then mainFrame:Hide() else mainFrame:Show() end end)
+	    UpdatePvPButton()
+	end
+
+	-- ============================================================
+	-- SLASH
+	-- ============================================================
+	SLASH_ARENACALC1 = "/apc"
+	SLASH_ARENACALC2 = "/arenapts"
+	SlashCmdList["ARENACALC"] = function(msg)
+	    msg = strtrim(msg or "")
+	    if msg == "auto" then
+	        DetectServer()
+	        local found = false
+	        for i = 1, MAX_ARENA_TEAMS do
+	            local tn, ts, tr, _, _, _, _, _, sp = GetArenaTeam(i)
+	            if tn and tn ~= "" then
+	                found = true
+	                print(string.format("|cff00ccff[APC]|r %s %s: |cffffff00%d|r -> |cff00ff00%d pts|r (%d played)",
+	                    BRACKET_NAMES[ts] or "?", tn, tr, CalcPoints(tr, ts), sp or 0))
+	            end
+	        end
+	        if not found then print("|cff00ccff[APC]|r |cffff8080" .. (L["APC_NO_TEAMS"] or "No arena teams.") .. "|r") end
+	        return
+	    end
+	    -- Aca vivian /apc btnpos y /apc btnreset. Solo servian con el boton
+	    -- movible: ahora esta fijo, btnpos siempre diria "default" y btnreset
+	    -- no tendria nada que resetear.
+	    local r = tonumber(msg)
+	    if r then
+	        DetectServer()
+	        local tag = (serverMult ~= 1.0) and string.format(" (x%.0f)", serverMult) or ""
+	        print(string.format("|cff00ccff[APC]|r Rating |cffffff00%d%s|r -> 2v2:|cff00ff00%d|r  3v3:|cff00ff00%d|r  5v5:|cff00ff00%d|r",
+	            r, tag, CalcPoints(r, 2), CalcPoints(r, 3), CalcPoints(r, 5)))
+	        return
+	    end
+	    if mainFrame:IsShown() then mainFrame:Hide() else mainFrame:Show() end
+	end
+
+	-- ============================================================
+	-- EVENTS
+	-- ============================================================
+	-- Los eventos los engancha el modulo al prenderse (ver onEnable)
+	APC:SetScript("OnEvent", function(self, event, arg1)
+	    if event == "PLAYER_ENTERING_WORLD" then
+	        if not apcEnabled then return end
+	        DetectServer()
+	        local e = 0
+	        local t = CreateFrame("Frame")
+	        t:SetScript("OnUpdate", function(f, dt) e = e + dt; if e >= 2 then f:SetScript("OnUpdate", nil); f:Hide(); AddPvPButton(); UpdatePvPButton(); teamFrame = FindTeamFrame() end end)
+	    elseif event == "ARENA_TEAM_UPDATE" or event == "ARENA_TEAM_ROSTER_UPDATE" then
+	        if mainFrame:IsShown() then
+	            UpdateAutoSection()
+	        else
+	            -- El boton muestra los puntos aunque la ventana este cerrada,
+	            -- asi que hay que refrescarlo igual.
+	            UpdatePvPButton()
+	        end
+	    end
+	end)
+
+	-- El escaneo se despierta al abrir la ventana de PvP y se duerme solo
+	if PVPFrame then
+	    PVPFrame:HookScript("OnShow", function()
+	        if apcEnabled then scanTimer = 0; scanFrame:Show(); UpdatePvPButton(); end
+	    end)
+	end
+
+	-- =========================================================
+	-- Registro del modulo en NUF
+	-- Vive en: Arena > Timers
+	-- =========================================================
+	K.RegisterModule("ArenaPointsCalc", {
+		configFunc = function()
+			if mainFrame:IsShown() then mainFrame:Hide() else mainFrame:Show() end
+		end,
+		onEnable = function()
+			apcEnabled = true;
+			APC:RegisterEvent("PLAYER_ENTERING_WORLD");
+			APC:RegisterEvent("ARENA_TEAM_UPDATE");
+			APC:RegisterEvent("ARENA_TEAM_ROSTER_UPDATE");
+			DetectServer();
+			AddPvPButton();
+			if APC_PvPButton then APC_PvPButton:Show(); end
+			UpdatePvPButton();
+			if PVPFrame and PVPFrame:IsShown() then scanTimer = 0; scanFrame:Show(); end
+		end,
+		onDisable = function()
+			apcEnabled = false;
+			scanFrame:Hide();
+			APC:UnregisterAllEvents();
+			mainFrame:Hide();
+			if APC_PvPButton then APC_PvPButton:Hide(); end
+		end,
+	});
+
+	-- =========================================================
+	-- ACOPLARLA DENTRO DEL PANEL DE ARENA
+	--
+	-- Mismo patron que se uso para PAB, y por el mismo motivo: NO se hace una
+	-- segunda calculadora, se MUDA la que ya existe. SetParent se lleva todos
+	-- los hijos, asi que la ventana entera entra y sale del hueco sin
+	-- reconstruir nada -- y con un solo juego de controles no hay dos estados
+	-- que se puedan desincronizar.
+	--
+	-- Lo que se le saca es la ropa de VENTANA: el marco, la cruz de cerrar y
+	-- el poder arrastrarla. Todo eso ya lo pone el panel que la contiene, y
+	-- repetirlo adentro se ve como una ventana dentro de otra.
+	-- =========================================================
+	local apcDocked = false
+	local apcPrev   = nil
+
+	function K.APC_IsDocked() return apcDocked end
+
+	function K.APC_Dock(host)
+	    if not host or apcDocked then return end
+	    apcDocked = true
+
+	    -- Foto de como estaba, para poder devolverla exactamente igual.
+	    apcPrev = {
+	        parent = mainFrame:GetParent(),
+	        shown  = mainFrame:IsShown(),
+	        strata = mainFrame:GetFrameStrata(),
+	    }
+
+	    mainFrame:SetBackdrop(nil)
+	    if closeBtn then closeBtn:Hide() end
+	    mainFrame:SetMovable(false)
+	    mainFrame:SetClampedToScreen(false)
+
+	    mainFrame:SetParent(host)
+	    mainFrame:ClearAllPoints()
+	    mainFrame:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
+	    mainFrame:SetFrameStrata(host:GetFrameStrata())
+	    mainFrame:SetFrameLevel((host:GetFrameLevel() or 0) + 1)
+	    mainFrame:Show()
+	end
+
+	function K.APC_Undock()
+	    if not apcDocked then return end
+	    apcDocked = false
+
+	    -- Le vuelve la ropa de ventana.
+	    mainFrame:SetBackdrop({
+	        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+	        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+	        tile = true, tileSize = 32, edgeSize = 32,
+	        insets = { left = 11, right = 12, top = 12, bottom = 11 },
+	    })
+	    if closeBtn then closeBtn:Show() end
+	    mainFrame:SetMovable(true)
+	    mainFrame:SetClampedToScreen(true)
+
+	    mainFrame:SetParent((apcPrev and apcPrev.parent) or UIParent)
+	    mainFrame:SetFrameStrata((apcPrev and apcPrev.strata) or "DIALOG")
+	    mainFrame:ClearAllPoints()
+	    -- Su tamaño propio: al acoplarla no se toco, pero se repone por las
+	    -- dudas de que el panel se lo haya cambiado.
+	    mainFrame:SetWidth(300)
+	    mainFrame:SetHeight(248)
+	    local db = APC_DB()
+	    if db.point then
+	        mainFrame:SetPoint(db.point, UIParent, db.relPoint, db.x, db.y)
+	    else
+	        mainFrame:SetPoint("CENTER")
+	    end
+
+	    -- Se cierra: mientras estuvo acoplada la estabas viendo DENTRO del
+	    -- panel, no como ventana suelta. Dejarla abierta al salir del panel
+	    -- seria abrirte una ventana que no pediste.
+	    mainFrame:Hide()
+	    apcPrev = nil
+	end
+end);

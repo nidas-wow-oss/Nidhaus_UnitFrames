@@ -217,6 +217,8 @@ local CIRCLE_ATLAS = "Interface\\TargetingFrame\\UI-Classes-Circles";
 -- opciones (PartyTargetsDB.classIcon). Sin valor guardado queda lo de
 -- siempre: Square con icono, Classic con la cara.
 local function WantClassIcon()
+	-- En "Icon" el icono ES el marco: va siempre.
+	if K.GetPartyTargetStyle() == "Icon" then return true; end
 	local v = PartyTargetsDB and PartyTargetsDB.classIcon;
 	if v == nil then return K.GetPartyTargetStyle() == "Square"; end
 	return v and true or false;
@@ -232,7 +234,7 @@ local function ApplyClassPortrait(f)
 		local _, class = UnitClass(unit);
 		local coords = class and CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class];
 		if coords then
-			por:SetTexture((K.GetPartyTargetStyle() == "Square") and CLASS_ATLAS or CIRCLE_ATLAS);
+			por:SetTexture((K.GetPartyTargetStyle() ~= "Classic") and CLASS_ATLAS or CIRCLE_ATLAS);
 			por:SetTexCoord(unpack(coords));
 			return;
 		end
@@ -274,11 +276,59 @@ local function UpdatePortrait(f)
 end
 
 -- ---------------------------------------------------------
+-- Estilo "Icon": SOLO el icono de clase cuadrado, como el addon UnitIcons
+--
+-- 30x30 con un borde negro fino de 2 px. Las barras, el marco y el nombre
+-- no se esconden con Hide sino con alpha 0: Blizzard les vuelve a hacer
+-- Show cuando actualiza el marco (la de mana, segun el tipo de recurso) y
+-- el icono se llenaba de barras. El resto (mover, anclar, escala, espejo)
+-- es el mismo de NUF: un solo mover para los cuatro.
+-- ---------------------------------------------------------
+local ICON_SIZE = 30;
+
+local function IconBorder(f)
+	if f.nufIconBorder then return f.nufIconBorder; end
+	local b = CreateFrame("Frame", nil, f);
+	b:SetAllPoints(f);
+	b:SetFrameLevel((f:GetFrameLevel() or 1) + 3);
+	b:SetBackdrop({ edgeFile = "Interface\\ChatFrame\\ChatFrameBackground", edgeSize = 2 });
+	b:SetBackdropBorderColor(0, 0, 0, 1);
+	f.nufIconBorder = b;
+	return b;
+end
+
+-- Lo que el estilo Icon apago vuelve a verse (lo llaman los otros dos).
+local function UndoIcon(f)
+	local _, hp, mp, nm, tex = Parts(f);
+	for _, r in ipairs({ hp or false, mp or false, nm or false, tex or false }) do
+		if r then r:SetAlpha(1); end
+	end
+	if f.nufIconBorder then f.nufIconBorder:Hide(); end
+end
+
+local function ApplyIcon(f)
+	local por, hp, mp, nm, tex = Parts(f);
+	if not por then return; end
+	f:SetSize(ICON_SIZE, ICON_SIZE);
+	for _, r in ipairs({ hp or false, mp or false, nm or false, tex or false }) do
+		if r then r:SetAlpha(0); end
+	end
+	if hp and hp.nufSquareBG then hp.nufSquareBG:Hide(); end
+	if mp and mp.nufSquareBG then mp.nufSquareBG:Hide(); end
+	por:ClearAllPoints();
+	por:SetAllPoints(f);
+	por:Show();
+	IconBorder(f):Show();
+	UpdatePortrait(f);
+end
+
+-- ---------------------------------------------------------
 -- Aplicar / quitar
 -- ---------------------------------------------------------
 local function ApplySquare(f)
 	local por, hp, mp, nm, tex = Parts(f);
 	if not (por and hp and mp and tex) then return; end
+	UndoIcon(f);
 
 	f:SetSize(SQ.frame.w, SQ.frame.h);
 
@@ -350,6 +400,7 @@ end
 local function ApplyClassic(f)
 	local s = orig[f:GetName()];
 	if not s then return; end
+	UndoIcon(f);
 
 	local por, hp, mp, nm, tex = Parts(f);
 
@@ -404,7 +455,8 @@ end
 -- ---------------------------------------------------------
 function K.GetPartyTargetStyle()
 	local v = PartyTargetsDB and PartyTargetsDB.style;
-	return (v == "Square") and "Square" or "Classic";
+	if v == "Square" or v == "Icon" then return v; end
+	return "Classic";
 end
 
 -- PartyTargetFrame1..4 heredan SecureUnitButtonTemplate: son marcos
@@ -416,22 +468,24 @@ end
 -- se puede y cuando ademas se nota menos.
 local stylePending = false;
 
-local function ApplyStyleOne(f, square)
+local function ApplyStyleOne(f, style)
 	-- La foto SIEMPRE primero, incluso al pedir Square: si no,
 	-- nunca tendriamos con que volver a Classic.
 	Capture(f);
-	if square then ApplySquare(f) else ApplyClassic(f) end
+	if style == "Square" then ApplySquare(f)
+	elseif style == "Icon" then ApplyIcon(f)
+	else ApplyClassic(f) end
 end
 
 function K.ApplyPartyTargetStyle()
 	if InCombatLockdown() then stylePending = true; return; end
 	stylePending = false;
 
-	local square = (K.GetPartyTargetStyle() == "Square");
+	local style = K.GetPartyTargetStyle();
 
 	for i = 1, FRAMES do
 		local f = _G[FRAME_NAME .. i];
-		if f then ApplyStyleOne(f, square); end
+		if f then ApplyStyleOne(f, style); end
 	end
 end
 
@@ -451,7 +505,7 @@ end
 
 function K.SetPartyTargetStyle(style)
 	if not PartyTargetsDB then PartyTargetsDB = {}; end
-	PartyTargetsDB.style = (style == "Square") and "Square" or "Classic";
+	PartyTargetsDB.style = (style == "Square" or style == "Icon") and style or "Classic";
 	K.ApplyPartyTargetStyle();
 	-- Cada estilo recuerda su propia escala: al cambiar hay que aplicar la
 	-- del nuevo, y avisarle al panel para que el slider muestre esa.
@@ -485,7 +539,7 @@ events:SetScript("OnEvent", function(_, event, unit)
 		if not id then return; end
 		if InCombatLockdown() then stylePending = true; return; end
 		local f = _G[FRAME_NAME .. id];
-		if f then ApplyStyleOne(f, K.GetPartyTargetStyle() == "Square"); end
+		if f then ApplyStyleOne(f, K.GetPartyTargetStyle()); end
 		return;
 	end
 
@@ -538,11 +592,14 @@ SlashCmdList["NUFPTSTYLE"] = function(msg)
 	if msg == "square" then
 		K.SetPartyTargetStyle("Square");
 		print("|cff4FC3F7NUF:|r party targets = Square");
+	elseif msg == "icon" then
+		K.SetPartyTargetStyle("Icon");
+		print("|cff4FC3F7NUF:|r party targets = Icon");
 	elseif msg == "classic" then
 		K.SetPartyTargetStyle("Classic");
 		print("|cff4FC3F7NUF:|r party targets = Classic");
 	else
-		print("|cff4FC3F7NUF:|r /ptstyle square | classic   (" .. (L["PARTY_STYLE_CURRENT"] or "current") .. ": "
+		print("|cff4FC3F7NUF:|r /ptstyle square | icon | classic   (" .. (L["PARTY_STYLE_CURRENT"] or "current") .. ": "
 			.. K.GetPartyTargetStyle() .. ")");
 	end
 end

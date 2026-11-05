@@ -1932,6 +1932,11 @@ function K.DisableMiniBar()
 	for key, val in pairs(mb_savedManaged) do
 		UIPARENT_MANAGED_FRAME_POSITIONS[key] = val;
 	end
+	-- Esos valores los escribio NUF: quedan con taint hasta el /reload.
+	-- Si Blizzard los lee en combate (mascota, postura, vehiculo) puede
+	-- bloquear el reacomodo. Las barras vuelven igual al instante; el
+	-- /reload solo limpia ese caso raro.
+	print("|cff4FC3F7NUF:|r " .. (L["MINIBAR_OFF_RELOAD"] or "MiniBar off. /reload recommended to avoid combat errors."));
 
 	-- Restaurar texturas (visibility + alpha + texture paths)
 	MB_RestoreAllTextures();

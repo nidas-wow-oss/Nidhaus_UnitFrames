@@ -242,6 +242,14 @@ function K.TogglePaladinICDMove()
     frame:EnableMouse(frame.dragMode)
     if frame.dragMode then
         frame.dragBg:Show()
+        -- Sin CD corriendo el icono quedaba sin textura y en gris: se veia
+        -- un cuadrado negro. Ahora muestra el mismo icono a color que la
+        -- vista previa de "Mover todo".
+        if (expire - GetTime()) <= 0 then
+            SetIconForName(nil)
+            SetIconGray(false)
+            frame.cooldown:SetCooldown(0, 0)
+        end
         frame:Show()
     else
         frame.dragBg:Hide()

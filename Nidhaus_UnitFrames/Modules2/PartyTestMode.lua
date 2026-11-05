@@ -65,7 +65,8 @@ local function FillFrame(frame, index)
 	if hb then
 		hb:SetMinMaxValues(0, 100);
 		hb:SetValue(data.hp * 100);
-		if C.classColor then
+		-- La misma casilla que los marcos de verdad (ClassColor.lua).
+		if C.PartyClassColor then
 			hb:SetStatusBarColor(GetClassColor(data.class));
 		else
 			hb:SetStatusBarColor(0, 1, 0);
@@ -167,6 +168,16 @@ end
 
 function K.IsPartyTestMode()
 	return active;
+end
+
+-- Vuelve a pintar los miembros falsos. Los marcos de verdad los recolorea
+-- ClassColor.lua, pero estos no tienen unidad y ahi se saltean.
+function K.RefreshPartyTestMode()
+	if not active then return; end
+	for i = 1, MAX_PARTY do
+		local frame = _G["PartyMemberFrame" .. i];
+		if frame then FillFrame(frame, i); end
+	end
 end
 
 -- Salir del modo prueba al entrar en combate

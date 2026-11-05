@@ -1,6 +1,16 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
+-- DIFERIDO: viene apagado de fabrica y arma ~30 marcos. Apagado no crea
+-- nada hasta que se prende (ver K.DeferModule en Core/ModuleManager.lua).
+K.DeferModule("GargoyleTracker", {
+  name    = L["MOD_GARGOYLE"] or "Gargoyle Tracker",
+  desc    = L["MOD_GARGOYLE_DESC"]
+    or "Timer, cast bar and health of the enemy Ebon Gargoyle (Death Knight).",
+  default = false,
+  hideFromModulesTab = true,   -- vive en Interface > PvP
+}, function()
+
 -- GargoyleTracker.lua  (integrado a NUF)
 -- CAMBIOS respecto del addon suelto:
 --   * Es un modulo de NUF: se prende/apaga desde el panel y el combat log
@@ -1211,11 +1221,48 @@ f:SetScript("OnUpdate", function(self, elapsed)
 end)
 
 -- =====================================================
+-- POSICION
+-- =====================================================
+-- Antes la guardaba WoW solo (layout-local.txt), pero eso funciona
+-- solo si el marco existe al cargar la UI. Con carga diferida se crea
+-- tarde y WoW lo olvida. Se guarda en la DB, uno por cada marco.
+local function GT_SavePos(self)
+  self:StopMovingOrSizing()
+  self:SetUserPlaced(false)   -- que WoW no pelee con la DB
+  local p, _, rp, x, y = self:GetPoint(1)
+  if not p then return end
+  local db = GTDB()
+  if type(db.pos) ~= "table" then db.pos = {} end
+  db.pos[self:GetName()] = { p, rp or p, x, y }
+end
+
+local function GT_LoadPos()
+  local saved = GTDB().pos
+  if type(saved) ~= "table" then return end
+  for _, f in ipairs({ uiBlizz, uiCustom }) do
+    local s = saved[f:GetName()]
+    if s and s[1] then
+      f:ClearAllPoints()
+      f:SetPoint(s[1], UIParent, s[2] or s[1], s[3] or 0, s[4] or 0)
+    end
+  end
+end
+
+local function GT_ClearPos()
+  local db = GTDB()
+  db.pos = nil
+end
+
+uiBlizz:SetScript("OnDragStop",  GT_SavePos)
+uiCustom:SetScript("OnDragStop", GT_SavePos)
+
+-- =====================================================
 -- PLAYER_LOGIN
 -- =====================================================
-local loginF = CreateFrame("Frame")
-loginF:RegisterEvent("PLAYER_LOGIN")
-loginF:SetScript("OnEvent", function(self)
+-- Diferido: el cuerpo puede correr despues del login (al prender el
+-- modulo a mitad de sesion). Ahi PLAYER_LOGIN ya paso y no vuelve.
+local function GT_OnLogin(self)
+  GT_LoadPos()
   local icon = GetGargoyleIcon()
   SetPortraitToTexture(bIconTex, icon)
   cIconTex:SetTexture(icon)
@@ -1225,8 +1272,15 @@ loginF:SetScript("OnEvent", function(self)
   bNameTxt:SetText(GargName())
   cNameTxt:SetText(GargName())
   if not state.active then SetActiveMode(GTDB().mode or MODE_BLIZZARD) end
-  self:UnregisterAllEvents()
-end)
+  if self then self:UnregisterAllEvents() end
+end
+if IsLoggedIn() then
+  GT_OnLogin(nil)
+else
+  local loginF = CreateFrame("Frame")
+  loginF:RegisterEvent("PLAYER_LOGIN")
+  loginF:SetScript("OnEvent", GT_OnLogin)
+end
 
 -- =====================================================
 -- COMBAT LOG
@@ -1370,6 +1424,7 @@ SlashCmdList.GT = function(msg)
     end
 
   elseif msg == "center" then
+    GT_ClearPos()
     ui:ClearAllPoints()
     ui:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
     print("GT: centered")
@@ -1487,6 +1542,8 @@ end
 -- =====================================================
 local gtEnabled = false
 
+local GT_TestCaster   -- reloj de los casteos simulados del test
+
 -- Modo test on/off (lo usa el boton del panel)
 function K.ToggleGargoyleTest()
   if state.active and state.testMode then
@@ -1499,6 +1556,21 @@ function K.ToggleGargoyleTest()
   hpBar:SetValue(1)
   hpBar:SetStatusBarColor(0.2, 0.9, 0.2, 1)
   if hpBar.txt then hpBar.txt:SetText("24692 / 24692") end
+  -- Casteos seguidos, como /gt test: sin esto la barra de casteo no
+  -- aparecia y no se veia donde queda al acomodar el marco. Un solo
+  -- marco reusado; se corta solo cuando termina el test.
+  if not GT_TestCaster then
+    GT_TestCaster = CreateFrame("Frame")
+  end
+  local te = 1.5
+  GT_TestCaster:SetScript("OnUpdate", function(self, dt)
+    if not (state.active and state.testMode) then self:SetScript("OnUpdate", nil); return end
+    te = te + dt
+    if not state.castActive and te >= 1.5 then
+      te = 0
+      StartCast(1.5, "Player")
+    end
+  end)
   return true
 end
 
@@ -1543,6 +1615,7 @@ function K.SetGargoyleZoneOption(key, value)
 end
 
 function K.ResetGargoylePosition()
+  GT_ClearPos()
   if uiBlizz then
     uiBlizz:ClearAllPoints()
     uiBlizz:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
@@ -1594,3 +1667,4 @@ K.RegisterModule("GargoyleTracker", {
   onEnable  = function() GT_SetEnabled(true) end,
   onDisable = function() GT_SetEnabled(false) end,
 });
+end);

@@ -152,6 +152,13 @@ local function CreateMinimapButton()
 	-- el ocultado ahora que el boton ya existe: asi tambien se esconde (y se
 	-- puede reabrir el panel con /nuf).
 	if K.ApplyMinimapAddonIcons then K.ApplyMinimapAddonIcons(); end
+	K.ApplyNUFMinimapButton();
+end
+
+-- Casilla "Minimap button" del encabezado del panel.
+function K.ApplyNUFMinimapButton()
+	if not button then return; end
+	if C.HideNUFMinimapButton then button:Hide(); else button:Show(); end
 end
 
 local initFrame = CreateFrame("Frame");

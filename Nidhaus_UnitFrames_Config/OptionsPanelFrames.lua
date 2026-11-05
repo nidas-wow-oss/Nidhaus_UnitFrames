@@ -704,6 +704,30 @@ function K.PopulateFramesTab(panel)
 		or "Focus cast bar scale lives in Interface > Cast Bar.", x, y, 220);
 	y = y - 26;   -- los dos renglones de la nota
 
+	-- Sin el "Group N" encima del marco del jugador (la de FriskesUI).
+	do
+		local gn = CreateFrame("CheckButton", "NidhausHideGroupNumberCB", paneMain,
+			"InterfaceOptionsCheckButtonTemplate");
+		gn:SetPoint("TOPLEFT", x - 2, y);
+		local gnText = _G["NidhausHideGroupNumberCBText"];
+		if gnText then gnText:SetText(L["CB_HIDE_GROUP_NUMBER"] or "Hide the group number on your frame"); end
+		gn:SetChecked(C.HidePlayerGroupNumber and true or false);
+		if K.RegisterSettingCheckbox then K.RegisterSettingCheckbox("HidePlayerGroupNumber", gn); end
+		gn:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(L["CB_HIDE_GROUP_NUMBER"] or "Hide the group number on your frame", 1, 1, 1);
+			GameTooltip:AddLine(L["TIP_HideGroupNumber"] or "Hides the \"Group N\" label above your frame, everywhere. In arena it is always hidden.", nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		gn:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+		gn:SetScript("OnClick", function(self)
+			local v = (self:GetChecked() == 1 or self:GetChecked() == true);
+			if K.SaveConfig then K.SaveConfig("HidePlayerGroupNumber", v); end
+			if K.UpdatePlayerGroupIndicator then K.UpdatePlayerGroupIndicator(); end
+		end);
+		y = y - 28;
+	end
+
 	-- ── Arriba a la derecha: el 3v3 ──
 	--
 	-- Espejo del de Interface > General y del de Frames > Party: el mismo
@@ -944,6 +968,30 @@ function K.PopulateFramesTab(panel)
 			table.insert(styleButtons, b);
 		end
 		RefreshStyle();
+
+		-- Color de clase del grupo, en la fila de los estilos: vale para los
+		-- cinco, porque todos pintan la misma barra de vida de Blizzard.
+		local ccBox = CreateFrame("CheckButton", "NidhausPartyClassColorCB", paneParty,
+			"InterfaceOptionsCheckButtonTemplate");
+		ccBox:SetPoint("LEFT", container, "RIGHT", 12, 0);
+		ccBox:SetHitRectInsets(0, 0, 0, 0);
+		local ccText = _G["NidhausPartyClassColorCBText"];
+		if ccText then ccText:SetText(L["CB_PARTY_CLASSCOLOR"] or "Class color"); end
+		ccBox:SetChecked(C.PartyClassColor and true or false);
+		if K.RegisterSettingCheckbox then K.RegisterSettingCheckbox("PartyClassColor", ccBox); end
+		ccBox:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(L["CB_PARTY_CLASSCOLOR"] or "Class color", 1, 1, 1);
+			GameTooltip:AddLine(L["TIP_PartyClassColor"] or "", nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		ccBox:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+		ccBox:SetScript("OnClick", function(self)
+			local v = (self:GetChecked() == 1 or self:GetChecked() == true);
+			if K.SaveConfig then K.SaveConfig("PartyClassColor", v); end
+			if K.ToggleClassColors then K.ToggleClassColors(); end
+			if K.RefreshPartyTestMode then K.RefreshPartyTestMode(); end
+		end);
 	end
 
 	-- ── TEXTO DEL GRUPO: NOMBRE Y NUMEROS, POR SEPARADO ──
@@ -1562,7 +1610,7 @@ function K.PopulateFramesTab(panel)
 	-- El CC en el retrato y sus segundos van siempre (sin casilla) y el
 	-- objetivo de la mascota se saco. "Duelos" tambien: en un duelo no hay
 	-- compas con mascota; mazmorras, bandas y duelos van con Mundo abierto.
-	local PPF_H = 248;
+	local PPF_H = 274;   -- +26: la fila de "Health text"
 	ppfBody = K.UI.Collapsible(panePartyPet, 0, 0, 440, PPF_H, function()
 		return (K.IsModuleEnabled and K.IsModuleEnabled("PartyPetFrame")) or false;
 	end);
@@ -1738,6 +1786,8 @@ function K.PopulateFramesTab(panel)
 			L["PPF_TIP_OWNER"] or "The pet's health bar takes the class color of its owner, so you know at a glance whose pet it is.");
 		Opt(L["PPF_OPT_RANGE"] or "Fade out of range", "rangeFade", 230, -218,
 			L["PPF_TIP_RANGE"] or "The frame turns see-through when the pet is far from you. Healers measure it with their heal; other classes, by the owner's distance.");
+		Opt(L["PPF_OPT_HPTEXT"] or "Health text", "hpText", 0, -244,
+			L["PPF_TIP_HPTEXT"] or "The pet's health as numbers (current / max) on its bar, with the same font as the party frames.");
 
 		-- "Resaltar lo que dispeleas" depende de "Debuffs", y no sirve en
 		-- una clase que no saca nada.
@@ -1905,6 +1955,19 @@ function K.PopulateFramesTab(panel)
 		C.AuraBordersPurge = val;
 		if K.SaveConfig then K.SaveConfig("AuraBordersPurge", val); end
 		if K.ApplyAuraBorders then K.ApplyAuraBorders(); end
+	end);
+
+	-- ── Auras mas grandes (no depende de los bordes) ──
+	ry = ry - 28;
+	local bigCB = CreateFeatureCheckBox(paneAuras,
+		L["CB_BIG_TARGET_AURAS"] or "Increase auras on target and focus",
+		xR, ry, L["TIP_BigTargetAuras"], "BigTargetAuras");
+	bigCB:SetChecked(C.BigTargetAuras and true or false);
+	bigCB:SetScript("OnClick", function(self)
+		local val = self:GetChecked() and true or false;
+		C.BigTargetAuras = val;
+		if K.SaveConfig then K.SaveConfig("BigTargetAuras", val); end
+		if K.ApplyBigTargetAuras then K.ApplyBigTargetAuras(); end
 	end);
 
 	-- ── Quien lanzo el aura ──

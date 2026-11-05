@@ -91,6 +91,7 @@ local function CreateOptionsPanel()
 	local STYLES = {
 		{ value = "Classic", text = L["PT_STYLE_CLASSIC"] or "Classic (wide)" },
 		{ value = "Square",  text = L["PT_STYLE_SQUARE"]  or "Square (compact)" },
+		{ value = "Icon",    text = L["PT_STYLE_ICON"]    or "Class icon only" },
 	}
 
 	local function StyleText(v)

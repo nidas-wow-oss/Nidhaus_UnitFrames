@@ -247,10 +247,10 @@ local function StyleOne(barName)
 		border:SetTexture(TEX_BORDER);
 		-- Con la fila "Cast bar" de Lorti UI tildada, el borde va de ese
 		-- color (si no, el tono de siempre de esta barra).
-		local lr, lg, lb;
-		if K.LortiCastBarColor then lr, lg, lb = K.LortiCastBarColor(); end
+		local lr, lg, lb, la;
+		if K.LortiCastBarColor then lr, lg, lb, la = K.LortiCastBarColor(); end
 		if lr then
-			border:SetVertexColor(lr, lg, lb, 1);
+			border:SetVertexColor(lr, lg, lb, la or 1);
 		elseif C.CastBarPWDark == false then
 			border:SetVertexColor(1, 1, 1, 1);
 		else

@@ -87,6 +87,11 @@ local defaults = {
 	ArenaToTClassIcon = false,
 	ArenaToTMirrored = false,
 	ArenaToTSquare = false,   -- retrato cuadrado, como el de Party Targets
+	ArenaToTHideName = false,     -- sin el nombre debajo del retrato
+	ArenaToTIconOnly = false,     -- solo el icono de clase cuadrado (UnitIcons)
+	HidePlayerGroupNumber = false, -- sin el "Group N" encima del marco del jugador
+	HideNUFMinimapButton = false, -- el boton de NUF en el minimapa (casilla del encabezado)
+	ArenaToTNameColor = "class",  -- "class", "blizzard" (amarillo) o "white"
 
 	-- CAST BAR OPTIONS
 	ArenaCastBarEnable = false,
@@ -120,10 +125,12 @@ local defaults = {
 	-- Apagado por defecto: cambia como se ven todos los iconos.
 	AuraBordersEnabled = false,
 	AuraBordersPurge = true,    -- resplandor en los buffs magicos del enemigo
+	BigTargetAuras = false,     -- auras 22/26 en objetivo y foco (idea de FriskesUI)
 
 	-- VISUAL THEME
 	darkFrames = false,
 	UnitFrameCustomTexture = false,
+	BlackNameBackground = false,   -- franja negra bajo el nombre (solo sin skin)
 	AsuriFrames = false, -- tema Asuri: marco de cadenas, barras finas
 	-- Texto de vida/mana (portado de ZyrokofArenaFrames)
 	ShowCurrentValueOnly = false,     -- "33401" en vez de "33401 / 33401"
@@ -132,6 +139,8 @@ local defaults = {
 	BigTextHealthSize = 12,           -- Big text: tamaño del texto de vida (8-16)
 	BigTextManaSize = 10,             -- Big text: tamaño del texto de mana (8-16)
 	PartyHideHealthManaText = false,  -- esconde los numeros solo en el party
+	PartyClassColor = false,          -- vida del grupo por color de clase (todos los estilos)
+	PartyClassColorV1 = false,        -- ya se copio la opcion general a la del grupo
 	PetHideHealthManaText = false,    -- esconde los numeros de tu mascota (Frames > Pet)
 	PartyFontSize = 0,                -- (viejo: un solo tamaño para todo; ver PartyTextV2)
 	PartyFontOutline = "OUTLINE", -- contorno del NOMBRE de los del grupo
@@ -336,6 +345,18 @@ local defaults = {
 	LortiUI_ActionBarsColor   = false, LortiUI_ActionBarsR   = 0.40, LortiUI_ActionBarsG   = 0.82, LortiUI_ActionBarsB   = 1.0,
 	-- "Mismo color a todo": el ultimo color usado
 	LortiUI_AllR = 0.40, LortiUI_AllG = 0.82, LortiUI_AllB = 1.0,
+	-- Transparencia de cada color de Lorti (1 = opaco), la del selector.
+	LortiUI_PlayerA = 1.0, LortiUI_TargetA = 1.0, LortiUI_FocusA = 1.0, LortiUI_PartyA = 1.0,
+	LortiUI_PartyTargetsA = 1.0, LortiUI_PartyPetA = 1.0, LortiUI_ArenaA = 1.0,
+	LortiUI_CastBarA = 1.0, LortiUI_ActionBarsA = 1.0, LortiUI_MinimapA = 1.0,
+	LortiUI_BuffA = 1.0, LortiUI_DebuffA = 1.0, LortiUI_AllA = 1.0,
+	-- Texture color (el de FriskesUI): color y transparencia.
+	TextureColorR = 0.3, TextureColorG = 0.3, TextureColorB = 0.3, TextureColorA = 1.0,
+	-- Color de clase de arena, uno por estilo (Blizzard usa
+	-- ArenaBlizzardClassColor). Prendido de fabrica, como siempre fue.
+	ArenaClassColor_BigBlizzard = true, ArenaClassColor_Custom = true,
+	ArenaClassColor_Compact = true, ArenaClassColor_Compact2 = true,
+	ArenaClassColor_Flat = true,
 };
 
 local configLoaded = false;
@@ -501,6 +522,18 @@ local function LoadConfigFromDB()
 		end
 		C.PartyTextV2 = true;
 		NidhausUnitFramesDB.PartyTextV2 = true;
+	end
+
+	-- COLOR DE CLASE DEL GRUPO: CASILLA PROPIA.
+	--
+	-- Antes el grupo seguia la opcion general de color de clase. Ahora tiene
+	-- la suya; para que nadie vea cambiar sus marcos al actualizar, la
+	-- primera vez arranca igual que la general.
+	if C.PartyClassColorV1 ~= true then
+		C.PartyClassColor = C.classColor and true or false;
+		NidhausUnitFramesDB.PartyClassColor = C.PartyClassColor;
+		C.PartyClassColorV1 = true;
+		NidhausUnitFramesDB.PartyClassColorV1 = true;
 	end
 
 	-- LA SEPARACION DE FABRICA VUELVE A 6.

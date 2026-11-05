@@ -1017,8 +1017,91 @@ end
 function K.BuildPvPSection(pane)
 	local prev = nil;
 
+	-- ── Barra de arriba: mover / resetear todos (igual que la de clase) ──
+	-- Cada modulo que se puede mover se anota en "movers" con su boton, para
+	-- que el boton propio y el de "todos" digan siempre lo mismo.
+	local movers = {};
+	local RefreshMoveAll;
+	local function AddMover(id, isMoving, setMove, reset, btn, onText, offText)
+		local m = { id = id, isMoving = isMoving, setMove = setMove, reset = reset };
+		function m.Sync()
+			if btn then
+				btn:SetText((isMoving() and onText or offText));
+			end
+		end
+		movers[#movers + 1] = m;
+		if btn then
+			btn:HookScript("OnClick", function() if RefreshMoveAll then RefreshMoveAll(); end end);
+		end
+		return m;
+	end
+	local LOCK = L["BTN_LOCK_IT"] or "Lock it";
+	local MOVE = L["BTN_MOVE_IT"] or "Move it";
+
+	local bar = CreateFrame("Frame", nil, pane);
+	bar:SetPoint("TOPLEFT", 16, -14);
+	bar:SetSize(BLOCK_W, 24);
+	TrackBlock(pane, bar, 14);
+
+	local moveAll = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate");
+	moveAll:SetPoint("TOPLEFT", 0, 0);
+	moveAll:SetSize(130, 22);
+	local resetAll = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate");
+	resetAll:SetPoint("LEFT", moveAll, "RIGHT", 8, 0);
+	resetAll:SetSize(130, 22);
+	resetAll:SetText(L["PAL_RESET_ALL"] or "Reset all");
+
+	local function BarTip(widget, title, text)
+		widget:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(title, 1, 1, 1);
+			GameTooltip:AddLine(text, nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		widget:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+	end
+	BarTip(moveAll, L["PAL_MOVE_ALL"] or "Move all", L["TIP_PVP_MOVE_ALL"]
+		or "Shows every PvP frame you have turned on so you can drag them all at once. Click again to lock them.");
+	BarTip(resetAll, L["PAL_RESET_ALL"] or "Reset all", L["TIP_PVP_RESET_ALL"]
+		or "Puts every PvP frame back in its default place and size. Your other settings are kept.");
+
+	local function On(id) return K.IsModuleEnabled and K.IsModuleEnabled(id); end
+	local function AnyMoving()
+		for _, m in ipairs(movers) do
+			if m.isMoving() then return true; end
+		end
+		return false;
+	end
+	RefreshMoveAll = function()
+		moveAll:SetText(AnyMoving() and (L["PAL_LOCK_ALL"] or "Lock all")
+			or (L["PAL_MOVE_ALL"] or "Move all"));
+		for _, m in ipairs(movers) do m.Sync(); end
+	end
+	moveAll:SetScript("OnClick", function()
+		-- Si alguno se esta moviendo se fijan todos; si no, se ponen a mover
+		-- los que esten prendidos (apagado no hay nada que mostrar).
+		local fix = AnyMoving();
+		for _, m in ipairs(movers) do
+			if fix then
+				if m.isMoving() then m.setMove(false); end
+			elseif On(m.id) then
+				m.setMove(true);
+			end
+		end
+		RefreshMoveAll();
+	end);
+	resetAll:SetScript("OnClick", function()
+		for _, m in ipairs(movers) do
+			if m.reset then m.reset(); end
+			if K.ResetModuleScale then K.ResetModuleScale(m.id); end
+		end
+		RefreshMoveAll();
+	end);
+	pane:HookScript("OnShow", function() RefreshMoveAll(); end);
+	prev = bar;
+
 	-- ══════════ HUD DE COMBATE ══════════
-	prev = HeaderBlock(pane, nil, L["PVP_HUD"] or "Combat HUD",
+	prev = HeaderBlock(pane, prev, L["PVP_HUD"] or "Combat HUD",
 		L["PVP_HUD_NOTE"]
 		or "Bars that sit next to your character so you do not have to look at the unit frames.");
 
@@ -1144,6 +1227,11 @@ function K.BuildPvPSection(pane)
 
 		pbBlk:SetBodyHeight(math.abs(by) + 62);
 		pbBlk:Refresh();
+
+		AddMover("PowerBar",
+			function() return K.IsPowerBarMoving and K.IsPowerBarMoving(); end,
+			function(v) if K.SetPowerBarMove then K.SetPowerBarMove(v); end end,
+			function() if K.ResetPowerBarPosition then K.ResetPowerBarPosition(); end end);
 	end
 
 	-- ── Melee Swing Timer ──
@@ -1216,6 +1304,20 @@ function K.BuildPvPSection(pane)
 
 		swBlk:SetBodyHeight(136);
 		swBlk:Refresh();
+
+		AddMover("MeleeSwingTimer",
+			function() return K.IsMeleeSwingUnlocked and K.IsMeleeSwingUnlocked(); end,
+			function(v)
+				local cur = K.IsMeleeSwingUnlocked and K.IsMeleeSwingUnlocked();
+				if K.ToggleMeleeSwingUnlock and (v and true or false) ~= (cur and true or false) then
+					K.ToggleMeleeSwingUnlock();
+				end
+			end,
+			function()
+				if K.ResetMeleeSwingTimerPosition then K.ResetMeleeSwingTimerPosition(); end
+				RefreshSwingScale();
+			end,
+			swMove, LOCK, MOVE);
 	end
 
 	-- ══════════ ENEMIGOS ══════════
@@ -1296,6 +1398,12 @@ function K.BuildPvPSection(pane)
 
 		eaBlk:SetBodyHeight(180);
 		eaBlk:Refresh();
+
+		AddMover("EnemySpellAlert",
+			function() return K.IsEnemyAlertPreview and K.IsEnemyAlertPreview(); end,
+			function(v) if K.SetEnemyAlertPreview then K.SetEnemyAlertPreview(v); end end,
+			function() if K.ResetEnemyAlertPosition then K.ResetEnemyAlertPosition(); end end,
+			eaShow, L["BTN_HIDE_BARS"] or "Hide", L["BTN_SHOW_BARS"] or "Show to position");
 	end
 
 	-- ── Seduccion sobre ti (portado de WeakAuras) ──
@@ -1329,6 +1437,12 @@ function K.BuildPvPSection(pane)
 
 		sdBlk:SetBodyHeight(80);
 		sdBlk:Refresh();
+
+		AddMover("SeductionAlert",
+			function() return K.IsSeductionAlertMoving and K.IsSeductionAlertMoving(); end,
+			function(v) if K.SetSeductionAlertMove then K.SetSeductionAlertMove(v); end end,
+			function() if K.ResetSeductionAlertPosition then K.ResetSeductionAlertPosition(); end end,
+			sdMove, LOCK, MOVE);
 	end
 
 	-- ── Gargoyle Tracker ──
@@ -1448,6 +1562,12 @@ function K.BuildPvPSection(pane)
 
 		gtBlk:SetBodyHeight(180);
 		gtBlk:Refresh();
+
+		AddMover("GargoyleTracker",
+			function() return K.IsGargoyleTestActive and K.IsGargoyleTestActive(); end,
+			function(v) if K.SetGargoylePreview then K.SetGargoylePreview(v); end end,
+			function() if K.ResetGargoylePosition then K.ResetGargoylePosition(); end end,
+			gtTest, L["BTN_HIDE_BARS"] or "Hide", L["BTN_TEST_MODE"] or "Test mode");
 	end
 
 	-- Aca habia dos bloques "Planned" anunciando cosas que no existen

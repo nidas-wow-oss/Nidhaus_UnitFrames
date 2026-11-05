@@ -49,6 +49,7 @@ local tooltips = {
 	CastBarPWScale      = "TIP_CastBarPWScale",
 	FocusSpellBarScale  = "TIP_FocusSpellBarScale",
 	UnitFrameCustomTexture = "TIP_UnitFrameCustomTexture",
+	BlackNameBackground = "TIP_BlackNameBackground",
 	ShowCurrentValueOnly = "TIP_ShowCurrentValueOnly",
 	BigStatusText       = "TIP_BigStatusText",
 	BigTextCustomSize   = "TIP_BigTextCustomSize",
@@ -283,6 +284,37 @@ local function CreateMainFrame()
 	local version = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 	version:SetPoint("TOPRIGHT", -40, -16);
 	version:SetText(L["PANEL_VERSION"]);
+
+	-- Casilla chiquita arriba a la IZQUIERDA: mostrar u ocultar el boton
+	-- de NUF en el minimapa. Tildada = se ve (con /nuf se abre igual).
+	-- A la derecha quedaba pegada a la cruz y se tocaba por error.
+	do
+		local mb = CreateFrame("CheckButton", "NidhausMinimapBtnCB", mainFrame, "InterfaceOptionsCheckButtonTemplate");
+		mb:SetScale(0.75);
+		mb:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 16 / 0.75, -14 / 0.75);
+		mb:SetFrameLevel(mainFrame:GetFrameLevel() + 6);
+		mb:SetHitRectInsets(0, -90, 0, 0);
+		local t = _G["NidhausMinimapBtnCBText"];
+		if t then
+			t:ClearAllPoints();
+			t:SetPoint("LEFT", mb, "RIGHT", 2, 1);
+			t:SetText(L["CB_MINIMAP_BUTTON"] or "Minimap button");
+		end
+		mb:SetScript("OnShow", function(self) self:SetChecked(not C.HideNUFMinimapButton); end);
+		mb:SetChecked(not C.HideNUFMinimapButton);
+		mb:SetScript("OnClick", function(self)
+			local show = (self:GetChecked() == 1 or self:GetChecked() == true);
+			K.SaveConfig("HideNUFMinimapButton", not show);
+			if K.ApplyNUFMinimapButton then K.ApplyNUFMinimapButton(); end
+		end);
+		mb:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT");
+			GameTooltip:SetText(L["CB_MINIMAP_BUTTON"] or "Minimap button", 1, 1, 1);
+			GameTooltip:AddLine(L["TIP_MINIMAP_BUTTON"] or "Shows the NUF button on the minimap. Hidden, you can still open this panel with /nuf.", nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		mb:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+	end
 
 	-- Subtitle
 	local subtitle = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
@@ -1236,14 +1268,25 @@ local function PopulateTabs()
 	UIDropDownMenu_SetSelectedValue(themeDD, currentTheme);
 	UIDropDownMenu_SetText(themeDD, ThemeText(currentTheme));
 
+	-- Fondo negro bajo el nombre: es para los marcos de Blizzard, asi que
+	-- vale solo con el skin apagado (con el skin, el fondo lo maneja NUF).
+	gY = gY - 30;
+	local blackNameCB = CreateCheckBox(paneGen,
+		L["CB_BLACK_NAME_BG"] or "Black background under names",
+		"BlackNameBackground", xL + 16, gY);
+
 	local function UpdateThemeVisibility()
 		local on = C.UnitFrameCustomTexture and true or false;
 		if on then
 			UIDropDownMenu_EnableDropDown(themeDD);
 			themeLabel:SetAlpha(1);
+			blackNameCB:Disable();
+			blackNameCB:SetAlpha(0.4);
 		else
 			UIDropDownMenu_DisableDropDown(themeDD);
 			themeLabel:SetAlpha(0.4);
+			blackNameCB:Enable();
+			blackNameCB:SetAlpha(1);
 		end
 	end
 	K._UpdateThemeVisibility = UpdateThemeVisibility;

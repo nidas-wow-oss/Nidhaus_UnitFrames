@@ -31,6 +31,10 @@ local function LoadPanel()
 	-- una: necesita los modulos de arena cargados antes que el.
 	if K.LoadArenaModules then pcall(K.LoadArenaModules); end
 
+	-- Los modulos diferidos y apagados no corrieron su cuerpo, y el panel
+	-- usa sus funciones para armar las hojas. Se cargan sin prenderlos.
+	if K.LoadAllModuleBodies then pcall(K.LoadAllModuleBodies); end
+
 	local loaded, reason = LoadAddOn(LOD);
 	if loaded then return true; end
 

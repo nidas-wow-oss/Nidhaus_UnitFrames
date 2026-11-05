@@ -744,7 +744,14 @@ function shieldwatch_onevent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, ar
                 shieldwatchTooltip:CreateFontString("$parentTextLeft1", nil, "GameTooltipText"),
                 shieldwatchTooltip:CreateFontString("$parentTextRight1", nil, "GameTooltipText")
             )
-            UIDropDownMenu_Initialize(shieldwatch_FrameDropDown, shieldwatch_InitDropDown, "MENU")
+            -- Sin UIDropDownMenu_Initialize: mancha las globales de Blizzard
+            -- (ver PartyTargets/Frames.lua). Se inicializa al abrir el menu.
+            -- El marco del menu no se crea en ningun lado: sin el, nada.
+            local dd = rawget(_G, "shieldwatch_FrameDropDown")
+            if dd then
+                dd.initialize = shieldwatch_InitDropDown
+                dd.displayMode = "MENU"
+            end
         end
         shieldwatch_Bar:SetMinMaxValues(0, 100)
     elseif event == 'CHAT_MSG_ADDON' then

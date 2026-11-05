@@ -1,537 +1,541 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
-local format, floor = string.format, math.floor;
+-- Diferido: apagado no crea nada hasta que se prende (ver K.DeferModule).
+K.DeferModule("MeleeSwingTimer", {
+	name    = L["MOD_SWINGTIMER"] or "Melee Swing Timer",
+	desc    = L["MOD_SWINGTIMER_DESC"] or "Bar showing the time until your next melee white hit. /nufswing unlock to move it.",
+	default = false,
+	configLabel = L["BTN_MODULE_MOVE"] or "Move",
+}, function()
+	local format, floor = string.format, math.floor;
 
--- =========================================================
--- MeleeSwingTimer.lua
--- Barra con el tiempo hasta tu proximo golpe cuerpo a cuerpo (white hit).
---
--- Como funciona: escucha el combat log propio (SWING_DAMAGE / SWING_MISSED)
--- y arranca una barra con la velocidad de tu arma principal.
--- La velocidad se relee en cada golpe, asi que respeta buffs de haste.
---
--- NOTA: en 3.3.5a el combat log no distingue mano principal de secundaria
--- en los golpes blancos, asi que la barra sigue la MANO PRINCIPAL.
---
--- Mover: /nufswing unlock -> arrastrar -> /nufswing lock
--- =========================================================
-
-local BAR_WIDTH  = 195;
-local BAR_HEIGHT = 14;
-
-local enabled  = false;
-local unlocked = false;
-
-local playerGUID;
-
--- ---------------------------------------------------------
--- DB
--- ---------------------------------------------------------
-local function DB()
-	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
-	if not NidhausUnitFramesDB.MeleeSwingTimer then
-		NidhausUnitFramesDB.MeleeSwingTimer = { x = 0, y = 222, scale = 1.0 };
-	end
-	return NidhausUnitFramesDB.MeleeSwingTimer;
-end
-
--- ---------------------------------------------------------
--- Frames
--- ---------------------------------------------------------
-local mover = CreateFrame("Frame", "NUF_SwingMover", UIParent);
-mover:SetSize(BAR_WIDTH + 4, BAR_HEIGHT + 4);
-mover:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 222);
-mover:SetMovable(true);
-mover:SetClampedToScreen(true);
-mover:EnableMouse(false);
-mover:Hide();
-
-local bar = CreateFrame("StatusBar", "NUF_SwingBar", mover);
-bar:SetSize(BAR_WIDTH, BAR_HEIGHT);
-bar:SetPoint("CENTER", mover, "CENTER", 0, 0);
-bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar");
-local BAR_R, BAR_G, BAR_B = 0.85, 0.25, 0.25;   -- el color propio de esta barra
-bar:SetStatusBarColor(BAR_R, BAR_G, BAR_B);
-bar:SetMinMaxValues(0, 1);
-bar:SetValue(1);
-
-local bg = bar:CreateTexture(nil, "BACKGROUND");
-bg:SetAllPoints(bar);
-bg:SetTexture("Interface\\TargetingFrame\\UI-StatusBar");
-bg:SetVertexColor(0.1, 0.1, 0.1, 0.75);
-
-local border = CreateFrame("Frame", nil, bar);
-border:SetPoint("TOPLEFT", bar, "TOPLEFT", -2, 2);
-border:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 2, -2);
-border:SetBackdrop({
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	edgeSize = 12,
-	insets = { left = 2, right = 2, top = 2, bottom = 2 },
-});
-border:SetBackdropBorderColor(0.6, 0.6, 0.6, 0.9);
-
-local spark = bar:CreateTexture(nil, "OVERLAY");
-spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark");
-spark:SetSize(16, BAR_HEIGHT + 10);
-spark:SetBlendMode("ADD");
-spark:SetPoint("CENTER", bar, "LEFT", 0, 0);
-
-local textLeft = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-textLeft:SetPoint("LEFT", bar, "LEFT", 4, 1);   -- +1: a la altura del texto de la barra de casteo
-textLeft:SetText(L["SWING_LABEL"] or "Auto attack");
-
-local textRight = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-textRight:SetPoint("RIGHT", bar, "RIGHT", -4, 1);
-
-local unlockOverlay = mover:CreateTexture(nil, "OVERLAY");
-unlockOverlay:SetAllPoints(mover);
-unlockOverlay:SetTexture(0, 0.8, 1, 0.25);
-unlockOverlay:Hide();
-
-local unlockText = mover:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-unlockText:SetPoint("CENTER", mover, "CENTER", 0, 0);
-unlockText:SetText("|cff00ccff" .. (L["DRAG_LABEL"] or "DRAG") .. "|r");
-unlockText:Hide();
-
--- ---------------------------------------------------------
--- Posicion / escala
--- ---------------------------------------------------------
--- Se guarda TAMBIEN el punto: al soltar el arrastre el cliente reancla el
--- marco al punto que le queda mas cerca, y los x/y solos no alcanzan.
--- Sin punto guardado (lo de antes) eran desplazamientos desde BOTTOM.
-local function SavePosition()
-	local db = DB();
-	local point, _, relativePoint, x, y = mover:GetPoint();
-	db.point = point;
-	db.relativePoint = relativePoint;
-	db.x = x or 0;
-	db.y = y or 222;
-end
-
-local function RestorePosition()
-	local db = DB();
-	mover:ClearAllPoints();
-	mover:SetPoint(db.point or "BOTTOM", UIParent, db.relativePoint or db.point or "BOTTOM",
-		db.x or 0, db.y or 222);
-	mover:SetScale(db.scale or 1.0);
-end
-
-mover:SetScript("OnMouseDown", function(self, btn)
-	if btn == "LeftButton" and unlocked then self:StartMoving(); end
-end);
-mover:SetScript("OnMouseUp", function(self, btn)
-	if btn == "LeftButton" and unlocked then
-		self:StopMovingOrSizing();
-		SavePosition();
-	end
-end);
-
--- ---------------------------------------------------------
--- Show / Hide / Lock
--- ---------------------------------------------------------
-local function ShowBar()
-	if enabled or unlocked then mover:Show(); end
-end
-
-local function HideBar()
-	if not unlocked then mover:Hide(); end
-end
-
--- ---------------------------------------------------------
--- Estilo del borde: tres modos
---
---   Tooltip   el de siempre, borde gris de tooltip.
---   None      sin marco, como las barras de casteo de los marcos de
---             arena, cuyo template no dibuja borde ninguno.
---   Blizzard  el borde de la barra de casteo del jugador. La textura y
---             las medidas se leen en vivo de CastingBarFrame y se aplican
---             a escala: esta barra mide 195x14 y aquella 195x13, asi que
---             calza, y si otro modulo la retextura el timer la acompaña.
---
--- Sin marco no se pierde el modo mover: lo indica unlockOverlay, que va
--- por fuera de la barra y no depende del borde.
--- ---------------------------------------------------------
-local castBorder;   -- textura del modo Blizzard, se crea recien si se pide
-
-local function CurrentBorderStyle()
-	local v = C.SwingTimerBorderStyle;
-	if v == "None" or v == "Blizzard" or v == "Tooltip" then return v; end
-	-- Compatibilidad con la opcion booleana que hubo antes.
-	if C.SwingTimerBorderless == true then return "None"; end
-	return "Tooltip";
-end
-
-local function BorderTint(r, g, b, a)
-	if castBorder and castBorder:IsShown() then
-		-- El borde prestado de la barra de casteo va a su color de fabrica
-		-- mientras la barra esta bloqueada: bajarlo al gris del modo mover
-		-- lo dejaba mas apagado que la barra de casteo de al lado. Solo se
-		-- pinta de celeste para avisar que se la puede arrastrar.
-		if unlocked then
-			castBorder:SetVertexColor(r, g, b, a);
-		else
-			castBorder:SetVertexColor(1, 1, 1, 1);
-		end
-	elseif border:IsShown() then
-		border:SetBackdropBorderColor(r, g, b, a);
-	end
-end
-
-
--- El estilo Blizzard no es solo el marco.
---
--- La barra de casteo del jugador escribe en BLANCO (GameFontHighlight) y
--- rellena con UI-CastingBar-Fill; esta barra escribia en DORADO
--- (GameFontNormalSmall) sobre UI-StatusBar. Puestas una al lado de la
--- otra, las letras eran de otro color y el relleno se veia mas apagado.
--- Se leen en vivo, igual que el borde: si otro addon retextura la barra
--- de casteo, el timer la acompaña. En los otros dos estilos vuelve a su
--- aspecto propio, que es el que tenia siempre.
--- El swing timer es rojo a proposito: ese es su color y no se cambia ni en
--- modo Blizzard. Solo copia la textura, el fondo y el spark.
-local MATCH_BLIZZ_COLOR = false;
-local DEFAULT_FILL = "Interface\\TargetingFrame\\UI-StatusBar";
-
-local function ApplyLookForStyle(style)
-	local blizz = (style == "Blizzard");
-
-	local ref = _G.CastingBarFrameText;
-	if blizz and ref then
-		local f, size, flags = ref:GetFont();
-		if f then
-			textLeft:SetFont(f, size, flags);
-			textRight:SetFont(f, size, flags);
-		end
-		local r, g, b = ref:GetTextColor();
-		if r then
-			textLeft:SetTextColor(r, g, b);
-			textRight:SetTextColor(r, g, b);
-		end
-	else
-		textLeft:SetFontObject(GameFontNormalSmall);
-		textRight:SetFontObject(GameFontNormalSmall);
-	end
-
-	local cb  = _G.CastingBarFrame;
-	local cbt = cb and cb.GetStatusBarTexture and cb:GetStatusBarTexture();
-	local path = cbt and cbt.GetTexture and cbt:GetTexture();
-	if blizz and path then
-		bar:SetStatusBarTexture(path);
-	else
-		bar:SetStatusBarTexture(DEFAULT_FILL);
-	end
-
-	-- SetStatusBarTexture resetea el tinte: hay que reponerlo siempre.
+	-- =========================================================
+	-- MeleeSwingTimer.lua
+	-- Barra con el tiempo hasta tu proximo golpe cuerpo a cuerpo (white hit).
 	--
-	-- Y en modo Blizzard el tinte tambien se lee en vivo, no se asume. Este
-	-- relleno ya viene dorado de fabrica; multiplicarlo por un dorado propio
-	-- lo apagaba, que era lo que se veia mas oscuro al lado de la barra de
-	-- casteo de verdad.
+	-- Como funciona: escucha el combat log propio (SWING_DAMAGE / SWING_MISSED)
+	-- y arranca una barra con la velocidad de tu arma principal.
+	-- La velocidad se relee en cada golpe, asi que respeta buffs de haste.
 	--
-	-- Se lee CASTING_BAR_COLOR, la constante, y NO el color que la barra
-	-- tiene puesto en este instante: Blizzard la pinta de rojo cuando un
-	-- casteo se interrumpe y de verde en los canalizados, asi que preguntar
-	-- en vivo podia dejar el timer rojo para siempre.
-	local cc = blizz and MATCH_BLIZZ_COLOR and _G.CASTING_BAR_COLOR;
-	if cc and cc.r then
-		bar:SetStatusBarColor(cc.r, cc.g, cc.b);
-	else
-		bar:SetStatusBarColor(BAR_R, BAR_G, BAR_B);
-	end
+	-- NOTA: en 3.3.5a el combat log no distingue mano principal de secundaria
+	-- en los golpes blancos, asi que la barra sigue la MANO PRINCIPAL.
+	--
+	-- Mover: /nufswing unlock -> arrastrar -> /nufswing lock
+	-- =========================================================
 
-	-- El fondo va SIEMPRE oscuro. Copiar el de la barra de casteo dejaba la
-	-- parte vacia blanca, que es peor que el problema que venia a resolver:
-	-- lo apagado era el tinte del relleno y el del borde, no el fondo.
-	bg:SetTexture(DEFAULT_FILL);
-	bg:SetVertexColor(0.1, 0.1, 0.1, 0.75);
-	bg:Show();
+	local BAR_WIDTH  = 195;
+	local BAR_HEIGHT = 14;
 
-	-- El spark: el alto sale del de la barra de casteo, el ancho se queda en
-	-- los 16 de siempre. Copiarle tambien el ancho lo dejaba como una mancha.
-	local sh = 32;
-	local sp = _G.CastingBarFrameSpark;
-	if sp and (sp:GetHeight() or 0) > 0 then sh = sp:GetHeight(); end
-	spark:SetWidth(16);
-	spark:SetHeight(sh);
-end
+	local enabled  = false;
+	local unlocked = false;
 
-local function ApplyBorderStyle()
-	local style = CurrentBorderStyle();
-	if castBorder then castBorder:Hide(); end
-	border:Hide();
+	local playerGUID;
 
-	if style == "Tooltip" then
-		border:Show();
-	elseif style == "Blizzard" then
-		local src = _G.CastingBarFrameBorder;
-		local ref = _G.CastingBarFrame;
-		if src and ref and (ref:GetWidth() or 0) > 0 and (ref:GetHeight() or 0) > 0 then
-			if not castBorder then
-				castBorder = bar:CreateTexture(nil, "OVERLAY");
-			end
-			castBorder:SetTexture(src:GetTexture());
-			castBorder:SetWidth(BAR_WIDTH   * (src:GetWidth()  / ref:GetWidth()));
-			castBorder:SetHeight(BAR_HEIGHT * (src:GetHeight() / ref:GetHeight()));
-			castBorder:ClearAllPoints();
-			-- El borde de casteo no va centrado: deja aire arriba para el
-			-- texto. Se copia ese corrimiento, a escala de esta barra.
-			local _, sy = src:GetCenter();
-			local _, ry = ref:GetCenter();
-			local dy = (sy and ry) and ((sy - ry) * (BAR_HEIGHT / ref:GetHeight())) or 0;
-			castBorder:SetPoint("CENTER", bar, "CENTER", 0, dy);
-			castBorder:Show();
-		else
-			border:Show();   -- si la barra de casteo no existe todavia
+	-- ---------------------------------------------------------
+	-- DB
+	-- ---------------------------------------------------------
+	local function DB()
+		if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
+		if not NidhausUnitFramesDB.MeleeSwingTimer then
+			NidhausUnitFramesDB.MeleeSwingTimer = { x = 0, y = 222, scale = 1.0 };
 		end
+		return NidhausUnitFramesDB.MeleeSwingTimer;
 	end
 
-	ApplyLookForStyle(style);
-
-	if unlocked then
-		BorderTint(0, 0.8, 1, 1);
-	else
-		BorderTint(0.6, 0.6, 0.6, 0.9);
-	end
-end
-
-function K.GetMeleeSwingBorderStyle()
-	return CurrentBorderStyle();
-end
-
-function K.SetMeleeSwingBorderStyle(style)
-	local v = (style == "None" and "None")
-		or (style == "Blizzard" and "Blizzard")
-		or "Tooltip";
-	K.SaveConfig("SwingTimerBorderStyle", v);
-	ApplyBorderStyle();
-	return v;
-end
-
-function K.CycleMeleeSwingBorderStyle()
-	local cur = CurrentBorderStyle();
-	local nxt = (cur == "Tooltip" and "None")
-		or (cur == "None" and "Blizzard")
-		or "Tooltip";
-	K.SaveConfig("SwingTimerBorderStyle", nxt);
-	ApplyBorderStyle();
-	return nxt;
-end
-
-local function Lock()
-	unlocked = false;
+	-- ---------------------------------------------------------
+	-- Frames
+	-- ---------------------------------------------------------
+	local mover = CreateFrame("Frame", "NUF_SwingMover", UIParent);
+	mover:SetSize(BAR_WIDTH + 4, BAR_HEIGHT + 4);
+	mover:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 222);
+	mover:SetMovable(true);
+	mover:SetClampedToScreen(true);
 	mover:EnableMouse(false);
-	unlockOverlay:Hide();
-	unlockText:Hide();
-	BorderTint(0.6, 0.6, 0.6, 0.9);
-	SavePosition();
-	HideBar();
-end
+	mover:Hide();
 
-local function Unlock()
-	-- Si "Mover todo" ya esta activo, el frame lo maneja ESE modo: tener los
-	-- dos a la vez ponia dos capas de arrastre encima y el frame quedaba
-	-- pegado / imposible de soltar.
-	if K.IsGlobalUnlocked and K.IsGlobalUnlocked() then
-		print("|cff4FC3F7NUF:|r " .. (L["SWING_USE_GLOBAL"]
-			or "Move Everything is on: drag the blue box from there."));
-		return;
-	end
-	unlocked = true;
-	mover:EnableMouse(true);
-	unlockOverlay:Show();
-	unlockText:Show();
-	BorderTint(0, 0.8, 1, 1);
+	local bar = CreateFrame("StatusBar", "NUF_SwingBar", mover);
+	bar:SetSize(BAR_WIDTH, BAR_HEIGHT);
+	bar:SetPoint("CENTER", mover, "CENTER", 0, 0);
+	bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar");
+	local BAR_R, BAR_G, BAR_B = 0.85, 0.25, 0.25;   -- el color propio de esta barra
+	bar:SetStatusBarColor(BAR_R, BAR_G, BAR_B);
 	bar:SetMinMaxValues(0, 1);
-	bar:SetValue(0.6);
-	textRight:SetText("--");
-	mover:Show();
-end
+	bar:SetValue(1);
 
--- ---------------------------------------------------------
--- Logica
--- ---------------------------------------------------------
-local function StartSwing()
-	if unlocked then return; end
+	local bg = bar:CreateTexture(nil, "BACKGROUND");
+	bg:SetAllPoints(bar);
+	bg:SetTexture("Interface\\TargetingFrame\\UI-StatusBar");
+	bg:SetVertexColor(0.1, 0.1, 0.1, 0.75);
 
-	local mainSpeed = UnitAttackSpeed("player");
-	if not mainSpeed or mainSpeed <= 0 then return; end
+	local border = CreateFrame("Frame", nil, bar);
+	border:SetPoint("TOPLEFT", bar, "TOPLEFT", -2, 2);
+	border:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 2, -2);
+	border:SetBackdrop({
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		edgeSize = 12,
+		insets = { left = 2, right = 2, top = 2, bottom = 2 },
+	});
+	border:SetBackdropBorderColor(0.6, 0.6, 0.6, 0.9);
 
-	local now = GetTime();
-	bar:SetMinMaxValues(now, now + mainSpeed);
-	bar:SetValue(now);
-	textRight:SetText(string.format("%0.1f", mainSpeed));
-	ShowBar();
-end
+	local spark = bar:CreateTexture(nil, "OVERLAY");
+	spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark");
+	spark:SetSize(16, BAR_HEIGHT + 10);
+	spark:SetBlendMode("ADD");
+	spark:SetPoint("CENTER", bar, "LEFT", 0, 0);
 
-bar:SetScript("OnUpdate", function(self)
-	if unlocked then return; end
+	local textLeft = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+	textLeft:SetPoint("LEFT", bar, "LEFT", 4, 1);   -- +1: a la altura del texto de la barra de casteo
+	textLeft:SetText(L["SWING_LABEL"] or "Auto attack");
 
-	local lo, hi = self:GetMinMaxValues();
-	if hi <= lo then return; end
+	local textRight = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+	textRight:SetPoint("RIGHT", bar, "RIGHT", -4, 1);
 
-	local now = GetTime();
+	local unlockOverlay = mover:CreateTexture(nil, "OVERLAY");
+	unlockOverlay:SetAllPoints(mover);
+	unlockOverlay:SetTexture(0, 0.8, 1, 0.25);
+	unlockOverlay:Hide();
 
-	-- FIX: la barra se quedaba clavada en 0.0. Al terminar el swing se
-	-- resetea y se oculta; el proximo golpe la vuelve a arrancar.
-	if now >= hi then
-		self:SetMinMaxValues(0, 1);
-		self:SetValue(0);
-		textRight:SetText("");
-		spark:ClearAllPoints();
-		spark:SetPoint("CENTER", self, "LEFT", 0, 0);
-		HideBar();
-		return;
+	local unlockText = mover:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+	unlockText:SetPoint("CENTER", mover, "CENTER", 0, 0);
+	unlockText:SetText("|cff00ccff" .. (L["DRAG_LABEL"] or "DRAG") .. "|r");
+	unlockText:Hide();
+
+	-- ---------------------------------------------------------
+	-- Posicion / escala
+	-- ---------------------------------------------------------
+	-- Se guarda TAMBIEN el punto: al soltar el arrastre el cliente reancla el
+	-- marco al punto que le queda mas cerca, y los x/y solos no alcanzan.
+	-- Sin punto guardado (lo de antes) eran desplazamientos desde BOTTOM.
+	local function SavePosition()
+		local db = DB();
+		local point, _, relativePoint, x, y = mover:GetPoint();
+		db.point = point;
+		db.relativePoint = relativePoint;
+		db.x = x or 0;
+		db.y = y or 222;
 	end
 
-	self:SetValue(now);
-
-	local pct = (now - lo) / (hi - lo);
-	spark:ClearAllPoints();
-	spark:SetPoint("CENTER", self, "LEFT", pct * BAR_WIDTH, 0);
-
-	-- El texto solo muestra un decimal, asi que cambia 10 veces por segundo
-	-- como mucho. Antes se llamaba a format() y SetText() en CADA fotograma:
-	-- 60 cadenas nuevas por segundo, 50 de ellas identicas a la anterior.
-	-- En 3.3.5 esa basura se paga en tirones del recolector.
-	local decimas = floor((hi - now) * 10);
-	if decimas ~= self.lastDecimas then
-		self.lastDecimas = decimas;
-		textRight:SetFormattedText("%0.1f", hi - now);   -- sin basura (cada cuadro)
-	end
-end);
-
--- ---------------------------------------------------------
--- Eventos
--- ---------------------------------------------------------
-local events = CreateFrame("Frame");
-events:SetScript("OnEvent", function(self, event, ...)
-	if not enabled then return; end
-
-	if event == "PLAYER_ENTERING_WORLD" then
-		playerGUID = UnitGUID("player");
-		RestorePosition();
-		ApplyBorderStyle();
-		HideBar();
-		return;
+	local function RestorePosition()
+		local db = DB();
+		mover:ClearAllPoints();
+		mover:SetPoint(db.point or "BOTTOM", UIParent, db.relativePoint or db.point or "BOTTOM",
+			db.x or 0, db.y or 222);
+		mover:SetScale(db.scale or 1.0);
 	end
 
-	if event == "PLAYER_REGEN_ENABLED" then
-		-- Fuera de combate: dejar que la barra termine y se oculte sola
-		return;
+	mover:SetScript("OnMouseDown", function(self, btn)
+		if btn == "LeftButton" and unlocked then self:StartMoving(); end
+	end);
+	mover:SetScript("OnMouseUp", function(self, btn)
+		if btn == "LeftButton" and unlocked then
+			self:StopMovingOrSizing();
+			SavePosition();
+		end
+	end);
+
+	-- ---------------------------------------------------------
+	-- Show / Hide / Lock
+	-- ---------------------------------------------------------
+	local function ShowBar()
+		if enabled or unlocked then mover:Show(); end
 	end
 
-	if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-		local _, subEvent, sourceGUID = ...;
-		if sourceGUID ~= playerGUID then return; end
-		if subEvent == "SWING_DAMAGE" or subEvent == "SWING_MISSED" then
-			StartSwing();
+	local function HideBar()
+		if not unlocked then mover:Hide(); end
+	end
+
+	-- ---------------------------------------------------------
+	-- Estilo del borde: tres modos
+	--
+	--   Tooltip   el de siempre, borde gris de tooltip.
+	--   None      sin marco, como las barras de casteo de los marcos de
+	--             arena, cuyo template no dibuja borde ninguno.
+	--   Blizzard  el borde de la barra de casteo del jugador. La textura y
+	--             las medidas se leen en vivo de CastingBarFrame y se aplican
+	--             a escala: esta barra mide 195x14 y aquella 195x13, asi que
+	--             calza, y si otro modulo la retextura el timer la acompaña.
+	--
+	-- Sin marco no se pierde el modo mover: lo indica unlockOverlay, que va
+	-- por fuera de la barra y no depende del borde.
+	-- ---------------------------------------------------------
+	local castBorder;   -- textura del modo Blizzard, se crea recien si se pide
+
+	local function CurrentBorderStyle()
+		local v = C.SwingTimerBorderStyle;
+		if v == "None" or v == "Blizzard" or v == "Tooltip" then return v; end
+		-- Compatibilidad con la opcion booleana que hubo antes.
+		if C.SwingTimerBorderless == true then return "None"; end
+		return "Tooltip";
+	end
+
+	local function BorderTint(r, g, b, a)
+		if castBorder and castBorder:IsShown() then
+			-- El borde prestado de la barra de casteo va a su color de fabrica
+			-- mientras la barra esta bloqueada: bajarlo al gris del modo mover
+			-- lo dejaba mas apagado que la barra de casteo de al lado. Solo se
+			-- pinta de celeste para avisar que se la puede arrastrar.
+			if unlocked then
+				castBorder:SetVertexColor(r, g, b, a);
+			else
+				castBorder:SetVertexColor(1, 1, 1, 1);
+			end
+		elseif border:IsShown() then
+			border:SetBackdropBorderColor(r, g, b, a);
 		end
 	end
-end);
 
--- ---------------------------------------------------------
--- Comandos
--- ---------------------------------------------------------
-SLASH_NUFSWING1 = "/nufswing";
-SlashCmdList["NUFSWING"] = function(msg)
-	msg = string.lower(msg or "");
-	local cmd, val = string.match(msg, "^(%a*)%s*(.*)$");
 
-	if cmd == "unlock" or cmd == "move" then
-		Unlock();
-		print("|cff4FC3F7NUF:|r " .. (L["SWING_UNLOCKED"] or "Swing Timer - drag the bar. /nufswing lock to lock it."));
-	elseif cmd == "lock" then
-		Lock();
-		print("|cff4FC3F7NUF:|r " .. (L["SWING_LOCKED"] or "Swing Timer - bar locked."));
-	elseif cmd == "scale" then
-		local s = tonumber(val);
-		if s and s >= 0.5 and s <= 2.5 then
-			DB().scale = s;
-			mover:SetScale(s);
-			print("|cff4FC3F7NUF:|r " .. (L["SWING_SCALE"] or "Swing Timer - scale:") .. " " .. string.format("%.1f", s));
+	-- El estilo Blizzard no es solo el marco.
+	--
+	-- La barra de casteo del jugador escribe en BLANCO (GameFontHighlight) y
+	-- rellena con UI-CastingBar-Fill; esta barra escribia en DORADO
+	-- (GameFontNormalSmall) sobre UI-StatusBar. Puestas una al lado de la
+	-- otra, las letras eran de otro color y el relleno se veia mas apagado.
+	-- Se leen en vivo, igual que el borde: si otro addon retextura la barra
+	-- de casteo, el timer la acompaña. En los otros dos estilos vuelve a su
+	-- aspecto propio, que es el que tenia siempre.
+	-- El swing timer es rojo a proposito: ese es su color y no se cambia ni en
+	-- modo Blizzard. Solo copia la textura, el fondo y el spark.
+	local MATCH_BLIZZ_COLOR = false;
+	local DEFAULT_FILL = "Interface\\TargetingFrame\\UI-StatusBar";
+
+	local function ApplyLookForStyle(style)
+		local blizz = (style == "Blizzard");
+
+		local ref = _G.CastingBarFrameText;
+		if blizz and ref then
+			local f, size, flags = ref:GetFont();
+			if f then
+				textLeft:SetFont(f, size, flags);
+				textRight:SetFont(f, size, flags);
+			end
+			local r, g, b = ref:GetTextColor();
+			if r then
+				textLeft:SetTextColor(r, g, b);
+				textRight:SetTextColor(r, g, b);
+			end
 		else
-			print("|cff4FC3F7NUF:|r " .. (L["CMD_USAGE"] or "Usage:") .. " /nufswing scale <0.5 - 2.5>");
+			textLeft:SetFontObject(GameFontNormalSmall);
+			textRight:SetFontObject(GameFontNormalSmall);
 		end
-	elseif cmd == "reset" then
+
+		local cb  = _G.CastingBarFrame;
+		local cbt = cb and cb.GetStatusBarTexture and cb:GetStatusBarTexture();
+		local path = cbt and cbt.GetTexture and cbt:GetTexture();
+		if blizz and path then
+			bar:SetStatusBarTexture(path);
+		else
+			bar:SetStatusBarTexture(DEFAULT_FILL);
+		end
+
+		-- SetStatusBarTexture resetea el tinte: hay que reponerlo siempre.
+		--
+		-- Y en modo Blizzard el tinte tambien se lee en vivo, no se asume. Este
+		-- relleno ya viene dorado de fabrica; multiplicarlo por un dorado propio
+		-- lo apagaba, que era lo que se veia mas oscuro al lado de la barra de
+		-- casteo de verdad.
+		--
+		-- Se lee CASTING_BAR_COLOR, la constante, y NO el color que la barra
+		-- tiene puesto en este instante: Blizzard la pinta de rojo cuando un
+		-- casteo se interrumpe y de verde en los canalizados, asi que preguntar
+		-- en vivo podia dejar el timer rojo para siempre.
+		local cc = blizz and MATCH_BLIZZ_COLOR and _G.CASTING_BAR_COLOR;
+		if cc and cc.r then
+			bar:SetStatusBarColor(cc.r, cc.g, cc.b);
+		else
+			bar:SetStatusBarColor(BAR_R, BAR_G, BAR_B);
+		end
+
+		-- El fondo va SIEMPRE oscuro. Copiar el de la barra de casteo dejaba la
+		-- parte vacia blanca, que es peor que el problema que venia a resolver:
+		-- lo apagado era el tinte del relleno y el del borde, no el fondo.
+		bg:SetTexture(DEFAULT_FILL);
+		bg:SetVertexColor(0.1, 0.1, 0.1, 0.75);
+		bg:Show();
+
+		-- El spark: el alto sale del de la barra de casteo, el ancho se queda en
+		-- los 16 de siempre. Copiarle tambien el ancho lo dejaba como una mancha.
+		local sh = 32;
+		local sp = _G.CastingBarFrameSpark;
+		if sp and (sp:GetHeight() or 0) > 0 then sh = sp:GetHeight(); end
+		spark:SetWidth(16);
+		spark:SetHeight(sh);
+	end
+
+	local function ApplyBorderStyle()
+		local style = CurrentBorderStyle();
+		if castBorder then castBorder:Hide(); end
+		border:Hide();
+
+		if style == "Tooltip" then
+			border:Show();
+		elseif style == "Blizzard" then
+			local src = _G.CastingBarFrameBorder;
+			local ref = _G.CastingBarFrame;
+			if src and ref and (ref:GetWidth() or 0) > 0 and (ref:GetHeight() or 0) > 0 then
+				if not castBorder then
+					castBorder = bar:CreateTexture(nil, "OVERLAY");
+				end
+				castBorder:SetTexture(src:GetTexture());
+				castBorder:SetWidth(BAR_WIDTH   * (src:GetWidth()  / ref:GetWidth()));
+				castBorder:SetHeight(BAR_HEIGHT * (src:GetHeight() / ref:GetHeight()));
+				castBorder:ClearAllPoints();
+				-- El borde de casteo no va centrado: deja aire arriba para el
+				-- texto. Se copia ese corrimiento, a escala de esta barra.
+				local _, sy = src:GetCenter();
+				local _, ry = ref:GetCenter();
+				local dy = (sy and ry) and ((sy - ry) * (BAR_HEIGHT / ref:GetHeight())) or 0;
+				castBorder:SetPoint("CENTER", bar, "CENTER", 0, dy);
+				castBorder:Show();
+			else
+				border:Show();   -- si la barra de casteo no existe todavia
+			end
+		end
+
+		ApplyLookForStyle(style);
+
+		if unlocked then
+			BorderTint(0, 0.8, 1, 1);
+		else
+			BorderTint(0.6, 0.6, 0.6, 0.9);
+		end
+	end
+
+	function K.GetMeleeSwingBorderStyle()
+		return CurrentBorderStyle();
+	end
+
+	function K.SetMeleeSwingBorderStyle(style)
+		local v = (style == "None" and "None")
+			or (style == "Blizzard" and "Blizzard")
+			or "Tooltip";
+		K.SaveConfig("SwingTimerBorderStyle", v);
+		ApplyBorderStyle();
+		return v;
+	end
+
+	function K.CycleMeleeSwingBorderStyle()
+		local cur = CurrentBorderStyle();
+		local nxt = (cur == "Tooltip" and "None")
+			or (cur == "None" and "Blizzard")
+			or "Tooltip";
+		K.SaveConfig("SwingTimerBorderStyle", nxt);
+		ApplyBorderStyle();
+		return nxt;
+	end
+
+	local function Lock()
+		unlocked = false;
+		mover:EnableMouse(false);
+		unlockOverlay:Hide();
+		unlockText:Hide();
+		BorderTint(0.6, 0.6, 0.6, 0.9);
+		SavePosition();
+		HideBar();
+	end
+
+	local function Unlock()
+		-- Si "Mover todo" ya esta activo, el frame lo maneja ESE modo: tener los
+		-- dos a la vez ponia dos capas de arrastre encima y el frame quedaba
+		-- pegado / imposible de soltar.
+		if K.IsGlobalUnlocked and K.IsGlobalUnlocked() then
+			print("|cff4FC3F7NUF:|r " .. (L["SWING_USE_GLOBAL"]
+				or "Move Everything is on: drag the blue box from there."));
+			return;
+		end
+		unlocked = true;
+		mover:EnableMouse(true);
+		unlockOverlay:Show();
+		unlockText:Show();
+		BorderTint(0, 0.8, 1, 1);
+		bar:SetMinMaxValues(0, 1);
+		bar:SetValue(0.6);
+		textRight:SetText("--");
+		mover:Show();
+	end
+
+	-- ---------------------------------------------------------
+	-- Logica
+	-- ---------------------------------------------------------
+	local function StartSwing()
+		if unlocked then return; end
+
+		local mainSpeed = UnitAttackSpeed("player");
+		if not mainSpeed or mainSpeed <= 0 then return; end
+
+		local now = GetTime();
+		bar:SetMinMaxValues(now, now + mainSpeed);
+		bar:SetValue(now);
+		textRight:SetText(string.format("%0.1f", mainSpeed));
+		ShowBar();
+	end
+
+	bar:SetScript("OnUpdate", function(self)
+		if unlocked then return; end
+
+		local lo, hi = self:GetMinMaxValues();
+		if hi <= lo then return; end
+
+		local now = GetTime();
+
+		-- FIX: la barra se quedaba clavada en 0.0. Al terminar el swing se
+		-- resetea y se oculta; el proximo golpe la vuelve a arrancar.
+		if now >= hi then
+			self:SetMinMaxValues(0, 1);
+			self:SetValue(0);
+			textRight:SetText("");
+			spark:ClearAllPoints();
+			spark:SetPoint("CENTER", self, "LEFT", 0, 0);
+			HideBar();
+			return;
+		end
+
+		self:SetValue(now);
+
+		local pct = (now - lo) / (hi - lo);
+		spark:ClearAllPoints();
+		spark:SetPoint("CENTER", self, "LEFT", pct * BAR_WIDTH, 0);
+
+		-- El texto solo muestra un decimal, asi que cambia 10 veces por segundo
+		-- como mucho. Antes se llamaba a format() y SetText() en CADA fotograma:
+		-- 60 cadenas nuevas por segundo, 50 de ellas identicas a la anterior.
+		-- En 3.3.5 esa basura se paga en tirones del recolector.
+		local decimas = floor((hi - now) * 10);
+		if decimas ~= self.lastDecimas then
+			self.lastDecimas = decimas;
+			textRight:SetFormattedText("%0.1f", hi - now);   -- sin basura (cada cuadro)
+		end
+	end);
+
+	-- ---------------------------------------------------------
+	-- Eventos
+	-- ---------------------------------------------------------
+	local events = CreateFrame("Frame");
+	events:SetScript("OnEvent", function(self, event, ...)
+		if not enabled then return; end
+
+		if event == "PLAYER_ENTERING_WORLD" then
+			playerGUID = UnitGUID("player");
+			RestorePosition();
+			ApplyBorderStyle();
+			HideBar();
+			return;
+		end
+
+		if event == "PLAYER_REGEN_ENABLED" then
+			-- Fuera de combate: dejar que la barra termine y se oculte sola
+			return;
+		end
+
+		if event == "COMBAT_LOG_EVENT_UNFILTERED" then
+			local _, subEvent, sourceGUID = ...;
+			if sourceGUID ~= playerGUID then return; end
+			if subEvent == "SWING_DAMAGE" or subEvent == "SWING_MISSED" then
+				StartSwing();
+			end
+		end
+	end);
+
+	-- ---------------------------------------------------------
+	-- Comandos
+	-- ---------------------------------------------------------
+	SLASH_NUFSWING1 = "/nufswing";
+	SlashCmdList["NUFSWING"] = function(msg)
+		msg = string.lower(msg or "");
+		local cmd, val = string.match(msg, "^(%a*)%s*(.*)$");
+
+		if cmd == "unlock" or cmd == "move" then
+			Unlock();
+			print("|cff4FC3F7NUF:|r " .. (L["SWING_UNLOCKED"] or "Swing Timer - drag the bar. /nufswing lock to lock it."));
+		elseif cmd == "lock" then
+			Lock();
+			print("|cff4FC3F7NUF:|r " .. (L["SWING_LOCKED"] or "Swing Timer - bar locked."));
+		elseif cmd == "scale" then
+			local s = tonumber(val);
+			if s and s >= 0.5 and s <= 2.5 then
+				DB().scale = s;
+				mover:SetScale(s);
+				print("|cff4FC3F7NUF:|r " .. (L["SWING_SCALE"] or "Swing Timer - scale:") .. " " .. string.format("%.1f", s));
+			else
+				print("|cff4FC3F7NUF:|r " .. (L["CMD_USAGE"] or "Usage:") .. " /nufswing scale <0.5 - 2.5>");
+			end
+		elseif cmd == "reset" then
+			local db = DB();
+			db.point, db.relativePoint = nil, nil;
+			db.x, db.y, db.scale = 0, 222, 1.0;
+			RestorePosition();
+			Lock();
+			print("|cff4FC3F7NUF:|r " .. (L["SWING_RESET"] or "Swing Timer - position and scale reset."));
+		else
+			print("|cff4FC3F7NUF:|r /nufswing unlock | lock | scale <n> | reset");
+		end
+	end
+
+
+	-- Reset externo (boton del panel)
+	-- Igual que el de Auto Shot: ver "UN SOLO DUEÑO POR POSICION".
+	-- type() y no "or {}": K tiene un indice por defecto en algunos
+	-- entornos, y "or" no lo filtra.
+	if type(K.FramePositionOwners) ~= "table" then K.FramePositionOwners = {}; end
+	K.FramePositionOwners["SwingTimer"] = function() SavePosition(); end
+
+	function K.ResetMeleeSwingTimerPosition()
 		local db = DB();
 		db.point, db.relativePoint = nil, nil;
 		db.x, db.y, db.scale = 0, 222, 1.0;
 		RestorePosition();
 		Lock();
-		print("|cff4FC3F7NUF:|r " .. (L["SWING_RESET"] or "Swing Timer - position and scale reset."));
-	else
-		print("|cff4FC3F7NUF:|r /nufswing unlock | lock | scale <n> | reset");
 	end
-end
 
-
--- Reset externo (boton del panel)
--- Igual que el de Auto Shot: ver "UN SOLO DUEÑO POR POSICION".
--- type() y no "or {}": K tiene un indice por defecto en algunos
--- entornos, y "or" no lo filtra.
-if type(K.FramePositionOwners) ~= "table" then K.FramePositionOwners = {}; end
-K.FramePositionOwners["SwingTimer"] = function() SavePosition(); end
-
-function K.ResetMeleeSwingTimerPosition()
-	local db = DB();
-	db.point, db.relativePoint = nil, nil;
-	db.x, db.y, db.scale = 0, 222, 1.0;
-	RestorePosition();
-	Lock();
-end
-
--- ---------------------------------------------------------
--- API para el panel de opciones (boton mover + slider de escala)
--- ---------------------------------------------------------
-function K.ToggleMeleeSwingUnlock()
-	if unlocked then Lock(); else Unlock(); end
-	return unlocked;
-end
-
-function K.IsMeleeSwingUnlocked()
-	return unlocked;
-end
-
-function K.GetMeleeSwingScale()
-	return DB().scale or 1.0;
-end
-
-function K.SaveMeleeSwingScale(s)
-	s = tonumber(s) or 1.0;
-	DB().scale = s;
-	mover:SetScale(s);
-end
-
--- ---------------------------------------------------------
--- Registro del modulo
--- ---------------------------------------------------------
-K.RegisterModule("MeleeSwingTimer", {
-	name    = L["MOD_SWINGTIMER"] or "Melee Swing Timer",
-	desc    = L["MOD_SWINGTIMER_DESC"] or "Bar showing the time until your next melee white hit. /nufswing unlock to move it.",
-	default = false,
-	configLabel = L["BTN_MODULE_MOVE"] or "Move",
-	configFunc = function()
+	-- ---------------------------------------------------------
+	-- API para el panel de opciones (boton mover + slider de escala)
+	-- ---------------------------------------------------------
+	function K.ToggleMeleeSwingUnlock()
 		if unlocked then Lock(); else Unlock(); end
-	end,
-	onEnable = function()
-		enabled = true;
-		playerGUID = UnitGUID("player");
-		RestorePosition();
-		-- El estilo guardado tambien al prenderlo a mitad de sesion: antes
-		-- solo se aplicaba en PLAYER_ENTERING_WORLD.
-		ApplyBorderStyle();
-		events:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
-		events:RegisterEvent("PLAYER_REGEN_ENABLED");
-		events:RegisterEvent("PLAYER_ENTERING_WORLD");
-	end,
-	onDisable = function()
-		enabled = false;
-		events:UnregisterAllEvents();
-		-- Apagado con el modo mover puesto: fijarlo (guarda y saca el
-		-- recuadro "DRAG"), si no volvia asi al prenderlo de nuevo.
-		if unlocked then pcall(Lock); end
-		unlocked = false;
-		mover:Hide();
-	end,
-});
+		return unlocked;
+	end
+
+	function K.IsMeleeSwingUnlocked()
+		return unlocked;
+	end
+
+	function K.GetMeleeSwingScale()
+		return DB().scale or 1.0;
+	end
+
+	function K.SaveMeleeSwingScale(s)
+		s = tonumber(s) or 1.0;
+		DB().scale = s;
+		mover:SetScale(s);
+	end
+
+	-- ---------------------------------------------------------
+	-- Registro del modulo
+	-- ---------------------------------------------------------
+	K.RegisterModule("MeleeSwingTimer", {
+		configFunc = function()
+			if unlocked then Lock(); else Unlock(); end
+		end,
+		onEnable = function()
+			enabled = true;
+			playerGUID = UnitGUID("player");
+			RestorePosition();
+			-- El estilo guardado tambien al prenderlo a mitad de sesion: antes
+			-- solo se aplicaba en PLAYER_ENTERING_WORLD.
+			ApplyBorderStyle();
+			events:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
+			events:RegisterEvent("PLAYER_REGEN_ENABLED");
+			events:RegisterEvent("PLAYER_ENTERING_WORLD");
+		end,
+		onDisable = function()
+			enabled = false;
+			events:UnregisterAllEvents();
+			-- Apagado con el modo mover puesto: fijarlo (guarda y saca el
+			-- recuadro "DRAG"), si no volvia asi al prenderlo de nuevo.
+			if unlocked then pcall(Lock); end
+			unlocked = false;
+			mover:Hide();
+		end,
+	});
+end);

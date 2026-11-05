@@ -265,10 +265,10 @@ local function Nidhaus_UnitFrames_TargetFrame_CheckClassification(self, forceNor
 		self.borderTexture:SetTexture(ASURI.."AsuriFrame");
 		-- Sin filtro de color: sus colores, como los otros estilos (antes
 		-- un gris 0.25 encima). Con Lorti prendido toma ese color.
-		local lr, lg, lb;
-		if K.LortiTint then lr, lg, lb = K.LortiTint("LortiUI_PlayerTargetFocus", part); end
+		local lr, lg, lb, la;
+		if K.LortiTint then lr, lg, lb, la = K.LortiTint("LortiUI_PlayerTargetFocus", part); end
 		if lr then
-			self.borderTexture:SetVertexColor(lr, lg, lb);
+			self.borderTexture:SetVertexColor(lr, lg, lb, la or 1);
 		else
 			self.borderTexture:SetVertexColor(1, 1, 1);
 		end
@@ -472,3 +472,41 @@ K.RegisterConfigEvent("CONFIG_CHANGED", function()
 		K.ApplyFocusSpellBarScale(C.FocusSpellBarScale);
 	end
 end);
+-- =========================================================
+-- FONDO NEGRO BAJO EL NOMBRE (idea de FriskesUI)
+--
+-- Solo SIN skin custom: con el skin NUF ya maneja el fondo del nombre
+-- (lo esconde o lo recolorea), y pelearse con eso no tiene sentido.
+-- Blizzard pinta la franja con el color de reaccion en cada
+-- TargetFrame_CheckFaction; el hook corre despues y la deja negra.
+-- Al apagar se le pide a Blizzard que la vuelva a pintar.
+-- =========================================================
+local function BlackNameOn()
+	return C.BlackNameBackground == true and C.UnitFrameCustomTexture ~= true;
+end
+
+local function PaintNameBackground(self)
+	if not BlackNameOn() then return; end
+	if self and self.nameBackground then
+		self.nameBackground:SetVertexColor(0, 0, 0, 0.6);
+	end
+end
+
+if type(TargetFrame_CheckFaction) == "function" then
+	hooksecurefunc("TargetFrame_CheckFaction", PaintNameBackground);
+end
+
+local lastBlackName;
+function K.ApplyBlackNameBackground()
+	local want = BlackNameOn();
+	if want == lastBlackName then return; end
+	lastBlackName = want;
+	for _, f in ipairs({ TargetFrame, FocusFrame }) do
+		if f and f.unit and UnitExists(f.unit) then
+			pcall(TargetFrame_CheckFaction, f);
+		end
+	end
+end
+
+K.RegisterConfigEvent("CONFIG_LOADED", function() K.ApplyBlackNameBackground(); end);
+K.RegisterConfigEvent("CONFIG_CHANGED", function() K.ApplyBlackNameBackground(); end);
