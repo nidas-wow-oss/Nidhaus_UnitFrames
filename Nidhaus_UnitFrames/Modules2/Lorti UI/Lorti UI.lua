@@ -1,6 +1,6 @@
 local AddOnName, ns = ...
 local K = ns[1]
-local L = ns[3]   -- tabla de traducciones
+local L = ns[3]
 
 local cfg = CreateFrame("Frame")
 local kill = function() end
@@ -16,23 +16,6 @@ local function ModuleOn()
 	return not (K.IsModuleEnabled and not K.IsModuleEnabled("LortiUI"))
 end
 
--- =============================================
--- LAS ZONAS DE LORTI
---
--- Cada parte que Lorti puede tocar es UNA zona, con dos casillas:
---
---   on     "Lorti": la oscurece (o le da el estilo, en botones y auras)
---   color  "Color": en vez de negro, tu color. Solo cuenta con "Lorti"
---          tildada: el color es de la zona oscurecida, no aparte.
---
--- Claves: <on>, y LortiUI_<color>Color + LortiUI_<color>R/G/B.
---
--- Antes habia una lista de casillas a la izquierda y un recuadro de color
--- a la derecha con los mismos nombres repetidos ("Party" y "Party",
--- "Minimap" y "Minimap"...) y un "Custom color" general que pintaba unas
--- zonas si y otras no. Ahora cada zona aparece una sola vez y lleva su
--- propio color. Lo viejo se convierte solo (ver MigrateLayout).
--- =============================================
 local ZONES = {
 	Player       = { on = "LortiUI_Player",       color = "Player"       },
 	Target       = { on = "LortiUI_Target",       color = "Target"       },
@@ -50,8 +33,6 @@ local ZONES = {
 local ZONE_ORDER = { "Player", "Target", "Focus", "Party", "PartyTargets", "PartyPet", "Arena", "CastBar",
 	"ActionBars", "Minimap", "Buffs", "Debuffs" }
 
--- Las llamadas viejas (PlayerFrame, TargetFrame, grupo, arena...) piden el
--- tono con la clave de su casilla de antes. Se traduce a la zona.
 local KEY_TO_ZONE = {
 	LortiUI_PlayerTargetFocus = "Player",
 	LortiUI_Party             = "Party",
@@ -60,12 +41,8 @@ local KEY_TO_ZONE = {
 	LortiUI_Arena             = "Arena",
 }
 
-local DEFAULT_COLOR = { 0.40, 0.82, 1.0 };   -- el celeste del Lorti UI suelto
+local DEFAULT_COLOR = { 0.40, 0.82, 1.0 };
 
--- El selector de color de WoW con la barra de transparencia, como en
--- FriskesUI. El selector guarda la OPACIDAD al reves (0 = opaco): por eso
--- el 1 - x. Las funciones van ANTES de SetColorRGB, que llama a .func: si
--- quedara la de otro addon (u otra fila) le mandariamos el color.
 function K.OpenColorPickerAlpha(r, g, b, a, onPick, onCancel)
 	local function Pick()
 		local nr, ng, nb = ColorPickerFrame:GetColorRGB()
@@ -79,7 +56,7 @@ function K.OpenColorPickerAlpha(r, g, b, a, onPick, onCancel)
 	ColorPickerFrame.opacity = 1 - (a or 1)
 	ColorPickerFrame.previousValues = { r = r, g = g, b = b, opacity = 1 - (a or 1) }
 	ColorPickerFrame:SetColorRGB(r, g, b)
-	ColorPickerFrame:Hide()   -- reabrirlo para que tome la opacidad nueva
+	ColorPickerFrame:Hide()
 	ShowUIPanel(ColorPickerFrame)
 end
 
@@ -91,24 +68,6 @@ local function Clamp01(v, def)
 	return v;
 end
 
--- =============================================
--- CONVERSION DE LA CONFIG VIEJA (una sola vez por perfil)
---
--- La llama ConfigManager justo ANTES de avisar CONFIG_LOADED, asi ningun
--- modulo llega a leer las claves nuevas sin convertir.
---
---   "Player / Target / Focus"  -> Jugador, Objetivo, Foco y Barras de
---                                 casteo (las cuatro iban con esa casilla)
---   "Buffs / Debuffs"          -> Tus buffs y Tus debuffs
---   "Custom color" general     -> el color de cada zona que lo seguia
---                                 (todas menos minimapa y auras), salvo
---                                 las que ya tenian el suyo
---   filas de color de marcos   -> andaban sin su casilla; ahora el color
---                                 va con la zona prendida, asi que se
---                                 prende la zona para que se vea igual
---
--- Nada cambia de color al actualizar.
--- =============================================
 function K.LortiMigrateLayout()
 	local C = ns[2]
 	if not C or C.LortiUI_Layout2 == true then return end
@@ -142,17 +101,12 @@ function K.LortiMigrateLayout()
 	set("LortiUI_Layout2", true)
 end
 
--- =============================================
--- EL TONO DE CADA ZONA (lo piden todos los estilos de NUF)
--- =============================================
 function K.LortiZoneOn(zone)
 	local Z = ZONES[zone]
 	if not Z or not ModuleOn() then return false end
 	return SubOpt(Z.on) and true or false
 end
 
--- r, g, b, a de la zona si tiene "Lorti" y "Color" tildadas; si no, nil.
--- a es la transparencia del selector (1 = opaco), como en FriskesUI.
 function K.LortiZoneColor(zone)
 	if not K.LortiZoneOn(zone) then return nil end
 	local C = ns[2]
@@ -164,15 +118,7 @@ function K.LortiZoneColor(zone)
 	       Clamp01(C[p .. "A"], 1)
 end
 
--- =============================================
--- TEXTURE COLOR (la opcion de FriskesUI)
---
--- Un color con transparencia para el arte de los marcos, las barras y el
--- minimapa. Es un modulo aparte de Lorti y anda con Lorti apagado. Con
--- los dos prendidos no se pisan: en cada zona con "Lorti" tildada manda
--- Lorti (su negro o su color); en las demas, este color.
--- =============================================
-local TC_DEFAULT = { 0.3, 0.3, 0.3, 1.0 }   -- el gris de FriskesUI
+local TC_DEFAULT = { 0.3, 0.3, 0.3, 1.0 }
 
 function K.TextureColorOn()
 	return (K.IsModuleEnabled and K.IsModuleEnabled("TextureColor")) and true or false
@@ -187,13 +133,6 @@ function K.TextureColorTint()
 	       Clamp01(C.TextureColorA, TC_DEFAULT[4])
 end
 
--- El tono para teñir: nil si la zona esta apagada; si no, su color (por
--- la proporcion de esa parte) o el gris oscuro de siempre.
---
---   marcos / grupo           0.05   color x 1.0
---   arena                    0.10   color x 1.0
---   barras de accion         0.20   color x 0.6
---   puntas de la barra       0.35   color x 0.8
 function K.LortiZoneTint(zone, dark, mult)
 	if K.LortiZoneOn(zone) then
 		local r, g, b, a = K.LortiZoneColor(zone)
@@ -202,31 +141,15 @@ function K.LortiZoneTint(zone, dark, mult)
 		dark = dark or 0.05
 		return dark, dark, dark, 1
 	end
-	-- Zona sin Lorti: el Texture color, si esta prendido (si no, nil).
+
 	return K.TextureColorTint()
 end
 
--- Compatibilidad: (clave de casilla vieja, fila). La fila manda.
 function K.LortiTint(key, part)
 	local zone = part or KEY_TO_ZONE[key] or "Player"
 	return K.LortiZoneTint(zone, (zone == "Arena") and 0.1 or 0.05, 1)
 end
 
--- =============================================
--- TEÑIR UNA TEXTURA
---
--- Un solo camino: el mismo SetVertexColor que Lorti le aplica al arte de
--- Blizzard. Devuelve true si tiño y false si Lorti esta apagado, para que
--- el llamador sepa si tiene que reponer el blanco.
---
--- NOTA PARA EL FUTURO: hubo un intento de desaturar la textura antes de
--- oscurecerla, partiendo de que multiplicar un arte "de color" daba un
--- tono raro. Medi las texturas y NO ES ASI: Light promedia R93 G89 B70,
--- Dark R28 G27 B21 y las de pw R111 G106 B87 — grises calidos, sin nada
--- de verde. Multiplicarlas por 0.05 da negro, no otro color.
--- Ademas SetDesaturated devuelve nil cuando la textura no lo soporta, y
--- dar eso por bueno terminaba ACLARANDO el marco en vez de oscurecerlo.
--- =============================================
 function K.ApplyLortiTint(tex, key, part)
 	if not tex then return false; end
 	local r, g, b, a = K.LortiTint(key, part);
@@ -238,30 +161,18 @@ function K.ApplyLortiTint(tex, key, part)
 	return true;
 end
 
--- Borde "Lorti UI" del minimapa (lo dibuja MinimapStyle): su color o el
--- 0.05 de siempre.
 function K.LortiMinimapTint()
 	local r, g, b, a = K.LortiZoneColor("Minimap")
 	if r then return r, g, b, a end
 	return 0.05, 0.05, 0.05, 1
 end
 
--- Color propio de las barras de casteo, o nil. Tambien lo pide la barra
--- de casteo PW (CastBarPW.lua), que retextura el borde.
 function K.LortiCastBarColor()
 	return K.LortiZoneColor("CastBar")
 end
 
--- =============================================
--- TEÑIR Y DEVOLVER
---
--- Si Lorti ya no tiñe una textura (destildaste la zona), solo se le
--- devuelve el color de fabrica a las que habia teñido Lorti. Las que
--- nunca toco no se tocan.
--- =============================================
-local tinted = {}   -- [textura] = true si la tiño Lorti
+local tinted = {}
 
--- restore: color de fabrica (blanco si no se dice otra cosa)
 local function TintOne(tex, zone, dark, mult, rr, rg, rb)
 	if not tex then return end
 	local r, g, b, a = K.LortiZoneTint(zone, dark, mult)
@@ -274,16 +185,8 @@ local function TintOne(tex, zone, dark, mult, rr, rg, rb)
 	end
 end
 
--- =============================================
--- MARCOS: jugador, objetivo, foco (en todos los estilos)
---
--- El tono sale de K.LortiZoneTint, el MISMO que piden PlayerFrame,
--- TargetFrame y el grupo Compact cuando reaplican su estilo, asi que no
--- se pisan: Default, Light, Dark, Compact y Asuri.
--- =============================================
 local FRAME_TEXTURES = {
-	-- { textura, zona }  (el tercer campo marcaba los marcos grandes, que
-	-- Asuri dejaba grises; ya no tiene filtro de color)
+
 	{ "PlayerFrameTexture",                "Player", true },
 	{ "PetFrameTexture",                   "Player" },
 	{ "TargetFrameTextureFrameTexture",    "Target", true },
@@ -293,20 +196,16 @@ local FRAME_TEXTURES = {
 }
 
 local function TintUnitFrames()
-	-- El marco de hielo del mago queda afuera: es un skin propio, con su
-	-- paleta. PlayerFrame.lua le devuelve el blanco en cada reaplicacion.
+
 	local skipPlayer = K.IcyPlayerFrameOn and K.IcyPlayerFrameOn();
 	for _, e in ipairs(FRAME_TEXTURES) do
 		if not (skipPlayer and e[1] == "PlayerFrameTexture") then
-			-- Al quitar el tinte vuelve a blanco en todos los estilos,
-			-- Asuri incluido (antes volvia a su gris 0.25).
+
 			TintOne(_G[e[1]], e[2], 0.05, 1, 1, 1, 1)
 		end
 	end
 end
 
--- Los 4 del grupo, sus mascotas y el marco de vehiculo, en cualquier
--- estilo de grupo (Default, New, Improved, Compact).
 local PARTY_SUFFIX = { "Texture", "PetFrameTexture", "VehicleTexture" }
 local function TintPartyFrames()
 	for i = 1, 4 do
@@ -316,12 +215,6 @@ local function TintPartyFrames()
 	end
 end
 
--- =============================================
--- BORDES DE LAS BARRAS DE CASTEO (zona "Barras de casteo")
---
--- Lo de siempre solo se repone si antes los habiamos pintado nosotros: al
--- cargar no se toca nada, para no pisarle el tono a la barra PW.
--- =============================================
 local CASTBAR_BORDERS = { "CastingBarFrameBorder", "TargetFrameSpellBarBorder", "FocusFrameSpellBarBorder" }
 local castTouched = false
 
@@ -336,16 +229,13 @@ local function ApplyCastBarBorders()
 	end
 	local was = castTouched
 	castTouched = (r ~= nil)
-	-- La barra PW tiene su propio tono para el borde: que lo reponga ella.
+
 	if was and not r then
 		local C = ns[2]
 		if C.CastBarPWEnabled and K.ApplyCastBarPW then K.ApplyCastBarPW() end
 	end
 end
 
--- =============================================
--- EL RELOJ (va con la zona "Minimapa": esta pegado a el)
--- =============================================
 local clockTinted = false
 local function ApplyClock()
 	local r, g, b, a = K.LortiZoneTint("Minimap", 0.05)
@@ -360,13 +250,6 @@ local function ApplyClock()
 	end
 end
 
--- =============================================
--- ARENA (los enemigos y sus mascotas)
---
--- Lorti solo oscurecia el marco del enemigo y se olvidaba del de su
--- mascota: en arena quedaba el jugador oscuro y al lado su felguard con
--- el marco dorado de Blizzard.
--- =============================================
 local function ApplyDarkArenaTextures()
 	for i = 1, 5 do
 		TintOne(_G["ArenaEnemyFrame" .. i .. "Texture"], "Arena", 0.1)
@@ -374,10 +257,6 @@ local function ApplyDarkArenaTextures()
 	end
 end
 
--- =============================================
--- BARRAS DE ACCION (el arte de la barra; el contorno de los botones lo
--- pinta func/functions.lua con K.LortiZoneColor("ActionBars"))
--- =============================================
 local BAR_TEXTURES = {
 	"BonusActionBarTexture0", "BonusActionBarTexture1",
 	"MainMenuBarTexture0", "MainMenuBarTexture1", "MainMenuBarTexture2", "MainMenuBarTexture3",
@@ -393,15 +272,6 @@ local function ApplyActionBarTextures()
 	TintOne(MainMenuBarRightEndCap, "ActionBars", 0.35, 0.8)
 end
 
--- =============================================
--- LO QUE SOLO PINTA TEXTURE COLOR
---
--- Partes que FriskesUI tine y Lorti nunca toco: la barra de posturas, la
--- de posesion, los bordes de los botones del minimapa, los jefes, los
--- puntos de combo, las runas... Cada una va con la zona de Lorti que le
--- corresponde: si esa zona tiene "Lorti" tildada no se toca (asi Lorti
--- queda como era); si no, lleva el Texture color.
--- =============================================
 local EXTRA_TEXTURES = {
 	{ "ShapeshiftBarLeft", "ActionBars" }, { "ShapeshiftBarMiddle", "ActionBars" },
 	{ "ShapeshiftBarRight", "ActionBars" }, { "PossessBackground1", "ActionBars" },
@@ -438,31 +308,22 @@ end
 
 local function ApplyTextureExtras()
 	for _, e in ipairs(EXTRA_TEXTURES) do TintExtra(_G[e[1]], e[2]) end
-	-- Puntos de combo: el arte es la primera region de cada uno.
+
 	for i = 1, 5 do
 		local cp = _G["ComboPoint" .. i]
 		if cp then TintExtra((select(1, cp:GetRegions())), "Target") end
 	end
-	-- El borde redondo del minimapa (con Lorti en el minimapa lo dibuja
-	-- MinimapStyle con su propio tono).
+
 	if not K.LortiZoneOn("Minimap") then
 		TintExtra(MinimapBorder, "Minimap")
 		TintExtra(MinimapBorderTop, "Minimap")
 	end
 end
 
--- =============================================
--- MINIMAP
--- =============================================
 local function InitMinimap()
 	if not SubOpt("LortiUI_Minimap") then return end
 	local ok, err = pcall(function()
-		-- EL BORDE NO SE PINTA ACA: lo dibuja MinimapStyle como el estilo
-		-- "Lorti UI" del desplegable de borde (en caliente y reversible). La
-		-- casilla es el espejo de ese estilo: ver K.SyncLortiMinimap.
-		--
-		-- Tampoco se fuerzan a mostrar los botones de zoom y el del mapa
-		-- del mundo: los decide Interface > Minimap > Decorations.
+
 		if MiniMapTracking then
 			MiniMapTracking:Show()
 			MiniMapTracking.Show = kill
@@ -491,27 +352,9 @@ local function InitMinimap()
 	end
 end
 
--- =============================================
--- TUS BUFFS / TUS DEBUFFS (dos zonas)
---
--- El aspecto de Lorti en los iconos de aura, igual que en los botones:
--- icono recortado, el borde "gloss" encima y el contorno (sombra) de
--- alrededor. SOLO LOS TUYOS, arriba a la derecha (BuffButton,
--- DebuffButton y los encantamientos de arma, TempEnchant, que van con
--- los buffs). Los del objetivo y el foco quedan como los de Blizzard.
---
--- Colores:
---   borde de adentro: negro en los buffs; en los debuffs, el de su
---     escuela (el mismo que pone Blizzard en su aro); en los
---     encantamientos, violeta.
---   contorno: negro, o el color de la zona.
---
--- Se aplica y se quita en el acto. La foto del icono se saca una sola
--- vez, antes de tocarlo, para poder devolverlo tal cual.
--- =============================================
 local buffsOn, debuffsOn = false, false
-local auraStyled = {}  -- [boton] = "Buff" | "Debuff" | "Temp"
-local auraOrig = {}    -- [boton] = { pts = {...}, coord = {...} }
+local auraStyled = {}
+local auraOrig = {}
 local TEMP_COLOR = { 0.6, 0.2, 0.9 }
 
 local function SnapPoints(region)
@@ -532,8 +375,7 @@ end
 
 local function AuraGlossColor(bu, kind)
 	if kind == "Debuff" then
-		-- El color de la escuela ya lo puso Blizzard en su aro (que aca va
-		-- escondido): se copia de ahi.
+
 		local bo = _G[bu:GetName() .. "Border"]
 		if bo and bo.GetVertexColor then
 			local r, g, b = bo:GetVertexColor()
@@ -555,7 +397,7 @@ local function StyleAura(bu, kind)
 		auraOrig[bu] = { pts = SnapPoints(icon), coord = icon and { icon:GetTexCoord() } or nil }
 	end
 	if not bu.nufLortiGloss then
-		-- Encima del icono y debajo del numero de acumulaciones.
+
 		local gl = bu:CreateTexture(nil, "OVERLAY")
 		if gl.SetDrawLayer then pcall(gl.SetDrawLayer, gl, "OVERLAY", -1) end
 		gl:SetTexture(cfg.textures.normal)
@@ -591,8 +433,7 @@ local function StyleAura(bu, kind)
 	sh:Show()
 	bu.nufLortiGloss:SetVertexColor(AuraGlossColor(bu, kind))
 	bu.nufLortiGloss:Show()
-	-- El aro gordo de Blizzard (debuffs y encantamientos): con los dos el
-	-- icono queda con doble marco.
+
 	local bo = _G[name .. "Border"]
 	if bo then bo:Hide() end
 end
@@ -610,7 +451,7 @@ local function RestoreAura(bu)
 		if o.pts then
 			for _, pt in ipairs(o.pts) do pcall(icon.SetPoint, icon, unpack(pt)) end
 		else
-			-- Sin anclas en el XML el icono llena el boton.
+
 			icon:SetAllPoints(bu)
 		end
 		if o.coord and #o.coord >= 4 then pcall(icon.SetTexCoord, icon, unpack(o.coord)) end
@@ -619,8 +460,6 @@ local function RestoreAura(bu)
 	if bo then bo:Show() end
 end
 
--- Gancho (hooksecurefunc: corre despues de Blizzard, sin contaminar).
--- AuraButton_Update es solo la barra de auras del jugador.
 if type(AuraButton_Update) == "function" then
 	hooksecurefunc("AuraButton_Update", function(buttonName, index)
 		local isDebuff = (buttonName == "DebuffButton")
@@ -635,12 +474,11 @@ if type(AuraButton_Update) == "function" then
 	end)
 end
 
--- Prender, apagar o cambiar de color, en el acto.
 function K.ApplyLortiAuras()
 	buffsOn = K.LortiZoneOn("Buffs")
 	debuffsOn = K.LortiZoneOn("Debuffs")
 	for bu, kind in pairs(auraStyled) do
-		local want = buffsOn            -- buffs y encantamientos
+		local want = buffsOn
 		if kind == "Debuff" then want = debuffsOn end
 		if not want then RestoreAura(bu) end
 	end
@@ -649,7 +487,7 @@ function K.ApplyLortiAuras()
 			local bu = _G["BuffButton" .. i]
 			if bu and bu:IsShown() then StyleAura(bu, "Buff") end
 		end
-		-- Los encantamientos son fijos (existen aunque esten ocultos).
+
 		for i = 1, 3 do
 			local bu = _G["TempEnchant" .. i]
 			if bu then StyleAura(bu, "Temp") end
@@ -663,9 +501,6 @@ function K.ApplyLortiAuras()
 	end
 end
 
--- =============================================
--- APLICAR TODO (al cargar y cada vez que cambia algo del panel)
--- =============================================
 local function ApplyAll()
 	TintUnitFrames()
 	TintPartyFrames()
@@ -674,21 +509,17 @@ local function ApplyAll()
 	if IsAddOnLoaded("Blizzard_ArenaUI") then ApplyDarkArenaTextures() end
 	ApplyActionBarTextures()
 	ApplyTextureExtras()
-	-- El contorno de los botones (func/functions.lua). Va siempre: con la
-	-- zona apagada o sin color los devuelve a su negro.
+
 	if K.ApplyLortiButtonColor then K.ApplyLortiButtonColor() end
 	K.ApplyLortiAuras()
 end
 
--- Lo llama el panel al tocar cualquier casilla o color: todo en el acto.
--- (Las zonas con * terminan de verse con /reload: sus marcos piden el
--- tono cuando se actualizan.)
 local painterReady = false
 
 function K.ApplyLortiColor()
 	if not painterReady then return end
 	ApplyAll()
-	-- El borde "Lorti UI" del minimapa lo dibuja MinimapStyle.
+
 	if ModuleOn() and SubOpt("LortiUI_Minimap") and K.ApplyMinimapSettings then K.ApplyMinimapSettings() end
 end
 
@@ -705,13 +536,11 @@ local function WhenLoaded(addon, fn)
 	end)
 end
 
--- El pintor es uno solo para Lorti y para Texture color: lo arranca el
--- primero de los dos que se prenda.
 local function StartPainter()
 	if painterReady then ApplyAll(); return end
 	painterReady = true
 	ApplyAll()
-	-- Lo que Blizzard carga despues: el reloj y la arena.
+
 	WhenLoaded("Blizzard_TimeManager", ApplyClock)
 	WhenLoaded("Blizzard_ArenaUI", ApplyDarkArenaTextures)
 
@@ -731,9 +560,6 @@ local function Init()
 	StartPainter()
 end
 
--- =============================================
--- Config
--- =============================================
 cfg.textures = {
 	normal         = "Interface\\AddOns\\Nidhaus_UnitFrames\\Modules2\\Lorti UI\\media\\gloss",
 	flash          = "Interface\\AddOns\\Nidhaus_UnitFrames\\Modules2\\Lorti UI\\media\\flash",
@@ -763,25 +589,8 @@ cfg.cooldown  = { spacing=0 }
 cfg.font      = "Fonts\\FRIZQT__.TTF"
 ns.cfg = cfg
 
--- =============================================
--- EL PANEL (pestaña Addons, debajo de la casilla "Lorti UI")
--- API: createUI(container, yOffset, parentCheckbox) -> subUIHeight
---
---   MARCOS             Lorti Color    INTERFAZ            Lorti Color
---   Jugador             [x]  [ ]■     Barras de accion     [x]  [x]■
---   Objetivo            [x]  [x]■     Minimapa             [ ]  [ ]■
---   ...                               Tus buffs / debuffs
---                                     ───────────────────────────────
---                                     Mismo color a todo          ■
---                                     [Colores por defecto]
---                                     * necesita /reload
---
--- Cada zona aparece UNA sola vez. "Color" solo se puede tildar con "Lorti"
--- tildada en esa fila. El cuadrito: click elige el color, click derecho
--- vuelve al celeste por defecto. Todo se aplica en el acto.
--- =============================================
 local ZONE_INFO = {
-	-- zona = { etiqueta EN, tooltip EN, necesita /reload }
+
 	Player       = { "Player", "Your frame and your pet's frame, in any style (Default, Light, Dark, Compact or Asuri). The mage's Icy frame keeps its own colors." },
 	Target       = { "Target", "The target frame and its target of target, in any style." },
 	Focus        = { "Focus", "The focus frame and its target, in any style." },
@@ -802,31 +611,26 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 	local C = ns[2]
 	if K.LortiMigrateLayout then K.LortiMigrateLayout() end
 
-	-- Wrapper frame para todo el bloque (se muestra/oculta como grupo)
 	local wrapper = CreateFrame("Frame", nil, container)
 	wrapper:SetPoint("TOPLEFT", 0, yOffset)
 	local W = container:GetWidth() or 540
 	if not W or W < 400 then W = 540 end
 	wrapper:SetWidth(W)
 
-	-- Separador visual
 	local sep = wrapper:CreateTexture(nil, "ARTWORK")
 	sep:SetHeight(1)
 	sep:SetPoint("TOPLEFT", 36, 4)
 	sep:SetPoint("TOPRIGHT", -10, 4)
 	sep:SetTexture(1, 1, 1, 0.07)
 
-	-- Medidas. Las casillas van a escala 0.85 y SetPoint mide en la escala
-	-- de la casilla: por eso MakeCB divide por CB_S (si no, cada fila queda
-	-- mas arriba de lo calculado y se encima con lo de al lado).
 	local CB_S  = 0.85
 	local X1    = 46
 	local GAP   = 30
 	local COL_W = math.max(220, math.min(270, math.floor((W - X1 - GAP - 20) / 2)))
 	local X2    = X1 + COL_W + GAP
 	local ROW_H = 22
-	local TOP   = -8           -- titulos de grupo y de columna
-	local FIRST = TOP - 16     -- primera fila
+	local TOP   = -8
+	local FIRST = TOP - 16
 
 	local function SaveKey(key, v)
 		local save = K.SaveConfigSilent or K.SaveConfig
@@ -852,7 +656,7 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		fs:SetText(text)
 		return fs
 	end
-	-- Dentro de cada columna: Lorti, Color y el cuadrito, pegados a la derecha.
+
 	local function Cols(x)
 		local lx = x + COL_W - 74
 		return lx, lx + 28, lx + 54
@@ -869,9 +673,6 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 	end
 	local function HideTip() GameTooltip:Hide() end
 
-	-- El selector de color de WoW (el mismo del Lorti UI suelto). Las
-	-- funciones van ANTES de SetColorRGB: SetColorRGB llama a .func, y si
-	-- quedara la de otro addon (o la de otra fila) le mandariamos el color.
 	local function OpenPicker(r, g, b, a, onPick, onCancel)
 		K.OpenColorPickerAlpha(r, g, b, a, onPick, onCancel)
 	end
@@ -891,7 +692,6 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		return sw
 	end
 
-	-- Titulos: grupo a la izquierda, "Lorti" y "Color" arriba de sus casillas.
 	local function Header(x, text)
 		local lx, cx = Cols(x)
 		Text(text, "TOPLEFT", x, TOP, "GameFontNormalSmall")
@@ -920,23 +720,20 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		name:SetText(label .. (reload and " |cff888888*|r" or ""))
 
 		local lorti = MakeCB("NidhausLortiZone_" .. zone, lx, y)
-		-- El nombre es parte de la casilla: pasar el mouse o hacer click en
-		-- el nombre es lo mismo que en la casilla.
+
 		lorti:SetHitRectInsets(-(lx - x) / CB_S, 0, 0, 0)
 		local color = MakeCB("NidhausLortiColor_" .. zone, cx, y)
-		-- La plantilla de la casilla estira su zona de click 100 px a la
-		-- DERECHA (para el texto, que aca no hay): tapaba el cuadrito, y el
-		-- click iba a la casilla en vez de abrir el selector de color.
+
 		color:SetHitRectInsets(0, 0, 0, 0)
 		local sw = MakeSwatch(sx, y)
-		-- Y por las dudas, el cuadrito por encima de las casillas.
+
 		sw:SetFrameLevel((color:GetFrameLevel() or 1) + 2)
 
 		local row = { zone = zone }
 		function row.Avail()
 			if C[Z.on] == false then return false end
 			if zone == "Minimap" then
-				-- Solo con el borde "Lorti UI" puesto: es lo unico que pinta.
+
 				local style = (K.GetMinimapBorderStyle and K.GetMinimapBorderStyle()) or C.MinimapBorderStyle
 				return style == "Lorti"
 			end
@@ -966,8 +763,7 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		lorti:SetScript("OnClick", function(self)
 			local checked = self:GetChecked() == 1 or self:GetChecked() == true
 			K.SaveConfig(Z.on, checked)
-			-- ESPEJO DEL BORDE DEL MINIMAPA: tildar pone el borde "Lorti UI"
-			-- y destildar vuelve a "Default", en el acto.
+
 			if zone == "Minimap" then
 				local cur = (K.GetMinimapBorderStyle and K.GetMinimapBorderStyle()) or C.MinimapBorderStyle
 				if checked then
@@ -1020,7 +816,6 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 	for i, zone in ipairs(LEFT_ZONES) do MakeRow(zone, X1, FIRST - (i - 1) * ROW_H) end
 	for i, zone in ipairs(RIGHT_ZONES) do MakeRow(zone, X2, FIRST - (i - 1) * ROW_H) end
 
-	-- ── Debajo de Interfaz: las herramientas de color ──
 	local yR = FIRST - #RIGHT_ZONES * ROW_H - 6
 	local line = wrapper:CreateTexture(nil, "ARTWORK")
 	line:SetHeight(1)
@@ -1029,8 +824,6 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 	line:SetTexture(1, 1, 1, 0.08)
 	yR = yR - 6
 
-	-- Mismo color a todo: pinta (y tilda "Color" en) todas las filas con
-	-- "Lorti" tildada. Cancelar en el selector deja todo como estaba.
 	local allLbl = wrapper:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
 	allLbl:SetPoint("LEFT", wrapper, "TOPLEFT", X2, yR - 11)
 	allLbl:SetText(L["LORTI_ALL_COLOR"] or "Same color for all")
@@ -1074,7 +867,6 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 	end)
 	yR = yR - 26
 
-	-- Colores por defecto: todas las filas vuelven al negro de Lorti.
 	local defBtn = CreateFrame("Button", nil, wrapper, "UIPanelButtonTemplate")
 	defBtn:SetSize(150, 20)
 	defBtn:SetPoint("TOPLEFT", wrapper, "TOPLEFT", X2, yR)
@@ -1104,23 +896,18 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		allSw.tex:SetVertexColor(ColorOf("LortiUI_All"))
 	end
 	RefreshAll()
-	-- Al reabrir el panel algo pudo cambiar desde otro lado (el borde del
-	-- minimapa se elige tambien en Interface > Minimap).
+
 	wrapper:SetScript("OnShow", RefreshAll)
 
 	local leftBottom = FIRST - #LEFT_ZONES * ROW_H
 	local subUIHeight = math.abs(math.min(leftBottom, yR)) + 8
 	wrapper:SetHeight(subUIHeight)
 
-	-- RE-SINCRONIZAR CON C. LortiUI_Minimap tiene dos duenos: esta casilla y
-	-- el desplegable de borde del minimapa. MinimapStyle y el panel llaman a
-	-- esto cuando cambia desde el otro lado.
 	K.RefreshLortiSubOptions = RefreshAll
 
-	-- Mostrar/ocultar según estado del módulo
 	local function SetSubsVisible(show)
 		if show then wrapper:Show() else wrapper:Hide() end
-		-- Ajustar altura del contenedor y re-calcular scroll
+
 		local ct = K._moduleContainers and K._moduleContainers["LortiUI"]
 		if ct then
 			if show then
@@ -1132,7 +919,6 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		end
 	end
 
-	-- Hook del checkbox padre
 	if parentCheckbox then
 		local origClick = parentCheckbox:GetScript("OnClick")
 		parentCheckbox:SetScript("OnClick", function(self)
@@ -1142,7 +928,6 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 		end)
 	end
 
-	-- Estado inicial
 	if K.IsModuleEnabled("LortiUI") then
 		wrapper:Show()
 	else
@@ -1152,9 +937,6 @@ local function CreateLortiSubUI(container, yOffset, parentCheckbox)
 	return subUIHeight
 end
 
--- =============================================
--- REGISTRO
--- =============================================
 K.RegisterModule("LortiUI", {
 	name     = "Lorti UI",
 	desc     = L["MOD_LORTI_DESC"] or "Lorti UI look: dark (or your color) frames, action buttons, minimap and your buffs. Turning the module on or off needs /reload.",
@@ -1163,13 +945,6 @@ K.RegisterModule("LortiUI", {
 	createUI = CreateLortiSubUI,
 })
 
--- =============================================
--- TEXTURE COLOR: su fila en la pestaña Addons
---
---   [x] Texture color
---       Color ■   [Default]
---       Zonas con "Lorti" tildada mantienen el color de Lorti.
--- =============================================
 local function CreateTextureColorUI(container, yOffset, parentCheckbox)
 	local C = ns[2]
 	local wrapper = CreateFrame("Frame", nil, container)
@@ -1254,7 +1029,7 @@ K.RegisterModule("TextureColor", {
 	desc     = L["MOD_TEXCOLOR_DESC"] or "Paints the art of the frames, bars and minimap with one color and transparency (the FriskesUI option). Works with or without Lorti UI.",
 	default  = false,
 	onEnable = StartPainter,
-	-- Al apagarlo: lo que pinto vuelve a su color (Lorti sigue en lo suyo).
+
 	onDisable = function() if painterReady then ApplyAll() end end,
 	createUI = CreateTextureColorUI,
 })

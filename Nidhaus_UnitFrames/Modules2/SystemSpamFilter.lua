@@ -1,42 +1,19 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- SystemSpamFilter.lua
--- Quita del chat los mensajes de sistema que solo hacen ruido:
--- resultados de duelo ajenos, borracheras y "has aprendido X".
---
--- POR QUE NO SE VACIAN LAS CADENAS GLOBALES. El camino corto seria
--- pisar las de Blizzard:
---
---     DUEL_WINNER_KNOCKOUT = ""
---     DUEL_WINNER_RETREAT  = ""
---
--- Eso tiene dos problemas: es global (cualquier otro addon que lea esas
--- cadenas se las encuentra vacias) y es irreversible sin recargar, asi que
--- no se puede apagar el modulo de verdad.
---
--- Aca se usa ChatFrame_AddMessageEventFilter, que es reversible y no toca
--- nada de fuera. Los patrones se construyen leyendo las MISMAS cadenas
--- globales en runtime, asi que funciona en cualquier idioma de cliente sin
--- escribir el texto a mano.
--- =========================================================
-
--- Diferido: apagado no arma los patrones ni deja su comando (ver K.DeferModule).
 K.DeferModule("SystemSpamFilter", {
 	name    = L["MOD_SYSTEM_SPAM"] or "Hide system spam",
 	desc    = L["MOD_SYSTEM_SPAM_DESC"]
 		or "Removes system chat spam: other people's duel results, drunk messages and 'you have learned' lines.",
 	default = false,
-	hideFromModulesTab = true,   -- vive en Interface > Chat
+	hideFromModulesTab = true,
 }, function()
 	local gsub, format = string.gsub, string.format;
 
-	-- Cadenas de Blizzard que queremos silenciar, por grupo.
 	local GRUPOS = {
 		duelos = {
-			"DUEL_WINNER_KNOCKOUT",   -- "%s ha derrotado a %s en un duelo"
-			"DUEL_WINNER_RETREAT",    -- "%s ha huido de %s, abandonando el duelo"
+			"DUEL_WINNER_KNOCKOUT",
+			"DUEL_WINNER_RETREAT",
 		},
 		borrachos = {
 			"DRUNK_MESSAGE_OTHER1", "DRUNK_MESSAGE_OTHER2", "DRUNK_MESSAGE_OTHER3", "DRUNK_MESSAGE_OTHER4",
@@ -48,37 +25,26 @@ K.DeferModule("SystemSpamFilter", {
 		},
 	};
 
-	-- Convierte una cadena de formato de Blizzard en un patron de Lua.
-	-- "%s ha derrotado a %s en un duelo"  ->  "^.- ha derrotado a .- en un duelo$"
-	-- Se hace en tres pasos y en este orden a proposito. Intentarlo al reves
-	-- (escapar primero, sustituir despues) no funciona: al escapar, el "$" de
-	-- los marcadores posicionales "%1$s" se convierte en "%$" y ya no hay forma
-	-- limpia de reconocerlos. Por eso los marcadores se apartan ANTES de
-	-- escapar, usando dos caracteres de control que jamas aparecen en un texto
-	-- del juego.
 	local MARCA_TXT = "\1";
 	local MARCA_NUM = "\2";
 
 	local function AFormato(cadena)
 		if type(cadena) ~= "string" or cadena == "" then return nil; end
 
-		-- 1) apartar los marcadores: posicionales primero ("%1$s"), luego simples
 		local p = gsub(cadena, "%%%d%$s", MARCA_TXT);
 		p = gsub(p, "%%%d%$d", MARCA_NUM);
 		p = gsub(p, "%%s", MARCA_TXT);
 		p = gsub(p, "%%d", MARCA_NUM);
 
-		-- 2) escapar todo lo que Lua considera magico
 		p = gsub(p, "([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1");
 
-		-- 3) devolver los marcadores como comodines
 		p = gsub(p, MARCA_TXT, ".-");
 		p = gsub(p, MARCA_NUM, "%%d+");
 
 		return "^" .. p .. "$";
 	end
 
-	local patrones = {};   -- lista plana, ya compilada
+	local patrones = {};
 	local construido = false;
 
 	local function Construir()
@@ -98,15 +64,12 @@ K.DeferModule("SystemSpamFilter", {
 		if not activo or not msg then return false; end
 		for i = 1, #patrones do
 			if msg:match(patrones[i]) then
-				return true;   -- true = tragarse el mensaje
+				return true;
 			end
 		end
 		return false;
 	end
 
-	-- El filtro se registra UNA sola vez: quitarlo y ponerlo en cada toggle es
-	-- innecesario, y ChatFrame_RemoveMessageEventFilter necesita exactamente la
-	-- misma referencia de funcion. Con la bandera "activo" ya alcanza.
 	local registrado = false;
 
 	local function SetEnabled(on)
@@ -120,7 +83,6 @@ K.DeferModule("SystemSpamFilter", {
 		end
 	end
 
-	-- /nufspam test  -> muestra que patrones quedaron armados con tu cliente
 	SLASH_NUFSPAMFILTER1 = "/nufspam";
 	SlashCmdList["NUFSPAMFILTER"] = function(msg)
 		Construir();

@@ -10,12 +10,12 @@ C:\Projects\WoW\Bin\Interface\FrameXML\UI.xsd">
 		<Layers>
 			<Layer level="ARTWORK">
 			  <Texture name="$parentIcon1">
-              <Size> <AbsDimension x="12" y="12"/> </Size>					
+              <Size> <AbsDimension x="12" y="12"/> </Size>
               <Anchors>
                 <Anchor point="TOPLEFT">
                   <Offset> <AbsDimension x="6" y="-4"/> </Offset>
                  </Anchor>
-               </Anchors>     
+               </Anchors>
         </Texture>
 
 				<FontString name="$parentDuration" justifyV="LEFT" inherits="GameFontHighlightSmall" hidden="false" text="testering">
@@ -112,7 +112,5 @@ C:\Projects\WoW\Bin\Interface\FrameXML\UI.xsd">
 			</OnHide>
 		</Scripts>
 	</Frame>
-	
 
-	
 </Ui>

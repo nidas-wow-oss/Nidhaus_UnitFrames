@@ -1,12 +1,8 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- SOLO CAZADOR. Para las demas clases el archivo termina aca, antes de crear
--- nada: Lua descarta todo su codigo y el modulo no ocupa memoria. El panel,
--- el modo mover y los comandos ya preguntan si el modulo existe.
 if select(2, UnitClass("player")) ~= "HUNTER" then return; end
 
--- Diferido: apagado no crea nada hasta que se prende (ver K.DeferModule).
 K.DeferModule("AutoShotTimer", {
 	name    = L["MOD_AUTOSHOT"] or "Auto Shot Timer",
 	desc    = L["MOD_AUTOSHOT_DESC"] or "Hunter auto shot timing bar. /nufshot unlock to move it.",
@@ -14,14 +10,6 @@ K.DeferModule("AutoShotTimer", {
 	configLabel = L["BTN_MODULE_MOVE"] or "Move",
 }, function()
 	local format, floor = string.format, math.floor;
-
-	-- =========================================================
-	-- AutoShotTimer.lua  (portado de ZAutoShot a NUF)
-	-- Barra con el tiempo del disparo automatico del cazador.
-	-- Tiene en cuenta Hacerse el muerto (usa la velocidad sin modificar).
-	--
-	-- Mover: /nufshot unlock  -> arrastrar -> /nufshot lock
-	-- =========================================================
 
 	local BAR_WIDTH  = 195;
 	local BAR_HEIGHT = 14;
@@ -32,9 +20,6 @@ K.DeferModule("AutoShotTimer", {
 	local enabled  = false;
 	local unlocked = false;
 
-	-- ---------------------------------------------------------
-	-- DB
-	-- ---------------------------------------------------------
 	local function DB()
 		if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 		if not NidhausUnitFramesDB.AutoShotTimer then
@@ -43,22 +28,19 @@ K.DeferModule("AutoShotTimer", {
 		return NidhausUnitFramesDB.AutoShotTimer;
 	end
 
-	-- ---------------------------------------------------------
-	-- Frames
-	-- ---------------------------------------------------------
 	local mover = CreateFrame("Frame", "NUF_AutoShotMover", UIParent);
 	mover:SetSize(BAR_WIDTH + 4, BAR_HEIGHT + 4);
 	mover:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 246);
 	mover:SetMovable(true);
 	mover:SetClampedToScreen(true);
-	mover:EnableMouse(false);   -- bloqueado = los clicks pasan de largo
+	mover:EnableMouse(false);
 	mover:Hide();
 
 	local bar = CreateFrame("StatusBar", "NUF_AutoShotBar", mover);
 	bar:SetSize(BAR_WIDTH, BAR_HEIGHT);
 	bar:SetPoint("CENTER", mover, "CENTER", 0, 0);
 	bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar");
-	local BAR_R, BAR_G, BAR_B = 1, 0.7, 0;   -- el color propio de esta barra
+	local BAR_R, BAR_G, BAR_B = 1, 0.7, 0;
 	bar:SetStatusBarColor(BAR_R, BAR_G, BAR_B);
 	bar:SetMinMaxValues(0, 1);
 	bar:SetValue(1);
@@ -85,7 +67,7 @@ K.DeferModule("AutoShotTimer", {
 	spark:SetPoint("CENTER", bar, "LEFT", 0, 0);
 
 	local textLeft = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-	textLeft:SetPoint("LEFT", bar, "LEFT", 4, 1);   -- +1: a la altura del texto de la barra de casteo
+	textLeft:SetPoint("LEFT", bar, "LEFT", 4, 1);
 	textLeft:SetText(AUTO_SHOT or "Auto Shot");
 
 	local textRight = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
@@ -101,16 +83,9 @@ K.DeferModule("AutoShotTimer", {
 	unlockText:SetText("|cff00ccff" .. (L["DRAG_LABEL"] or "DRAG") .. "|r");
 	unlockText:Hide();
 
-	-- Tooltip oculto para leer la velocidad del arma a distancia sin modificar
 	local tip = CreateFrame("GameTooltip", "NUF_AutoShotTooltip", UIParent, "GameTooltipTemplate");
 	tip:SetOwner(UIParent, "ANCHOR_NONE");
 
-	-- ---------------------------------------------------------
-	-- Posicion / escala
-	-- ---------------------------------------------------------
-	-- Se guarda TAMBIEN el punto: al soltar el arrastre el cliente reancla el
-	-- marco al punto que le queda mas cerca, y los x/y solos no alcanzan.
-	-- Sin punto guardado (lo de antes) eran desplazamientos desde BOTTOM.
 	local function SavePosition()
 		local db = DB();
 		local point, _, relativePoint, x, y = mover:GetPoint();
@@ -138,9 +113,6 @@ K.DeferModule("AutoShotTimer", {
 		end
 	end);
 
-	-- ---------------------------------------------------------
-	-- Show / Hide / Lock
-	-- ---------------------------------------------------------
 	local function ShowBar()
 		if enabled or unlocked then mover:Show(); end
 	end
@@ -149,36 +121,19 @@ K.DeferModule("AutoShotTimer", {
 		if not unlocked then mover:Hide(); end
 	end
 
-	-- ---------------------------------------------------------
-	-- Estilo del borde: tres modos
-	--
-	--   Tooltip   el de siempre, borde gris de tooltip.
-	--   None      sin marco, como las barras de casteo de los marcos de
-	--             arena, cuyo template no dibuja borde ninguno.
-	--   Blizzard  el borde de la barra de casteo del jugador. La textura y
-	--             las medidas se leen en vivo de CastingBarFrame y se aplican
-	--             a escala: esta barra mide 195x14 y aquella 195x13, asi que
-	--             calza, y si otro modulo la retextura el timer la acompaña.
-	--
-	-- Sin marco no se pierde el modo mover: lo indica unlockOverlay, que va
-	-- por fuera de la barra y no depende del borde.
-	-- ---------------------------------------------------------
-	local castBorder;   -- textura del modo Blizzard, se crea recien si se pide
+	local castBorder;
 
 	local function CurrentBorderStyle()
 		local v = C.AutoShotBorderStyle;
 		if v == "None" or v == "Blizzard" or v == "Tooltip" then return v; end
-		-- Compatibilidad con la opcion booleana que hubo antes.
+
 		if C.AutoShotBorderless == true then return "None"; end
 		return "Tooltip";
 	end
 
 	local function BorderTint(r, g, b, a)
 		if castBorder and castBorder:IsShown() then
-			-- El borde prestado de la barra de casteo va a su color de fabrica
-			-- mientras la barra esta bloqueada: bajarlo al gris del modo mover
-			-- lo dejaba mas apagado que la barra de casteo de al lado. Solo se
-			-- pinta de celeste para avisar que se la puede arrastrar.
+
 			if unlocked then
 				castBorder:SetVertexColor(r, g, b, a);
 			else
@@ -189,18 +144,6 @@ K.DeferModule("AutoShotTimer", {
 		end
 	end
 
-
-	-- El estilo Blizzard no es solo el marco.
-	--
-	-- La barra de casteo del jugador escribe en BLANCO (GameFontHighlight) y
-	-- rellena con UI-CastingBar-Fill; esta barra escribia en DORADO
-	-- (GameFontNormalSmall) sobre UI-StatusBar. Puestas una al lado de la
-	-- otra, las letras eran de otro color y el relleno se veia mas apagado.
-	-- Se leen en vivo, igual que el borde: si otro addon retextura la barra
-	-- de casteo, el timer la acompaña. En los otros dos estilos vuelve a su
-	-- aspecto propio, que es el que tenia siempre.
-	-- El Auto Shot comparte el dorado de la barra de casteo, asi que en modo
-	-- Blizzard puede tomarle el tinte prestado tal cual.
 	local MATCH_BLIZZ_COLOR = true;
 	local DEFAULT_FILL = "Interface\\TargetingFrame\\UI-StatusBar";
 
@@ -233,17 +176,6 @@ K.DeferModule("AutoShotTimer", {
 			bar:SetStatusBarTexture(DEFAULT_FILL);
 		end
 
-		-- SetStatusBarTexture resetea el tinte: hay que reponerlo siempre.
-		--
-		-- Y en modo Blizzard el tinte tambien se lee en vivo, no se asume. Este
-		-- relleno ya viene dorado de fabrica; multiplicarlo por un dorado propio
-		-- lo apagaba, que era lo que se veia mas oscuro al lado de la barra de
-		-- casteo de verdad.
-		--
-		-- Se lee CASTING_BAR_COLOR, la constante, y NO el color que la barra
-		-- tiene puesto en este instante: Blizzard la pinta de rojo cuando un
-		-- casteo se interrumpe y de verde en los canalizados, asi que preguntar
-		-- en vivo podia dejar el timer rojo para siempre.
 		local cc = blizz and MATCH_BLIZZ_COLOR and _G.CASTING_BAR_COLOR;
 		if cc and cc.r then
 			bar:SetStatusBarColor(cc.r, cc.g, cc.b);
@@ -251,15 +183,10 @@ K.DeferModule("AutoShotTimer", {
 			bar:SetStatusBarColor(BAR_R, BAR_G, BAR_B);
 		end
 
-		-- El fondo va SIEMPRE oscuro. Copiar el de la barra de casteo dejaba la
-		-- parte vacia blanca, que es peor que el problema que venia a resolver:
-		-- lo apagado era el tinte del relleno y el del borde, no el fondo.
 		bg:SetTexture(DEFAULT_FILL);
 		bg:SetVertexColor(0.1, 0.1, 0.1, 0.75);
 		bg:Show();
 
-		-- El spark: el alto sale del de la barra de casteo, el ancho se queda en
-		-- los 16 de siempre. Copiarle tambien el ancho lo dejaba como una mancha.
 		local sh = 32;
 		local sp = _G.CastingBarFrameSpark;
 		if sp and (sp:GetHeight() or 0) > 0 then sh = sp:GetHeight(); end
@@ -285,15 +212,14 @@ K.DeferModule("AutoShotTimer", {
 				castBorder:SetWidth(BAR_WIDTH   * (src:GetWidth()  / ref:GetWidth()));
 				castBorder:SetHeight(BAR_HEIGHT * (src:GetHeight() / ref:GetHeight()));
 				castBorder:ClearAllPoints();
-				-- El borde de casteo no va centrado: deja aire arriba para el
-				-- texto. Se copia ese corrimiento, a escala de esta barra.
+
 				local _, sy = src:GetCenter();
 				local _, ry = ref:GetCenter();
 				local dy = (sy and ry) and ((sy - ry) * (BAR_HEIGHT / ref:GetHeight())) or 0;
 				castBorder:SetPoint("CENTER", bar, "CENTER", 0, dy);
 				castBorder:Show();
 			else
-				border:Show();   -- si la barra de casteo no existe todavia
+				border:Show();
 			end
 		end
 
@@ -351,9 +277,6 @@ K.DeferModule("AutoShotTimer", {
 		mover:Show();
 	end
 
-	-- ---------------------------------------------------------
-	-- Logica
-	-- ---------------------------------------------------------
 	local function GetUnmodifiedRangedSpeed()
 		tip:SetOwner(UIParent, "ANCHOR_NONE");
 		tip:SetInventoryItem("player", 18);
@@ -389,9 +312,6 @@ K.DeferModule("AutoShotTimer", {
 
 		local now = GetTime();
 
-		-- FIX: si el disparo no sale (fuera de rango, sin objetivo, etc.) la barra
-		-- se quedaba llena para siempre. Al terminar el ciclo se oculta y se
-		-- resetea; el proximo disparo real la vuelve a arrancar.
 		if now >= hi then
 			self:SetMinMaxValues(0, 1);
 			self:SetValue(0);
@@ -408,20 +328,13 @@ K.DeferModule("AutoShotTimer", {
 		spark:ClearAllPoints();
 		spark:SetPoint("CENTER", self, "LEFT", pct * BAR_WIDTH, 0);
 
-		-- El texto solo muestra un decimal, asi que cambia 10 veces por segundo
-		-- como mucho. Antes se llamaba a format() y SetText() en CADA fotograma:
-		-- 60 cadenas nuevas por segundo, 50 de ellas identicas a la anterior.
-		-- En 3.3.5 esa basura se paga en tirones del recolector.
 		local decimas = floor((hi - now) * 10);
 		if decimas ~= self.lastDecimas then
 			self.lastDecimas = decimas;
-			textRight:SetFormattedText("%0.1f", hi - now);   -- sin basura (cada cuadro)
+			textRight:SetFormattedText("%0.1f", hi - now);
 		end
 	end);
 
-	-- ---------------------------------------------------------
-	-- Eventos
-	-- ---------------------------------------------------------
 	local events = CreateFrame("Frame");
 	events:SetScript("OnEvent", function(self, event, arg1, arg2)
 		if not enabled then return; end
@@ -437,9 +350,6 @@ K.DeferModule("AutoShotTimer", {
 		end
 	end);
 
-	-- ---------------------------------------------------------
-	-- Comandos
-	-- ---------------------------------------------------------
 	SLASH_NUFAUTOSHOT1 = "/nufshot";
 	SlashCmdList["NUFAUTOSHOT"] = function(msg)
 		msg = string.lower(msg or "");
@@ -472,8 +382,6 @@ K.DeferModule("AutoShotTimer", {
 		end
 	end
 
-
-	-- Escala (la usa "Mover todo": Ctrl + rueda escribe ACA, no en globalPos)
 	function K.GetAutoShotScale()
 		return DB().scale or 1.0;
 	end
@@ -484,13 +392,6 @@ K.DeferModule("AutoShotTimer", {
 		mover:SetScale(s);
 	end
 
-	-- Reset externo (boton del panel)
-	-- "Mover todo" no dispara el OnMouseUp de este marco (arrastra el suyo),
-	-- asi que se le deja aca el guardado: ver "UN SOLO DUEÑO POR POSICION"
-	-- en GlobalUnlock.lua. Es una tabla y no una llamada porque este archivo
-	-- carga ANTES que GlobalUnlock.
-	-- type() y no "or {}": K tiene un indice por defecto en algunos
-	-- entornos, y "or" no lo filtra.
 	if type(K.FramePositionOwners) ~= "table" then K.FramePositionOwners = {}; end
 	K.FramePositionOwners["AutoShot"] = function() SavePosition(); end
 
@@ -502,9 +403,6 @@ K.DeferModule("AutoShotTimer", {
 		Lock();
 	end
 
-	-- ---------------------------------------------------------
-	-- Registro del modulo
-	-- ---------------------------------------------------------
 	K.RegisterModule("AutoShotTimer", {
 		configFunc = function()
 			if unlocked then Lock(); else Unlock(); end
@@ -521,8 +419,7 @@ K.DeferModule("AutoShotTimer", {
 		onDisable = function()
 			enabled = false;
 			events:UnregisterAllEvents();
-			-- Apagado con el modo mover puesto: fijarlo (guarda y saca el
-			-- recuadro "DRAG"), si no volvia asi al prenderlo de nuevo.
+
 			if unlocked then pcall(Lock); end
 			unlocked = false;
 			mover:Hide();

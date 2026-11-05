@@ -1,17 +1,6 @@
--- Este archivo vive en Nidhaus_UnitFrames_Config, un addon aparte que se
--- carga SOLO cuando abris el panel (LoadOnDemand). Por eso no recibe el
--- namespace por "...", que es privado de cada addon: lo toma de la global
--- que publica el addon principal en Core/Init.lua.
 local ns = _G.NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
--- Selector de estilo de borde: tres botones excluyentes con el activo
--- resaltado, el mismo patron que el selector de estilo de marco de grupo.
--- getFn devuelve el estilo actual, setFn lo cambia.
--- Selector de opciones excluyentes: una fila de botones donde el elegido
--- queda azul y los otros apagados. Nacio para los tres estilos de borde de
--- los timers; ahora tambien lo usa la posicion de las auras de la Power
--- Bar, asi que las opciones y el titulo vienen por parametro.
 local function ChoiceSelector(parent, px, py, labelText, opts, getFn, setFn, bw)
 	bw = bw or 88;
 	local bh, gap = 22, 4;
@@ -73,25 +62,8 @@ local function BorderStyleSelector(parent, px, py, getFn, setFn)
 	}, function() return getFn() or "Tooltip"; end, setFn);
 end
 
--- =========================================================
--- OptionsPanelPvP.lua
--- Pestaña PvP.
---
--- Secciones:
---   Class Options -> DETECTA la clase del personaje y muestra solo
---                    los modulos que esa clase puede usar. Un mago no
---                    tiene por que ver el contador de flechas.
---   Enemigos / Yo -> avisos y contadores pensados para arena.
---
--- Como se agrega una clase nueva: sumar una entrada a CLASS_MODULES
--- con sus checkboxes. No hay que tocar nada mas.
--- =========================================================
-
 local checkboxCount = 0;
 
--- ---------------------------------------------------------
--- Helpers locales (mismos estilos que el resto del panel)
--- ---------------------------------------------------------
 local function Header(parent, text, x, y)
 	local fs = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 	fs:SetPoint("TOPLEFT", x, y);
@@ -99,14 +71,6 @@ local function Header(parent, text, x, y)
 	return fs;
 end
 
--- ---------------------------------------------------------
--- PLEGAR CADA OPCION
---
--- Cada bloque de la pestaña PvP y de la de clase tiene a la derecha un
--- boton - / + que lo pliega: queda el titulo y lo de abajo sube. Se
--- recuerda por bloque (NidhausUnitFramesDB.PanelCollapsed), asi que al
--- volver a abrir el panel sigue como lo dejaste.
--- ---------------------------------------------------------
 local function CollapsedDB()
 	if type(NidhausUnitFramesDB) ~= "table" then NidhausUnitFramesDB = {}; end
 	if type(NidhausUnitFramesDB.PanelCollapsed) ~= "table" then NidhausUnitFramesDB.PanelCollapsed = {}; end
@@ -142,17 +106,6 @@ local function FoldButton(parent, key, onToggle)
 	return b;
 end
 
--- SECCIONES DE LAS PAGINAS DE CLASE ARMADAS A COORDENADAS FIJAS.
---
--- Esas paginas (picaro, druida, mago, cazador) ponen cada control en un x/y
--- fijo de la hoja. Para poder plegarlas sin rehacerlas, cada seccion es un
--- marco pegado a la esquina de la hoja (0,0): sus controles conservan las
--- mismas coordenadas. Plegar una esconde su cuerpo y corre hacia arriba
--- las secciones de abajo lo que medía ese cuerpo.
---
---   local pane = FoldSection(pane, "Timers", x, y, "MageTimers")
---   ... los controles de la seccion se crean con ese pane ...
---   FinishFolds(hoja, yFinal)   -- al terminar la pagina
 local function LayoutFolds(root)
 	local shift = 0;
 	for _, sec in ipairs(root._nufFolds or {}) do
@@ -208,7 +161,6 @@ local function Note(parent, text, x, y, width)
 	return fs;
 end
 
--- Checkbox de un setting de C
 local function SettingCB(parent, label, setting, x, y, tip, onChange)
 	checkboxCount = checkboxCount + 1;
 	local cbName = "NidhausPvPCB" .. checkboxCount;
@@ -243,7 +195,6 @@ local function SettingCB(parent, label, setting, x, y, tip, onChange)
 	return cb;
 end
 
--- Checkbox de un modulo
 local function ModuleCB(parent, label, moduleId, x, y, tip)
 	if not (K.Modules and K.Modules[moduleId]) then return nil; end
 	checkboxCount = checkboxCount + 1;
@@ -267,20 +218,6 @@ local function ModuleCB(parent, label, moduleId, x, y, tip)
 		cb:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 	end
 
-	-- LA DESCRIPCION, VISIBLE.
-	--
-	-- Antes solo salia en el tooltip, y por eso las pestañas de clase se
-	-- veian peladas al lado de la pestaña PvP: aquella usa ModuleBlock, que
-	-- si la dibuja. Los textos ya existian y ya estaban traducidos — no se
-	-- mostraban, nada mas.
-	--
-	-- Se devuelve el alto que ocupo para que quien llama sepa cuanto bajar:
-	-- las descripciones tienen largos distintos y un numero fijo dejaria
-	-- huecos en unas y superposiciones en otras.
-	--
-	-- Se ancla AL CHECKBOX, no a coordenadas fijas: hay llamadas que despues
-	-- reubican el checkbox (Paladin auras lo hace), y con coordenadas fijas
-	-- la descripcion se quedaba sola en el lugar viejo.
 	local descH, descFS = 0, nil;
 	if tip and tip ~= "" then
 		descFS = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
@@ -300,25 +237,8 @@ local function ModuleCB(parent, label, moduleId, x, y, tip)
 	return cb, descH, descFS;
 end
 
--- ---------------------------------------------------------
--- BLOQUE DE MODULO (desplegable)
---
--- Cada addon/modulo vive en su propio bloque: una franja divisoria
--- arriba, el checkbox que lo prende, y un "cuerpo" con sus opciones que
--- SOLO se despliega cuando el modulo esta activo. Con el modulo apagado
--- el cuerpo se oculta y el bloque se achica, asi que los bloques de abajo
--- suben solos (van anclados uno al otro, no a coordenadas fijas).
---
--- Uso:
---   local blk, body = ModuleBlock(pane, prev, "PowerBar", "Power Bar", desc)
---   ... crear controles con parent = body ...
---   blk:SetBodyHeight(140)   -- alto del cuerpo desplegado
---   blk:Refresh()
--- ---------------------------------------------------------
 local BLOCK_W = 470;
 
--- Cada bloque se anota en la hoja, con el hueco que deja arriba, para
--- poder medir el alto TOTAL con todo desplegado (ver ExpandedHeight).
 local function TrackBlock(pane, blk, gap)
 	blk._gap = gap;
 	pane._nufBlocks = pane._nufBlocks or {};
@@ -335,7 +255,6 @@ local function ModuleBlock(pane, prev, moduleId, label, desc, tip)
 	end
 	TrackBlock(pane, blk, prev and 10 or 14);
 
-	-- Franja divisoria que separa este addon del anterior
 	local sep = blk:CreateTexture(nil, "ARTWORK");
 	sep:SetTexture(1, 1, 1, 0.13);
 	sep:SetPoint("TOPLEFT", 0, 0);
@@ -344,10 +263,9 @@ local function ModuleBlock(pane, prev, moduleId, label, desc, tip)
 
 	local headH = 26;
 
-	-- Checkbox del modulo
 	local cb = ModuleCB(blk, label, moduleId, 0, -10, tip);
 	if not cb then
-		-- El modulo no existe (no cargado): bloque vacio pero valido
+
 		blk:SetHeight(1);
 		blk.Refresh = function() end;
 		blk.SetBodyHeight = function() end;
@@ -364,7 +282,6 @@ local function ModuleBlock(pane, prev, moduleId, label, desc, tip)
 		headH = 34 + math.max(14, descFS:GetStringHeight() or 14) + 6;
 	end
 
-	-- Cuerpo desplegable
 	local body = CreateFrame("Frame", nil, blk);
 	body:SetPoint("TOPLEFT", 0, -headH);
 	body:SetWidth(BLOCK_W);
@@ -378,8 +295,6 @@ local function ModuleBlock(pane, prev, moduleId, label, desc, tip)
 		body:SetHeight(math.max(1, self._bodyH));
 	end
 
-	-- El - / + de la derecha: pliega las opciones aunque el modulo este
-	-- prendido. Con el modulo apagado no se muestra (ya esta plegado).
 	local foldKey = "mod:" .. moduleId;
 	local fold = FoldButton(blk, foldKey, function() blk:Refresh(); end);
 	fold:SetPoint("TOPLEFT", BLOCK_W - 16, -14);
@@ -404,7 +319,6 @@ local function ModuleBlock(pane, prev, moduleId, label, desc, tip)
 	return blk, body;
 end
 
--- Bloque "solo texto" (encabezado de seccion), mismo sistema de anclaje
 local function HeaderBlock(pane, prev, title, note)
 	local blk = CreateFrame("Frame", nil, pane);
 	blk:SetWidth(BLOCK_W);
@@ -434,12 +348,6 @@ local function HeaderBlock(pane, prev, title, note)
 	return blk;
 end
 
--- NOTA: aca vivia SoonRow(), que dibujaba las filas de "coming soon".
--- Se borraron todas: la pestaña anuncia lo que hace, no lo que va a hacer.
-
--- ---------------------------------------------------------
--- Modulos por clase
--- ---------------------------------------------------------
 local CLASS_COLORS = {
 	MAGE        = "|cff69CCF0", HUNTER = "|cffABD473", ROGUE   = "|cffFFF569",
 	WARRIOR     = "|cffC79C6E", PRIEST = "|cffFFFFFF", WARLOCK = "|cff9482C9",
@@ -447,9 +355,6 @@ local CLASS_COLORS = {
 	DEATHKNIGHT = "|cffC41F3B",
 };
 
-
-	-- Picaro y druida comparten el mismo bloque: son las unicas dos
-	-- clases con puntos de combo, asi que la UI es identica.
 	local function ComboSection(pane, x, y)
 		local pane = FoldSection(pane, L["PVP_COMBO"] or "Combo Points", x, y, "Combo");
 		y = y - 24;
@@ -486,12 +391,10 @@ local CLASS_COLORS = {
 		return y - 44;
 	end
 
--- Cada entrada dibuja su bloque y devuelve el nuevo yPos.
 local CLASS_MODULES = {
 
 	ROGUE = function(pane, x, y)
 		y = ComboSection(pane, x, y);
-
 
 		return y;
 	end,
@@ -499,10 +402,8 @@ local CLASS_MODULES = {
 	DRUID = function(pane, x, y)
 		y = ComboSection(pane, x, y);
 
-
 		return y;
 	end,
-
 
 	MAGE = function(pane, x, y)
 		local pane = FoldSection(pane, L["PVP_TIMERS"] or "Timers", x, y, "MageTimers");
@@ -517,16 +418,12 @@ local CLASS_MODULES = {
 			x, y, L["TIP_MageMirror"] or "30 second duration bar for Mirror Image.");
 		y = y - 34;
 
-		-- Las barras se arrastran solas con el boton izquierdo; esto solo
-		-- las fija cuando ya quedaron donde uno quiere (igual que el
-		-- "Lock Frames" del MageNuggets original).
 		SettingCB(pane, L["CB_LOCK_CLASS_BARS"] or "Lock the bars", "ClassTimersLocked",
 			x, y, L["TIP_ClassTimersLocked"]
 			or "While locked the bars ignore the mouse: you can click through them.",
 			function() if K.ApplyClassTimersLock then K.ApplyClassTimersLock(); end end);
 		y = y - 48;
 
-		-- Escala de las barras de clase
 		do
 			local cs = CreateFrame("Slider", nil, pane, "OptionsSliderTemplate");
 			cs:SetPoint("TOPLEFT", x + 2, y);
@@ -571,18 +468,14 @@ local CLASS_MODULES = {
 		end);
 		y = y - 44;
 
-		-- ── Apariencia: skin "Icy Portrait" del marco del jugador ──
 		local pane = FoldSection(pane, L["PVP_MAGE_APPEARANCE"] or "Appearance", x, y, "MageLook");
 		y = y - 24;
-		-- El tooltip decia "necesita Custom Skin activado". Ya no: Icy es un
-		-- skin propio y se aplica solo. Dejarlo habria mandado a la gente a
-		-- prender una opcion que no hace falta.
+
 		SettingCB(pane, L["CB_MAGE_ICY"] or "Icy player frame", "MageIcyFrame",
 			x, y, L["TIP_MageIcy"]
 			or "Frost / ice skin for your player frame. Works on its own, no other option needed.",
 			function() if K.ApplyPlayerFrameSkin then K.ApplyPlayerFrameSkin(); end end);
 		y = y - 34;
-
 
 		return y;
 	end,
@@ -595,8 +488,6 @@ local CLASS_MODULES = {
 			x, y, L["MOD_AUTOSHOT_DESC"]);
 		y = y - 26 - (asH or 0);
 
-		-- Cuerpo desplegable con la unica opcion de la barra: el borde,
-		-- que cicla entre tooltip, sin marco y barra de casteo.
 		local asBody = K.UI.Collapsible(pane, x, y, 440, 44, function()
 			return K.IsModuleEnabled and K.IsModuleEnabled("AutoShotTimer");
 		end);
@@ -606,8 +497,6 @@ local CLASS_MODULES = {
 			function() return (K.GetAutoShotBorderStyle and K.GetAutoShotBorderStyle()) or "Tooltip"; end,
 			function(v) if K.SetAutoShotBorderStyle then K.SetAutoShotBorderStyle(v); end end);
 
-		-- El cuerpo mide 44: con 32 la casilla de abajo pisaba los botones
-		-- del borde. Y va colgada del cuerpo, asi sube cuando se pliega.
 		y = y - 48;
 
 		local acCB, acH = ModuleCB(pane, L["MOD_ARROWCOUNT"] or "Arrow / Bullet Count", "ArrowCount",
@@ -618,7 +507,6 @@ local CLASS_MODULES = {
 		end
 		y = y - 42 - (acH or 0);
 
-		-- ── Buffs de la mascota ──
 		local pane = FoldSection(pane, L["PVP_HUNTER_PETSECTION"] or "Pet", x, y, "HunterPet");
 		y = y - 24;
 
@@ -626,9 +514,6 @@ local CLASS_MODULES = {
 			x, y, L["MOD_PETBUFFS_DESC"]);
 		y = y - 26 - (pbH or 0);
 
-		-- Cuerpo desplegable: las opciones solo se ven con el modulo
-		-- encendido. Todo lo de adentro va con parent = pbBody y
-		-- coordenadas locales.
 		local pbBody = K.UI.Collapsible(pane, x, y, 440, 130, function()
 			return K.IsModuleEnabled and K.IsModuleEnabled("HunterPetBuffs");
 		end);
@@ -689,23 +574,9 @@ local CLASS_MODULES = {
 	end,
 
 	PALADIN = function(pane, x, y)
-		-- ORGANIZADO POR LO QUE HACE CADA MODULO, TODOS CON LA MISMA TARJETA.
-		--
-		-- Antes: un encabezado "Auras" que juntaba cosas que no son auras,
-		-- y cada modulo con cuatro renglones (casilla, descripcion y abajo
-		-- los botones Mover / Reset). El alto de la pagina era un numero a
-		-- mano, que se quedaba corto cada vez que se agregaba algo.
-		--
-		-- Ahora:
-		--   * Arriba, "Mover todos" y "Resetear todos" para los cinco.
-		--   * Grupos: Defensivas / Procs y debuffs / Control / Escudo sagrado.
-		--   * Cada tarjeta: casilla con Mover / Reset en el mismo renglon, la
-		--     descripcion, y plegado (solo con el modulo prendido) sus
-		--     opciones, "Mostrarlo en:" y el tamaño.
-		--   * El alto se calcula de lo que hay, y se recalcula al prender o
-		--     apagar un modulo.
-		local blocks = {};   -- { frame, gap } en orden de arriba a abajo
-		local cards  = {};   -- tarjetas con mover / reset
+
+		local blocks = {};
+		local cards  = {};
 		local bar, RefreshBar;
 
 		local function UpdateHeight()
@@ -713,8 +584,7 @@ local CLASS_MODULES = {
 			for _, b in ipairs(blocks) do
 				h = h + b.gap + (b.frame:GetHeight() or 0);
 			end
-			-- Mismo calculo que hace el panel con lo que devuelve esta
-			-- funcion (SetContentHeight(8, -h - 30) = h + 70).
+
 			pane:SetHeight(h + 70);
 			return h;
 		end
@@ -733,8 +603,6 @@ local CLASS_MODULES = {
 			widget:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 		end
 
-		-- "Mostrarlo en:" en dos columnas (Arena / Battlegrounds arriba,
-		-- Duelos / Mundo abajo), para que a la derecha entre el tamaño.
 		local function ZoneGrid(parent, id, px, py)
 			local lbl = parent:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
 			lbl:SetPoint("TOPLEFT", px, py);
@@ -763,17 +631,15 @@ local CLASS_MODULES = {
 			end
 		end
 
-		-- Tarjeta de un modulo
 		local MOVE_W, RESET_W = 92, 76;
 		local function Card(prev, spec)
 			local blk, body = ModuleBlock(pane, prev, spec.id, spec.label, spec.desc);
 			blocks[#blocks + 1] = { frame = blk, gap = 10 };
 			if not blk.checkbox then return blk; end
 
-			-- Mover / Reset a la derecha del checkbox
 			local moveBtn = CreateFrame("Button", nil, blk, "UIPanelButtonTemplate");
 			moveBtn:SetSize(MOVE_W, 22);
-			-- 22 px a la izquierda: a la derecha va el - / + de plegar.
+
 			moveBtn:SetPoint("TOPLEFT", BLOCK_W - MOVE_W - RESET_W - 6 - 22, -12);
 			local resetBtn = CreateFrame("Button", nil, blk, "UIPanelButtonTemplate");
 			resetBtn:SetSize(RESET_W, 22);
@@ -786,8 +652,7 @@ local CLASS_MODULES = {
 				moveBtn:SetText(on and (L["BTN_LOCK_IT"] or "Lock it")
 					or (L["BTN_MOVE_IT"] or "Move it"));
 			end
-			-- Reset = lugar Y tamaño de fabrica, en los cinco igual (antes
-			-- dos devolvian tambien el tamaño y tres no).
+
 			function card.Reset()
 				if spec.reset then spec.reset(); end
 				if K.ResetModuleScale then K.ResetModuleScale(spec.id); end
@@ -800,7 +665,6 @@ local CLASS_MODULES = {
 			resetBtn:SetScript("OnClick", function() card.Reset(); end);
 			cards[#cards + 1] = card;
 
-			-- Cuerpo: opciones propias, despues "Mostrarlo en" | Tamaño
 			local by = -4;
 			if spec.options then by = spec.options(body, by); end
 			if K.HasModuleZones and K.HasModuleZones(spec.id) then
@@ -812,9 +676,6 @@ local CLASS_MODULES = {
 			by = by - 70;
 			blk:SetBodyHeight(-by);
 
-			-- Los botones siguen al modulo: apagado no hay nada que mover.
-			-- Si lo apagas mientras lo movias, se fija (si no quedaba a la
-			-- vista sin boton para fijarlo).
 			local baseRefresh = blk.Refresh;
 			blk.Refresh = function(self)
 				baseRefresh(self);
@@ -840,7 +701,6 @@ local CLASS_MODULES = {
 			return blk;
 		end
 
-		-- ── Barra de arriba: mover / resetear todos ──
 		bar = CreateFrame("Frame", nil, pane);
 		bar:SetPoint("TOPLEFT", x, y);
 		bar:SetSize(BLOCK_W, 24);
@@ -868,8 +728,7 @@ local CLASS_MODULES = {
 				or (L["PAL_MOVE_ALL"] or "Move all"));
 		end
 		moveAll:SetScript("OnClick", function()
-			-- Si alguno se esta moviendo, se fijan todos; si no, se ponen a
-			-- mover los que esten prendidos.
+
 			local fix = AnyMoving();
 			for _, c in ipairs(cards) do
 				if c.setMove then
@@ -887,7 +746,6 @@ local CLASS_MODULES = {
 			for _, c in ipairs(cards) do c.Reset(); end
 		end);
 
-		-- ── Defensivas ──
 		local prev = Group(bar, L["PVP_PALADIN_DEF"] or "Defensives");
 		prev = Card(prev, {
 			id = "PaladinICD",
@@ -905,7 +763,6 @@ local CLASS_MODULES = {
 			end,
 		});
 
-		-- ── Procs y debuffs ──
 		prev = Group(prev, L["PVP_PAL_PROCS"] or "Procs & debuffs");
 		prev = Card(prev, {
 			id = "PaladinAuras",
@@ -914,8 +771,7 @@ local CLASS_MODULES = {
 			isMoving = function() return K.IsPaladinAurasPreview and K.IsPaladinAurasPreview(); end,
 			setMove  = function(v) if K.SetPaladinAurasPreview then K.SetPaladinAurasPreview(v); end end,
 			reset    = function() if K.ResetPaladinAurasPosition then K.ResetPaladinAurasPosition(); end end,
-			-- Una casilla por icono: The Art of War, Holy Strength y la
-			-- reduccion de curacion se prenden y apagan por separado.
+
 			options  = function(body, by)
 				local cx = 22;
 				local icons = {
@@ -949,7 +805,6 @@ local CLASS_MODULES = {
 			end,
 		});
 
-		-- ── Control ──
 		prev = Group(prev, L["PVP_PAL_CONTROL"] or "Crowd control");
 		prev = Card(prev, {
 			id = "TurnEvil",
@@ -960,7 +815,6 @@ local CLASS_MODULES = {
 			reset    = function() if K.ResetTurnEvilPosition then K.ResetTurnEvilPosition(); end end,
 		});
 
-		-- ── Escudo sagrado: el del objetivo y el del grupo juntos ──
 		prev = Group(prev, L["PVP_PAL_SS"] or "Sacred Shield");
 		prev = Card(prev, {
 			id = "SacredShield",
@@ -979,8 +833,6 @@ local CLASS_MODULES = {
 			reset    = function() if K.ResetSacredShieldTrackerPosition then K.ResetSacredShieldTrackerPosition(); end end,
 		});
 
-		-- Al abrir el panel, los botones al dia (/nufpal, /ss, /sst o
-		-- "Mover todo" pudieron cambiar el estado desde afuera).
 		pane:HookScript("OnShow", function()
 			for _, c in ipairs(cards) do c.RefreshMove(); end
 			RefreshBar();
@@ -992,34 +844,22 @@ local CLASS_MODULES = {
 	end,
 
 	WARRIOR = function(pane, x, y)
-		-- El Melee Swing Timer no va aca: lo usan tambien picaro, cazador y
-		-- druida, asi que vive en la seccion PvP general.
 
 		return y;
 	end,
 };
 
--- Clases cuya pagina arranca con su propia barra (sin el cartel de clase).
 local OWN_TOP_BAR = { PALADIN = true };
 
--- ---------------------------------------------------------
--- Nombre de la clase para el item de la lista lateral
--- ---------------------------------------------------------
 function K.GetClassSectionName()
 	local class = (K.GetPlayerClass and K.GetPlayerClass()) or select(2, UnitClass("player"));
 	local localized = UnitClass("player");
 	return localized or class or (L["SIDE_CLASSOPT"] or "Class Options"), class;
 end
 
--- ---------------------------------------------------------
--- SECCION "PvP"  (lo que sirve para cualquier clase)
--- ---------------------------------------------------------
 function K.BuildPvPSection(pane)
 	local prev = nil;
 
-	-- ── Barra de arriba: mover / resetear todos (igual que la de clase) ──
-	-- Cada modulo que se puede mover se anota en "movers" con su boton, para
-	-- que el boton propio y el de "todos" digan siempre lo mismo.
 	local movers = {};
 	local RefreshMoveAll;
 	local function AddMover(id, isMoving, setMove, reset, btn, onText, offText)
@@ -1078,8 +918,7 @@ function K.BuildPvPSection(pane)
 		for _, m in ipairs(movers) do m.Sync(); end
 	end
 	moveAll:SetScript("OnClick", function()
-		-- Si alguno se esta moviendo se fijan todos; si no, se ponen a mover
-		-- los que esten prendidos (apagado no hay nada que mostrar).
+
 		local fix = AnyMoving();
 		for _, m in ipairs(movers) do
 			if fix then
@@ -1100,26 +939,16 @@ function K.BuildPvPSection(pane)
 	pane:HookScript("OnShow", function() RefreshMoveAll(); end);
 	prev = bar;
 
-	-- ══════════ HUD DE COMBATE ══════════
 	prev = HeaderBlock(pane, prev, L["PVP_HUD"] or "Combat HUD",
 		L["PVP_HUD_NOTE"]
 		or "Bars that sit next to your character so you do not have to look at the unit frames.");
 
-	-- ── Power Bar ──
 	local pbBlk, pbBody = ModuleBlock(pane, prev, "PowerBar",
 		L["MOD_POWERBAR"] or "Power Bar", L["MOD_POWERBAR_DESC"]);
 	prev = pbBlk;
 	do
 		local by = 0;
-		-- LAS CASILLAS VAN EN DOS COLUMNAS.
-		--
-		-- Eran ocho apiladas y el bloque quedaba altisimo: para llegar a los
-		-- sliders habia que scrollear medio panel. En dos columnas ocupan la
-		-- mitad y entran de una con los sliders, que ya venian en dos.
-		--
-		-- Las etiquetas se acortaron para que entren en media fila. El
-		-- detalle no se perdio: esta en el tooltip de cada una, que es donde
-		-- corresponde. La del porcentaje no tenia y ahora si.
+
 		local COL_L, COL_R = 22, 250;
 
 		local pbRow = 0;
@@ -1133,7 +962,6 @@ function K.BuildPvPSection(pane)
 		local function UpdBar()  if K.UpdatePowerBar then K.UpdatePowerBar(); end end
 		local function UpdHP()   if K.ApplyPowerBarHealth then K.ApplyPowerBarHealth(); end end
 
-		-- Emparejadas por tema: visibilidad, numeros, vida, color y auras.
 		PBCheck(L["CB_POWERBAR_COMBAT"] or "Only in combat", "PowerBarCombatOnly",
 			L["TIP_PowerBarCombatOnly"]
 			or "Hides the power bar out of combat so it does not clutter the screen.", UpdBar);
@@ -1163,8 +991,6 @@ function K.BuildPvPSection(pane)
 			or "Two rows of small icons: buffs on top, debuffs below. Unlike the Blizzard frame it shows all of them, not a chosen few.",
 			function() if K.ApplyPowerBarAuraToggle then K.ApplyPowerBarAuraToggle(); end end);
 
-		-- Se baja por FILAS, no por casillas: dos por fila, redondeando para
-		-- arriba si alguna vez queda un numero impar.
 		by = by - math.ceil(pbRow / 2) * 26;
 
 		local function PBSlider(label, sx, sy, minV, maxV, step, getFn, setFn)
@@ -1213,8 +1039,6 @@ function K.BuildPvPSection(pane)
 			function() return (K.GetPowerBarAuraPerRow and K.GetPowerBarAuraPerRow()) or 8; end,
 			function(v) if K.SavePowerBarAuraPerRow then K.SavePowerBarAuraPerRow(v); end end);
 
-		-- Donde se cuelgan las dos filas. Botones angostos para que la fila
-		-- entera entre al lado de los sliders sin desbordar el cuerpo.
 		by = by - 42;
 		ChoiceSelector(pbBody, 26, by, L["BTN_AURAPOS_LABEL"] or "Auras:", {
 			{ value = "RIGHT",  text = L["AURAPOS_RIGHT"]  or "Right" },
@@ -1234,7 +1058,6 @@ function K.BuildPvPSection(pane)
 			function() if K.ResetPowerBarPosition then K.ResetPowerBarPosition(); end end);
 	end
 
-	-- ── Melee Swing Timer ──
 	local swBlk, swBody = ModuleBlock(pane, prev, "MeleeSwingTimer",
 		L["MOD_MELEESWING"] or "Melee Swing Timer", L["MOD_MELEESWING_DESC"]);
 	prev = swBlk;
@@ -1283,7 +1106,7 @@ function K.BuildPvPSection(pane)
 			if self._last == v then return; end
 			self._last = v;
 			swVal:SetText(string.format("%.2f", v));
-			-- Misma puerta que Ctrl + rueda sobre la barra de swing.
+
 			if not (K.SetScaleFromControl and K.SetScaleFromControl("SwingTimer", v))
 			   and K.SaveMeleeSwingScale then
 				K.SaveMeleeSwingScale(v);
@@ -1296,8 +1119,6 @@ function K.BuildPvPSection(pane)
 			RefreshSwingScale();
 		end);
 
-		-- Cicla entre los tres bordes: tooltip, sin marco (como arena) y
-		-- el de la barra de casteo de Blizzard.
 		BorderStyleSelector(swBody, 24, -84,
 			function() return (K.GetMeleeSwingBorderStyle and K.GetMeleeSwingBorderStyle()) or "Tooltip"; end,
 			function(v) if K.SetMeleeSwingBorderStyle then K.SetMeleeSwingBorderStyle(v); end end);
@@ -1320,9 +1141,6 @@ function K.BuildPvPSection(pane)
 			swMove, LOCK, MOVE);
 	end
 
-	-- ══════════ ENEMIGOS ══════════
-	-- Sin subtitulo: el encabezado ya dice de que va la seccion y cada modulo
-	-- trae su propia descripcion abajo.
 	prev = HeaderBlock(pane, prev, L["PVP_ENEMY_HEADER"] or "Enemy awareness");
 
 	local eaBlk, eaBody = ModuleBlock(pane, prev, "EnemySpellAlert",
@@ -1362,7 +1180,6 @@ function K.BuildPvPSection(pane)
 			if K.OpenEnemyAlertMenu then K.OpenEnemyAlertMenu(); end
 		end);
 
-		-- Donde mostrarse (mismo esquema que el Gargoyle)
 		local eaWhere = eaBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
 		eaWhere:SetPoint("TOPLEFT", 24, -62);
 		eaWhere:SetText((K.UI and K.UI.Label(L["GARG_WHERE"] or "Show it in:"))
@@ -1389,8 +1206,6 @@ function K.BuildPvPSection(pane)
 			end);
 		end
 
-		-- Escala del icono. Usa el slider comun del addon, que ya guarda y
-		-- aplica solo a traves de ScaleAPI.
 		if K.UI and K.UI.ScaleSlider then
 			K.UI.ScaleSlider(eaBody, "EnemySpellAlert", 26, -142, 200,
 				L["SLIDER_SCALE"] or "Scale");
@@ -1406,7 +1221,6 @@ function K.BuildPvPSection(pane)
 			eaShow, L["BTN_HIDE_BARS"] or "Hide", L["BTN_SHOW_BARS"] or "Show to position");
 	end
 
-	-- ── Seduccion sobre ti (portado de WeakAuras) ──
 	local sdBlk, sdBody = ModuleBlock(pane, prev, "SeductionAlert",
 		L["MOD_SEDUCTION"] or "Seduction on you (arena)", L["MOD_SEDUCTION_DESC"]);
 	prev = sdBlk;
@@ -1445,12 +1259,11 @@ function K.BuildPvPSection(pane)
 			sdMove, LOCK, MOVE);
 	end
 
-	-- ── Gargoyle Tracker ──
 	local gtBlk, gtBody = ModuleBlock(pane, prev, "GargoyleTracker",
 		L["MOD_GARGOYLE"] or "Gargoyle Tracker", L["MOD_GARGOYLE_DESC"]);
 	prev = gtBlk;
 	do
-		-- Estilo (desplegable) y espejo, en la misma fila.
+
 		local styleLbl = gtBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
 		styleLbl:SetPoint("TOPLEFT", 24, -8);
 		styleLbl:SetText((K.UI and K.UI.Label(L["GARG_MODE"] or "Style"))
@@ -1508,7 +1321,6 @@ function K.BuildPvPSection(pane)
 		end);
 		mirCB:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 
-		-- Donde mostrarse
 		local whereLbl = gtBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
 		whereLbl:SetPoint("TOPLEFT", 24, -34);
 		whereLbl:SetText((K.UI and K.UI.Label(L["GARG_WHERE"] or "Show it in:"))
@@ -1535,7 +1347,6 @@ function K.BuildPvPSection(pane)
 			end);
 		end
 
-		-- Modo test + reset de posicion
 		local gtTest = CreateFrame("Button", nil, gtBody, "UIPanelButtonTemplate");
 		gtTest:SetPoint("TOPLEFT", 26, -106);
 		gtTest:SetSize(150, 22);
@@ -1555,7 +1366,6 @@ function K.BuildPvPSection(pane)
 			if K.ResetGargoylePosition then K.ResetGargoylePosition(); end
 		end);
 
-		-- Escala (registro central)
 		if K.UI and K.UI.ScaleSlider then
 			K.UI.ScaleSlider(gtBody, "GargoyleTracker", 26, -140, 200);
 		end
@@ -1570,15 +1380,6 @@ function K.BuildPvPSection(pane)
 			gtTest, L["BTN_HIDE_BARS"] or "Hide", L["BTN_TEST_MODE"] or "Test mode");
 	end
 
-	-- Aca habia dos bloques "Planned" anunciando cosas que no existen
-	-- (avisos de dispel, resurreccion, control de masas, DR, buffs). Se
-	-- sacaron junto con los de cada clase: anunciar lo que no esta hecho
-	-- solo ocupa lugar y hace parecer que falta algo.
-
-	-- Alto para el scroll: el de TODO desplegado, medido. Se calcula una vez
-	-- (recalcularlo al desplegar haria saltar el scroll). Antes era un
-	-- -1000 fijo, y con Power Bar, la alerta de hechizos y la gargola
-	-- abiertos el final de la hoja (opciones de la gargola) quedaba afuera.
 	local total = 0;
 	for _, blk in ipairs(pane._nufBlocks or {}) do
 		local h = blk._headH and (blk._headH + (blk._bodyH or 0) + 4) or (blk:GetHeight() or 0);
@@ -1587,9 +1388,6 @@ function K.BuildPvPSection(pane)
 	return -math.max(1000, total + 20);
 end
 
--- ---------------------------------------------------------
--- SECCION de la CLASE detectada
--- ---------------------------------------------------------
 function K.BuildClassSection(pane)
 	local x = 16;
 	local y = -14;
@@ -1598,14 +1396,10 @@ function K.BuildClassSection(pane)
 	local className = UnitClass("player") or class or "?";
 	local color = CLASS_COLORS[class] or "|cffFFFFFF";
 
-	-- Las clases con la pagina nueva (barra de "Mover todos" arriba) no
-	-- llevan el cartel: la lista de la izquierda ya dice la clase, y el
-	-- cartel ocupaba el primer lugar de la pagina para repetirlo.
 	if OWN_TOP_BAR[class] and CLASS_MODULES[class] then
 		return CLASS_MODULES[class](pane, x, y);
 	end
 
-	-- Cartel de clase detectada
 	local banner = CreateFrame("Frame", nil, pane);
 	banner:SetPoint("TOPLEFT", x - 4, y);
 	banner:SetSize(440, 40);

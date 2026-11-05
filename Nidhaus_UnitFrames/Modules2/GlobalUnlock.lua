@@ -1,70 +1,9 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- GlobalUnlock.lua
--- Modo "desbloquear todo": muestra un overlay arrastrable sobre
--- cada frame movible y guarda la posicion.
---
--- Cubre: Player, Target, Focus, Party, barras de accion, buffs,
--- debuffs, barra de casteo, Auto Shot y Melee Swing.
---
--- /nufmove  -> activa / desactiva
--- =========================================================
-
 local unlocked = false;
 local overlays = {};
 
--- name        = clave para guardar la posicion
--- frame       = nombre global del frame a mover
--- label       = texto del overlay
--- protected   = true si es un frame protegido (no se puede mover en combate)
--- managed   = clave en UIPARENT_MANAGED_FRAME_POSITIONS. Blizzard reposiciona
---             estos frames constantemente ("se quedan imantados"), asi que hay
---             que sacarlos de esa tabla apenas el usuario los mueve.
--- scalable  = se puede agrandar con Ctrl + rueda
--- frames = lista de candidatos. Se usa el PRIMERO que exista.
--- NUF reparenta Player y Party a sus propios contenedores, asi que hay que
--- mover ESOS y no los de Blizzard, si no el recuadro azul queda desfasado.
--- group      = "frames" (unit frames) | "extra" (barras, buffs, timers)
--- managed    = lo administra UIParent_ManageFramePositions
--- protected  = frame protegido: no se puede mover en combate
--- scalable   = se agranda con Ctrl + rueda
--- noClamp    = NO se lo frena contra el borde de la pantalla.
---
---              Por defecto todo movible se frena, para que no se pierda
---              fuera de la vista. Pero las tres filas de accion tienen
---              ARTE QUE CUELGA POR DEBAJO del contenedor: el contenedor
---              mide lo que miden los botones (36 px), y el fondo con los
---              grifos baja mas todavia. Frenado, el contenedor se planta
---              en y=0 y el arte NO PUEDE seguir bajando: ahi nace el
---              desfasaje entre la barra y el fondo. Por eso estas tres,
---              y solo estas, van sueltas.
--- overlayPad  = expande el recuadro por FUERA del frame, en pixeles. Para
---               frames cuyo arte se dibuja mas grande que ellos mismos.
--- overlaySize = tamaño MINIMO del recuadro. Necesario para frames que no
---              tienen tamaño propio (BuffFrame mide 1x1: sin esto el recuadro
---              sale de 1 pixel y es imposible agarrarlo).
--- overlayOn   = nombre de OTRO frame sobre el que dibujar el recuadro. Se
---               sigue arrastrando el de "frames"; esto solo cambia donde se
---               ve la caja. Para contenedores mas grandes que su contenido,
---               como MinimapCluster respecto del mapa.
--- overlayOffset = corrimiento { x, y } del recuadro, en pixeles. Para
---               anclas cuyo contenido no arranca justo en su borde.
--- CLASES QUE PUEDEN TENER MASCOTA.
---
--- La caja de "Pet" aparecia en el modo mover para TODOS, tambien para un
--- paladin, que no va a tener mascota nunca en su vida.
---
--- Y el motivo por el que aparecia sin mascota es bueno: un cazador entre
--- mascota y mascota tiene que poder acomodar el marco igual, y por eso la
--- entrada lleva overlaySize fijo en vez de medir el frame. Pero eso vale
--- para quien PUEDE tener una, no para quien no.
---
--- DK, mago, sacerdote y chaman entran porque sus invocaciones -- ghoul,
--- elemental de agua, shadowfiend, elementales y lobos -- ocupan la unidad
--- "pet" y muestran ese marco, aunque sean temporales. Druida no: los
--- treants son guardianes y no aparecen ahi.
 local PET_CLASSES = {
 	HUNTER      = true,
 	WARLOCK     = true,
@@ -74,120 +13,34 @@ local PET_CLASSES = {
 	SHAMAN      = true,
 };
 
--- OJO: va ACA ARRIBA y no al lado de PlayerClass, que es donde la escribi
--- primero. MOVABLES se construye en este mismo punto del archivo, asi que
--- una local declarada mas abajo es INVISIBLE para el: "class = PET_CLASSES"
--- se habria leido como global nil, la entrada habria quedado sin filtro y
--- el paladin seguiria viendo la caja -- sin ningun error que lo delate. Es
--- el mismo tropiezo que ya me comio ApplyBarHolderScales y el stanceHolder.
-
 local MOVABLES = {
-	-- SIN tamaño fijo: el recuadro toma el del frame.
-	--
-	-- Les habia puesto 200x50 y quedo peor que antes — una caja que no
-	-- seguia ni la escala ni el tamaño real. El recuadro grande no era el
-	-- problema: es el tamaño que de verdad ocupa el marco.
+
 	{ key = "Player",  group = "frames", frames = {"NidhausPlayerFrame", "PlayerFrame"}, label = "Player", scalable = true },
 	{ key = "Target",  group = "frames", frames = {"TargetFrame"},  label = "Target", scalable = true },
-	-- EL FOCUS NO ESTA ACA A PROPOSITO.
-	--
-	-- Su posicion la maneja "Use Custom Positions" (Core/FramePositions.lua)
-	-- junto con la del jugador y la del objetivo. Tenerlo tambien aca eran
-	-- dos sistemas empujando el mismo marco: lo movias con el recuadro y al
-	-- rato volvia solo, o al reves.
-	--
-	-- Si algun dia se lo quiere devolver, primero hay que decidir cual de
-	-- los dos manda; mientras tanto, uno solo.
+
 	{ key = "Pet",     group = "frames", frames = {"PetFrame"},     label = "Pet",    scalable = true, managed = "PetFrame",
 	  class = PET_CLASSES, orIfPet = true,
-	  overlaySize = {120, 40} },   -- PetFrame mide poco: caja fija para poder agarrarlo sin mascota
+	  overlaySize = {120, 40} },
 
-	-- Party 1-4 individuales (antes era UNA sola caja "Party").
-	-- partyIndex marca que su posicion se guarda en el MISMO store que lee
-	-- el modo 3v3 (K.GetSavedPosition), no en globalPos: asi las dos cosas
-	-- no se pelean y arrastrar un miembro es compatible con el 3v3.
 	{ key = "Party1", group = "frames", frames = {"PartyMemberFrame1"}, label = "Party 1", partyIndex = 1 },
 	{ key = "Party2", group = "frames", frames = {"PartyMemberFrame2"}, label = "Party 2", partyIndex = 2 },
 	{ key = "Party3", group = "frames", frames = {"PartyMemberFrame3"}, label = "Party 3", partyIndex = 3 },
 	{ key = "Party4", group = "frames", frames = {"PartyMemberFrame4"}, label = "Party 4", partyIndex = 4 },
-	-- Arena NO va aca: los marcos de arena ya tienen su propio mover
-	-- ("Show Arena Frame" / Shift+Alt+Click). Poner un overlay encima
-	-- tapaba ese mover y agregaba un recuadro que antes no estaba.
-	-- Boss NO va: tiene su propio modo de prueba con /nuf boss
 
-	-- Buffs: se mueve el ancla propia de AuraAnchor.lua, no BuffFrame.
-	-- Mover BuffFrame no sirve porque Blizzard re-ancla las auras en cada update.
-	-- El ancla mide 330x90 y las auras crecen hacia la IZQUIERDA desde su
-	-- esquina superior derecha, asi que el recuadro quedaba corrido a la
-	-- izquierda respecto de los iconos que realmente se ven. El corrimiento
-	-- lo acomoda; es un solo numero si hay que afinarlo.
-	-- EL RECUADRO SE MIDE SOBRE LOS ICONOS DE VERDAD.
-	--
-	-- El ancla mide 1x1 (ver la cabecera de AuraAnchor.lua), asi que sin
-	-- esto caia en el camino de "marco sin tamaño util" y se dibujaba una
-	-- caja fija de 200x60 con un corrimiento de 20 puesto a ojo. No tenia
-	-- nada que ver con el bloque: no cambiaba con los iconos por fila ni
-	-- con la escala, que es justo lo que se pedia.
-	--
-	-- Midiendo los iconos, el recuadro ES el bloque: si lo dejas en 4 por
-	-- fila, mide cuatro iconos de ancho; si subis la escala, crece.
-	-- overlayOffset queda para cuando no hay ninguna aura activa y hay que
-	-- volver a la caja fija.
 	{ key = "Buffs",      group = "extra", frames = {"NUF_BuffAnchor"},   label = "Buffs",   scalable = true, auraAnchor = true,
 	  buttons = { prefix = "BuffButton", count = BUFF_MAX_DISPLAY or 32 },
 	  overlayOffset = { 20, 0 } },
 	{ key = "Debuffs",    group = "extra", frames = {"NUF_DebuffAnchor"}, label = "Debuffs", scalable = true, debuffAnchor = true,
 	  buttons = { prefix = "DebuffButton", count = DEBUFF_MAX_DISPLAY or 16 },
 	  overlayOffset = { 20, 0 } },
-	-- La barra mide 195x13 pero su marco decorado sobresale bastante: con
-	-- SetAllPoints el recuadro quedaba visiblemente adentro de la barra.
-	-- El padding lo expande por fuera, y como se calcula sobre el tamaño
-	-- REAL, sigue a la escala cuando la subis con Ctrl + rueda.
+
 	{ key = "CastBar",    group = "extra", frames = {"CastingBarFrame"},       label = "Cast Bar", scalable = true, managed = "CastingBarFrame",
 	  overlayPad = { 4, 5 } },
-	-- Se sigue arrastrando MainMenuBar (ver el comentario largo mas abajo
-	-- sobre por que NO se mueven las barras como bloque), pero el recuadro
-	-- se dibuja sobre NUF_ActionBarsBox, que abarca todas las barras a la
-	-- vista. Antes cubria solo los 510 de MainMenuBar y dejaba afuera media
-	-- barra unificada.
-	--
-	-- framesMiniBar: con MiniBar puesto se mueve y escala NUESTRO
-	-- contenedor, no MainMenuBar. MainMenuBar es el padre de las bolsas,
-	-- el micromenu y la barra de experiencia: escalarla los escalaba a
-	-- todos. El contenedor solo tiene los 12 botones.
-	--
-	-- Sin overlayOn en ese caso: el contenedor YA mide lo que ocupan los
-	-- botones, asi que el recuadro es el contenedor mismo y crece con la
-	-- escala en vez de quedarse del tamaño viejo.
+
 	{ key = "MainBar",    group = "extra", frames = {"MainMenuBar"},           label = "Action Bar 1", scalable = true, protected = true, managed = "MainMenuBar",
 	  framesMiniBar = {"NUF_ActionBarHolder1"}, noClamp = true,
 	  overlayOn = "NUF_ActionBar1Box" },
 
-	-- LAS TRES FILAS, POR SEPARADO.
-	--
-	-- Antes habia una sola entrada y su recuadro abarcaba las tres barras,
-	-- asi que solo se podia arrastrar el bloque. KkthnxUI no tiene un modo
-	-- especial para esto: cada barra es su propio movible, y punto. Es lo
-	-- mismo que se hace aca.
-	--
-	-- NO se reparentan botones. Estas dos son frames de Blizzard,
-	-- protegidos y con gestor de posiciones encima, exactamente como Pet
-	-- Bar y Totem Bar, que ya se mueven bien con protected + managed. La
-	-- maquinaria ya existe; lo unico que faltaba era darles su entrada.
-	--
-	-- Sin anchorTo a proposito: la gracia es que cada una vaya a donde vos
-	-- la dejes, no que sigan a la principal.
-	--
-	-- SOLO CON MINIBAR (setting = "MiniBarEnabled").
-	--
-	-- En MiniBar cada fila es una barra entera y moverlas por separado
-	-- tiene sentido. Unify hace lo contrario A PROPOSITO: funde las tres en
-	-- dos filas largas y reparte los botones entre marcos distintos --
-	-- MultiBarBottomRightButton7 se ancla a MainMenuBar, no a su propia
-	-- barra. Ahi "mover la barra 3" no significa nada: se llevaria seis
-	-- botones y dejaria los otros seis donde estaban.
-	--
-	-- Por eso en Unify se sigue moviendo el bloque, que es lo que Unify es.
 	{ key = "ActionBar2", group = "extra", frames = {"MultiBarBottomLeft"},   label = "Action Bar 2",
 	  scalable = true, onlyIfVisible = true, setting = "MiniBarEnabled",
 	  framesMiniBar = {"NUF_ActionBarHolder2"}, noClamp = true },
@@ -195,36 +48,12 @@ local MOVABLES = {
 	  scalable = true, onlyIfVisible = true, setting = "MiniBarEnabled",
 	  framesMiniBar = {"NUF_ActionBarHolder3"}, noClamp = true },
 
-	-- BARRAS QUE CUELGAN DE LA PRINCIPAL
-	--
-	-- Con anchorTo se anclan a MainMenuBar: si moves la barra principal,
-	-- estas la siguen solas porque su posicion esta expresada respecto de
-	-- ella. Y si arrastras una por separado, se guarda su desplazamiento
-	-- relativo, asi que sigue acompañando a la principal desde el lugar
-	-- nuevo. Es el mismo patron de "Holder" que usa Modules/ActionBars.lua.
-	-- CON MINIBAR SE ARRASTRA EL BOTON, NO EL MARCO.
-	--
-	-- Aca estaba el "la barra de mascota no se mueve mientras la arrastro,
-	-- recien aparece en su lugar cuando bloqueo".
-	--
-	-- MiniBar no coloca PetActionBarFrame: apila PetActionButton1 (mira
-	-- MB_STACK en MiniBar.lua) y los demas botones cuelgan de el. El
-	-- recuadro, en cambio, arrastraba el MARCO. O sea que se movia un
-	-- marco que con MiniBar no decide nada, mientras lo que se ve seguia
-	-- anclado donde lo habia dejado la pila: nada se movia en pantalla.
-	-- Al bloquear corria un repintado completo que SI leia la posicion
-	-- guardada, y recien ahi saltaba a destino.
-	--
-	-- Con framesMiniBar los dos sistemas miran el mismo marco. Las tres
-	-- filas ya lo tenian; a esta y a la de posesion se les habia olvidado.
 	{ key = "PetBar",     group = "extra", frames = {"PetActionBarFrame"},     label = "Pet Bar",
 	  class = PET_CLASSES, orIfPet = true,
 	  framesMiniBar = {"PetActionButton1"},
 	  scalable = true, protected = true, anchorTo = "MainMenuBar", managed = "PetActionBarFrame", onlyIfVisible = true,
 	  buttons = { prefix = "PetActionButton", count = NUM_PET_ACTION_SLOTS or 10 } },
-	-- Se mueve NUESTRO contenedor, no el frame de Blizzard: los botones
-	-- cuelgan de el (ver K.AttachStanceButtons en Modules/ActionBars.lua).
-	-- Asi no hay frame protegido, ni gestor de posiciones, ni candados.
+
 	{ key = "StanceBar",  group = "extra", frames = {"NUF_StanceBarHolder"},  label = "Stance Bar",
 	  scalable = true, anchorTo = "MainMenuBar", onlyIfVisible = true,
 	  resetFunc = "ResetStanceHolder",
@@ -234,16 +63,14 @@ local MOVABLES = {
 	  buttons = { prefix = "MultiCastActionButton", count = 12 },
 	  class = "SHAMAN" },
 	{ key = "PossessBar", group = "extra", frames = {"PossessBarFrame"},       label = "Possess Bar",
-	  framesMiniBar = {"PossessButton1"},   -- idem PetBar: MB_STACK apila el boton
+	  framesMiniBar = {"PossessButton1"},
 	  scalable = true, protected = true, anchorTo = "MainMenuBar", managed = "PossessBarFrame", onlyIfVisible = true,
 	  buttons = { prefix = "PossessButton", count = NUM_POSSESS_SLOTS or 2 } },
 	{ key = "AutoShot",   group = "extra", frames = {"NUF_AutoShotMover"},     label = "Auto Shot", scalable = true,
 	  module = "AutoShotTimer", class = "HUNTER" },
 	{ key = "SwingTimer", group = "extra", frames = {"NUF_SwingMover"},        label = "Auto attack", scalable = true,
 	  module = "MeleeSwingTimer" },
-	-- Modulos con marco propio: tambien se acomodan desde "Mover todo".
-	-- Mascotas del grupo (Party pet enhanced): se agarra la de arriba y
-	-- las otras tres cuelgan de ella. Botones seguros: protected.
+
 	{ key = "PartyPets",  group = "extra", frames = {"CustomParty1PetFrame"},  label = "Party pets", scalable = true,
 	  protected = true, preview = "SetPartyPetPreview", module = "PartyPetFrame" },
 	{ key = "PaladinICD", group = "extra", frames = {"PaladinICDFrame"},       label = "Paladin ICD", scalable = true,
@@ -252,43 +79,18 @@ local MOVABLES = {
 	  preview = "SetPaladinAurasPreview", module = "PaladinAuras", class = "PALADIN" },
 	{ key = "TurnEvil",   group = "extra", frames = {"NUF_TurnEvilStack"},     label = "Turn Evil", scalable = true,
 	  preview = "SetTurnEvilPreview", module = "TurnEvil", class = "PALADIN" },
-	-- Portados de WeakAuras (ver Modules2/NidhausTools).
+
 	{ key = "SacredShield", group = "extra", frames = {"NUF_SacredShieldFrame"},   label = "Sacred Shield", scalable = true,
 	  preview = "SetSacredShieldMove", module = "SacredShield", class = "PALADIN" },
 	{ key = "SSTracker",    group = "extra", frames = {"NUF_SacredShieldTracker"}, label = "Sacred Shield tracker", scalable = true,
 	  preview = "SetSacredShieldTrackerMove", module = "SacredShieldTracker", class = "PALADIN" },
 	{ key = "Seduction",    group = "extra", frames = {"NUF_SeductionAlert"},      label = "Seduction alert", scalable = true,
 	  preview = "SetSeductionAlertMove", module = "SeductionAlert" },
-	-- GARGOLA: SIN RECUADRO AZUL, a proposito.
-	--
-	-- Dos cosas estaban mal aca. El frame se llama GT_Blizzard, no
-	-- "GT_Blizz": ese nombre no existe, asi que el recuadro terminaba
-	-- cayendo sobre otro frame y salia gigante y corrido.
-	--
-	-- Y sobre todo, no hace falta: los dos frames de la gargola YA son
-	-- arrastrables por su cuenta (SetMovable + EnableMouse + RegisterForDrag
-	-- en GargoyleTracker.lua). Ponerles un overlay encima daba dos cosas
-	-- para lo mismo — el recuadro y el marco real — y encima el recuadro
-	-- tapaba el arrastre propio.
-	--
-	-- Con noOverlay, "Mover todo" solo dispara su modo prueba para que el
-	-- marco aparezca, y lo arrastras directo.
+
 	{ key = "Gargoyle",   group = "extra", frames = {"GT_Blizzard", "GT_Custom"}, label = "Gargoyle",
-	  -- SIN filtro de clase: rastrea la gargola ENEMIGA, no la propia. Le
-	  -- sirve a cualquiera que juegue contra un DK, que es todo el mundo.
-	  -- Le habia puesto class = "DEATHKNIGHT" por asumir que era la tuya.
+
 	  preview = "SetGargoylePreview", module = "GargoyleTracker", noOverlay = true },
-	-- SPELL ALERT: mismo caso que la gargola, SIN RECUADRO.
-	--
-	-- El ancla ya se arrastra sola (SetMovable + RegisterForDrag +
-	-- OnDragStart/Stop en EnemySpellAlert.lua), asi que un overlay encima
-	-- seria un segundo sistema de arrastre tapando al que ya funciona.
-	--
-	-- Lo que faltaba era el preview: sin el, al abrir "Mover todo" el icono
-	-- no aparecia (el modulo lo tiene oculto hasta que un enemigo castea) y
-	-- no habia nada que agarrar. Y al cerrar, su modo arrastre quedaba
-	-- prendido por su cuenta. Con esto se abre y se cierra junto con el
-	-- resto.
+
 	{ key = "EnemyAlert", group = "extra", frames = {"NUF_EnemyAlertAnchor"},  label = "Spell Alert",
 	  preview = "SetEnemyAlertPreview", module = "EnemySpellAlert", noOverlay = true },
 	{ key = "ArrowCount", group = "extra", frames = {"NUF_ArrowCountFrame"},   label = "Ammo",      scalable = true,
@@ -296,70 +98,25 @@ local MOVABLES = {
 	{ key = "DungeonRoles", group = "extra", frames = {"NUF_DungeonRoles"},   label = "Dungeon roles", scalable = true,
 	  module = "DungeonRoles", preview = "SetDungeonRolesPreview" },
 
-	-- Barras de casteo del grupo (addon PartyCastingBars).
-	--
-	-- Se mueve SOLO la del compa 1 y las otras tres copian el mismo offset:
-	-- cada una cuelga de su propio PartyMemberFrame, asi que con un unico
-	-- recuadro quedan las cuatro alineadas. Cuatro recuadros encimados
-	-- sobre los marcos del grupo no se podian ni agarrar.
-	--
-	-- Va con "setting" y no con "module" porque no es un modulo de NUF:
-	-- es el checkbox Party Castbars del panel.
 	{ key = "PartyCast", group = "frames", frames = {"PartyMemberFrame1CastingBarFrame"},
 	  label = "Party Cast Bar", setting = "PCB_Enabled",
 	  preview = "SetPartyCastBarPreview", partyCast = true,
-	  -- Mismo caso que el Cast Bar del jugador: la StatusBar es mas angosta
-	  -- que su borde decorado (PartyCastingBars le pone uno de 202x28 y
-	  -- ademas escala la barra a 1.10), asi que SetAllPoints daba un
-	  -- recuadro que terminaba antes que la barra.
-	  overlayPad = { 6, 6 } },
-	  -- SIN overlaySize: yo le habia puesto 150x16 a ojo y quedaba mas chico
-	  -- que la barra. Sin ese campo, el recuadro hace SetAllPoints sobre el
-	  -- frame real, asi que mide exactamente lo que estas moviendo. El
-	  -- tamaño fijo solo hace falta para frames que miden 1x1 (los anchors
-	  -- de auras), no para este.
 
-	-- Marcos de objetivo del grupo.
-	--
-	-- Igual que las barras de casteo: se mueve el del compa 1 y los otros
-	-- tres lo siguen, porque el modulo ya guarda UN offset compartido
-	-- respecto de cada PartyMemberFrame.
+	  overlayPad = { 6, 6 } },
+
 	{ key = "PartyTarget", group = "frames", frames = {"PartyTargetFrame1"},
 	  label = "Party Target", setting = "PartyTargetsEnabled",
 	  preview = "SetPartyTargetPreview", partyTarget = true },
 
-	-- ── Cosas de Blizzard que tambien ocupan pantalla ──
-	--
-	-- Si el modo se llama "Mover todo", que falten estas llama la atencion.
-	-- Ninguna es un frame protegido, asi que se arrastran como cualquier
-	-- otra.
-	--
-	-- Se mueve MinimapCluster y no Minimap: el cluster es el contenedor que
-	-- lleva ademas el nombre de la zona, el reloj y los botones. Agarrando
-	-- solo el mapa, el resto se quedaba atras.
-	-- El recuadro va sobre Minimap y no sobre el cluster: el cluster incluye
-	-- la barra del nombre de zona, el reloj y los botones, asi que su caja
-	-- sobresalia bastante por arriba y por los costados del mapa. Se sigue
-	-- arrastrando el cluster, que es lo que hay que mover.
 	{ key = "Minimap",  group = "extra", frames = {"MinimapCluster"},
 	  label = "Minimap", managed = "MinimapCluster", overlayOn = "Minimap" },
 
-	-- Marcador de battleground / objetivos de la zona. Aparece solo en BG y
-	-- en zonas con objetivos, asi que la mayor parte del tiempo no se ve —
-	-- por eso lleva caja fija: sin ella el recuadro mide 0 y no se agarra.
 	{ key = "BGScore",  group = "extra", frames = {"WorldStateAlwaysUpFrame"},
 	  label = "BG score", overlaySize = { 200, 60 }, overlayAnchor = "TOP" },
 
-	-- Barra de captura (Ojo de la Tormenta, Arathi...).
 	{ key = "CaptureBar", group = "extra", frames = {"WorldStateCaptureBar1"},
 	  label = "Capture bar", overlaySize = { 180, 40 } },
 
-	-- ── Timers de arena ──
-	--
-	-- Estos solo existen dentro de una arena, y ahi no vas a estar
-	-- acomodando la interfaz. Sin un modo prueba que los muestre, eran
-	-- imposibles de posicionar: tenias que entrar a una arena, aguantar el
-	-- timer y adivinar.
 	{ key = "DalaranPipe", group = "extra", frames = {"NUF_DalaranPipeTimer"},
 	  label = "Dalaran waterfall", scalable = true,
 	  setting = "ArenaDalaranPipeTimer", preview = "SetArenaTimersPreview" },
@@ -369,19 +126,11 @@ local MOVABLES = {
 	{ key = "ArenaEnd",    group = "extra", frames = {"NUF_ArenaEndTimer"},
 	  label = "Arena time", scalable = true,
 	  setting = "ArenaEndTimer", preview = "SetArenaTimersPreview" },
-	-- El ojo (Shadow Sight): antes estaba clavado arriba al centro.
+
 	{ key = "ShadowSight", group = "extra", frames = {"NUF_ShadowSightTimer"},
 	  label = "Shadow Sight", scalable = true,
 	  setting = "ShadowSightTimer", preview = "SetArenaTimersPreview" },
 
-	-- ── Timers de clase (mago) ──
-	--
-	-- Ya tienen su propio "Show to position" en la pestaña de clase, pero
-	-- eso obliga a abrir el panel, ir a Mago y prender el modo. Estando en
-	-- "Mover todo" es donde uno acomoda la interfaz: tienen que estar aca.
-	--
-	-- Solo existen si el personaje es mago; ResolveFrame devuelve nil para
-	-- las otras clases y el recuadro no se crea.
 	{ key = "WaterEle",  group = "extra", frames = {"NUF_ClassTimer_WaterElemental"},
 	  label = "Water Elemental", setting = "MageWaterEleTimer",
 	  preview = "SetClassTimersPreview", class = "MAGE" },
@@ -390,20 +139,6 @@ local MOVABLES = {
 	  preview = "SetClassTimersPreview", class = "MAGE" },
 };
 
--- ---------------------------------------------------------
--- La "barra de posturas" no se llama igual para todos
---
--- ShapeshiftBarFrame es un solo frame que cada clase usa para lo suyo:
--- el paladin para las AURAS, el caballero de la muerte para las
--- presencias, el druida para las formas, y solo el guerrero para
--- posturas de verdad. Decirle "Stance Bar" a un paladin no significa
--- nada — que es justo lo que pasaba.
---
--- Se resuelve una vez al cargar, porque la clase no cambia.
--- ---------------------------------------------------------
--- Nombres de los recuadros en el idioma del cliente (Localization:
--- MOVER_LBL_<key>). Va ANTES del bloque de abajo, que despues le pone a la
--- barra de posturas el nombre que corresponde a tu clase.
 for _, entry in ipairs(MOVABLES) do
 	local t = L["MOVER_LBL_" .. entry.key];
 	if t then entry.label = t; end
@@ -425,29 +160,8 @@ do
 	end
 end
 
--- Alcance actual del modo mover: "frames" o "all"
 local currentScope = "all";
 
--- Modulos apagados = no se muestra su caja.
---
--- Antes aparecian igual y quedaban recuadros vacios: el frame no existe o
--- esta oculto, asi que no habia nada que arrastrar. Peor con los que tienen
--- modo prueba, porque el preview no se podia disparar.
--- Clase del jugador, resuelta LA PRIMERA VEZ QUE SE PIDE, no al cargar.
---
--- Yo la habia puesto como "local playerClass = select(2, UnitClass('player'))"
--- en el cuerpo del archivo, y eso rompia todo el filtro por clase: cuando
--- este archivo se ejecuta, el juego todavia no tiene los datos del personaje
--- y UnitClass devuelve nil.
---
--- Con playerClass = nil, la comparacion "entry.class ~= playerClass" daba
--- verdadera SIEMPRE, asi que se ocultaban TODAS las entradas con clase: la
--- gargola del DK, el Paladin ICD, el tracker, Turn Evil, Auto Shot, Ammo y
--- los dos timers de mago. Para todo el mundo, incluida la clase correcta.
---
--- Es el mismo error que tenia ArenaPointsCalc con su SavedVariable: leer al
--- cargar algo que recien existe despues. Resuelto en el primer uso, que
--- ocurre cuando abris el modo mover — ahi el personaje ya esta cargado.
 local playerClass;
 
 local function PlayerClass()
@@ -457,44 +171,14 @@ local function PlayerClass()
 	return playerClass;
 end
 
-
--- REGLA para poner "class" en una entrada:
---
---   SI el modulo mira TU personaje  ->  lleva class
---   SI mira al ENEMIGO o al grupo   ->  NO lleva
---
--- Me equivoque con la gargola justamente por no distinguir esto: el nombre
--- "Gargoyle Tracker" suena a algo del DK, pero rastrea la gargola ENEMIGA
--- — le sirve a cualquiera que juegue contra un DK. Ponerle
--- class = "DEATHKNIGHT" se la escondia a todos menos al unico que no la
--- necesita.
---
--- Con class hoy: Paladin ICD y tracker (tus defensivos y tus procs), Turn
--- Evil (lo que TU pusiste sobre el grupo), Auto Shot y Ammo (tu tiro), los
--- dos timers de mago (tus invocaciones).
---
--- Sin class: Spell Alert y la gargola, que son del rival.
 local function EntryModuleActive(entry)
-	-- Cosas de una clase que no es la tuya no tienen por que aparecer.
-	--
-	-- El modulo puede estar "activo" en la base de datos aunque seas de otra
-	-- clase — el registro no filtra por clase, solo el panel lo hace — asi
-	-- que preguntarle a IsModuleEnabled no alcanzaba. Un cazador veia el
-	-- recuadro del Paladin tracker.
-	--
-	-- Si por lo que sea la clase todavia no se puede leer, NO se filtra:
-	-- mostrar de mas es preferible a esconder algo que si corresponde.
+
 	local cls = PlayerClass();
 	if entry.class and cls then
 		if type(entry.class) == "table" then
-			-- Varias clases: la entrada vale para cualquiera de la lista.
+
 			if not entry.class[cls] then
-				-- RED DE SEGURIDAD.
-				--
-				-- Si hoy tenes mascota de verdad, la caja aparece aunque tu
-				-- clase no figure en la lista. Asi, si la lista se me quedo
-				-- corta, el sintoma es una caja de mas -- que se ignora --
-				-- y no una funcion que falta, que es mucho peor de notar.
+
 				if not (entry.orIfPet and UnitExists and UnitExists("pet")) then
 					return false;
 				end
@@ -504,30 +188,16 @@ local function EntryModuleActive(entry)
 		end
 	end
 
-	-- Algunas cosas movibles no son modulos registrados sino un checkbox
-	-- suelto del panel (las barras de casteo del grupo, por ejemplo, que
-	-- son de un addon externo). Para esas se mira el setting directo.
 	if entry.setting then
 		return (C and C[entry.setting]) and true or false;
 	end
-	if not entry.module then return true; end   -- no depende de nada
+	if not entry.module then return true; end
 	if not K.IsModuleEnabled then return true; end
 	return K.IsModuleEnabled(entry.module) and true or false;
 end
 
--- Se define despues de ResolveFrame, que es de donde saca el frame real.
 local EntryHasContent;
 
--- SI ESTE MOVIBLE ENTRA EN EL ALCANCE ACTUAL. UNA sola definicion.
---
--- La usan los recuadros azules Y ahora tambien las vistas previas, el
--- modo prueba del grupo, el mover de arena y la consola. Antes el alcance
--- solo filtraba los recuadros: todo lo demas se prendia siempre, fuera
--- cual fuera el alcance. Por eso el "Move" de la pestaña Pet mostraba los
--- marcos de prueba del grupo, el de arena y la consola entera.
---
--- "pet": el boton Move de la pestaña Pet. Un solo movible, no el grupo
--- entero de "frames".
 local function ScopeMatches(entry)
 	if currentScope == "all" then return true; end
 	if currentScope == "pet" then return entry.key == "Pet"; end
@@ -540,13 +210,8 @@ local function EntryInScope(entry)
 	return ScopeMatches(entry);
 end
 
--- Devuelve el frame real a mover para una entrada
 local function ResolveFrame(entry)
-	-- CON MINIBAR, EL CONTENEDOR MANDA.
-	--
-	-- No alcanza con preguntar si el contenedor existe: una vez creado no
-	-- se destruye nunca, asi que al volver a Unify seguiria ganandole al
-	-- frame de Blizzard. Se mira el MODO, que es el dato real.
+
 	if entry.framesMiniBar and C.MiniBarEnabled == true then
 		for _, name in ipairs(entry.framesMiniBar) do
 			local f = _G[name];
@@ -558,19 +223,11 @@ local function ResolveFrame(entry)
 		local f = _G[name];
 		if f and f.SetPoint then return f; end
 	end
-	-- Algunos contenedores de NUF viven en K y no en _G
+
 	if entry.key == "Party"  and K.NidhausPartyFrame then return K.NidhausPartyFrame; end
 	return nil;
 end
 
--- Barras que solo existen para algunas clases o situaciones: la de formas
--- sin formas, la de mascota sin mascota, la de posesion fuera de un
--- vehiculo. Con un paladin aparecian igual tres recuadros vacios encima de
--- la barra principal, tapandola y sin nada que mover adentro.
---
--- Se mira el frame REAL: si el juego no lo muestra, no hay recuadro. Para
--- la de formas se pregunta ademas cuantas hay, porque el frame existe
--- aunque la clase no tenga ninguna.
 function EntryHasContent(entry)
 	if not entry.onlyIfVisible then return true; end
 
@@ -580,18 +237,7 @@ function EntryHasContent(entry)
 	if entry.key == "StanceBar" then
 		local n = (GetNumShapeshiftForms and GetNumShapeshiftForms()) or 0;
 		if n < 1 then return false; end
-		-- EL HOLDER YA VIVE EN LOS DOS MODOS.
-		--
-		-- Esta linea decia "solo en unificado" porque cuando se escribio
-		-- era cierto: MiniBar no creaba el Holder, anclaba ShapeshiftButton1
-		-- a mano y no habia nada que arrastrar. Era la razon real por la que
-		-- la barra de auras del paladin no aparecia en el modo mover con
-		-- MiniBar puesto -- aunque el Holder ya existiera, este filtro la
-		-- descartaba antes de dibujar el recuadro.
-		--
-		-- Ahora MiniBar tambien llama a AttachStanceButtons y ancla el
-		-- Holder, asi que hay algo que mover en los dos modos. Sin ningun
-		-- modo de barras puesto no hay Holder y se sigue descartando.
+
 		if C.UnifyActionBars ~= true and C.MiniBarEnabled ~= true then
 			return false;
 		end
@@ -605,12 +251,6 @@ function EntryHasContent(entry)
 	return f:IsVisible() and true or false;
 end
 
--- ---------------------------------------------------------
--- Estado original de cada frame (para el boton Reset)
--- Se captura UNA vez, antes de aplicar cualquier posicion guardada.
--- Sin esto el reset solo borraba la DB y los frames se quedaban donde
--- estaban: habia que hacer /reload para verlos volver a su lugar.
--- ---------------------------------------------------------
 local originals = {};
 local capturedOnce = false;
 
@@ -623,16 +263,7 @@ local function CaptureOriginals()
 		if f and not originals[entry.key] then
 			local pts = {};
 			for i = 1, (f:GetNumPoints() or 0) do
-				-- Guardado por NOMBRE de campo, no como lista.
-				--
-				-- GetPoint devuelve cinco valores y el segundo (relativeTo) es
-				-- nil cuando el frame cuelga directamente de su padre. Metido
-				-- en una tabla eso deja un agujero en el indice 2, y unpack()
-				-- sobre una tabla con agujeros corta donde quiere: podia
-				-- devolver solo el primer valor, con lo que el SetPoint de
-				-- vuelta quedaba en "esquina contra esquina del padre y sin
-				-- desplazamiento". De ahi que algun frame terminara pegado a
-				-- una esquina de la pantalla despues de un Reset.
+
 				local p, rel, rp, x, y = f:GetPoint(i);
 				pts[i] = { point = p, rel = rel, relPoint = rp, x = x, y = y };
 			end
@@ -652,12 +283,6 @@ local function RestoreOriginal(entry)
 	if not f or not orig then return; end
 	if entry.protected and InCombatLockdown() then return; end
 
-	-- EL ORIGINAL ES DE OTRO MARCO. Se captura una vez, en el modo de
-	-- barras con el que entraste: con MiniBar la barra 1 es su contenedor;
-	-- sin MiniBar, MainMenuBar. Resetear en el otro modo le ponia a un
-	-- marco el punto y la escala del otro (la barra quedaba ~260 px corrida
-	-- hasta el /reload). En ese caso vale la foto de fabrica de las barras,
-	-- y si el marco no esta en ella, lo acomoda el rearmado que sigue.
 	if orig.frame and orig.frame ~= f then
 		if K.RestoreBarBaselineFrame and f.GetName and f:GetName() then
 			f._nufApplying = true;
@@ -679,43 +304,10 @@ local function RestoreOriginal(entry)
 	f._nufApplying = nil;
 end
 
--- =========================================================
--- UN SOLO DUEÑO POR POSICION
---
--- Habia DOS sistemas guardando la posicion del mismo marco:
---
---   * este modulo, en globalPos[clave], y ademas con un candado sobre
---     SetPoint para que nadie se la corra;
---   * el modulo de cada cosa (Sacred Shield, Seduction, los timers de
---     arena, el tracker de la gargola...), en SU propia tabla, que es la
---     que lee su boton "Mover" y la que borra su "Reset".
---
--- El que escribia ultimo ganaba, y como globalPos se aplica al entrar y
--- ademas deja el candado puesto, ganaba siempre este. Resultado: una vez
--- que movias un marco con "Mover todo", el Reset de su modulo no hacia
--- nada y lo que acomodabas con su propio "Mover" volvia solo al
--- reloguear. Fueron varios bugs distintos con la misma causa.
---
--- Ahora el dueño es UNO SOLO: si el modulo tiene tabla propia, manda el
--- modulo. Este modulo te deja arrastrar el marco igual, pero al soltarlo
--- le pasa el guardado al dueño y NO escribe globalPos ni pone candado.
--- Al entrar, tampoco toca esos marcos: los repone su modulo.
---
--- Quien guarda:
---   1) lo que el modulo haya dejado en K.FramePositionOwners[clave]
---      (los que guardan al soltar el mouse, no al soltar el arrastre);
---   2) si no, el propio OnDragStop del marco, que es el que ya corre
---      cuando lo arrastras con Alt;
---   3) si no hay ninguno de los dos, se guarda como antes -- asi una
---      entrada nueva nunca se queda sin guardar por olvido.
--- =========================================================
--- type() y no "or {}": K tiene un indice por defecto en algunos
--- entornos, y "or" no lo filtra.
 if type(K.FramePositionOwners) ~= "table" then K.FramePositionOwners = {}; end
 
-local OwnsItsPosition;   -- se define abajo, junto a OWN_STORES / OWN_GLOBALS
+local OwnsItsPosition;
 
--- Devuelve true si el guardado quedo en manos del modulo.
 local function SaveToOwner(entry, frame)
 	if not (entry and frame) then return false; end
 	local fn = K.FramePositionOwners[entry.key];
@@ -731,47 +323,18 @@ local function SaveToOwner(entry, frame)
 	return false;
 end
 
--- ---------------------------------------------------------
--- DB
--- ---------------------------------------------------------
 local function DB()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.globalPos then NidhausUnitFramesDB.globalPos = {}; end
 	return NidhausUnitFramesDB.globalPos;
 end
 
--- ---------------------------------------------------------
--- EL MODO DE BARRAS ES PARTE DE LA CLAVE
---
--- MiniBar y Unify colocan las tres filas de manera distinta. Una posicion
--- guardada en un modo no significa nada en el otro, asi que al alternar
--- entre los dos la fila 3 aparecia en el lugar del modo anterior: eso es
--- lo que se veia como "se bugeo".
---
--- Cada modo guarda lo suyo, como en los otros addons. Solo las claves de
--- PER_MODE_KEYS llevan sufijo; todo lo demas -- buffs, minimapa, cast bar
--- -- sigue guardando donde guardaba, asi que no se pierde nada de lo que
--- ya tenias configurado.
--- ---------------------------------------------------------
 local function BarMode()
 	if C.MiniBarEnabled  == true then return "mini";  end
 	if C.UnifyActionBars == true then return "unify"; end
 	return "plain";
 end
 
--- TODO LO QUE LA PILA MUEVE GUARDA POR MODO, NO SOLO LAS TRES FILAS.
---
--- Esto eran tres claves (las filas de acciones) y las otras cuatro se
--- habian quedado afuera por descuido, no por diseño: postura, totems,
--- mascota y posesion los apila MiniBar igual que a las filas, y Unify los
--- deja en otro lado. Con una sola posicion compartida, acomodabas la barra
--- de mascota con MiniBar puesto, volvias a Unify y aparecia arriba de las
--- barras -- o al reves.
---
--- La lista es la misma que STACK_KEYS, y eso no es casualidad: lo que la
--- pila coloca distinto en cada modo es exactamente lo que necesita una
--- posicion por modo. Se deja como UNA lista para que no se vuelvan a
--- separar.
 local STACK_KEYS = {
 	MainBar = true, ActionBar2 = true, ActionBar3 = true,
 	StanceBar = true, TotemBar = true, PetBar = true, PossessBar = true,
@@ -785,18 +348,6 @@ local function EntryKey(entry)
 	return k;
 end
 
--- ---------------------------------------------------------
--- LO GUARDADO ANTES, A LOS TRES MODOS
---
--- Cada vez que una clave entra a PER_MODE_KEYS, lo que el usuario ya tenia
--- guardado queda bajo la clave PELADA ("PetBar") y nadie vuelve a leerlo:
--- desde ese momento se busca "PetBar#mini". Sin esto, agregar una clave se
--- siente como que el addon "perdio" la posicion.
---
--- Se copia la pelada a los tres modos y se borra. Cada modo arranca donde
--- estaba y de ahi en adelante sigue su camino. Corre una sola vez porque
--- despues ya no queda ninguna clave pelada que migrar.
--- ---------------------------------------------------------
 local function MigrateBareKeys()
 	local db = DB();
 	for key in pairs(PER_MODE_KEYS) do
@@ -816,39 +367,8 @@ local function MigrateBareKeys()
 end
 K.MigrateBarModeKeys = MigrateBareKeys;
 
--- Para que el panel pueda armar la lista de claves a resetear.
 K.BarModeKey = EntryKey;
 
--- Blizzard reposiciona los frames "managed" en cada UIParent_ManageFramePositions.
--- Si el usuario movio uno, lo sacamos de esa tabla para que deje de imantarse.
--- Blizzard reposiciona los frames "managed" en cada UIParent_ManageFramePositions.
--- La forma correcta de sacarlos de ahi (la que usa MoveAnything) es el flag
--- oficial ignoreFramePositionManager en el propio frame, NO vaciar la tabla
--- global UIPARENT_MANAGED_FRAME_POSITIONS.
---
--- ESTE ERA EL BUG DEL FONDO QUE SE IBA AL PISO.
---
--- Soltaba el frame que devuelve ResolveFrame. Y con MiniBar puesto,
--- ResolveFrame NO devuelve MainMenuBar: devuelve NUF_ActionBarHolder1,
--- porque lo que se arrastra es el contenedor (mira framesMiniBar).
---
--- O sea que le poniamos el flag al contenedor -- un marco nuestro, que el
--- gestor de Blizzard no mira nunca -- y MainMenuBar, que es el que SI
--- administra, se quedaba administrado. Cada vez que Blizzard corria
--- UIParent_ManageFramePositions (abrir una bolsa, montar, aparecer la
--- barra de mascota, un vehiculo, /reload) le reescribia el anclaje y el
--- arte -- los grifos y la barra oscura -- se volvia al borde de abajo,
--- mientras los botones se quedaban donde vos los habias puesto.
---
--- Por eso el reset "no arreglaba el fondo": el reset reanclaba el
--- contenedor y un instante despues el gestor volvia a bajar MainMenuBar.
--- Y por eso se veia sobre todo con escala: en 1.0 las dos posiciones casi
--- coinciden, agrandado se separan y salta a la vista.
---
--- El mecanismo estaba bien. Estaba apuntado al frame equivocado.
---
--- Se suelta el que NOMBRA entry.managed, que es el dato fijo, y de paso
--- tambien el resuelto si fuera otro. Ninguno de los dos sobra.
 local function ReleaseManaged(entry, frame)
 	if not entry.managed then return; end
 
@@ -861,7 +381,6 @@ local function ReleaseManaged(entry, frame)
 	end
 end
 
--- Devuelve el frame al control de Blizzard (para el reset)
 local function ReclaimManaged(entry)
 	if not entry.managed then return; end
 
@@ -874,9 +393,6 @@ local function ReclaimManaged(entry)
 		end
 	end
 
-	-- Mismo criterio que arriba: el reset tiene que devolver EL MISMO frame
-	-- que se solto. Si devolviera solo el resuelto, MainMenuBar quedaria
-	-- suelto para siempre y el reset no lo volveria a su sitio.
 	local target = _G[entry.managed];
 	Give(target);
 
@@ -884,28 +400,6 @@ local function ReclaimManaged(entry)
 	if frame and frame ~= target then Give(frame); end
 end
 
--- Los miembros de party guardan su posicion en el store de FrameDragger
--- (NidhausUnitFramesDB.positions["PartyMemberFrameN"]), que es el que lee
--- el modo 3v3 y el modo individual normal. Ademas prende PartyIndividualMove
--- para que esos sistemas respeten la posicion en vez de reordenar en fila.
--- ROMPER LA CADENA DEL GRUPO
---
--- Blizzard ancla cada marco de grupo AL ANTERIOR: el 2 cuelga del 1, el 3
--- del 2 y el 4 del 3. Por eso arrastrar el primero se llevaba los otros
--- tres puestos, en fila, aunque cada uno tenga su propio recuadro.
---
--- La solucion es sacarlos de esa fila ANTES de mover ninguno: a cada uno
--- se le calcula donde esta en la pantalla y se lo vuelve a anclar ahi
--- mismo, pero contra UIParent. Visualmente no se mueve nada; lo que
--- cambia es de quien depende cada marco, y a partir de ahi cada uno se
--- arrastra solo.
---
--- La conversion de coordenadas es la misma que ya usa FrameDragger en
--- ApplyIndividualPartyPositions, para que los dos sistemas guarden el
--- mismo tipo de punto.
---
--- El Reset del Move Everything repone la foto de fabrica, asi que la
--- cadena original vuelve sola cuando hace falta.
 local function DetachPartyChain()
 	if InCombatLockdown() then return; end
 	local uiScale = UIParent:GetEffectiveScale();
@@ -916,12 +410,7 @@ local function DetachPartyChain()
 			local scale = pf:GetEffectiveScale();
 			local left, top = pf:GetLeft(), pf:GetTop();
 			if left and top then
-				-- A pantalla con la escala de ANTES de reparentar, y de
-				-- pantalla al espacio del marco con la de DESPUES: el
-				-- offset de SetPoint va en el espacio del propio marco.
-				-- Antes se dividia por la de UIParent, que es lo mismo
-				-- solo si el marco no tiene escala propia; con "Party
-				-- Frame Scale" distinto de 1 el marco saltaba al soltarlo.
+
 				local sx, sy = left * scale, top * scale;
 				pf:SetParent(UIParent);
 				local ns = pf:GetEffectiveScale() or uiScale;
@@ -934,40 +423,8 @@ local function DetachPartyChain()
 	end
 end
 
--- Clava las OTRAS barras de accion donde se ven ahora mismo.
---
--- Se guarda su esquina inferior izquierda contra UIParent en coordenadas
--- absolutas: es lo que las saca de la cadena. Si ya tenian posicion propia
--- no se toca nada, que para eso la tenian.
 local function PinSiblingBars(movedKey)
-	-- TODA la pila de MiniBar, no solo las tres barras.
-	--
-	-- Postura, totem, mascota y posesion tambien colgaban de la ultima
-	-- fila. Si se pinchan solo las barras, en el proximo repintado esas
-	-- cuatro vuelven a la pila y se van detras de la barra que moviste.
-	-- ACA HABIA UNA LISTA DE NOMBRES ESCRITA A MANO, Y ESTABA VIEJA:
-	--
-	--     MainBar    = "MainMenuBar",
-	--     ActionBar2 = "MultiBarBottomLeft",
-	--     ActionBar3 = "MultiBarBottomRight",
-	--
-	-- Con MiniBar puesto, esos NO son los marcos que se mueven. Los
-	-- botones se sacaron de ahi y viven en NUF_ActionBarHolder1/2/3; los
-	-- de Blizzard quedan tirados donde el juego los dejo, sin relacion con
-	-- la fila que se ve en pantalla.
-	--
-	-- Resultado: al arrastrar la fila 1 se les guardaba la posicion a los
-	-- marcos equivocados. Las filas 2 y 3 se quedaban SIN posicion propia,
-	-- asi que en el repintado siguiente volvian a la pila y se acomodaban
-	-- detras de la fila 1: se movian solas, sin que nadie se lo pidiera.
-	--
-	-- Es el mismo error que ReleaseManaged, al reves: alli se resolvia el
-	-- frame cuando habia que usar el nombre fijo, y aca se usaba un nombre
-	-- fijo cuando habia que resolverlo.
-	--
-	-- Se le pregunta a ResolveFrame, que ya sabe cual manda en cada modo.
-	-- Una sola fuente de verdad, y esta lista no se puede volver a quedar
-	-- vieja cuando se agregue o se renombre un contenedor.
+
 	local db = DB();
 
 	for _, entry in ipairs(MOVABLES) do
@@ -995,8 +452,6 @@ local function SavePartyMemberPosition(entry, frame)
 	local relName = "UIParent";
 	if relativeTo and relativeTo.GetName then relName = relativeTo:GetName() or "UIParent"; end
 
-	-- Con la escala: el 3v3 y el modo normal comparten esta posicion y cada
-	-- uno la repone a su escala (K.SavedPointOffsets convierte).
 	NidhausUnitFramesDB.positions["PartyMemberFrame" .. entry.partyIndex] = {
 		point = point, relativeTo = relName, relativePoint = relativePoint, x = x, y = y,
 		scale = frame:GetScale(),
@@ -1016,39 +471,10 @@ local function SavePosition(entry, frame)
 	local db = DB();
 	db[EntryKey(entry)] = db[EntryKey(entry)] or {};
 
-	-- Barras hijas: se guarda el DESPLAZAMIENTO respecto de su padre, no la
-	-- posicion en pantalla. Asi mover la barra principal las arrastra a
-	-- todas, y mover una por separado solo cambia su distancia a la madre.
-	-- anchorTo guarda la posicion COMO OFFSET de otro frame, para que lo
-	-- que cuelga de la barra principal la siga cuando la moves. En Unify
-	-- eso es lo que se quiere.
-	--
-	-- En MiniBar NO: ahi cada cosa tiene que quedar donde la dejaste, que
-	-- es todo el punto de haber cortado la cadena. Guardar un offset
-	-- contra MainMenuBar volveria a atar la barra de auras a la barra 1 y
-	-- moverla la arrastraria de nuevo.
 	if entry.anchorTo and C.MiniBarEnabled ~= true then
 		local parent = _G[entry.anchorTo];
 		if parent and parent:GetLeft() and frame:GetLeft() then
-			-- EN PIXELES DE PANTALLA, Y RECIEN AHI AL ESPACIO DEL MARCO.
-			--
-			-- Aca habia una resta cruda:
-			--     frame:GetLeft() - parent:GetLeft()
-			--
-			-- GetLeft devuelve en el espacio de CADA marco (la pantalla
-			-- dividida por SU escala efectiva), asi que restar los dos
-			-- numeros solo da bien cuando los dos tienen la misma escala.
-			--
-			-- Con todo en 1 nunca se noto. Pero apenas agrandabas una barra
-			-- con Ctrl + rueda las escalas dejaban de coincidir y el offset
-			-- salia mal, proporcional a la diferencia: la barra se corria
-			-- sola al escalarla, y despues algun repintado la reacomodaba.
-			-- Ese era el "la escala la descoloca" y el "se vuelve a su
-			-- lugar si apreto una tecla".
-			--
-			-- SetPoint mide el offset en el espacio del marco que se esta
-			-- anclando, asi que se pasa todo a pantalla y se divide por la
-			-- escala de ESE marco.
+
 			local fs = frame:GetEffectiveScale()  or 1;
 			local ps = parent:GetEffectiveScale() or 1;
 			if fs == 0 then fs = 1; end
@@ -1058,8 +484,7 @@ local function SavePosition(entry, frame)
 			db[EntryKey(entry)].x             = (frame:GetLeft()   * fs - parent:GetLeft()   * ps) / fs;
 			db[EntryKey(entry)].y             = (frame:GetBottom() * fs - parent:GetBottom() * ps) / fs;
 			db[EntryKey(entry)].rel           = entry.anchorTo;
-			-- Se re-ancla en el acto: si se deja colgando de UIParent, deja
-			-- de seguir a la principal hasta el proximo login.
+
 			frame:ClearAllPoints();
 			frame:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT",
 				db[EntryKey(entry)].x, db[EntryKey(entry)].y);
@@ -1071,27 +496,6 @@ local function SavePosition(entry, frame)
 	local point, relTo, relativePoint, x, y = frame:GetPoint();
 	if not point then return; end
 
-	-- SI CUELGA DE OTRO MARCO, SE PASA A LA PANTALLA.
-	--
-	-- ESTE ERA EL BUG DE "la mascota a veces no guarda donde la deje".
-	--
-	-- El arrastre mueve el marco respecto de SU ancla de siempre, y la de
-	-- PetFrame no es la pantalla: cuelga de PlayerFrame (TOPLEFT +80,-60).
-	-- Aca se guardaban esos numeros pero SIN el marco de referencia, y al
-	-- reponerlos se aplicaban contra UIParent: la mascota aparecia
-	-- corrida, cerca de la esquina de arriba, en vez de donde la soltaste.
-	-- En la misma sesion no se notaba (seguia colgada de PlayerFrame);
-	-- se veia al reloguear, o en cuanto algo le llamaba SetPoint y el
-	-- candado le ponia "su" punto.
-	--
-	-- Y por eso era "a veces": si el marco ya venia anclado a la pantalla
-	-- (porque al entrar se le habia repuesto una posicion), el siguiente
-	-- arrastre si guardaba bien. Fallaba el primero despues de un reset.
-	--
-	-- Ahora, si el ancla no es UIParent, se guarda la esquina de abajo a
-	-- la izquierda medida contra la pantalla -- GetLeft/GetBottom ya
-	-- vienen en la escala del propio marco, que es en la que van los
-	-- offsets -- y se reancla en el acto, asi lo que ves es lo guardado.
 	if relTo and relTo ~= UIParent and frame:GetLeft() and frame:GetBottom() then
 		point, relativePoint = "BOTTOMLEFT", "BOTTOMLEFT";
 		x, y = frame:GetLeft(), frame:GetBottom();
@@ -1116,27 +520,6 @@ local function SavePosition(entry, frame)
 		if K.ReanchorDebuffs then K.ReanchorDebuffs(); end
 	end
 
-	-- ── FUERA EL ANCLA ENTRE BARRAS ──
-	--
-	-- MiniBar apila las tres: la 2 sobre la 1 y la 3 sobre la 2. Mientras
-	-- una no tenga posicion propia sigue colgada de la de abajo, asi que
-	-- mover la barra 1 se llevaba las otras dos puestas.
-	--
-	-- En cuanto tocas UNA, las otras dos se clavan donde estan AHORA. Con
-	-- posicion propia salen de la pila (MiniBar_UpdateActionBars ya no las
-	-- toca) y cada una queda independiente de verdad.
-	--
-	-- Se hace al guardar y no al empezar a arrastrar porque aca ya sabemos
-	-- que el movimiento fue a proposito.
-	-- CLAVAR LAS HERMANAS.
-	--
-	-- Al aplanar, la pila quedo suelta pero SIN posicion guardada. En el
-	-- proximo repintado, las que no tengan la suya vuelven a la cadena y
-	-- se van detras de la que moviste. Guardarles su lugar actual las deja
-	-- donde estan para siempre.
-	--
-	-- Se hace al guardar y no al arrastrar: aca ya sabemos que el
-	-- movimiento fue a proposito.
 	if C.MiniBarEnabled == true and STACK_KEYS[entry.key] then
 		PinSiblingBars(entry.key);
 	end
@@ -1153,8 +536,6 @@ local function SaveScale(entry, scale)
 	end
 end
 
--- Sacarle a un movible la escala guardada en globalPos (si se queda sin
--- nada, la entrada entera se va).
 local function ClearSavedScale(entry)
 	local db = DB();
 	local k = EntryKey(entry);
@@ -1165,26 +546,6 @@ local function ClearSavedScale(entry)
 	end
 end
 
--- ═══════════════════════════════════════════════════════════
--- UN SOLO DUEÑO POR ESCALA  (revision general del escalado)
---
--- Muchos movibles tienen su escala guardada en OTRO lado: un slider del
--- panel que escribe en la escala del modulo (ScaleAPI), o la DB propia
--- del modulo (Auto Shot, Swing, flechas). Ctrl + rueda, en cambio,
--- guardaba siempre en globalPos. Dos (y hasta tres) lugares con el mismo
--- numero, y cada uno se aplicaba en un momento distinto:
---
---   * Ctrl + rueda no movia el slider.
---   * Movias el slider, se veia bien, y al /reload volvia el numero de la
---     rueda (globalPos se aplica ultimo).
---   * El Reset devolvia el marco a 1.0 pero el modulo conservaba su valor.
---
--- Ahora, si la escala tiene dueño, la rueda escribe EN EL DUEÑO (que la
--- aplica y mueve su slider) y en globalPos no queda escala. Lo que hubiera
--- quedado guardado de antes se pasa al dueño la primera vez (RestoreOne).
--- ═══════════════════════════════════════════════════════════
-
--- Movible -> escala del modulo (ScaleAPI, slider generico del panel).
 local MODULE_SCALE_ID = {
 	Buffs        = "PlayerBuffs",
 	Debuffs      = "PlayerDebuffs",
@@ -1201,7 +562,6 @@ local MODULE_SCALE_ID = {
 	PartyPets    = "PartyPetFrame",
 };
 
--- Movible -> escala en la DB propia del modulo (funciones de K).
 local OWN_SCALE = {
 	AutoShot   = { get = "GetAutoShotScale",   set = "SaveAutoShotScale",
 	               refresh = "RefreshAutoShotScaleSlider", default = 1.0 },
@@ -1228,8 +588,7 @@ local function ScaleOwner(entry)
 			if type(fn) == "function" then pcall(fn); end
 		end
 		return {
-			-- Estos modulos ya declaraban su getter en OWN_SCALE y no se
-			-- usaba en ningun lado: la rueda leia el marco. Ahora se usa.
+
 			get   = function()
 				local g = o.get and K[o.get];
 				if type(g) == "function" then
@@ -1244,45 +603,11 @@ local function ScaleOwner(entry)
 	end
 end
 
-
--- LA BARRA 1 ES EL "ACTION BAR SCALE" (salvo con MiniBar).
---
--- Con las barras unificadas o las de Blizzard, escalar la barra 1 con la
--- rueda tiene que ser lo mismo que mover el slider: todas las barras, la
--- mochila, el micromenu y nExtraBars. Antes solo crecia la barra 1, el
--- resto se ponia al dia recien al /reload, y el slider no se movia.
---
--- Con MiniBar cada fila tiene su escala propia y el slider es el maestro.
 local function MainBarIsMaster(entry)
 	local key = (type(entry) == "table") and entry.key or entry;
 	return key == "MainBar" and C.MiniBarEnabled ~= true;
 end
 
--- ---------------------------------------------------------
--- DE DONDE SALE LA ESCALA ACTUAL. UNA SOLA RESPUESTA.
---
--- Esta es la idea que usa Dominos, y vale la pena escribirla porque es
--- la que faltaba:
---
---     function Frame:GetScale()  return self.sets.scale or 1  end
---
--- Dominos nunca pregunta cuanto mide el marco: devuelve EL DATO
--- GUARDADO. Todos sus controles -- el slider del menu, la rueda, el
--- comando de chat -- llaman a esa misma funcion, asi que no se pueden
--- contradecir aunque algo mas le haya tocado la escala al marco.
---
--- Aca el slider ya hacia lo correcto (lee K.GetModuleScale, escribe
--- K.SetModuleScale), pero la rueda leia self.target:GetScale(): el valor
--- VIVO del marco. Mientras los dos numeros coincidan no se nota; en
--- cuanto algo mueve la escala del marco por otro lado, la rueda arranca
--- a contar desde un numero distinto del que muestra el slider y los dos
--- controles se van separando. Con los buffs se veia clarisimo: el slider
--- decia 2.00 y la rueda empezaba de nuevo en 1.00.
---
--- El orden de preferencia va del dato mas especifico al mas general, y
--- el valor vivo del marco queda de ultimo recurso, solo para movibles
--- que no guardan escala en ningun lado.
--- ---------------------------------------------------------
 local function CurrentScale(entry, frame)
 	local owner = ScaleOwner(entry);
 	if owner and owner.get then
@@ -1290,7 +615,6 @@ local function CurrentScale(entry, frame)
 		if ok and type(v) == "number" and v > 0 then return v; end
 	end
 
-	-- La barra 1 sin MiniBar ES el slider "Action Bar Scale".
 	if MainBarIsMaster(entry) then
 		local v = tonumber(C and C.ActionBarScale);
 		if v and v > 0 then return v; end
@@ -1303,36 +627,6 @@ local function CurrentScale(entry, frame)
 end
 K.GetMovableScale = CurrentScale;
 
--- ---------------------------------------------------------
--- EL RECUADRO SE ENTERA CUANDO CAMBIA UNA ESCALA. VENGA DE DONDE VENGA.
---
--- Esta es la otra mitad de la idea de Dominos, y era la que faltaba.
--- En Dominos, cambiar la escala es siempre: guardar, aplicar, y AVISAR
--- (Rescale + el callback DOMINOS_RESCALE). Todo lo que muestra la escala
--- -- el slider, el recuadro de arrastre -- escucha ese aviso y se pone
--- al dia, sin importar quien la cambio.
---
--- Aca la rueda ya se repintaba sola: era ella la que cambiaba el numero.
--- El slider del panel, en cambio, guardaba y aplicaba, pero nadie le
--- avisaba al recuadro. Movias "Buff scale" con el modo mover abierto, los
--- iconos crecian, y el recuadro se quedaba varado con su tamaño viejo y
--- su numero viejo ("Buffs 0.90" con el slider en 1.40).
---
--- Ahora cualquier camino que cambie una escala pide un refresco:
---
---   * ScaleAPI (SetModuleScale / ResetModuleScale): buffs, debuffs,
---     timers de arena, Sacred Shield, Seduccion, el ojo, etc.
---   * SetGlobalFrameScale: los sliders de Player, Target, Pet, Cast Bar.
---   * ApplyActionBarScale: el slider "Action Bar Scale".
---   * Los setters propios de Auto Shot, Swing y flechas (OWN_SCALE).
---
--- POR QUE AL CUADRO SIGUIENTE Y NO EN EL ACTO. Algunos tamaños se
--- terminan de acomodar DESPUES de que vuelve el setter: con los buffs,
--- AuraAnchor escala los iconos en un hook que corre cuando SetModuleScale
--- ya termino. Medir en el acto daba la caja de la escala anterior. Un
--- cuadro despues ya esta todo en su lugar, y de paso diez ticks del
--- slider en el mismo cuadro cuestan un solo repintado.
--- ---------------------------------------------------------
 local function SetOverlayLabel(ov, entry, frame)
 	entry = entry or ov.entry;
 	frame = frame or ov.target;
@@ -1347,8 +641,7 @@ end
 
 local function RefreshOverlays()
 	for _, ov in ipairs(overlays) do
-		-- El que se esta arrastrando se repinta solo en su OnUpdate:
-		-- reanclarlo desde aca le pelearia al cursor.
+
 		if ov:IsShown() and ov.target and not ov.drag then
 			SetOverlayLabel(ov);
 			if ov.AnchorOverlay then pcall(ov.AnchorOverlay, ov); end
@@ -1364,40 +657,32 @@ overlayRefresher:SetScript("OnUpdate", function(self)
 end);
 
 local function RequestOverlayRefresh()
-	-- Barato si el modo mover esta cerrado: los recuadros estan ocultos
-	-- y RefreshOverlays no toca ninguno.
+
 	overlayRefresher:Show();
 end
 K.RequestMoverRefresh = RequestOverlayRefresh;
 
--- Los setters que viven en otros modulos se enganchan aca, sin tocar el
--- modulo. Se intenta cada vez que se arman los recuadros (para entonces
--- todos los modulos ya cargaron) y cada uno se engancha una sola vez.
 local scaleHooked = {};
 local function HookScaleSetter(name)
 	if scaleHooked[name] or type(K[name]) ~= "function" then return; end
 	scaleHooked[name] = true;
 	hooksecurefunc(K, name, RequestOverlayRefresh);
 end
--- Los que el panel llama en vivo al mover un slider de tamaño. Si alguno
--- no tiene recuadro, el aviso no cuesta nada: RefreshOverlays solo mira
--- los que estan a la vista.
+
 local SCALE_SETTERS = {
-	"ApplyActionBarScale",     -- Action Bar Scale
-	"ApplyCastBarPWScale",     -- barra de casteo (estilo PW)
-	"ApplyPetFrameScale",      -- marco de la mascota
-	"ApplyPartyFrameScale",    -- marcos del grupo
-	"ApplyMinimapScale",       -- minimapa
-	"SetClassTimersScale",     -- timers de clase
-	"SavePowerBarScale",       -- barra de energia
+	"ApplyActionBarScale",
+	"ApplyCastBarPWScale",
+	"ApplyPetFrameScale",
+	"ApplyPartyFrameScale",
+	"ApplyMinimapScale",
+	"SetClassTimersScale",
+	"SavePowerBarScale",
 };
 local function InstallScaleHooks()
 	for _, name in ipairs(SCALE_SETTERS) do HookScaleSetter(name); end
 	for _, o in pairs(OWN_SCALE) do HookScaleSetter(o.set); end
 end
 
--- Topes de los sliders del panel: con la rueda no se pasa de ahi, asi el
--- slider siempre puede mostrar el numero.
 local SLIDER_RANGE = {
 	Player  = { 0.5, 1.5 },
 	Target  = { 0.5, 1.5 },
@@ -1406,26 +691,13 @@ local SLIDER_RANGE = {
 };
 local MAINBAR_RANGE = { 0.65, 1.14 };
 
--- El slider "Action Bar Scale" manda sobre las tres barras: al moverlo se
--- borran las escalas propias que cada barra tenga de Ctrl + rueda (en el
--- modo de barras actual). Si no, la que tuviera la suya no lo seguia.
 function K.ClearBarOwnScales()
-	-- La barra de auras / posturas tambien: "Action Bar Scale" la escala
-	-- junto con las de accion (K.ApplyStanceHolderScale).
+
 	for _, k in ipairs({ "MainBar", "ActionBar2", "ActionBar3", "StanceBar" }) do
 		ClearSavedScale(k);
 	end
 end
 
--- Escalar un movable desde AFUERA (un slider de otro panel, por ejemplo).
---
--- Existe para que no haya dos duenos del mismo numero. La escala de un
--- frame movible se guarda en UN solo lugar, globalPos[key].scale, y se
--- aplica en UN solo lugar. Cualquier control que quiera cambiarla entra
--- por aca en vez de llamar a SetScale por su cuenta: si no, el proximo
--- login restauraria el valor viejo y pareceria que el slider no guarda.
--- Indice por clave. El slider llama a esto en cada tick del arrastre;
--- recorrer los treinta movibles cada vez seria trabajo al pedo.
 local BY_KEY = {};
 for _, entry in ipairs(MOVABLES) do BY_KEY[entry.key] = entry; end
 
@@ -1438,19 +710,15 @@ function K.SetGlobalFrameScale(key, scale)
 	local f = ResolveFrame(entry);
 	if f then pcall(f.SetScale, f, scale); end
 	SaveScale(entry, scale);
-	-- nExtraBars acompaña a las barras de accion (MiniBar.lua).
+
 	if K.SyncExtraBarScale then pcall(K.SyncExtraBarScale); end
-	-- El slider de Player/Target/Pet/Cast Bar pasa por aca: el recuadro
-	-- del modo mover tiene que enterarse (ver RequestOverlayRefresh).
+
 	RequestOverlayRefresh();
 	return true;
 end
 
--- Aplica nuestra posicion guardada, marcando la operacion para que el hook
--- de SetPoint no entre en recursion.
 local function ApplyPoint(frame, entry, pos)
-	-- pos.rel = nombre del frame al que esta anclada (barras hijas). Sin
-	-- eso, UIParent como toda la vida.
+
 	local anchorFrame = (pos.rel and _G[pos.rel]) or UIParent;
 	frame._nufApplying = true;
 	frame:SetClampedToScreen(entry.noClamp ~= true);
@@ -1459,16 +727,10 @@ local function ApplyPoint(frame, entry, pos)
 	frame._nufApplying = nil;
 end
 
--- Los frames "managed" (buffs, debuffs, castbar, barras) se reanclan solos
--- una y otra vez: sacarlos de UIPARENT_MANAGED_FRAME_POSITIONS no alcanza,
--- Blizzard igual les llama SetPoint. Enganchamos su SetPoint y reponemos.
--- Patron tomado de MoveAnything: guardamos el punto "bueno" en el frame y,
--- si alguien le llama SetPoint, lo reponemos. Mucho mas fiable que solo
--- confiar en ignoreFramePositionManager.
 local function OnLockedSetPoint(frame)
 	if not frame.NUFPoint then return; end
 	if frame._nufApplying then return; end
-	if unlocked then return; end            -- mientras se arrastra, no pelear
+	if unlocked then return; end
 	if frame:IsProtected() and InCombatLockdown() then return; end
 
 	local p = frame.NUFPoint;
@@ -1478,24 +740,6 @@ local function OnLockedSetPoint(frame)
 	frame._nufApplying = nil;
 end
 
--- ---------------------------------------------------------
--- ESCALAR SIN QUE SE CORRA: EL CENTRO SE QUEDA DONDE ESTA
---
--- Un SetScale a secas agranda el marco desde su punto de anclaje. Las
--- barras estan ancladas por BOTTOMLEFT, asi que al subir la escala
--- crecian hacia la derecha y hacia arriba: el borde izquierdo quedaba
--- clavado y la barra se iba de lugar. Se veia como "la escala la
--- descoloca", y despues algun repintado la reacomodaba sola -- de ahi la
--- sensacion de que apretar una tecla la "devolvia a su lugar".
---
--- Lo que se espera de un control de tamaño es que crezca para los dos
--- lados por igual. Se mide el centro en pixeles de PANTALLA antes y
--- despues, y se corre el anclaje por la diferencia.
---
--- Pantalla y no coordenadas del marco: GetCenter devuelve en el espacio
--- del propio marco, que es justo lo que acaba de cambiar. Comparar los
--- dos numeros crudos seria comparar unidades distintas.
--- ---------------------------------------------------------
 local function ScaleKeepingCenter(frame, newScale)
 	local ok, cx, cy = pcall(frame.GetCenter, frame);
 	local before = (ok and cx) and { cx * (frame:GetEffectiveScale() or 1),
@@ -1512,8 +756,6 @@ local function ScaleKeepingCenter(frame, newScale)
 	local ok2, ncx, ncy = pcall(frame.GetCenter, frame);
 	if not (ok2 and ncx) then return; end
 
-	-- La diferencia esta en pixeles de pantalla; el offset de SetPoint se
-	-- mide en el espacio del marco, asi que se divide por su escala.
 	local dx = (before[1] - ncx * es) / es;
 	local dy = (before[2] - ncy * es) / es;
 	if dx == 0 and dy == 0 then return; end
@@ -1527,8 +769,7 @@ local function LockFramePoint(frame, entry, pos)
 		hooksecurefunc(frame, "SetPoint", OnLockedSetPoint);
 		frame.NUFPointHook = true;
 	end
-	-- pos.rel: barras hijas ancladas a la principal en vez de a UIParent
-	-- (ver anchorTo). El resto sigue colgando de UIParent como siempre.
+
 	local anchorFrame = (pos.rel and _G[pos.rel]) or UIParent;
 	frame.NUFPoint = { pos.point, anchorFrame, pos.relativePoint, pos.x, pos.y };
 end
@@ -1537,10 +778,6 @@ local function UnlockFramePoint(frame)
 	if frame then frame.NUFPoint = nil; end
 end
 
--- Suelta el candado de TODOS los marcos que una entrada puede resolver.
--- No alcanza con ResolveFrame: devuelve uno solo segun el modo, y el
--- candado puede haber quedado puesto sobre el del OTRO modo (el holder de
--- MiniBar o el marco de Blizzard, segun cual estuviera activo al mover).
 local function UnlockEntryFrames(entry)
 	if type(entry) ~= "table" then return; end
 	for _, list in ipairs({ entry.frames, entry.framesMiniBar }) do
@@ -1553,45 +790,19 @@ local function UnlockEntryFrames(entry)
 	end
 end
 
--- ---------------------------------------------------------
--- ESCALAR DESDE UN CONTROL: LA RUEDA Y EL SLIDER HACEN LO MISMO
---
--- Para los marcos sin dueño de escala (Player, Target, Pet, Cast Bar...)
--- la rueda y el slider del panel hacian cosas distintas:
---
---   * Ctrl + rueda escalaba desde el CENTRO (ScaleKeepingCenter) y
---     guardaba el punto nuevo.
---   * El slider llamaba a SetGlobalFrameScale, que es un SetScale a
---     secas: el marco crecia desde su esquina de anclaje y se corria.
---
--- Mismo numero, resultado distinto en pantalla. Ahora las dos pasan por
--- aca.
---
--- POR QUE NO SE CAMBIO SetGlobalFrameScale DIRECTAMENTE. La llaman
--- tambien el codigo de carga (CastBarPW al prender el estilo) y el reset.
--- Centrar ahi movia el marco y GUARDABA esa posicion en momentos en que
--- nadie esta escalando nada: al entrar al juego te podia correr la barra
--- de casteo de donde la dejaste. Los controles tienen su propia puerta.
--- ---------------------------------------------------------
 local function CenteredScaleAndSave(entry, frame, newScale)
-	-- El candado (LockFramePoint) repone el punto viejo en cada SetPoint.
-	-- Con _nufApplying el centrado no le pelea; despues se le da el
-	-- punto nuevo.
+
 	frame._nufApplying = true;
 	ScaleKeepingCenter(frame, newScale);
 	frame._nufApplying = nil;
 	SaveScale(entry, newScale);
 
 	if OwnsItsPosition and OwnsItsPosition(entry.key) then
-		-- Posicion con dueño: se le pasa el punto centrado, como al soltar
-		-- un arrastre. Antes no se guardaba en ningun lado y al /reload el
-		-- modulo reponia el punto de antes con la escala nueva: el marco
-		-- aparecia corrido, el salto llegaba despues.
+
 		SaveToOwner(entry, frame);
 	else
 		SavePosition(entry, frame);
-		-- Fuera del modo mover el candado sigue puesto: que reponga el
-		-- punto centrado y no el de antes.
+
 		if not unlocked and frame.NUFPoint then
 			local saved = DB()[EntryKey(entry)];
 			if saved and saved.point then LockFramePoint(frame, entry, saved); end
@@ -1599,9 +810,6 @@ local function CenteredScaleAndSave(entry, frame, newScale)
 	end
 end
 
--- Guardar donde quedo un movible, sin tocar su escala. Lo usan las barras
--- al crecer hacia los costados con "Action Bar Scale" (ActionBars/MiniBar):
--- el punto cambia y, si no se guardara, al /reload volveria el de antes.
 function K.SaveMovablePosition(key)
 	local entry = BY_KEY[key];
 	if not entry then return false; end
@@ -1623,13 +831,6 @@ local function HasSavedPoint(entry)
 	return type(saved) == "table" and saved.point ~= nil;
 end
 
--- La puerta de los sliders del panel.
---
--- Centra igual que la rueda cuando tiene sentido: con el modo mover
--- abierto (ahi la rueda y el slider estan uno al lado del otro) o cuando
--- el marco ya tiene una posicion tuya. Si el marco sigue en el lugar de
--- fabrica, Blizzard lo acomoda solo y fijarle un punto lo sacaria de ese
--- acomodo sin que lo pidieras: ahi queda el SetScale de siempre.
 function K.SetMovableScaleFromControl(key, scale)
 	if type(scale) ~= "number" then return false; end
 	local entry = BY_KEY[key];
@@ -1648,31 +849,6 @@ function K.SetMovableScaleFromControl(key, scale)
 	return K.SetGlobalFrameScale(key, scale);
 end
 
--- ---------------------------------------------------------
--- ESCALA CON DUEÑO, DESDE UN CONTROL: EL MARCO NO SE CORRE
---
--- Los marcos con dueño de escala (ScaleAPI: buffs, debuffs, timers de
--- arena, Sacred Shield, Seduccion...; o la DB propia: Swing, Auto Shot,
--- flechas) se escalaban con un SetScale a secas. El offset de SetPoint se
--- mide en el espacio del propio marco, asi que al cambiar la escala el
--- offset en pantalla cambia con ella: un marco anclado a 300 px del centro
--- se iba a 450 px con escala 1.5. Con el slider y con la rueda por igual,
--- pero se corria.
---
--- Es la cuenta de Dominos (Frame:GetScaledCoords / SetFrameScale): el
--- offset se multiplica por escala_vieja / escala_nueva, y el punto de
--- anclaje queda en el mismo lugar de la pantalla. Despues se guarda, como
--- hace Dominos con SavePosition, para que al /reload no vuelva el viejo.
---
--- CUANDO SE HACE. Guardar una posicion la vuelve "tuya", asi que solo se
--- hace cuando ya lo era o cuando estas acomodando:
---   * posicion con dueño (timers, Sacred Shield...): con el modo mover
---     abierto, y se le pasa al dueño (SaveToOwner), como al soltar un
---     arrastre;
---   * buffs y debuffs: si ya tienen una posicion guardada. En la de
---     fabrica la cuenta la hace AuraAnchor, que la sigue manteniendo
---     pegada al minimapa.
--- ---------------------------------------------------------
 local ID_TO_KEY = {};
 for key, id in pairs(MODULE_SCALE_ID) do ID_TO_KEY[id] = key; end
 
@@ -1704,9 +880,7 @@ local function SetOwnedScaleFromControl(entry, frame, owner, newScale)
 	if frame then
 		local owned = OwnsItsPosition and OwnsItsPosition(entry.key);
 		local keep  = (owned and unlocked) or ((not owned) and HasSavedPoint(entry));
-		-- El dueño que sabe decir si la posicion es suya o la de fabrica
-		-- (buffs y debuffs) decide: con la propia se mantiene el punto,
-		-- abierto o cerrado el modo mover; con la de fabrica la acomoda el.
+
 		local isCustom = type(K.FramePositionIsCustom) == "table" and K.FramePositionIsCustom[entry.key];
 		if owned and type(isCustom) == "function" then
 			local ok, v = pcall(isCustom);
@@ -1724,12 +898,6 @@ local function SetOwnedScaleFromControl(entry, frame, owner, newScale)
 	KeepAnchorPoint(entry, frame, cap);
 end
 
--- LA PUERTA UNICA DE LOS CONTROLES DE ESCALA.
---
--- Slider del panel o Ctrl + rueda, para cualquier movible: va al mismo
--- lugar y hace lo mismo. Con dueño, por SetOwnedScaleFromControl; la
--- barra 1 sin MiniBar, por Action Bar Scale; el resto, desde el centro
--- (SetMovableScaleFromControl).
 function K.SetScaleFromControl(key, scale)
 	if type(scale) ~= "number" then return false; end
 	local entry = BY_KEY[key];
@@ -1754,9 +922,6 @@ function K.SetScaleFromControl(key, scale)
 	return K.SetMovableScaleFromControl(key, scale);
 end
 
--- Para los sliders genericos de ScaleAPI (K.UI.ScaleSlider), que conocen
--- el id del modulo y no la clave del movible. Un id sin movible (el
--- contador de arena, DTSU, las mascotas del grupo...) escala como siempre.
 function K.SetModuleScaleFromControl(id, scale)
 	local key = ID_TO_KEY[id];
 	if key and BY_KEY[key] and K.SetScaleFromControl(key, scale) then return true; end
@@ -1765,11 +930,7 @@ function K.SetModuleScaleFromControl(id, scale)
 end
 
 local function RestoreOne(entry)
-	-- Los party target no guardan posicion aca: la maneja su modulo,
-	-- anclandolos a cada PartyMemberFrame. Si quedo una entrada vieja de
-	-- antes de separar los dos sistemas, se borra en vez de aplicarla —
-	-- si no, cada login volvia a pegarle la posicion equivocada al del
-	-- compa 1 y quedaba desalineado de los otros tres.
+
 	if entry.partyTarget then
 		DB()[EntryKey(entry)] = nil;
 		return;
@@ -1777,34 +938,11 @@ local function RestoreOne(entry)
 
 	local pos = DB()[EntryKey(entry)];
 	if not pos then
-		-- SIN NADA GUARDADO EN ESTE MODO: HAY QUE SOLTAR EL CANDADO.
-		--
-		-- Aca estaba el "apago Unify (o MiniBar) y la barra no vuelve al
-		-- lugar de Blizzard, se queda donde la habia dejado".
-		--
-		-- LockFramePoint no es un SetPoint: le deja al marco un hook
-		-- PERMANENTE sobre SetPoint que repone frame.NUFPoint. Mientras ese
-		-- campo tenga algo, cualquier SetPoint que venga de afuera se
-		-- deshace solo, en el acto.
-		--
-		-- Al cambiar de modo la clave pasa a ser otra -- MainBar#plain en
-		-- vez de MainBar#unify -- y ahi no hay nada guardado, asi que esta
-		-- funcion cortaba de una... dejando puesto el candado del modo
-		-- ANTERIOR. Despues RestoreBarBaseline movia la barra a su lugar de
-		-- fabrica y el hook se la devolvia antes de que se dibujara: por
-		-- eso parecia que el modo "no se apagaba del todo".
-		--
-		-- Soltar el candado es lo unico que faltaba. La posicion del modo
-		-- anterior NO se borra: sigue guardada bajo su clave y vuelve
-		-- intacta cuando volves a ese modo.
+
 		UnlockEntryFrames(entry);
 		return;
 	end
 
-	-- ESCALA CON DUEÑO PROPIO (ver ScaleOwner): no se aplica desde aca. Si
-	-- quedo una de antes, se le pasa al dueño -- es la que estabas viendo,
-	-- porque globalPos se aplicaba ultimo -- y se borra de aca. La de la
-	-- barra 1 sin MiniBar es la del slider (C.ActionBarScale).
 	if pos.scale then
 		local owner = ScaleOwner(entry);
 		if owner or MainBarIsMaster(entry) then
@@ -1817,11 +955,6 @@ local function RestoreOne(entry)
 		end
 	end
 
-	-- CON DUEÑO PROPIO: NI SE APLICA NI SE GUARDA ACA.
-	--
-	-- La escala si (la rueda la sigue manejando este modulo), pero el
-	-- punto lo pone su modulo. Si quedo uno guardado de antes se borra:
-	-- si no, cada login volveria a pisar la posicion del modulo.
 	if OwnsItsPosition and OwnsItsPosition(entry.key) then
 		local f = ResolveFrame(entry);
 		if f and pos.scale and entry.scalable then pcall(f.SetScale, f, pos.scale); end
@@ -1837,10 +970,6 @@ local function RestoreOne(entry)
 	local frame = ResolveFrame(entry);
 	if not frame then return; end
 
-	-- Marcos protegidos (las barras, y tambien PetFrame) no se pueden
-	-- mover en combate. Antes se salteaban y quedaban en el lugar de
-	-- fabrica hasta el proximo cambio de zona si entrabas o recargabas
-	-- peleando; ahora se reponen apenas termina el combate.
 	if InCombatLockdown() and (entry.protected or (frame.IsProtected and frame:IsProtected())) then
 		if K.AfterCombat then
 			K.AfterCombat("GU_Restore_" .. entry.key, function() pcall(RestoreOne, entry); end);
@@ -1848,10 +977,6 @@ local function RestoreOne(entry)
 		return;
 	end
 
-	-- Solo los movibles con Ctrl + rueda ("scalable") guardan escala aca.
-	-- Una escala guardada en cualquier otro es de una version vieja --
-	-- como la de Party1..4 que achicaba el grupo con el 3v3 -- y se borra
-	-- en vez de aplicarse.
 	if pos.scale and not entry.scalable then
 		pos.scale = nil;
 		if not pos.point then
@@ -1870,18 +995,11 @@ local function RestoreOne(entry)
 		if frame.SetUserPlaced and not frame:IsProtected() then
 			pcall(frame.SetUserPlaced, frame, true);
 		end
-		-- Bloquear reanclajes ajenos (esto es lo que faltaba para los buffs)
+
 		LockFramePoint(frame, entry, pos);
 	end
 end
 
--- ¿Move Everything ya tiene una posicion propia para esta clave?
---
--- La usan los modulos que reposicionan frames por su cuenta (el de las
--- barras de accion, sin ir mas lejos) para no pelearse con el usuario:
--- si el frame ya se movio a mano, ellos no lo tocan.
--- La escala PROPIA de un movible, si la tiene. Devuelve nil si nunca se
--- le puso una, para que quien pregunte use la general.
 function K.GetGlobalScale(key)
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.globalPos;
 	local p = db and db[EntryKey(key)];
@@ -1890,20 +1008,11 @@ end
 
 function K.HasGlobalPos(key)
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.globalPos;
-	-- Por EntryKey: quien pregunta por "ActionBar3" quiere saber si HOY,
-	-- en el modo en el que estas, esa barra tiene posicion propia.
+
 	local p = db and db[EntryKey(key)];
 	return (p and p.point) and true or false;
 end
 
--- Reponer UN SOLO movible, por clave.
---
--- La version entera recorre los treinta y arrastra media interfaz con
--- ella: si un modulo toca un frame y quiere devolverle al usuario SU
--- posicion (la barra de casteo al prender o apagar el estilo custom, por
--- ejemplo), llamar a la version entera seria mover todo lo demas de gusto.
---
--- Devuelve true si habia algo guardado para esa clave.
 function K.RestoreGlobalPosition(key)
 	local entry = BY_KEY[key];
 	if not entry then return false; end
@@ -1912,49 +1021,26 @@ function K.RestoreGlobalPosition(key)
 end
 
 function K.RestoreGlobalPositions()
-	-- Primero lo viejo a su lugar nuevo (ver MigrateBareKeys). Es
-	-- idempotente: despues de la primera pasada no queda ninguna clave
-	-- pelada, asi que llamarla en cada rearmado no cuesta nada.
+
 	MigrateBareKeys();
 
 	for _, entry in ipairs(MOVABLES) do
 		pcall(RestoreOne, entry);
 	end
 
-	-- La barra 1 se restaura sola (tiene posicion guardada); las otras tres
-	-- no guardan nada, la copian de ella. Sin esto volvian al lugar de
-	-- fabrica en cada login y quedaban desalineadas con la primera.
 	if K.MirrorPartyCastBars then pcall(K.MirrorPartyCastBars); end
 
-	-- Y EL FONDO DE LA BARRA 1, REANCLADO.
-	--
-	-- Aca estaba el desfasaje que aparecia recien despues del /reload.
-	--
-	-- RestoreOne le escribe a cada movible su escala guardada DIRECTAMENTE
-	-- sobre el frame. Para el contenedor de la fila 1 eso esta bien, pero
-	-- el fondo (MainMenuBar) cuelga de el con un desplazamiento que se mide
-	-- en la escala de MainMenuBar: al cambiarle la escala por detras, ese
-	-- desplazamiento se estira y el fondo se corre. Proporcional a la
-	-- escala, por eso solo se notaba con la barra agrandada.
-	--
-	-- En la sesion no pasaba porque el anclaje se habia escrito despues de
-	-- la escala; al reloguear el orden se invierte.
-	--
-	-- ApplyBarHolderScales vuelve a poner las tres escalas Y reescribe el
-	-- anclaje con la que quedo puesta, que es justo lo que falta aca.
 	if C.MiniBarEnabled == true and K.ApplyBarHolderScales then
 		pcall(K.ApplyBarHolderScales, C.ActionBarScale or 1.0);
 	end
 end
 
--- ¿Hay algo guardado? Si no, no hace falta reponer nada nunca.
 local function HasSavedPositions()
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.globalPos;
 	if not db then return false; end
 	return next(db) ~= nil;
 end
 
--- Blizzard reanclea en UIParent_ManageFramePositions.
 if type(UIParent_ManageFramePositions) == "function" then
 	hooksecurefunc("UIParent_ManageFramePositions", function()
 		if InCombatLockdown() then return; end
@@ -1963,36 +1049,6 @@ if type(UIParent_ManageFramePositions) == "function" then
 	end);
 end
 
--- ---------------------------------------------------------
--- La barra de accion se mueve SOLA. A proposito.
---
--- Intente moverla como bloque: tomar el desplazamiento de MainMenuBar y
--- aplicarselo a MultiBarBottomLeft/Right, las laterales, mascota y forma.
--- El resultado fue el que ya conocemos con estas barras: las laterales se
--- dispararon fuera de pantalla y la principal se partio en dos.
---
--- No es la primera vez. Este addon ya tiene Core/BarBaseline.lua escrito
--- justo por esto, y el comando /nufbars restore se saco por lo mismo. Las
--- barras de accion tienen tres sistemas encima — el gestor de posiciones de
--- Blizzard, MiniBar y Unify — y cualquier calculo de delta hecho desde
--- afuera pelea con los tres.
---
--- Mover solo MainMenuBar funciona: las barras que estan ancladas A ELLA lo
--- siguen solas, que es la mayoria. Las que cuelgan de UIParent se acomodan
--- desde sus propias opciones.
--- ---------------------------------------------------------
-
--- ---------------------------------------------------------
--- Barras de casteo del grupo
---
--- Son de PartyCastingBars, un addon aparte. Cada barra cuelga de su propio
--- PartyMemberFrame, asi que basta con mover la del compa 1 y copiarle el
--- desplazamiento a las otras tres.
---
--- Y estan ocultas salvo que alguien este casteando, o sea que en modo mover
--- hay que mostrarlas a la fuerza: si no, el recuadro apunta a algo invisible
--- y no sabes donde lo estas dejando.
--- ---------------------------------------------------------
 local function PartyCastBar(i)
 	return _G["PartyMemberFrame" .. i .. "CastingBarFrame"];
 end
@@ -2006,12 +1062,6 @@ function K.SetPartyCastBarPreview(on)
 				bar:SetMinMaxValues(0, 1);
 				bar:Show();
 
-				-- Casteo simulado: nombre, icono y la barra llenandose.
-				--
-				-- Antes se dejaba la barra quieta al 60% y sin texto, o sea
-				-- una tira de color que no se parecia a lo que vas a ver en
-				-- combate. Con nombre e icono se entiende que estas moviendo
-				-- y donde va a quedar cada cosa.
 				local txt = _G[bar:GetName() .. "Text"];
 				if txt then txt:SetText(GetSpellInfo(2050) or "Lesser Heal"); end
 
@@ -2021,20 +1071,12 @@ function K.SetPartyCastBarPreview(on)
 					if tex then icon:SetTexture(tex); icon:Show(); end
 				end
 
-				-- El destello, apagado.
-				--
-				-- Es la textura que la barra enciende cuando el casteo
-				-- TERMINA. Como el bucle de prueba reinicia el llenado cada
-				-- vuelta, quedaba prendido y se veia ese halo blanco
-				-- rodeando la barra, que no es como se ve en combate.
 				local flash = _G[bar:GetName() .. "Flash"];
 				if flash then
 					bar.nufFlashWasShown = flash:IsShown();
 					flash:Hide();
 				end
 
-				-- El OnUpdate lo pone el modo prueba y lo saca al salir, asi
-				-- que no queda corriendo cuando el modo se apaga.
 				bar.nufFill = 0;
 				bar:SetScript("OnUpdate", function(self, elapsed)
 					self.nufFill = (self.nufFill or 0) + (elapsed or 0) * 0.4;
@@ -2046,17 +1088,6 @@ function K.SetPartyCastBarPreview(on)
 				bar.nufPreview = nil;
 				bar.nufFill = nil;
 
-				-- BUG QUE ESTABA AQUI: se dejaba el OnUpdate en nil.
-				--
-				-- El modo prueba PISA el OnUpdate de la barra con su propia
-				-- animacion de relleno. Al salir hay que devolver el motor de
-				-- PartyCastingBars, no borrarlo: ese OnUpdate es el que hace
-				-- avanzar el casteo, el que lo desvanece al terminar y el que
-				-- lleva la red de seguridad contra barras colgadas.
-				--
-				-- Sin el, despues del primer /nufmove la barra se quedaba
-				-- clavada con el ultimo casteo para siempre. Es lo que hacia
-				-- que "se quedara guardada" una barra al salir de la arena.
 				if C.PCB_Enabled and PartyCastingBars and PartyCastingBars.OnUpdate then
 					bar:SetScript("OnUpdate", function(self)
 						PartyCastingBars.OnUpdate(self);
@@ -2065,24 +1096,16 @@ function K.SetPartyCastBarPreview(on)
 					bar:SetScript("OnUpdate", nil);
 				end
 
-				-- Solo se repone si lo apagamos nosotros.
 				local flash = _G[bar:GetName() .. "Flash"];
 				if flash and bar.nufFlashWasShown then flash:Show(); end
 				bar.nufFlashWasShown = nil;
-				-- Solo se oculta la que mostramos nosotros: si el compa esta
-				-- casteando de verdad, la barra tiene que quedarse.
+
 				if not (bar.casting or bar.channeling) then bar:Hide(); end
 			end
 		end
 	end
 end
 
--- Copia a las barras 2, 3 y 4 la posicion relativa que quedo en la 1.
---
--- La cuenta va en PIXELES DE PANTALLA y despues se traduce a la escala de
--- cada barra. Restar los offsets crudos no servia: los marcos del grupo
--- pueden tener escalas distintas (el modo 3v3 usa 1.5 para los dos primeros
--- y 1.3 para los otros), y las barras habrian quedado desparejas.
 function K.MirrorPartyCastBars()
 	local b1, p1 = PartyCastBar(1), _G["PartyMemberFrame1"];
 	if not (b1 and p1 and b1:GetLeft() and p1:GetRight()) then return; end
@@ -2102,19 +1125,6 @@ function K.MirrorPartyCastBars()
 	end
 end
 
-
--- ---------------------------------------------------------
--- OLVIDAR LA POSICION GUARDADA DE LAS BARRAS DE CASTEO
---
--- Es lo minimo que hace falta para que un reset venido DE AFUERA (el
--- /pcb reset de PartyCastingBars, o su boton) funcione de verdad: sin
--- esto, el candado sobre SetPoint le devolvia a la barra 1 la posicion
--- guardada en el mismo instante en que PCB la reanclaba, y el mismo reset
--- dejaba la 1 en un lugar y las otras tres en otro.
---
--- NO llama al reset de PCB a proposito: K.ResetGlobalPositions ya lo llama,
--- asi que si esta funcion lo llamara las dos se llamarian entre si.
--- ---------------------------------------------------------
 function K.ForgetPartyCastBarPosition()
 	local entry = BY_KEY["PartyCast"];
 	if not entry then return false; end
@@ -2123,32 +1133,6 @@ function K.ForgetPartyCastBarPosition()
 	return true;
 end
 
--- ---------------------------------------------------------
--- LO MISMO, PERO ARRASTRANDO CUALQUIERA DE LAS CUATRO
---
--- PartyCastingBars tiene su propio modo mover (/pcb drag, o el boton "Move
--- bars" de su ventana). Ahi se arrastran las cuatro barras por separado y
--- no pasaba nada mas: las otras tres se quedaban donde estaban, y al
--- recargar volvian TODAS al lugar de fabrica -- porque PCB no guarda
--- posiciones, las guarda este modulo, en globalPos.PartyCast, y solo la
--- del compa 1.
---
--- Esta funcion recibe el numero de la barra que se movio, traduce ese
--- desplazamiento a la barra 1, lo guarda, y de ahi copia a las otras tres
--- con MirrorPartyCastBars. Asi mover una mueve las cuatro, se venga de
--- /nufmove o de /pcb, y queda guardado en un solo lugar.
---
--- POR QUE PASA TODO POR LA BARRA 1: es la unica que tiene entrada en
--- MOVABLES, o sea la unica con posicion guardada y con candado sobre
--- SetPoint. Si cada barra guardara la suya tendriamos cuatro dueños para
--- una misma posicion, que es de donde salieron la mitad de los bugs de
--- este archivo.
---
--- LA CUENTA VA EN PIXELES DE PANTALLA (GetLeft() * escala efectiva). Los
--- marcos del grupo pueden tener escalas distintas -- el modo 3v3 usa 1.5
--- para los dos primeros y 1.3 para los otros -- y restar offsets crudos
--- dejaria las barras desparejas.
--- ---------------------------------------------------------
 function K.SyncPartyCastBarsFrom(index)
 	index = tonumber(index) or 1;
 	if index < 1 or index > 4 then index = 1; end
@@ -2159,44 +1143,22 @@ function K.SyncPartyCastBarsFrom(index)
 	if not (entry and b1 and p1 and b and p) then return false; end
 	if not (b:GetLeft() and p:GetRight() and p1:GetRight()) then return false; end
 
-	-- Estas barras cuelgan de los PartyMemberFrame, o sea que heredan su
-	-- proteccion: moverlas en combate lo bloquea el cliente y salta el
-	-- cartel de "Interface action failed because of an AddOn". Mejor no
-	-- hacer nada y que se reponga al salir de combate.
 	if InCombatLockdown() and b1.IsProtected and b1:IsProtected() then return false; end
 
-	-- Donde quedo la barra que se movio, respecto de SU marco de grupo.
 	local es, ep = b:GetEffectiveScale(), p:GetEffectiveScale();
 	local dx = (b:GetLeft() * es) - (p:GetRight() * ep);
 	local dy = (b:GetTop()  * es) - (p:GetTop()   * ep);
 
-	-- Ese mismo desplazamiento, ahora para la barra 1.
-	--
-	-- Se ancla al PartyMemberFrame1 y no a UIParent a proposito: asi las
-	-- cuatro guardan la misma relacion con su marco y mover los marcos del
-	-- grupo se las lleva a todas. Colgada de UIParent, la 1 se quedaba
-	-- clavada mientras las otras tres seguian a sus marcos.
 	local es1 = b1:GetEffectiveScale();
 	if not es1 or es1 == 0 then es1 = 1; end
 
-	-- _nufApplying: sin esto el candado de SetPoint la devuelve al lugar
-	-- viejo en el mismo instante en que la movemos.
 	b1._nufApplying = true;
 	b1:ClearAllPoints();
 	b1:SetPoint("TOPLEFT", p1, "TOPRIGHT", dx / es1, dy / es1);
 	b1._nufApplying = nil;
 
-	-- Y fuera del administrador de posiciones de Blizzard, igual que hace
-	-- SavePosition con todo lo demas: si no, UIParent_ManageFramePositions
-	-- puede volver a imantarla en el proximo repintado.
 	ReleaseManaged(entry, b1);
 
-	-- La posicion guardada, escrita a mano en vez de con SavePosition.
-	--
-	-- SavePosition lee GetPoint() y tira el frame de referencia (guarda
-	-- rel = nil, o sea UIParent). Aca hace falta conservarlo: rel es
-	-- justo el campo que ApplyPoint y LockFramePoint usan para volver a
-	-- colgarla del PartyMemberFrame1 en el proximo login.
 	local db  = DB();
 	local key = EntryKey(entry);
 	db[key] = db[key] or {};
@@ -2211,19 +1173,6 @@ function K.SyncPartyCastBarsFrom(index)
 	return true;
 end
 
-
--- ---------------------------------------------------------
--- Modo prueba de los timers de arena
---
--- Los tres frames existen siempre (se crean al cargar), pero arrancan
--- ocultos y solo se muestran cuando el evento correspondiente ocurre
--- dentro de una arena. Para el modo mover alcanza con mostrarlos: no hace
--- falta simular la cuenta atras, con ver la caja donde va ya sabes donde
--- la estas dejando.
---
--- Se recuerda cuales mostramos NOSOTROS, para no ocultar al salir uno que
--- estuviera visible de verdad.
--- ---------------------------------------------------------
 local ARENA_TIMER_FRAMES = {
 	"NUF_DalaranPipeTimer", "NUF_RoVPillarTimer", "NUF_ArenaEndTimer",
 	"NUF_ShadowSightTimer",
@@ -2246,16 +1195,6 @@ function K.SetArenaTimersPreview(on)
 	end
 end
 
--- ---------------------------------------------------------
--- Marcos de objetivo del grupo
---
--- Estan bajo RegisterUnitWatch: el juego los muestra u oculta segun exista
--- o no "partyNtarget", y un Show() a secas no les hace nada. Para el modo
--- mover hay que sacarlos del watch, mostrarlos, y devolverlos al salir.
---
--- Fuera de combate esto es seguro; adentro, RegisterUnitWatch esta bloqueado
--- y por eso se chequea.
--- ---------------------------------------------------------
 function K.SetPartyTargetPreview(on)
 	if InCombatLockdown() then return; end
 	for i = 1, 4 do
@@ -2275,9 +1214,6 @@ function K.SetPartyTargetPreview(on)
 	end
 end
 
--- ---------------------------------------------------------
--- Overlays
--- ---------------------------------------------------------
 local MOVER_BACKDROP = {
 	bgFile   = "Interface\\Buttons\\WHITE8x8",
 	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -2285,35 +1221,10 @@ local MOVER_BACKDROP = {
 	insets   = { left = 2.6, right = 2.6, top = 2.6, bottom = 2.6 },
 };
 
--- LOS COLORES DE DOMINOS (core/drag.lua).
---
--- Recuadro plano, sin borde: Dominos pinta su drag con un solo color al
--- 40% (0, 0.5, 0.7) y, al pasar el mouse, le suma un resaltado
--- (0.2, 0.3, 0.4, 0.5) en modo ADD, que lo aclara. Aca igual. Los marcos
--- de unidad conservan un tono propio, mas calido, para que no se
--- confundan con las barras cuando se pisan.
-local COLOR_FRAME = { 0.75, 0.40, 0.10, 0.40 };          -- marcos de unidad
-local COLOR_EXTRA = { 0,    0.50, 0.70, 0.40 };          -- barras, auras, avisos (Dominos)
-local COLOR_HOVER = { 0.20, 0.30, 0.40, 0.50 };          -- resaltado al pasar el mouse (Dominos)
+local COLOR_FRAME = { 0.75, 0.40, 0.10, 0.40 };
+local COLOR_EXTRA = { 0,    0.50, 0.70, 0.40 };
+local COLOR_HOVER = { 0.20, 0.30, 0.40, 0.50 };
 
--- ---------------------------------------------------------
--- LA GRILLA DE LAS AURAS: EL DRAG MUESTRA DONDE VAN A ESTAR
---
--- Es la idea de Dominos (modules/auraBuffsBar.lua): su marco de buffs no
--- mide los buffs que tenes ahora, mide TODOS los lugares (36 botones en
--- tantas columnas como digas), asi que el recuadro es una vista previa de
--- la zona que van a ocupar. Cambias las columnas y el recuadro cambia.
---
--- Aca: BUFF_MAX_DISPLAY lugares (32) para buffs y DEBUFF_MAX_DISPLAY (16)
--- para debuffs, en filas de "Icons per row", con el tamaño y la
--- separacion con que Blizzard los acomoda (BuffFrame_UpdateAllBuffAnchors:
--- iconos de 30, 5 entre uno y otro, BUFF_ROW_SPACING entre filas), a la
--- escala del slider. Crece desde la esquina de arriba a la derecha, que es
--- de donde Blizzard empieza a poner los iconos.
---
--- Antes el recuadro media los iconos visibles: con tres buffs era una
--- tirita, y mover el slider de iconos por fila no le cambiaba nada.
--- ---------------------------------------------------------
 local function AuraGrid(e)
 	local isDebuff = e.debuffAnchor and true or false
 	local per = (K.GetAuraIconsPerRow and K.GetAuraIconsPerRow()) or tonumber(BUFFS_PER_ROW) or 8;
@@ -2322,8 +1233,6 @@ local function AuraGrid(e)
 	local s = (K.GetModuleScale and K.GetModuleScale(isDebuff and "PlayerDebuffs" or "PlayerBuffs")) or 1;
 	if type(s) ~= "number" or s <= 0 then s = 1; end
 
-	-- Los iconos son hijos de BuffFrame y cada uno lleva la escala del
-	-- slider: en pantalla miden 30 x (escala de BuffFrame) x (slider).
 	local bf = _G["BuffFrame"];
 	local base = (bf and bf.GetEffectiveScale and bf:GetEffectiveScale()) or UIParent:GetEffectiveScale() or 1;
 	local ref = _G["TempEnchant1"];
@@ -2339,14 +1248,10 @@ local function AuraGrid(e)
 		cols = math.min(per, n), rows = math.ceil(n / per),
 		w = bw * f, h = bh * f,
 		gap = 5 * f, space = sp * f,
-		pad = 12 * f,          -- el tiempo que va debajo de la ultima fila
+		pad = 12 * f,
 	};
 end
 
--- Un cuadradito por lugar: se ve de un vistazo cuantos van por fila,
--- aunque tengas tres buffs. Blizzard recien reacomoda los iconos de
--- verdad en el proximo cambio de auras; los cuadraditos se acomodan en el
--- acto, que es justamente la vista previa.
 local function LayoutAuraSlots(ov, g, us)
 	ov.slots = ov.slots or {};
 	local w, h   = g.w / us, g.h / us;
@@ -2378,45 +1283,13 @@ local function CreateOverlay(entry)
 	local overlay = CreateFrame("Frame", "NUF_Move_" .. entry.key, UIParent);
 	overlay:SetFrameStrata("FULLSCREEN_DIALOG");
 
-	-- Niveles crecientes segun el orden de MOVABLES. Sin esto todos quedaban
-	-- en el mismo nivel y ganaba el ultimo dibujado: el recuadro del Player
-	-- (que es grande) tapaba al de la mascota, que vive justo debajo, y no
-	-- habia forma de agarrarla. Los frames chicos van declarados despues, o
-	-- sea que quedan por encima.
 	overlayLevel = overlayLevel + 2;
 	overlay:SetFrameLevel(overlayLevel);
 
-	-- ESTE era el bug de los buffs: BuffFrame no tiene tamaño propio
-	-- (mide 1x1), asi que SetAllPoints daba un recuadro de 1 pixel
-	-- imposible de agarrar. Cuando el frame no mide nada usable, le
-	-- damos al overlay un tamaño fijo anclado a una esquina.
-	-- overlaySize es un MINIMO, no un reemplazo.
-	--
-	-- Lo tenia como override y estaba mal en las dos direcciones: a
-	-- Player/Target/Focus les daba una caja fija que no seguia su escala ni
-	-- su tamaño real, y al Cast Bar le daba una caja que no crecia aunque
-	-- subieras la escala a 1.80. Ahora el tamaño sale del frame y el minimo
-	-- solo entra si el frame es mas chico que eso.
-	--
-	-- overlayPad expande el recuadro POR FUERA del frame. Hace falta cuando
-	-- el arte se dibuja mas grande que el frame — la barra de casteo es el
-	-- caso tipico: mide 195x13 pero su marco decorado sobresale por los
-	-- cuatro lados, asi que SetAllPoints daba un recuadro visiblemente mas
-	-- chico que la barra.
 	local function AnchorOverlay(self)
 		self:ClearAllPoints();
 		local e = self.entry;
 
-		-- El recuadro puede dibujarse sobre un frame DISTINTO del que se
-		-- arrastra. El minimapa es el caso: hay que mover MinimapCluster,
-		-- que ademas del mapa lleva el nombre de la zona, el reloj y los
-		-- botones, asi que es bastante mas grande que el mapa en si. Con
-		-- overlayOn el cuadro calza con el mapa y se sigue moviendo el
-		-- cluster entero.
-		-- La caja de las barras de accion se mide sobre los botones, asi
-		-- que hay que recalcularla ACA y no solo al construir: durante el
-		-- arrastre la barra se mueve y, con la caja vieja, el recuadro
-		-- quedaba clavado donde estaba antes.
 		if e.overlayOn and string.find(e.overlayOn, "^NUF_ActionBar")
 		   and K.UpdateActionBarsBox then
 			pcall(K.UpdateActionBarsBox);
@@ -2424,33 +1297,11 @@ local function CreateOverlay(entry)
 			pcall(K.UpdateStanceBarBox);
 		end
 
-		-- Con MiniBar el recuadro ES el contenedor (self.target): mide lo
-		-- que ocupan los botones y crece con la escala. La caja aparte
-		-- solo se usa en el otro modo.
 		local useOwn = e.framesMiniBar and C.MiniBarEnabled == true;
 		local box  = ((not useOwn) and e.overlayOn and _G[e.overlayOn]) or self.target;
 		local offX = (e.overlayOffset and e.overlayOffset[1]) or 0;
 		local offY = (e.overlayOffset and e.overlayOffset[2]) or 0;
 
-		-- EL RECUADRO DE UNA BARRA SE MIDE SOBRE SUS BOTONES.
-		--
-		-- Estas cuatro barras tenian un overlaySize fijo puesto a ojo (la
-		-- de mascota, 300x34). El marco de Blizzard que las contiene es
-		-- bastante mas ancho que los botones que tiene adentro -- y ademas
-		-- no cambia con la escala --, asi que el recuadro sobraba por la
-		-- derecha y no seguia al tamaño real: agarrabas aire.
-		--
-		-- Los botones dan el ancho de lo que de verdad se ve, y crecen con
-		-- la escala solos. Es exactamente lo que ya hacia
-		-- K.UpdateActionBarsBox con las tres filas de acciones; estas se
-		-- habian quedado con el numero fijo.
-		--
-		-- Se mide en pixeles de PANTALLA (GetLeft por la escala efectiva
-		-- del boton) y se traduce al espacio del overlay, porque boton y
-		-- overlay pueden tener escalas distintas.
-		-- BUFFS Y DEBUFFS: la grilla entera (ver AuraGrid), colgada de la
-		-- esquina de arriba a la derecha del ancla. El ancla es lo que se
-		-- arrastra, asi que el recuadro la sigue durante el arrastre.
 		if e.auraAnchor or e.debuffAnchor then
 			local tgt = self.target;
 			local right, top = tgt and tgt:GetRight(), tgt and tgt:GetTop();
@@ -2487,17 +1338,12 @@ local function CreateOverlay(entry)
 				local us = self:GetEffectiveScale() or 1;
 				if us > 0 then
 					self:SetSize((r - l) / us, math.max((tp - bt) / us, 10));
-					-- Se divide por la escala del OVERLAY, no por la de
-					-- UIParent: SetPoint mide el offset en el espacio del
-					-- marco que se esta posicionando. Es la misma cuenta
-					-- que MB_PlaceAtScreen en MiniBar.lua.
+
 					self:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l / us, bt / us);
 					return;
 				end
 			end
-			-- Sin botones visibles se sigue de largo y se mide el marco,
-			-- que es lo que habia antes: mejor un recuadro de mas que
-			-- ninguno.
+
 		end
 
 		local w = box:GetWidth()  or 0;
@@ -2508,8 +1354,6 @@ local function CreateOverlay(entry)
 		local padX = (e.overlayPad  and e.overlayPad[1])  or 0;
 		local padY = (e.overlayPad  and e.overlayPad[2])  or 0;
 
-		-- Frame sin tamaño util (los anchors de auras miden 1x1): caja fija
-		-- en la esquina que diga la entrada.
 		if w < 8 or h < 8 then
 			self:SetSize(math.max(minW, 200), math.max(minH, 60));
 			local anchor = e.overlayAnchor or "TOPLEFT";
@@ -2517,25 +1361,12 @@ local function CreateOverlay(entry)
 			return;
 		end
 
-		-- Sin minimo, padding ni corrimiento: el recuadro ES el frame.
 		if minW == 0 and minH == 0 and padX == 0 and padY == 0
 			and offX == 0 and offY == 0 then
 			self:SetAllPoints(box);
 			return;
 		end
 
-		-- Centrado sobre el frame, con el tamaño que haga falta.
-		--
-		-- EL FACTOR DE ESCALA NO ES OPCIONAL. GetWidth devuelve el ancho en
-		-- el espacio del FRAME; SetSize lo interpreta en el espacio del
-		-- RECUADRO. Si el frame esta escalado (Ctrl + rueda) los dos
-		-- espacios dejan de coincidir: con la barra de casteo al 2.00, el
-		-- frame mide 195 en su espacio pero 390 en pantalla, y sin convertir
-		-- el recuadro salia de 223 — la mitad de la barra.
-		--
-		-- SetAllPoints no tiene este problema porque ancla esquina con
-		-- esquina y la conversion la hace el motor. Al pasar a SetSize hay
-		-- que hacerla a mano.
 		local ts = box:GetEffectiveScale() or 1;
 		local os = self:GetEffectiveScale() or 1;
 		if ts == 0 then ts = 1; end
@@ -2552,18 +1383,6 @@ local function CreateOverlay(entry)
 	overlay:RegisterForDrag("LeftButton");
 	overlay:Hide();
 
-	-- ASPECTO: EL DRAG DE DOMINOS.
-	--
-	-- Plano y SIN BORDE: un solo color al 40% que deja ver lo que hay
-	-- abajo. Antes llevaba un backdrop con borde verde al 100%, que con
-	-- quince recuadros en pantalla era mas borde que otra cosa.
-	--
-	-- Al pasar el mouse se aclara (el resaltado de Dominos, en modo ADD),
-	-- asi sabes cual vas a agarrar antes de hacer click, aunque haya dos
-	-- encimados. Mientras lo arrastras se queda aclarado.
-	--
-	--   tono calido = marcos de unidad (Player, Target, Party...)
-	--   celeste     = todo lo demas, el color de Dominos
 	local col = (entry.group == "frames") and COLOR_FRAME or COLOR_EXTRA;
 	overlay.bg = overlay:CreateTexture(nil, "BACKGROUND");
 	overlay.bg:SetAllPoints(overlay);
@@ -2579,51 +1398,18 @@ local function CreateOverlay(entry)
 		if not self.drag then self.hl:Hide(); end
 	end);
 
-	-- Etiqueta AL CENTRO, como en Dominos, con la letra normal del juego
-	-- (la grande no entra en los recuadros chicos: Seduccion, el ICD).
 	overlay.text = overlay:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 	overlay.text:SetPoint("CENTER", overlay, "CENTER", 0, 0);
 	overlay.text:SetTextColor(1, 0.82, 0);
-	-- EL NUMERO SE VE DE ENTRADA, NO RECIEN AL GIRAR LA RUEDA.
-	--
-	-- Antes el recuadro decia solo el nombre y el valor aparecia al primer
-	-- clic de rueda. Mostrarlo desde el arranque no es decoracion: es la
-	-- forma de ver de un vistazo si coincide con el slider. Justamente asi
-	-- se vio que no coincidian.
+
 	SetOverlayLabel(overlay, entry, frame);
 
 	overlay.target = frame;
 	overlay.entry  = entry;
 
--- ---------------------------------------------------------
--- Cuadricula
---
--- La pantalla se trata como dividida en casilleros de GRID pixeles, y el
--- frame se engancha al casillero mas cercano mientras lo arrastras. Sirve
--- para alinear dos frames entre si sin pelearla a ojo: si los dos caen en
--- la misma columna, quedan derechos y listo.
---
--- POR QUE NO ALCANZA CON StartMoving
--- StartMoving es de Blizzard y pega el frame al cursor pixel a pixel, sin
--- lugar para meter el redondeo. Asi que el arrastre se hace a mano: se
--- guarda donde estaban el frame y el cursor al empezar, y en cada cuadro
--- se reposiciona segun cuanto se corrio el cursor, ya redondeado.
---
--- LA CUADRICULA VA EN PIXELES DE PANTALLA, NO DEL FRAME
--- Esto es lo que hace que la cosa realmente sirva. Los offsets de SetPoint
--- estan en el espacio del frame, que depende de su escala: redondear ahi
--- haria que un frame al 1.5 caiga cada 15 pixeles reales y otro al 1.0
--- cada 10, y nunca coincidirian. Por eso se redondea la posicion en
--- pantalla y recien despues se traduce de vuelta a offsets.
--- ---------------------------------------------------------
--- El lado del casillero lo elige el usuario desde el panel (2, 5 o 10).
--- Se lee en cada arrastre, no se cachea: asi cambiar la opcion tiene
--- efecto en el acto, sin recargar ni volver a abrir el modo mover.
 local function GridStep()
 	local v = C and C.MoveGridStep;
-	-- 0 = SIN CUADRICULA. Se devuelve 1, que es moverse pixel a pixel: el
-	-- redondeo sigue existiendo pero ya no cambia nada, asi que no hay que
-	-- tocar el codigo de arrastre.
+
 	if v == 0 then return 1; end
 	if type(v) ~= "number" or v < 1 then return 10; end
 	return v;
@@ -2632,26 +1418,17 @@ end
 local function BeginDrag(overlay)
 	local f = overlay.target;
 	if not f then return; end
-	-- Que los modulos sepan que este marco se esta arrastrando y no lo
-	-- reacomoden en el medio (AuraAnchor recoloca el ancla de debuffs en
-	-- cada cambio de auras mientras esta en su lugar de fabrica).
+
 	f._nufDragging = true;
 	if overlay.hl then overlay.hl:Show(); end
 
-	-- SOLTARLO DEL GESTOR DE BLIZZARD ANTES DE MOVERLO.
-	--
-	-- Las barras de auras, mascota, formas y totems las reposiciona
-	-- UIParent_ManageFramePositions todo el tiempo. Se marcaban como
-	-- "managed" recien al guardar, asi que durante el arrastre Blizzard
-	-- las devolvia a su lugar en el mismo frame en que las moviamos: se
-	-- veian como si no se movieran para nada.
 	if overlay.entry and overlay.entry.managed then
 		f.ignoreFramePositionManager = true;
 	end
 
 	local point, relTo, relPoint, ox, oy = f:GetPoint(1);
 	if not point then
-		-- Sin punto propio no hay de donde partir; se le da uno.
+
 		f:ClearAllPoints();
 		f:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
 		point, relTo, relPoint, ox, oy = f:GetPoint(1);
@@ -2672,21 +1449,19 @@ local function BeginDrag(overlay)
 		local es = f:GetEffectiveScale();
 		if not es or es == 0 then es = 1; end
 
-		-- 1) seguir al cursor, uno a uno
 		local nx, ny = GetCursorPosition();
 		local ox = d.ox + (nx - d.cx) / es;
 		local oy = d.oy + (ny - d.cy) / es;
 		f:ClearAllPoints();
 		f:SetPoint(d.point, d.relTo, d.relPoint, ox, oy);
 
-		-- 2) ver donde cayo EN PANTALLA y correrlo al casillero mas cercano
 		local left, bottom = f:GetLeft(), f:GetBottom();
 		if left and bottom then
 			local grid = GridStep();
 			local sl, sb = left * es, bottom * es;
 			local tl = math.floor(sl / grid + 0.5) * grid;
 			local tb = math.floor(sb / grid + 0.5) * grid;
-			-- la correccion vuelve al espacio del frame para sumarla al offset
+
 			f:ClearAllPoints();
 			f:SetPoint(d.point, d.relTo, d.relPoint,
 				ox + (tl - sl) / es,
@@ -2701,7 +1476,7 @@ local function EndDrag(overlay)
 	overlay:SetScript("OnUpdate", nil);
 	overlay.drag = nil;
 	if overlay.target then overlay.target._nufDragging = nil; end
-	-- Si el mouse ya no esta encima, se apaga el resaltado.
+
 	if overlay.hl and not (MouseIsOver and MouseIsOver(overlay)) then overlay.hl:Hide(); end
 end
 
@@ -2711,25 +1486,18 @@ end
 				or "Action bars cannot be moved during combat."));
 			return;
 		end
-		-- Soltarlo del sistema de posiciones de Blizzard ANTES de moverlo,
-		-- si no se vuelve solo a su lugar al soltar el mouse.
+
 		ReleaseManaged(self.entry, self.target);
 		UnlockFramePoint(self.target);
-		-- Los de party: reparentar a UIParent para que el punto guardado
-		-- quede relativo a la pantalla y no a NidhausPartyFrame (que en
-		-- modo normal es el padre). Asi ApplyIndividualPartyPositions lo
-		-- reaplica igual sin importar el modo.
+
 		if self.entry.partyIndex and not InCombatLockdown() then
-			-- Y ademas soltar a los CUATRO de la fila: si no, mover el
-			-- primero arrastraba a los otros tres, que cuelgan de el.
+
 			DetachPartyChain();
 			self.target:SetParent(UIParent);
 		end
 		self.target:SetMovable(true);
 		if self.entry.auraAnchor or self.entry.debuffAnchor then self.target:EnableMouse(false); end
-		-- Frenado contra el borde, salvo que la entrada diga que no. Las
-		-- barras de accion NO se frenan: su arte cuelga por debajo del
-		-- contenedor y necesita poder salirse de la pantalla.
+
 		self.target:SetClampedToScreen(self.entry.noClamp ~= true);
 		BeginDrag(self);
 		self.isMoving = true;
@@ -2743,32 +1511,9 @@ end
 			pcall(self.target.SetUserPlaced, self.target, true);
 		end
 
-		-- ¿QUIEN ES EL DUEÑO DE ESTA POSICION?
-		--
-		-- Para casi todo, este modulo: se guarda en globalPos y se pone un
-		-- lock sobre SetPoint para que nadie la corra despues.
-		--
-		-- Pero hay frames cuya posicion la maneja OTRO modulo, con su propio
-		-- formato. Los del grupo (3v3 / movimiento individual) ya estaban
-		-- contemplados. Los PARTY TARGET no, y por eso el del compa 1 se
-		-- portaba distinto a los otros tres:
-		--
-		--   - solo el 1 pasa por aca, porque es el unico con recuadro
-		--   - al soltarlo se le guardaba una posicion en globalPos Y se le
-		--     ponia un lock
-		--   - el lock reaplicaba esa posicion cada vez que PartyTargets
-		--     intentaba anclarlo a su PartyMemberFrame
-		--
-		-- Dos sistemas empujando el mismo frame: el 1 quedaba donde decia el
-		-- lock y los otros tres donde decia el modulo.
-		-- partyCast entra aca tambien: su posicion la escribe
-		-- SyncPartyCastBarsFrom mas abajo, con el frame de referencia
-		-- puesto. Si pasara por SavePosition se guardaria contra
-		-- UIParent y las dos escrituras se pelearian.
 		local moduleOwned = self.entry.partyIndex or self.entry.partyTarget
 			or self.entry.partyCast;
 
-		-- Los que tienen tabla propia guardan por su modulo (ver arriba).
 		if (not moduleOwned) and OwnsItsPosition and OwnsItsPosition(self.entry.key) then
 			if SaveToOwner(self.entry, self.target) then
 				UnlockFramePoint(self.target);
@@ -2780,8 +1525,7 @@ end
 				end
 				moduleOwned = true;
 			end
-			-- Si el modulo no supo guardar, sigue de largo y se guarda aca
-			-- como siempre: mejor eso que perder la posicion.
+
 		end
 
 		if not moduleOwned then
@@ -2789,23 +1533,7 @@ end
 			local pos = DB()[EntryKey(self.entry)];
 			if pos and pos.point then LockFramePoint(self.target, self.entry, pos); end
 		elseif self.entry.partyIndex then
-			-- PRIMERO SE GUARDA DONDE LO SOLTASTE. DESPUES SE REPONE.
-			--
-			-- ESTE ERA EL BUG DE "lo muevo y se vuelve solo" con el 3v3
-			-- puesto. SavePosition NO se llamaba nunca para los marcos del
-			-- grupo: caen del lado de moduleOwned -- "de esto se encarga su
-			-- modulo" -- y ahi se saltaba el guardado.
-			--
-			-- Sin 3v3 no se notaba: ApplyIndividualPartyPositions, si no
-			-- encuentra posicion guardada, CAPTURA la que el marco tiene en
-			-- pantalla y la guarda ella. Con el 3v3 puesto corre
-			-- Apply3v3PartyMode en su lugar, que no captura nada: reponia la
-			-- posicion de fabrica del modo y el arrastre se perdia.
-			--
-			-- SavePosition delega en SavePartyMemberPosition, que ademas
-			-- prende PartyIndividualMove. Con la posicion ya guardada,
-			-- Apply3v3PartyMode la respeta y el marco se queda donde lo
-			-- dejaste, con la escala del 3v3 puesta.
+
 			SavePosition(self.entry, self.target);
 
 			if C.PartyMode3v3 and K.Apply3v3PartyMode then
@@ -2817,37 +1545,27 @@ end
 
 		if self.entry.auraAnchor and K.ReanchorAuras then K.ReanchorAuras(); end
 		if self.entry.debuffAnchor and K.ReanchorDebuffs then K.ReanchorDebuffs(); end
-		-- UNA SOLA PUERTA PARA LA POSICION DE LAS BARRAS DE CASTEO.
-		--
-		-- Antes aca se guardaba la posicion arriba (SavePosition +
-		-- candado) y despues se copiaba a las otras tres. Ahora las dos
-		-- cosas las hace SyncPartyCastBarsFrom, que es la misma que usa
-		-- el modo mover de PCB: un solo formato guardado, se venga de
-		-- donde se venga.
+
 		if self.entry.partyCast and K.SyncPartyCastBarsFrom then
 			pcall(K.SyncPartyCastBarsFrom, 1);
 		end
 		if self.entry.partyTarget and PartyTargets_AnchorFromFrame then
-			-- El modulo recalcula el offset compartido a partir de donde
-			-- quedo este, y reancla los cuatro.
+
 			pcall(PartyTargets_AnchorFromFrame, self.target);
 		end
-		-- Mover el minimapa puede dejarlo encima de los buffs, o sacarlo
-		-- de ahi: que los buffs lo esquiven (o vuelvan a su lugar).
+
 		if self.entry.key == "Minimap" and K.RefreshAuraAnchorDefault then
 			pcall(K.RefreshAuraAnchorDefault);
 		end
 		self:AnchorOverlay();
 	end);
 
-	-- Ctrl + rueda = escalar este frame
 	if entry.scalable then
 		overlay:EnableMouseWheel(true);
 		overlay:SetScript("OnMouseWheel", function(self, delta)
 			if not IsControlKeyDown() then return; end
 			if self.entry.protected and InCombatLockdown() then return; end
 
-			-- EL DATO, NO EL MARCO (ver CurrentScale).
 			local current = CurrentScale(self.entry, self.target);
 			local newScale = current + (delta > 0 and 0.05 or -0.05);
 			local key = self.entry.key;
@@ -2858,71 +1576,35 @@ end
 
 			local owner = ScaleOwner(self.entry);
 			if owner then
-				-- Tiene dueño: se guarda y se aplica ALLA, y su slider se
-				-- mueve solo. En globalPos no queda escala.
-				-- Por SetOwnedScaleFromControl, la misma que usa el slider:
-				-- el marco no se corre al escalar.
+
 				SetOwnedScaleFromControl(self.entry, self.target, owner, newScale);
 				ClearSavedScale(self.entry);
 			elseif MainBarIsMaster(self.entry) then
-				-- Barra 1 = "Action Bar Scale": lo mismo que mover el slider.
+
 				K.ClearBarOwnScales();
 				if K.SaveConfigSilent then K.SaveConfigSilent("ActionBarScale", newScale); end
 				if K.ApplyActionBarScale then pcall(K.ApplyActionBarScale, newScale); end
 				if K.RefreshPanelSliders then pcall(K.RefreshPanelSliders, "ActionBarScale"); end
 			else
-				-- Crece para los dos lados (ScaleKeepingCenter) Y SE GUARDA
-				-- EL PUNTO NUEVO: centrar mueve el anclaje, y sin guardarlo
-				-- el proximo login repondria el de antes -- peor que no
-				-- centrar, porque el salto llega despues. Salvo que la
-				-- posicion tenga dueño propio (esos la guardan solos).
-				--
-				-- Es la MISMA funcion que usa el slider del panel
-				-- (SetMovableScaleFromControl): la rueda y el slider no
-				-- pueden dar resultados distintos.
+
 				CenteredScaleAndSave(self.entry, self.target, newScale);
 
-				-- CADA BARRA CON SU ESCALA.
-				--
-				-- SyncFrameScaleSetting escribe el ajuste general del panel
-				-- (MainBar -> ActionBarScale). Estando en MiniBar eso hacia que
-				-- escalar la barra 1 escribiera el valor comun y el siguiente
-				-- repintado se lo aplicara a las tres.
-				--
-				-- Con MiniBar la rueda guarda SOLO la escala de esa barra. El
-				-- slider del panel sigue siendo el maestro: mueve las tres.
 				local perBar = (C.MiniBarEnabled == true) and STACK_KEYS[self.entry.key];
 				if K.SyncFrameScaleSetting and not perBar then
 					K.SyncFrameScaleSetting(self.entry.key, newScale);
 				end
 
-				-- EL FONDO ACOMPAÑA EN EL ACTO.
-				--
-				-- MainMenuBar -- el marco cuyo arte se ve de fondo -- toma su
-				-- escala de la fila 1, y eso lo reparte ApplyBarHolderScales.
-				-- Antes se llamaba sola porque la rueda escribia el ajuste
-				-- general; al dejar de escribirlo (para que cada barra tenga su
-				-- escala) nadie la llamaba, y el fondo recien se ponia al dia
-				-- en el proximo /reload.
-				--
-				-- Se la llama aca a proposito. Cada fila conserva SU escala
-				-- guardada, asi que repartir no contagia nada.
 				if perBar and K.ApplyBarHolderScales then
 					pcall(K.ApplyBarHolderScales, C.ActionBarScale or 1.0);
 				end
 
-				-- La barra de casteo: el slider tambien escala la del objetivo
-				-- (modo custom). La rueda hace lo mismo.
 				if key == "CastBar" and K.ApplyCastBarPWScale then
 					pcall(K.ApplyCastBarPWScale, newScale);
 				end
-			end   -- (sin dueño propio)
+			end
 
-			-- nExtraBars acompaña a las barras de accion (MiniBar.lua).
 			if K.SyncExtraBarScale then pcall(K.SyncExtraBarScale); end
 
-			-- El numero que se muestra es el GUARDADO, leido por el mismo
-			-- camino que el slider: si el dueño lo recorto, se ve recortado.
 			SetOverlayLabel(self);
 			self:AnchorOverlay();
 		end);
@@ -2935,51 +1617,16 @@ end
 	return overlay;
 end
 
--- Puente con los sliders de la pestaña Frames: si escalas con la rueda,
--- el setting correspondiente se actualiza para que el slider no quede desfasado.
--- Que slider del panel le corresponde a cada frame movible.
---
--- "Party" estaba muerto: no existe ningun movible con esa clave, son
--- cuatro (Party1..Party4). O sea que escalar un marco del grupo con
--- Ctrl + rueda nunca movia el slider de Party Frame Scale.
 local SCALE_SETTING = {
 	Player = "PlayerFrameScale",
 	Target = "TargetFrameScale",
-	-- "Focus" NO VA ACA, y esto es lo que rompia su slider.
-	--
-	-- El movible del foco se saco a proposito (ver la lista de MOVABLES),
-	-- pero esta linea quedo. Como GetMovablesForSetting devolvia
-	-- {"Focus"}, el slider del panel tomaba el camino de los movibles y
-	-- llamaba a SetGlobalFrameScale("Focus", v), que no encuentra la
-	-- entrada y sale sin hacer nada. Resultado: mover el slider del foco
-	-- no se veia hasta soltarlo, que es cuando el guardado dispara
-	-- CONFIG_CHANGED y ahi si se aplica por el otro camino.
-	--
-	-- Es el mismo caso que la clave "Party" de dos lineas mas abajo, que
-	-- ya se habia encontrado muerta antes.
+
 	Pet    = "PetFrameScale",
-	-- Party1..4 NO VAN ACA, y esto era lo que achicaba el grupo con el 3v3.
-	--
-	-- Con estas cuatro lineas, el slider "Party Frame Scale" -- y el reset
-	-- -- escribian la escala generica ADEMAS en el guardado del modo mover
-	-- de cada marco del grupo. Y RestoreGlobalPositions la reponia sobre el
-	-- marco cada vez que corria, pasandole por encima al 1.5 / 1.3 del 3v3.
-	-- En tu archivo quedaron guardadas: Party1..4 con scale = 1.
-	--
-	-- La escala del grupo ya tiene dos dueños y alcanzan: PartyFrameScale
-	-- sin 3v3, Party3v3Scale1..4 con 3v3. Un tercero en globalPos sobraba.
-	-- (Ctrl + rueda no los toca: los cuatro del grupo no son "scalable".)
+
 	MainBar = "ActionBarScale",
 	CastBar = "CastBarPWScale",
 };
 
--- El camino inverso: que frames movibles maneja un slider dado.
---
--- Lo usa el panel para que mover el slider escriba en el MISMO lugar
--- donde escribe Ctrl + rueda. Antes cada uno guardaba en el suyo — el
--- slider en C, la rueda en globalPos — y al reloguear ganaba globalPos:
--- el marco volvia al tamaño viejo y el slider seguia mostrando el
--- nuevo, sin que se entendiera por que.
 local SETTING_MOVABLES = {};
 for key, setting in pairs(SCALE_SETTING) do
 	SETTING_MOVABLES[setting] = SETTING_MOVABLES[setting] or {};
@@ -3001,39 +1648,24 @@ function K.SyncFrameScaleSetting(key, scale)
 	end
 	if K.RefreshScaleSliders then K.RefreshScaleSliders(); end
 	if K.RefreshCastBarScaleSlider then K.RefreshCastBarScaleSlider(); end
-	-- Los sliders del panel general (Action Bar Scale, por ejemplo) no
-	-- estan en la lista de RefreshScaleSliders.
+
 	if K.RefreshPanelSliders then pcall(K.RefreshPanelSliders, setting); end
 end
 
--- Se puede volver a llamar: algunos frames (NidhausPlayerFrame, las barras
--- de los timers) se crean tarde, asi que reintentamos crear los que falten
--- y reanclamos los que ya existen.
 local builtFor = {};
 
 local function BuildOverlays()
 	InstallScaleHooks();
-	-- CORTAR LA CADENA DE MINIBAR, ANTES QUE NADA.
-	--
-	-- MiniBar apila con anclajes relativos, que en WoW son vinculos vivos:
-	-- arrastrar una fila se llevaba puestas las de arriba. Aca se las pasa
-	-- a coordenadas absolutas contra UIParent, en el mismo lugar donde ya
-	-- estan, asi que a la vista no cambia nada y cada una queda suelta.
-	--
-	-- Va primero porque las cajas de abajo miden posiciones: si se aplana
-	-- despues, los recuadros quedan calculados sobre la pila vieja.
+
 	if K.MiniBarDetachStack then pcall(K.MiniBarDetachStack); end
 
-	-- La caja que abarca todas las barras se recalcula antes de anclar: su
-	-- tamaño depende de que barras esten a la vista y del modo puesto.
 	if K.UpdateActionBarsBox then pcall(K.UpdateActionBarsBox); end
 	if K.UpdateStanceBarBox then pcall(K.UpdateStanceBarBox); end
 
 	for _, entry in ipairs(MOVABLES) do
-		-- Los que traen su propio arrastre no llevan recuadro: sumaria un
-		-- segundo sistema encima del que ya funciona.
+
 		if entry.noOverlay then
-			-- nada que construir
+
 		elseif not builtFor[entry.key] then
 			local ov = CreateOverlay(entry);
 			if ov then
@@ -3041,33 +1673,19 @@ local function BuildOverlays()
 				table.insert(overlays, ov);
 			end
 		else
-			-- Re-resolver por si el frame real cambio
+
 			local f = ResolveFrame(entry);
 			local ov = builtFor[entry.key];
 			if f and ov.target ~= f then
 				ov.target = f;
 			end
 			if ov.target and ov.AnchorOverlay then ov:AnchorOverlay(); end
-			-- El numero tambien: pudo cambiar con el slider mientras el
-			-- modo mover estaba cerrado.
+
 			SetOverlayLabel(ov);
 		end
 	end
 end
 
--- ---------------------------------------------------------
--- Toggle
--- ---------------------------------------------------------
--- ---------------------------------------------------------
--- Consola del modo mover
---
--- Mientras el modo mover esta activo aparece una ventanita con lo que uno
--- necesita EN ESE MOMENTO. La cuadricula estaba solo en el panel de
--- opciones, o sea que para cambiarla habia que abrir el panel, buscarla y
--- volver — justo lo que no queres hacer mientras estas acomodando cosas.
---
--- Es movible y recuerda donde la dejaste.
--- ---------------------------------------------------------
 local console;
 
 local function BuildConsole()
@@ -3076,13 +1694,6 @@ local function BuildConsole()
 	console = CreateFrame("Frame", "NUF_MoverConsole", UIParent);
 	console:SetSize(320, 124);
 
-	-- TOOLTIP, no FULLSCREEN_DIALOG.
-	--
-	-- Los recuadros movibles viven en FULLSCREEN_DIALOG y su nivel va
-	-- subiendo con cada uno que se crea. Con la consola en esa misma capa,
-	-- alcanzaba con que un recuadro quedara encima para que los botones no
-	-- respondieran al click. TOOLTIP esta por arriba de todo eso, asi que
-	-- la consola siempre recibe el mouse.
 	console:SetFrameStrata("TOOLTIP");
 	console:SetToplevel(true);
 	console:SetBackdrop(MOVER_BACKDROP);
@@ -3090,16 +1701,12 @@ local function BuildConsole()
 	console:SetBackdropBorderColor(1, 0.71, 0, 0.45);
 	console:Hide();
 
-	-- Posicion propia, guardada aparte de la de los frames movibles.
 	local saved = NidhausUnitFramesDB and NidhausUnitFramesDB.moverConsolePos;
 	if saved and saved.point then
 		console:SetPoint(saved.point, UIParent, saved.relPoint or saved.point,
 			saved.x or 0, saved.y or 0);
 	else
-		-- Arriba y a la derecha, no en el centro.
-		--
-		-- A -150 en el eje central caia justo encima del personaje, que es
-		-- lo unico que NO queres tapar mientras acomodas la interfaz.
+
 		console:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -40, -60);
 	end
 
@@ -3122,14 +1729,6 @@ local function BuildConsole()
 	console.title:SetTextColor(1, 0.8, 0);
 	console.title:SetText(L["MOVER_CONSOLE"] or "Move Everything");
 
-	-- Dos filas: arriba la cuadricula, abajo las acciones.
-	--
-	-- Antes iba todo en una sola linea y las cuentas no cerraban: Reset
-	-- arrancaba en x=148, justo donde terminaba el boton x10. Se pisaban, y
-	-- el click caia en el que estuviera dibujado ultimo. De ahi que Reset y
-	-- Lock it parecieran no responder.
-	-- El escalado con Ctrl + rueda no estaba escrito en ningun lado: era
-	-- una funcion que solo conocia quien leyera el codigo.
 	console.hint = console:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 	console.hint:SetPoint("TOP", console, "TOP", 0, -22);
 	console.hint:SetText("|cff8EAEC9" .. (L["MOVER_HINT_SCALE"]
@@ -3139,7 +1738,6 @@ local function BuildConsole()
 	console.gridLbl:SetPoint("TOPLEFT", console, "TOPLEFT", 14, -52);
 	console.gridLbl:SetText(L["LBL_MOVE_GRID"] or "Grid");
 
-	-- Los tres pasos de cuadricula, a mano y sin abrir nada.
 	console.gridBtns = {};
 	local function RefreshGrid()
 		local cur = (C and C.MoveGridStep) or 10;
@@ -3149,21 +1747,8 @@ local function BuildConsole()
 	end
 	console.RefreshGrid = RefreshGrid;
 
-	-- El camino de vuelta: los botones del PANEL tambien cambian el paso, y
-	-- sin esto la consola se quedaba mostrando el anterior. La consola ya
-	-- avisaba al panel (K._RefreshMoveGridButtons); faltaba el reves.
 	K.RefreshMoveConsoleGrid = RefreshGrid;
 
-	-- "Sin" ES UN BOTON, NO UN TRUCO.
-	--
-	-- Apagar la cuadricula ya se podia: apretabas el que estaba puesto y
-	-- volvia a movimiento libre. Pero eso no lo adivina nadie, y encima
-	-- con la cuadricula apagada no quedaba NINGUN boton hundido, asi que
-	-- tampoco habia forma de ver en que estado estabas.
-	--
-	-- Un boton propio arregla las dos cosas de una: se ve el estado y se
-	-- apaga sin saber el truco. El truco sigue funcionando para quien ya
-	-- lo tenia agarrado.
 	local gx = 56;
 	for _, step in ipairs({ 0, 2, 5, 10 }) do
 		local b = CreateFrame("Button", nil, console, "UIPanelButtonTemplate");
@@ -3171,22 +1756,19 @@ local function BuildConsole()
 		b:SetSize((step == 0) and 44 or 50, 22);
 		b:SetText((step == 0) and (L["BTN_GRID_OFF"] or "Off") or ("x" .. step));
 		b:SetScript("OnClick", function()
-			-- Apretar el que YA esta puesto lo apaga: vuelve a 0, o sea
-			-- movimiento libre. Apretar otro cambia de paso, como siempre.
+
 			local cur  = (C and C.MoveGridStep) or 10;
-			-- El de "Sin" apaga y punto; los otros alternan como siempre.
+
 			local want = (step == 0 or cur == step) and 0 or step;
 			if K.SaveConfig then K.SaveConfig("MoveGridStep", want); end
 			RefreshGrid();
-			-- El panel de opciones, si esta abierto, tiene los mismos tres
-			-- botones: hay que dejarlos en el mismo estado.
+
 			if K._RefreshMoveGridButtons then pcall(K._RefreshMoveGridButtons); end
 		end);
 		console.gridBtns[step] = b;
 		gx = gx + ((step == 0) and 48 or 54);
 	end
 
-	-- Segunda fila, bien separada de la de arriba.
 	local lockBtn = CreateFrame("Button", nil, console, "UIPanelButtonTemplate");
 	lockBtn:SetPoint("BOTTOMRIGHT", console, "BOTTOMRIGHT", -14, 12);
 	lockBtn:SetSize(120, 24);
@@ -3200,9 +1782,7 @@ local function BuildConsole()
 	resetBtn:SetSize(120, 24);
 	resetBtn:SetText(L["BTN_MOVE_RESET"] or "Reset");
 	resetBtn:SetScript("OnClick", function()
-		-- Por ResetManager: la secuencia completa vive ahi, en un solo
-		-- lugar, para que este boton y el de la pestaña Action Bars no se
-		-- vayan separando cada vez que se arregla uno.
+
 		if K.ResetEverything then K.ResetEverything();
 		elseif K.ResetGlobalPositions then K.ResetGlobalPositions(); end
 	end);
@@ -3211,15 +1791,6 @@ local function BuildConsole()
 	return console;
 end
 
--- Recalcula que recuadros se ven, sin apagar ni prender el modo mover.
---
--- Hace falta porque los checkbox de los modulos se pueden tocar CON el modo
--- mover ya activo. Antes la lista de recuadros se armaba una sola vez al
--- entrar al modo: tildabas un modulo y su marco no aparecia hasta salir y
--- volver a entrar, lo cual no tenia ninguna logica visible desde afuera.
---
--- Tambien dispara el modo prueba del modulo recien prendido, para que su
--- frame se vea aunque normalmente este oculto hasta que pase algo.
 function K.RefreshGlobalUnlockOverlays()
 	if not unlocked then return; end
 
@@ -3242,37 +1813,20 @@ function K.RefreshGlobalUnlockOverlays()
 end
 
 function K.SetGlobalUnlock(state, scope)
-	-- Los timers de arena viven en el addon a pedido: sin el, sus
-	-- recuadros no aparecerian y no habria con que acomodarlos.
+
 	if state and K.LoadArenaModules then pcall(K.LoadArenaModules); end
 	unlocked = state and true or false;
 
-	-- AL APAGAR "MOVER TODO" SE APAGAN TAMBIEN LOS TIMERS DE ARENA.
-	--
-	-- Este modulo solo los MOSTRABA (ver SetArenaTimersPreview), asi que si
-	-- el modo mover de los timers venia encendido por otro lado -- el boton
-	-- "Mover" de Arena > Timers, o /nuftimers -- al salir de aca se
-	-- quedaban en pantalla, contando, en pleno mundo abierto. Para el que
-	-- lo usa es el mismo boton: si sale de mover, no queda nada moviendose.
-	--
-	-- Va ANTES del repaso de vistas previas de abajo, que es el que apaga
-	-- los que mostro este modulo (los otros los apaga la linea de aca).
 	if not unlocked and K.ExitArenaTimersMoving then
 		pcall(K.ExitArenaTimersMoving);
 	end
 
-	-- Los modulos con modo mover PROPIO se fijan primero: si no, quedan dos
-	-- sistemas de arrastre sobre el mismo frame y se traba.
 	if unlocked then
 		if K.IsMeleeSwingUnlocked and K.IsMeleeSwingUnlocked() then
 			pcall(K.ToggleMeleeSwingUnlock);
 		end
 	end
 
-	-- Trabar con un recuadro todavia agarrado (entrar en combate a mitad de
-	-- un arrastre): al ocultarlo no llega OnDragStop, el marco quedaba con
-	-- _nufDragging puesto para siempre y el lugar sin guardar. Se suelta y
-	-- se guarda aca, igual que si soltaras el mouse.
 	if not unlocked then
 		for _, ov in ipairs(overlays) do
 			if ov.isMoving then
@@ -3282,21 +1836,10 @@ function K.SetGlobalUnlock(state, scope)
 		end
 	end
 
-	-- EL ALCANCE, PRIMERO. Todo lo de abajo lo consulta.
 	currentScope = scope or "all";
 
-	-- Varios modulos tienen el frame oculto hasta que pasa algo (un CD, un
-	-- golpe). En modo mover hay que mostrarlos igual, si no el recuadro azul
-	-- apunta a algo invisible y no sabes donde lo estas dejando.
 	for _, entry in ipairs(MOVABLES) do
-		-- Solo de modulos PRENDIDOS: si no, se disparaba el modo prueba de
-		-- algo que el usuario tiene apagado y aparecia un marco que no
-		-- deberia existir.
-		--
-		-- Y solo si entra en el alcance: con el Move de la mascota no tiene
-		-- nada que hacer la vista previa de las barras de casteo del grupo.
-		-- Fuera del alcance se llama con false, que las apaga si venian de
-		-- un alcance anterior (cambiar de "frames" a "pet" sin trabar).
+
 		if entry.preview and K[entry.preview] and EntryModuleActive(entry) then
 			pcall(K[entry.preview], unlocked and ScopeMatches(entry));
 		end
@@ -3312,16 +1855,10 @@ function K.SetGlobalUnlock(state, scope)
 		end
 	end
 
-	-- Modo prueba de party: sin grupo no hay marcos que mover
-	-- (no con el Move de la mascota: ahi no hay marcos del grupo que mover)
 	if K.SetPartyTestMode then
 		pcall(K.SetPartyTestMode, unlocked and currentScope ~= "pet");
 	end
 
-	-- Marcos de arena: se usa exactamente el mismo camino que /nuf arena
-	-- (K.ToggleArenaFramesMover). El estado real NO es mover:IsShown(), es
-	-- NidhausUnitFramesDB.ArenaMover.IsShown — mirar el frame era el motivo
-	-- de que se mostrara pero nunca se ocultara.
 	if K.ToggleArenaFramesMover and not InCombatLockdown() then
 		local db = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaMover;
 		local shown = (db and db.IsShown) and true or false;
@@ -3334,10 +1871,8 @@ function K.SetGlobalUnlock(state, scope)
 		end
 	end
 
-	-- Consola en pantalla: solo mientras el modo esta activo.
 	if unlocked and currentScope == "pet" then
-		-- Mover SOLO la mascota: sin consola. Se traba desde el mismo
-		-- boton de la pestaña Pet.
+
 		if console then console:Hide(); end
 	elseif unlocked then
 		local c = BuildConsole();
@@ -3348,28 +1883,17 @@ function K.SetGlobalUnlock(state, scope)
 	elseif console then
 		console:Hide();
 
-		-- AL SALIR DEL MODO MOVER, UN REACOMODO.
-		--
-		-- Mientras el modo estuvo encendido, MiniBar_UpdateActionBars se
-		-- corto a proposito para no reanclar barras debajo del arrastre.
-		-- Al apagarlo hay que dejarlo correr una vez: lo que moviste tiene
-		-- su posicion guardada y no se toca, y lo que no, vuelve a su
-		-- lugar en la pila.
 		if C.MiniBarEnabled == true and K.RefreshMiniBarLayout then
 			pcall(K.RefreshMiniBarLayout);
 		end
 	end
 
-	-- Sin aviso por chat: los recuadros azules ya se ven, el print solo
-	-- ensuciaba el chat cada vez que se prendia o apagaba el modo mover.
 end
 
 function K.IsGlobalUnlocked()
 	return unlocked;
 end
 
--- Que alcance esta destrabado ("all", "frames", "pet"...). Lo usa el boton
--- de la pestaña Pet para no decir "Lock" cuando lo destrabado es otra cosa.
 function K.GetGlobalUnlockScope()
 	return currentScope;
 end
@@ -3378,38 +1902,15 @@ function K.ToggleGlobalUnlock(scope)
 	K.SetGlobalUnlock(not unlocked, scope);
 end
 
--- Devuelve las barras de NUF a su posicion de fabrica
 function K.ResetTimerBarPositions()
 	if K.ResetAutoShotTimerPosition then pcall(K.ResetAutoShotTimerPosition); end
 	if K.ResetMeleeSwingTimerPosition then pcall(K.ResetMeleeSwingTimerPosition); end
 	if K.ResetArrowCountPosition then pcall(K.ResetArrowCountPosition); end
 end
 
--- only = tabla opcional { Clave = true } para resetear SOLO esos movibles.
--- Sin ella resetea todo, como siempre. Se agrego porque el boton Reset de
--- Action Bars te borraba tambien la posicion de buffs, debuffs y demas.
-
--- ---------------------------------------------------------
--- STORES PROPIOS DE CADA MODULO
---
--- ACA ESTABA EL AGUJERO DEL RESET.
---
--- Los modulos con marco propio (el tracker de paladin, Turn Evil, la
--- alerta de hechizos, el contador de flechas...) guardan SU posicion en
--- SU propia tabla, no en globalPos. El Reset borraba globalPos y reponia
--- el frame, pero el modulo volvia a aplicar su posicion guardada en el
--- siguiente refresco o al reloguear: parecia que el Reset no habia hecho
--- nada.
---
--- Aca se limpian SOLO los campos de posicion. El resto de cada tabla —
--- la lista de hechizos de la alerta, el modo de la gargola, las zonas
--- donde se muestra — queda intacto: eso es configuracion del usuario,
--- no posicion.
--- ---------------------------------------------------------
 local POS_FIELDS = { "point", "rel", "relPoint", "relativePoint",
                      "relativeTo", "x", "y" };
 
--- entrada -> tabla dentro de NidhausUnitFramesDB
 local OWN_STORES = {
 	PalAuras     = "PaladinAuras",
 	TurnEvil     = "TurnEvil",
@@ -3419,8 +1920,7 @@ local OWN_STORES = {
 	AutoShot     = "AutoShotTimer",
 	SwingTimer   = "MeleeSwingTimer",
 	Gargoyle     = "GargoyleTracker",
-	-- Los timers de clase del mago guardan en ClassTimers; los de arena
-	-- (tubo de Dalaran, pilares, fin de ronda) en timerPos.
+
 	WaterEle     = "ClassTimers",
 	MirrorImg    = "ClassTimers",
 	DalaranPipe  = "timerPos",
@@ -3429,7 +1929,6 @@ local OWN_STORES = {
 	ShadowSight  = "timerPos",
 };
 
--- entrada -> variable guardada APARTE (tienen su propio SavedVariable)
 local OWN_GLOBALS = {
 	PaladinICD   = "PaladinICD_DB",
 	SacredShield = "SacredShieldDB",
@@ -3437,28 +1936,17 @@ local OWN_GLOBALS = {
 	Seduction    = "SeductionAlertDB",
 };
 
--- La lista de arriba es TAMBIEN la respuesta a "quien es el dueño de
--- esta posicion": si una entrada figura ahi, su modulo manda y este
--- modulo no escribe globalPos (ver "UN SOLO DUEÑO POR POSICION").
 function OwnsItsPosition(key)
 	if not key then return false; end
 	if K.FramePositionOwners[key] then return true; end
 	return (OWN_STORES[key] or OWN_GLOBALS[key]) and true or false;
 end
 
--- Borra los campos de posicion de una tabla. Si al hacerlo la tabla
--- queda VACIA, devuelve true para que el llamador la elimine entera.
---
--- Esto ultimo no es un detalle: los modulos preguntan "hay algo
--- guardado?" mirando si la tabla existe, no si tiene campos. Una tabla
--- vacia les hacia creer que si, y despues llamaban a SetPoint con un
--- punto nil. Justo lo que reventaba el timer del tubo de Dalaran.
 local function WipePos(tbl)
 	if type(tbl) ~= "table" then return false; end
 
 	for _, f in ipairs(POS_FIELDS) do tbl[f] = nil; end
 
-	-- Algunos guardan la posicion en una sub-tabla por marco o por perfil.
 	for k, v in pairs(tbl) do
 		if type(v) == "table" then
 			local vacia = true;
@@ -3469,7 +1957,7 @@ local function WipePos(tbl)
 	end
 
 	for _ in pairs(tbl) do return false; end
-	return true;   -- quedo vacia
+	return true;
 end
 
 local function ClearOwnStore(key)
@@ -3485,20 +1973,13 @@ local function ClearOwnStore(key)
 	end
 end
 
--- LIMPIEZA DE UNA SOLA VEZ.
---
--- El Focus estuvo un tiempo en la lista de arriba, asi que puede haber una
--- posicion suya guardada. Como ya no figura, nadie la aplicaria ni la
--- borraria nunca: se queda de basura en la config. Se saca al cargar.
 local function DropLegacyFocusPos()
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.globalPos;
 	if db and db.Focus then db.Focus = nil; end
 end
 
 function K.ResetGlobalPositions(only)
-	-- Repone escalas y puntos de marcos protegidos (barras, contenedores):
-	-- en combate se cortaba a la mitad con "Interface action failed". /move
-	-- reset y los botones del panel andan en combate, asi que va al final.
+
 	if K.AfterCombat and K.AfterCombat("ResetGlobalPositions", function() K.ResetGlobalPositions(only); end) then
 		print("|cff4FC3F7NUF:|r " .. (L["RESET_AFTER_COMBAT"]
 			or "You're in combat: the reset will apply when combat ends."));
@@ -3506,43 +1987,17 @@ function K.ResetGlobalPositions(only)
 	end
 	CaptureOriginals();
 
-	-- "only" SE PASA CON CLAVES SIMPLES ("MainBar"), no con las del modo.
-	--
-	-- Aca estaba el bug del boton de la pestaña Action Bars. Yo le pasaba
-	-- las claves ya con sufijo (MainBar#mini), que es como se guardan en la
-	-- DB. El borrado funcionaba, pero Wanted() las compara contra
-	-- entry.key, que es "MainBar" pelado: no coincidia ninguna, no se
-	-- reponia ningun original y las barras se quedaban donde estaban.
-	--
-	-- Ahora entra la clave simple -- que es la que sirve para comparar -- y
-	-- el borrado se encarga de traducirla al modo actual.
 	local function Wanted(key) return (not only) or only[key]; end
 
-	-- Borrar lo guardado ANTES de reponer, para que el hook de SetPoint
-	-- no vuelva a aplicar la posicion vieja mientras restauramos.
 	if NidhausUnitFramesDB then
 		if only then
 			local db = NidhausUnitFramesDB.globalPos;
 			if db then
 				for key in pairs(only) do
-					-- La del modo actual, y la pelada por si alguien vino
-					-- con la clave ya traducida.
+
 					db[EntryKey(key)] = nil;
 					db[key]           = nil;
 
-					-- Y LA DE TODOS LOS MODOS, NO SOLO LA DE AHORA.
-					--
-					-- Las barras guardan por modo (MainBar#mini,
-					-- MainBar#unify, MainBar#plain) para que cada uno
-					-- recuerde lo suyo. Pero el Reset borraba solo el modo
-					-- ACTIVO EN ESE MOMENTO.
-					--
-					-- De ahi el bug: moves las barras con Unify puesto
-					-- (queda MainBar#unify), apagas Unify -- ahora el modo
-					-- es "plain" -- y apretas Reset. Se borraba
-					-- MainBar#plain, que estaba vacio, y la posicion vieja
-					-- seguia guardada. Resetear tiene que dejar la barra
-					-- como viene de Blizzard, sin restos de ningun modo.
 					if PER_MODE_KEYS[key] then
 						db[key .. "#mini"]  = nil;
 						db[key .. "#unify"] = nil;
@@ -3555,8 +2010,6 @@ function K.ResetGlobalPositions(only)
 		end
 	end
 
-	-- Los miembros de party guardan en otro store (FrameDragger); limpiarlo
-	-- tambien, si no el 3v3 seguiria leyendo posiciones viejas.
 	if not only and NidhausUnitFramesDB and NidhausUnitFramesDB.positions then
 		for i = 1, (MAX_PARTY_MEMBERS or 4) do
 			NidhausUnitFramesDB.positions["PartyMemberFrame" .. i] = nil;
@@ -3567,7 +2020,6 @@ function K.ResetGlobalPositions(only)
 		if K.SaveConfig then K.SaveConfig("PartyIndividualMove", false); end
 	end
 
-	-- Soltar el lock, devolver al sistema de Blizzard y reponer el original
 	for _, entry in ipairs(MOVABLES) do
 		if Wanted(entry.key) then
 			local f = ResolveFrame(entry);
@@ -3577,28 +2029,15 @@ function K.ResetGlobalPositions(only)
 			end
 			ReclaimManaged(entry);
 			pcall(RestoreOriginal, entry);
-			-- Algunos movibles son frames PROPIOS creados al vuelo (el
-			-- Holder de posturas, por ejemplo). Su "original" puede no
-			-- existir, asi que cada uno puede traer su propio reset.
+
 			if entry.resetFunc and K[entry.resetFunc] then
 				pcall(K[entry.resetFunc]);
 			end
-			-- ...y limpiar su store propio, si tiene.
+
 			pcall(ClearOwnStore, entry.key);
 		end
 	end
 
-	-- Barras de casteo del grupo.
-	--
-	-- El bucle de arriba solo repone la del compa 1, que es la unica que
-	-- figura en MOVABLES. Las otras tres no guardan posicion propia: la
-	-- copian de la 1 con MirrorPartyCastBars, y eso NO se estaba volviendo a
-	-- llamar despues del Reset. Resultado: la 1 volvia a su sitio y las otras
-	-- tres se quedaban colgadas del ultimo arrastre, sueltas por la pantalla.
-	--
-	-- PartyCastingBars trae su propio reset, que devuelve LAS CUATRO al
-	-- costado de su marco de grupo. Es la referencia buena, asi que se usa esa
-	-- en vez de recalcular offsets a mano.
 	if Wanted("PartyCast") then
 		if PartyCastingBars and PartyCastingBars.ResetBarLocations then
 			pcall(PartyCastingBars.ResetBarLocations);
@@ -3607,7 +2046,6 @@ function K.ResetGlobalPositions(only)
 		end
 	end
 
-	-- Devolver los party a su fila normal / o a la config 3v3
 	if not only then
 		if C.PartyMode3v3 and K.Apply3v3PartyMode then
 			pcall(K.Apply3v3PartyMode);
@@ -3621,25 +2059,18 @@ function K.ResetGlobalPositions(only)
 		if K.ResetAuraAnchor then K.ResetAuraAnchor(); end
 	end
 
-	-- Que Blizzard recoloque todo lo que administra (castbar, buffs, barras)
 	if not InCombatLockdown() and type(UIParent_ManageFramePositions) == "function" then
 		pcall(UIParent_ManageFramePositions);
 	end
 
-	-- Reposicionar los recuadros azules si el modo mover sigue activo
 	for _, ov in ipairs(overlays) do
 		if ov.AnchorOverlay then pcall(ov.AnchorOverlay, ov); end
 	end
 
-	-- ...y otra vez un frame despues. UIParent_ManageFramePositions (arriba)
-	-- recoloca buffs y barras DESPUES de que reseteamos, asi que el ancla de
-	-- auras y su recuadro azul quedaban en el lugar viejo: las auras volvian
-	-- a su sitio pero la caja de arrastre no. Con este segundo pase, ya con
-	-- todo asentado, los dos terminan donde corresponde.
 	local settle = CreateFrame("Frame");
 	settle:SetScript("OnUpdate", function(self)
 		self:SetScript("OnUpdate", nil);
-		-- El minimapa pudo volver a su lugar: los buffs, a esquivarlo o no.
+
 		if K.RefreshAuraAnchorDefault then pcall(K.RefreshAuraAnchorDefault); end
 		if Wanted("Buffs") or Wanted("Debuffs") then
 			if K.ResetAuraAnchor then pcall(K.ResetAuraAnchor); end
@@ -3649,17 +2080,10 @@ function K.ResetGlobalPositions(only)
 		end
 	end);
 
-	-- ── ESCALAS ──
-	--
-	-- Borrar globalPos limpia el numero guardado, pero eso NO devuelve el
-	-- frame a 1.0: la escala ya esta puesta sobre el frame y ahi se queda.
-	-- Por eso al resetear volvia la posicion pero la barra de casteo seguia
-	-- agrandada. Hay que ponersela de vuelta a mano.
 	for _, entry in ipairs(MOVABLES) do
 		local owner = entry.scalable and Wanted(entry.key) and ScaleOwner(entry);
 		if owner then
-			-- Con dueño propio: el reset es el del dueño (su valor de
-			-- fabrica, que no siempre es 1.0: el Turn Evil viene en 1.2).
+
 			pcall(owner.reset);
 		elseif entry.scalable and Wanted(entry.key) and MainBarIsMaster(entry) then
 			local def = (K.GetConfigDefault and K.GetConfigDefault("ActionBarScale")) or 1.0;
@@ -3667,18 +2091,14 @@ function K.ResetGlobalPositions(only)
 			if K.ApplyActionBarScale then pcall(K.ApplyActionBarScale, def); end
 			if K.RefreshPanelSliders then pcall(K.RefreshPanelSliders, "ActionBarScale"); end
 		elseif entry.scalable and Wanted(entry.key) then
-			-- EL DE FABRICA DE SU AJUSTE, NO 1.0 FIJO.
-			--
-			-- La barra de casteo viene en 1.2 (CastBarPWScale); con el 1.0
-			-- escrito a mano, el Reset la dejaba mas chica que una
-			-- instalacion nueva, y encima guardaba ese 1.0 en el panel.
+
 			local setting = SCALE_SETTING[entry.key];
 			local def = (setting and K.GetConfigDefault and K.GetConfigDefault(setting)) or 1.0;
 			local f = ResolveFrame(entry);
 			if f and f.SetScale then
 				pcall(f.SetScale, f, def);
 			end
-			-- Los anclas de auras guardan su escala en su propio store.
+
 			if entry.auraAnchor and K.SaveAuraAnchorScale then
 				pcall(K.SaveAuraAnchorScale, 1.0);
 			elseif entry.debuffAnchor and K.SaveDebuffAnchorScale then
@@ -3690,43 +2110,24 @@ function K.ResetGlobalPositions(only)
 		end
 	end
 
-	-- Y refrescar los sliders del panel, que ahora valen otra cosa
 	if K.RefreshScaleSliders then K.RefreshScaleSliders(); end
 	if K.RefreshPanelSliders then pcall(K.RefreshPanelSliders); end
 	if K.RefreshModuleScaleSliders then pcall(K.RefreshModuleScaleSliders); end
 
-	-- REACOMODAR LA PILA EN EL ACTO.
-	--
-	-- El Reset se aprieta con el modo mover ABIERTO, y ahi
-	-- MiniBar_UpdateActionBars se corta a proposito para no reanclar
-	-- barras debajo del arrastre. Hay que pedirle el reacomodo a proposito
-	-- (force) o no pasa nada: era por esto que la barra de auras quedaba
-	-- en cualquier lado despues de resetear.
-	-- ResetMiniBarLayout y no RefreshMiniBarLayout: hay que DESHACER el
-	-- aplanado (todo quedo anclado a UIParent al abrir el modo mover),
-	-- no solo pedir un repintado. Si no, se borran los datos y en pantalla
-	-- no se mueve nada.
 	if C.MiniBarEnabled == true and K.ResetMiniBarLayout then
 		pcall(K.ResetMiniBarLayout);
 	end
 	if K.UpdateActionBarsBox then pcall(K.UpdateActionBarsBox); end
 
-	-- Sin cartel: el reset se ve solo. (Ademas lo llaman varios botones
-	-- seguidos y cada uno sumaba su linea al chat.)
 end
 
--- ---------------------------------------------------------
--- Restaurar al entrar al mundo
--- ---------------------------------------------------------
 local events = CreateFrame("Frame");
 events:RegisterEvent("PLAYER_ENTERING_WORLD");
 events:SetScript("OnEvent", function(self)
 	DropLegacyFocusPos();
 
-	-- Capturar el estado de fabrica antes de aplicar nada nuestro
 	CaptureOriginals();
 
-	-- Esperar unos frames: varias barras se crean tarde
 	local acc, tries = 0, 0;
 	self:SetScript("OnUpdate", function(s, elapsed)
 		acc = acc + elapsed;
@@ -3739,10 +2140,6 @@ events:SetScript("OnEvent", function(self)
 	end);
 end);
 
--- Cuando otro módulo reanclea frames (New Party Frame, modo 3v3, etc.)
--- hay que reponer lo que el usuario movió. Se hace UNA sola pasada con un
--- pequeño retardo. Antes esto corría en cada CONFIG_CHANGED y hacía
--- parpadear los buffs con cada checkbox del panel.
 local reapply = CreateFrame("Frame");
 local reapplyAcc = 0;
 reapply:Hide();
@@ -3761,19 +2158,12 @@ function K.ScheduleGlobalPositionReapply()
 	reapply:Show();
 end
 
--- Salir del modo mover al entrar en combate (los frames protegidos rompen)
 local combatGuard = CreateFrame("Frame");
 combatGuard:RegisterEvent("PLAYER_REGEN_DISABLED");
 combatGuard:SetScript("OnEvent", function()
 	if unlocked then K.SetGlobalUnlock(false); end
 end);
 
--- Varios alias a proposito.
---
--- "/nufmove" hay que acordarselo; "/move" sale solo. Se dejan los tres
--- porque un alias corto siempre corre el riesgo de que otro addon lo pise
--- (el ultimo que registra gana), y asi si /move te lo roba alguien todavia
--- tenes los largos, que son unicos.
 SLASH_NUFMOVE1 = "/nufmove";
 SLASH_NUFMOVE2 = "/move";
 SLASH_NUFMOVE3 = "/nufunlock";
@@ -3784,8 +2174,7 @@ SlashCmdList["NUFMOVE"] = function(msg)
 	msg = string.gsub(msg, "%s+$", "");
 
 	if msg == "reset" then
-		-- Por ResetManager: el comando /nuf reset tiene que dejar la
-		-- interfaz igual que el boton, no parecido.
+
 		if K.ResetEverything then K.ResetEverything();
 		else K.ResetGlobalPositions(); end
 		print("|cff4FC3F7NUF:|r " .. (L["MOVE_RESET_DONE"]
@@ -3807,6 +2196,5 @@ SlashCmdList["NUFMOVE"] = function(msg)
 		return;
 	end
 
-	-- /move frames -> solo los marcos de unidad
 	K.ToggleGlobalUnlock(msg == "frames" and "frames" or "all");
 end

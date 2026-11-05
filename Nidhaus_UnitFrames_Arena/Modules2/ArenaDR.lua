@@ -1,58 +1,5 @@
--- =========================================================
--- ArenaDR  ·  Diminishing Returns junto a cada marco de arena enemigo.
---
--- Un icono por categoria de DR activa en ese enemigo. El icono es un
--- hechizo de TU clase de esa categoria (Paladin: Arrepentimiento,
--- Mago: Polimorfia, Cazador: Trampa congelante...). Si tu clase no tiene
--- hechizo en esa categoria, se usa el icono del CC que le cayo.
---
--- Texto del icono:  1/2 = el proximo CC de esa categoria dura la mitad
---                   1/4 = el proximo dura un cuarto
---                   X   = inmune
--- El reloj girando es lo que falta para que el DR se resetee (arranca
--- cuando el CC se va).
---
--- Datos:
---  * Categorias por spellID (el ID del AURA que cae en el enemigo), sacadas
---    de DRTracker (DRData.lua) y completadas con DRData-1.0 de
---    DiminishingReturns. Por ID y no por nombre: Psychic Horror pone dos
---    auras con el mismo nombre (horror + desarme) y Wyvern Sting deja un
---    DoT que tambien se llama Wyvern Sting; por nombre contaban doble.
---  * Iconos por clase: los mismos de DRTracker.
---
--- Eventos: APPLIED y REFRESH suben un escalon (re-castear un CC sobre
--- alguien que todavia lo tiene es una aplicacion nueva con DR). REMOVED
--- arranca el reloj. UNIT_DIED no se usa: Fingir Muerte lo dispara.
--- Solo escucha el combat log dentro de una arena.
---
--- OPCIONES (pestaña Arena > DR):
---   C.ArenaDR           prendido / apagado
---   C.ArenaDRSize       tamaño de cada icono
---   C.ArenaDRSpacing    separacion entre iconos
---   C.ArenaDRGrow       hacia donde crece la fila: AUTO / LEFT / RIGHT / UP / DOWN
---   C.ArenaDRBorder     borde del color del nivel (si no, borde negro fino)
---   C.ArenaDRText       texto 1/2 · 1/4 · X
---   C.ArenaDRHideCats   categorias que NO se muestran, separadas por coma
---                       ("" = todas). Las casillas de la pestaña la arman.
---   C.ArenaDRClassOnly  VIEJO: "solo mi clase". Se pasa a ArenaDRHideCats
---                       la primera vez (ahora es el boton "Mi clase").
---
--- Una categoria oculta se sigue CONTANDO: si la volves a tildar en plena
--- arena aparece con el escalon real, no desde cero.
---
--- POSICION. Sin posicion guardada va encima de la cast bar, del lado
--- donde este (no la pisa, y el trinket va del otro lado). Con el modo Test
--- de arena prendido aparece la vista previa: Shift+Alt+arrastrar mueve la
--- fila (la de los cinco marcos a la vez). Se guarda por estilo + espejo,
--- igual que el trinket y la cast bar (NidhausUnitFramesDB.ArenaDRPositions).
---
--- Prueba:  /nufdr        (vista previa: prende el modo Test de arena)
---          /nufdr clear  (la apaga)
--- =========================================================
 local AddOnName = ...;
--- Este addon se carga a pedido (ver Core/ArenaLoader.lua del addon
--- principal), asi que el "..." de arriba NO trae el namespace de NUF: es el
--- suyo propio. El de NUF se publica como global en Core/Init.lua.
+
 local ns = NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
@@ -64,24 +11,14 @@ local ipairs, pairs, tinsert, tremove, select, max, min, floor =
 
 local MAX_ARENA = MAX_ARENA_ENEMIES or 5;
 
--- ---------- Fijos ----------
-local DR_RESET  = 18;   -- s hasta el reset (DRData usa 20, DRTracker 17)
-local MAX_ICONS = 6;    -- iconos maximos por enemigo
-local LIFT_Y    = 5;    -- separacion por encima de la cast bar (posicion auto)
-local DEF_SIZE  = 25;   -- igual que el default de ConfigManager
+local DR_RESET  = 18;
+local MAX_ICONS = 6;
+local LIFT_Y    = 5;
+local DEF_SIZE  = 25;
 local DEF_GAP   = 2;
 
--- ---------- Categorias (spellID del aura -> categoria) ----------
--- LA TABLA DE CATEGORIAS VIVE EN EL ADDON PRINCIPAL.
---
--- La usa tambien el marco de mascotas del grupo (el CC en el retrato), que
--- no es de arena, asi que no puede irse con este addon a pedido: esta en
--- Core/CCCategories.lua. Aca se toma de ahi.
 local CATEGORIES = K.CCCategories or {};
 
-
-
--- ---------- Icono de TU clase por categoria (los de DRTracker) ----------
 local CLASS_ICONS = {
 	DEATHKNIGHT = { ctrlstun = "spell_deathknight_gnaw_ghoul", disorient = "inv_staff_15",
 	                silence = "spell_shadow_soulleech_3" },
@@ -119,14 +56,12 @@ local function IconForCategory(cat, spellID)
 	return select(3, GetSpellInfo(spellID)) or "Interface\\Icons\\INV_Misc_QuestionMark";
 end
 
--- ---------- Estado ----------
--- state[idx] = lista de { cat, n, active, expire, icon, lastApplied, preview }
 local state = {};
-local holders = {};      -- holders[idx] = fila (contenedor) de ese marco
+local holders = {};
 local guidToIdx = {};
-local enabled = false;   -- opcion prendida
-local listening = false; -- escuchando el combat log (prendida + en arena)
-local previewOn = false; -- vista previa (modo Test de arena)
+local enabled = false;
+local listening = false;
+local previewOn = false;
 
 local function InArena()
 	local _, instanceType = IsInInstance();
@@ -164,7 +99,6 @@ local function FindRec(idx, cat)
 	return nil;
 end
 
--- ---------- Opciones ----------
 local function OptSize()
 	local s = tonumber(C.ArenaDRSize) or DEF_SIZE;
 	if s < 12 then s = 12; elseif s > 48 then s = 48; end
@@ -181,8 +115,6 @@ local function OptGrow()
 	return GROW_OK[g] and g or "AUTO";
 end
 
--- ---------- Filtro por categoria ----------
--- Orden en que se listan (en el panel van primero las de tu clase).
 local CAT_ORDER = {
 	"ctrlstun", "openstun", "rndstun", "disorient", "fear", "horror",
 	"silence", "cyclone", "ctrlroot", "rndroot", "sleep", "disarm",
@@ -194,8 +126,6 @@ local function OwnCats()
 	return CLASS_ICONS[playerClass] or {};
 end
 
--- La opcion es un texto ("scatter,silence") porque la config de NUF solo
--- guarda numeros, textos y booleanos. Se parsea una vez por cambio.
 local hiddenSrc, hiddenSet;
 local function HiddenSet()
 	local s = C.ArenaDRHideCats;
@@ -210,28 +140,20 @@ end
 
 local function CatShown(cat)
 	if HiddenSet()[cat] then return false; end
-	-- Por si la migracion de "solo mi clase" no se pudo guardar: sigue
-	-- filtrando como antes en vez de mostrar todo de golpe.
+
 	if C.ArenaDRClassOnly and not OwnCats()[cat] then return false; end
 	return true;
 end
 
--- Se muestra este registro? Vale tambien para la vista previa: asi se ve
--- en el momento que hace cada casilla.
 local function Visible(rec)
 	return CatShown(rec.cat);
 end
 
--- ---------- Posicion guardada (por estilo + espejo) ----------
 local function PosKey()
 	if K.GetArenaPositionKey then return K.GetArenaPositionKey(); end
 	return C.ArenaMirrorMode and "mirror" or "normal";
 end
 
--- { x, y, dir }: dir es hacia donde crecia la fila al soltarla. Con la
--- direccion en Auto se respeta esa: antes se recalculaba segun de que lado
--- del centro del marco habia quedado, y al soltar un poco del otro lado
--- la fila se daba vuelta (parecia que "se imantaba" a cualquier lado).
 local DIR_OK = { LEFT = true, RIGHT = true, UP = true, DOWN = true };
 local function GetSavedPos()
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaDRPositions;
@@ -249,15 +171,14 @@ local function SavePos(x, y, dir)
 	NidhausUnitFramesDB.ArenaDRPositions[PosKey()] = { x, y, dir };
 end
 
--- ---------- Iconos ----------
 local LEVEL_COLOR = {
-	{ 1.00, 0.90, 0.10 },   -- 1/2
-	{ 1.00, 0.45, 0.00 },   -- 1/4
-	{ 1.00, 0.10, 0.10 },   -- inmune
+	{ 1.00, 0.90, 0.10 },
+	{ 1.00, 0.45, 0.00 },
+	{ 1.00, 0.10, 0.10 },
 };
 local LEVEL_TEXT = { "1/2", "1/4", "X" };
 
-local RefreshAll;   -- se define abajo (el arrastre la usa)
+local RefreshAll;
 
 local function StartDrag(h)
 	if not previewOn or h._moving then return; end
@@ -274,14 +195,11 @@ local function StopDrag(h)
 	h._moving = false;
 	local af = h:GetParent();
 	local hx, hy = h:GetCenter();
-	-- OJO: "af and af:GetCenter()" se queda solo con el primer valor.
+
 	local ax, ay;
 	if af then ax, ay = af:GetCenter(); end
 	if hx and hy and ax and ay then
-		-- A pixeles de pantalla para restar y de vuelta al espacio de la
-		-- fila, que es donde SetPoint interpreta el offset (la misma cuenta
-		-- que Party Targets). Hoy fila y marco tienen la misma escala, pero
-		-- asi no depende de eso.
+
 		local hs = h:GetEffectiveScale() or 1;
 		local as = af:GetEffectiveScale() or 1;
 		if hs == 0 then hs = 1; end
@@ -289,7 +207,7 @@ local function StopDrag(h)
 		local y = floor(((hy * hs - ay * as) / hs) * 10 + 0.5) / 10;
 		SavePos(x, y, h._lastDir);
 	end
-	RefreshAll();   -- reubica las cinco filas con la posicion nueva
+	RefreshAll();
 end
 
 local function ShowMoveTip(self)
@@ -304,9 +222,7 @@ local function CreateHolder(idx)
 	local af = _G["ArenaEnemyFrame" .. idx];
 	if not af then return nil; end
 	local h = CreateFrame("Frame", nil, af);
-	-- MEDIUM, como el trinket: en el modo Test el contenedor de los marcos
-	-- de arena toma el mouse; si la fila queda encima de el (por ejemplo al
-	-- moverla entre dos marcos), en LOW no se podia agarrar.
+
 	h:SetFrameStrata("MEDIUM");
 	h:SetFrameLevel(af:GetFrameLevel() + 5);
 	h:SetClampedToScreen(true);
@@ -334,29 +250,19 @@ local function CreateIcon(h)
 
 	f.cd = CreateFrame("Cooldown", nil, f, "CooldownFrameTemplate");
 
-	-- El texto va en un frame aparte, por encima del reloj.
 	local tf = CreateFrame("Frame", nil, f);
 	tf:SetAllPoints(f);
 	tf:SetFrameLevel(f.cd:GetFrameLevel() + 2);
 	f.txt = tf:CreateFontString(nil, "OVERLAY");
-	f.txt:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE");   -- sin fuente, SetText falla
+	f.txt:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE");
 	f.txt:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, 1);
 
-	-- EL TIEMPO LO ESCRIBE ESTE MODULO, NO OMNICC.
-	--
-	-- Los segundos los ponia OmniCC sobre el reloj, y OmniCC esconde el
-	-- numero cuando el reloj le queda chico: calcula 18 x ancho / 36 y si da
-	-- menos de 9 (por la escala de los marcos de arena) no lo dibuja. Con el
-	-- borde de color el reloj mide 4 px menos que el icono, asi que en el
-	-- tamaño por defecto (22) quedaba justo en el limite y desaparecia.
-	-- Arriba del icono; el 1/2 · 1/4 · X sigue abajo a la derecha.
 	f.time = tf:CreateFontString(nil, "OVERLAY");
 	f.time:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE");
 	f.time:SetPoint("TOP", f, "TOP", 0, -1);
 	f.time:Hide();
-	f.cd.noCooldownCount = true;   -- que OmniCC no ponga un segundo numero
+	f.cd.noCooldownCount = true;
 
-	-- Arrastrar desde cualquier icono mueve la fila entera.
 	f:EnableMouse(false);
 	f:SetScript("OnMouseDown", function(_, b) if b == "LeftButton" then StartDrag(h); end end);
 	f:SetScript("OnMouseUp", function(_, b) if b == "LeftButton" then StopDrag(h); end end);
@@ -367,7 +273,6 @@ local function CreateIcon(h)
 	return f;
 end
 
--- Borde: de color del nivel (2 px) o negro fino (1 px).
 local function ApplyLook(w, col, size)
 	local edge = (C.ArenaDRBorder ~= false) and 2 or 1;
 	if w._edge ~= edge then
@@ -393,10 +298,6 @@ local function ApplyLook(w, col, size)
 	end
 end
 
--- Segundos que faltan para el reset (redondeado para arriba, como un
--- reloj: "1" hasta que llega a cero). Solo cambia el texto cuando cambia
--- el numero. Sin tiempo (el CC todavia activo) o con la opcion apagada,
--- no se muestra.
 local function SetTimeText(w, now)
 	local e = w._expire;
 	local sec;
@@ -416,8 +317,6 @@ local function SetTimeText(w, now)
 	end
 end
 
--- De que lado del marco esta la cast bar (si se puede medir); si no, el
--- lado que le toca segun el modo espejo (espejo = cast bar a la derecha).
 local function CastBarOnLeft(parent, cb)
 	if cb then
 		local cx = cb:GetCenter();
@@ -447,7 +346,7 @@ local function Layout(idx, h, shown)
 			local cb = _G["ArenaEnemyFrame" .. idx .. "CastingBar"];
 			local left = CastBarOnLeft(af, cb);
 			if cb then
-				-- Apoyada sobre la cast bar, desde su borde pegado al marco.
+
 				if left then
 					h:SetPoint("BOTTOMRIGHT", cb, "TOPRIGHT", 0, LIFT_Y);
 				else
@@ -515,7 +414,7 @@ local function Refresh(idx)
 				if rec.expire then
 					CooldownFrame_SetTimer(w.cd, rec.expire - DR_RESET, DR_RESET, 1);
 				else
-					CooldownFrame_SetTimer(w.cd, 0, 0, 0);   -- CC todavia activo
+					CooldownFrame_SetTimer(w.cd, 0, 0, 0);
 				end
 				w._expire = rec.expire;
 				SetTimeText(w, GetTime());
@@ -544,10 +443,6 @@ local function WipeAll()
 	RefreshAll();
 end
 
--- ---------- Vista previa ----------
--- Muestra las categorias TILDADAS: primero las de tu clase, despues el
--- resto, hasta 4. Si solo dejaste la trampa, la vista previa es un icono
--- de trampa por marco; si destildaste todo, no aparece nada.
 local function FillPreview()
 	local own = OwnCats();
 	local cats = {};
@@ -576,7 +471,7 @@ local function FillPreview()
 	end
 end
 
-local driver;   -- se define abajo
+local driver;
 
 local function SetPreview(on)
 	on = (on and enabled) and true or false;
@@ -594,7 +489,6 @@ local function SetPreview(on)
 	RefreshAll();
 end
 
--- ---------- Reloj: vence los DR y suelta lo que quedo colgado ----------
 driver = CreateFrame("Frame");
 driver:Hide();
 local acc = 0;
@@ -612,14 +506,13 @@ driver:SetScript("OnUpdate", function(self, elapsed)
 			for j = #list, 1, -1 do
 				local rec = list[j];
 				if rec.preview then
-					-- La vista previa da vueltas sola mientras este abierta.
+
 					if now >= rec.expire then
 						rec.expire = now + DR_RESET;
 						changed = true;
 					end
 				else
-					-- Seguro: si nunca llego el "aura removed" (enemigo fuera de
-					-- rango del log), se suelta a los 70 s.
+
 					if rec.active > 0 and (now - rec.lastApplied) > 70 then
 						rec.active = 0;
 						rec.expire = now + DR_RESET;
@@ -635,7 +528,7 @@ driver:SetScript("OnUpdate", function(self, elapsed)
 			if changed then
 				Refresh(idx);
 			else
-				-- Solo los segundos (Refresh ya los pone cuando hay cambios).
+
 				local h = holders[idx];
 				if h and h:IsShown() then
 					for _, w in ipairs(h.icons) do
@@ -648,9 +541,6 @@ driver:SetScript("OnUpdate", function(self, elapsed)
 	if not any then self:Hide(); end
 end);
 
--- ---------- Combat log ----------
--- 3.3.5a: timestamp, evento, srcGUID, srcName, srcFlags, dstGUID, dstName,
--- dstFlags, spellID, spellName, school, auraType
 local function OnCLEU(...)
 	local _, sub, _, _, _, dstGUID, _, _, spellID, _, _, auraType = ...;
 
@@ -658,7 +548,7 @@ local function OnCLEU(...)
 		and sub ~= "SPELL_AURA_REMOVED" then return; end
 	if auraType ~= "DEBUFF" then return; end
 
-	local cat = K.GetCCCategory(spellID);   -- la tabla vive en el core
+	local cat = K.GetCCCategory(spellID);
 	if not cat then return; end
 
 	local idx = IdxFromGUID(dstGUID);
@@ -672,23 +562,22 @@ local function OnCLEU(...)
 		if not rec then return; end
 		rec.active = max(0, rec.active - 1);
 		if rec.active == 0 then
-			rec.expire = now + DR_RESET;   -- arranca el reloj del DR
+			rec.expire = now + DR_RESET;
 		end
 	else
-		-- APPLIED o REFRESH: un escalon mas.
+
 		if not rec then
 			rec = { cat = cat, n = 1, active = 0 };
 			tinsert(state[idx], rec);
 		elseif rec.expire and now >= rec.expire then
-			rec.n = 1;                       -- el DR ya se habia reseteado
+			rec.n = 1;
 		elseif rec.n >= 3 then
-			-- Le entro un CC estando "inmune": la cuenta venia mal (se
-			-- perdio un reset). Se vuelve a empezar.
+
 			rec.n = 1;
 		else
 			rec.n = rec.n + 1;
 		end
-		-- REFRESH no agrega un aura nueva (la misma se renueva).
+
 		if sub == "SPELL_AURA_APPLIED" or rec.active == 0 then
 			rec.active = rec.active + 1;
 		end
@@ -701,12 +590,8 @@ local function OnCLEU(...)
 	Refresh(idx);
 end
 
--- ---------- Activar / desactivar ----------
 local ev = CreateFrame("Frame");
 
--- "Solo las de mi clase" era una casilla; ahora es el boton "Mi clase" de
--- la lista. Quien la tenia tildada la primera vez queda con las mismas
--- categorias tildadas, y desde ahi las puede tocar de a una.
 local function MigrateClassOnly()
 	if not C.ArenaDRClassOnly or not K.SaveConfigSilent then return; end
 	local own, hide = OwnCats(), {};
@@ -742,7 +627,7 @@ local function ApplyState()
 			return;
 		end
 	end
-	-- Si el modo Test ya estaba abierto al prender la opcion: vista previa.
+
 	SetPreview(IsTestMode() and not InArena());
 	RefreshAll();
 end
@@ -755,7 +640,7 @@ ev:SetScript("OnEvent", function(self, event, ...)
 	elseif event == "ARENA_OPPONENT_UPDATE" then
 		RefreshGUIDs();
 	elseif event == "PLAYER_ENTERING_WORLD" then
-		-- Zona nueva: GUIDs y DRs de la ronda anterior no valen.
+
 		for g in pairs(guidToIdx) do guidToIdx[g] = nil; end
 		for i = 1, MAX_ARENA do state[i] = nil; end
 		previewOn = false;
@@ -765,38 +650,18 @@ ev:SetScript("OnEvent", function(self, event, ...)
 	end
 end);
 
--- ---------------------------------------------------------
--- ARRANQUE AL CARGAR
---
--- Hasta aca este modulo solo reaccionaba a eventos. Con el paquete de
--- arena a pedido eso no alcanza: la carga la dispara el propio
--- PLAYER_ENTERING_WORLD de entrar a la arena (Core/ArenaLoader.lua del
--- addon principal), asi que este archivo empieza a correr MIENTRAS ese
--- evento se esta repartiendo y no lo oye nunca.
---
--- Y el combat log se registra adentro de ApplyState. Sin esta llamada, en
--- esa primera arena el modulo no se enteraba de NADA: ni un CC, ni un DoT.
---
--- Es el mismo bug que dejaba los trinkets sin aparecer. ApplyState se
--- puede llamar de mas sin problema: compara contra 'listening' y
--- 'enabled' antes de tocar algo.
--- ---------------------------------------------------------
 ApplyState();
 
--- El modo Test de arena prende y apaga el mouse de los trinkets al abrirse
--- y al cerrarse (ArenaMover). Es el mismo momento para la vista previa.
 if type(K.SetTrinketMouseState) == "function" then
 	hooksecurefunc(K, "SetTrinketMouseState", function(on)
 		SetPreview(on and IsTestMode() and not InArena());
 	end);
 end
 
--- ---------- API para el panel ----------
 function K.ToggleArenaDR()
 	ApplyState();
 end
 
--- Mirror, tamaño, separacion, direccion, borde, texto, filtro: redibujar.
 function K.RefreshArenaDRLayout()
 	RefreshAll();
 end
@@ -805,8 +670,6 @@ function K.IsArenaDRPreviewOn()
 	return previewOn;
 end
 
--- Boton "Vista previa": abre o cierra el modo Test de arena; el gancho de
--- arriba prende o apaga la vista previa. Devuelve false si no se puede.
 function K.ToggleArenaDRPreview()
 	if not C.ArenaDR or not C.ArenaFrameOn or InArena() then return false; end
 	if InCombatLockdown and InCombatLockdown() then return false; end
@@ -822,9 +685,6 @@ function K.ToggleArenaDRPreview()
 	return true;
 end
 
--- ---------- Categorias: API para la lista de casillas del panel ----------
-
--- { key, mine, icon } en el orden del panel: las de tu clase primero.
 function K.GetArenaDRCategories()
 	local own, list = OwnCats(), {};
 	for pass = 1, 2 do
@@ -841,8 +701,6 @@ function K.GetArenaDRCategories()
 	return list;
 end
 
--- Nombres (en el idioma del cliente) de los hechizos que comparten ese DR,
--- sin repetir rangos. Para el tooltip de cada casilla.
 function K.GetArenaDRCategorySpells(cat)
 	local seen, out = {}, {};
 	for _, id in ipairs(CATEGORIES[cat] or {}) do
@@ -859,15 +717,13 @@ function K.IsArenaDRCategoryShown(cat)
 	return CatShown(cat);
 end
 
--- Guarda el set de ocultas (en el orden fijo, para que el texto no cambie
--- solo) y redibuja. Con la vista previa abierta se rearma con lo tildado.
 local function SaveHidden(set)
 	local out = {};
 	for _, cat in ipairs(CAT_ORDER) do
 		if set[cat] then out[#out + 1] = cat; end
 	end
 	if K.SaveConfig then K.SaveConfig("ArenaDRHideCats", table.concat(out, ",")); end
-	-- Cualquier cambio a mano deja atras el filtro viejo.
+
 	if C.ArenaDRClassOnly and K.SaveConfig then K.SaveConfig("ArenaDRClassOnly", false); end
 	if previewOn then FillPreview(); end
 	RefreshAll();
@@ -881,7 +737,6 @@ function K.SetArenaDRCategoryShown(cat, on)
 	SaveHidden(set);
 end
 
--- "all" = todas · "class" = solo las de tu clase · "none" = ninguna
 function K.SetArenaDRCategoryPreset(which)
 	local own, set = OwnCats(), {};
 	for _, c in ipairs(CAT_ORDER) do
@@ -896,15 +751,12 @@ function K.SetArenaDRCategoryPreset(which)
 	SaveHidden(set);
 end
 
--- Vuelve la fila a su lugar automatico (encima de la cast bar) en el modo
--- puesto: cada estilo (y cada lado del espejo) guarda su lugar.
 function K.ResetArenaDRPosition()
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaDRPositions;
 	if type(db) == "table" then db[PosKey()] = nil; end
 	RefreshAll();
 end
 
--- ---------- Prueba por chat ----------
 SLASH_NUFDR1 = "/nufdr";
 SlashCmdList["NUFDR"] = function(msg)
 	if msg == "clear" then

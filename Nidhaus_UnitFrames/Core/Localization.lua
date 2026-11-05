@@ -1,39 +1,12 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- Localization.lua - Sistema de localización EN/ES
---
--- Detecta el idioma del cliente WoW con GetLocale()
--- esES / esMX = Español, todo lo demás = English
-
 local locale = GetLocale();
 local isSpanish = (locale == "esES" or locale == "esMX");
 
--- NOTA: los textos que solo usa el panel de opciones viven en
--- Nidhaus_UnitFrames_Config/SubTabs.lua (ese addon se carga recien al abrir
--- el panel, asi que no ocupan memoria mientras jugas). Aca quedan los que
--- usa el addon principal. Un texto nuevo del panel va alla.
-
-
--- ============================================================
--- ENGLISH (default)
--- ============================================================
-
--- Tags reutilizables
 local INSTANT = "|cffFFD100\226\156\147 Applies instantly|r";
 local RELOAD  = "|cffFFAA00\226\154\160 Requires /reload|r";
 
--- === TOOLTIPS ===
-
--- FLAT STYLE TOOLTIPS
-
--- CAST BAR TOOLTIPS
-
--- === OPTIONS PANEL ===
-
--- Tabs
-
--- ── Pestañas y secciones nuevas (rediseño estilo TidyPlates) ──
 L["DUEL_BLOCKED"]                = "Duel from %s declined.";
 L["DUEL_BLOCK_ON"]               = "Duels are now declined automatically.";
 L["DUEL_BLOCK_OFF"]              = "Duels are allowed again.";
@@ -134,30 +107,8 @@ L["MOD_GARGOYLE_DESC"]           = "Timer, cast bar and health of the enemy Ebon
 L["MOD_ENEMYALERT"]              = "Enemy Spell Alert";
 L["MOD_ENEMYALERT_DESC"]         = "Shows the spell icon on screen when an enemy casts a trap, fear or interrupt.";
 
--- Tab 1 - General
-
--- Tab 2 - Frames
-
--- Missing keys for Frames/General panels
-
--- Tab 3 - Arena
-
--- Flat Style UI
-
--- Cast Bar UI
-
--- Pet Frame
-
--- Visual Theme
-
--- Flat Style labels (sArena style)
-
--- Tab 4 - Modules
-
--- Bottom buttons
 L["BTN_CLOSE"]                   = "Close";
 
--- === COMMANDS ===
 L["CMD_HEADER"]                  = "|cffFF0000NUF|r: Slash commands:";
 L["CMD_HELP"]                    = "  |cff00FFFFhelp|r - Show this help";
 L["CMD_OPTIONS"]                 = "  |cff00FFFFoptions|r - Open options panel";
@@ -166,7 +117,6 @@ L["CMD_ARENA"]                   = "  |cff00FFFFarena|r - Show/Hide ArenaFrames 
 L["CMD_MODULES"]                 = "  |cff00FFFFmodules|r - List registered modules";
 L["CMD_RESET"]                   = "  |cff00FFFFreset|r - Reset all settings";
 
--- === MODULE MANAGER ===
 L["MM_REGISTER_ERROR"]           = "|cffFF0000NUF:|r RegisterModule: missing id or info";
 L["MM_ERROR_ENABLING"]           = "|cffFF0000NUF:|r Error enabling ";
 L["MM_ERROR_DISABLING"]          = "|cffFF0000NUF:|r Error disabling ";
@@ -175,7 +125,6 @@ L["MM_LIST_HEADER"]              = "|cffFFFF00NUF Modules:|r";
 L["MM_LIST_EMPTY"]               = "  (No modules registered)";
 L["MM_LIST_HINT"]                = "  Add .lua files in Modules2/ and register them with K.RegisterModule()";
 
--- === CONFIG MANAGER ===
 L["CFG_HEADER"]                  = "|cffFFFF00NUF Configuration|r";
 L["CFG_NOT_LOADED"]              = "|cffFF0000ERROR: Configuration not loaded yet!|r";
 L["CFG_FORMAT"]                  = "|cffFFFF00Format: [OK/ERR] Key: DB_value (type) | C_value (type)|r";
@@ -185,19 +134,12 @@ L["CFG_ALL_SYNC"]                = "|cffFFD100All values synchronized!|r";
 L["CFG_OUT_OF_SYNC"]             = "|cffFF0000WARNING: Some values out of sync!|r";
 L["CFG_RESET_OK"]                = "|cffFFD100NUF ConfigManager:|r Configuration reset to defaults!";
 
--- Textos que estaban escritos a mano dentro de los modulos.
--- Los tres primeros estaban fijos EN ESPANOL, o sea rotos al reves: un
--- cliente en ingles los veia en castellano.
 L["PPF_PREVIEW_PET"]          = "Pet";
 L["DRAG_LABEL"]                  = "DRAG";
 
--- === Ventanas propias de los modulos ===
--- Estos textos estaban escritos a mano dentro de cada modulo y por eso no
--- se traducian a ningun idioma.
 L["BTN_SAVE"]                    = "Save";
 L["BTN_RESET_SHORT"]             = "Reset";
 
--- Arena Points Calculator
 L["APC_TITLE"]                   = "Arena Points Calculator";
 L["APC_MY_POINTS"]               = "My Points This Week";
 L["APC_NO_TEAMS"]                = "You are not in any arena team.";
@@ -214,7 +156,6 @@ L["APC_BTN_TIP_BEST"]            = "Points you will receive this week";
 L["APC_BTN_TIP_CLICK"]           = "Click to open the calculator";
 L["TT_SOLO_QUEUE"]               = "Solo Queue";
 
--- Party Targets
 L["PT_HIDE_NAME"]                = "Hide target name";
 L["PT_CLASS_ICON"]               = "Class icon in portrait";
 L["PT_CLASS_ICON_TIP"]           = "Shows the class icon instead of the face (players only; NPCs keep their face).";
@@ -230,13 +171,11 @@ L["PT_LOCK"]                     = "Lock Frames";
 L["PT_LOCK_HINT"]                = "Shift+Alt+drag always overrides lock";
 L["PT_SCALE"]                    = "Scale:";
 
--- Party Buffs
 L["PB_TITLE"]                    = "Party Buffs";
 L["PB_SCALEMAX"]                 = "Scale / Max";
 L["PB_SCALE_ICONS"]              = "Scale icons:";
 L["PB_MAX_ICONS"]                = "Max icons:";
 
--- NiceDamage
 L["ND_TITLE"]                    = "Font Selector";
 L["ND_FONT"]                     = "Font";
 L["ND_TIP_D"]                    = "Enemy Damage";
@@ -247,12 +186,10 @@ L["ND_LEG_D"]                    = "= Enemy Damage (requires reopening WoW)";
 L["ND_LEG_H"]                    = "= Heals / Auras / Self Text (instant)";
 L["ND_OPEN"]                     = "Open Font Selector";
 
--- Gargoyle Tracker
 L["GT_DUR"]                      = "Dur";
 L["GT_HP"]                       = "HP";
 L["GT_CAST"]                     = "Cast";
 
--- Varios
 L["SW_NO_SHIELD"]                = "no shield";
 L["LBL_STYLE"]                   = "Style:";
 L["SPECICONS_HINT"]              = "Round icon on Blizzard/Custom, rectangular on Flat style.";
@@ -262,17 +199,8 @@ L["BOSS_DRAG"]                   = "BOSS FRAMES [drag]";
 L["HP_NA"]                       = "N/A";
 L["HP_DEAD"]                     = "Dead";
 
--- Paneles de Config
 L["CMD_MODULE_OFF"]              = "%s is turned off. Enable it in the options panel to use its commands.";
 
--- Claves que se usaban en el codigo pero nunca se habian definido.
-
--- Tab 5 - Extra Options
-
--- Profiles
-
--- Character Setup (barras / macros / bindeos) - NADA que ver con los
--- perfiles de arriba, que son la config del addon.
 L["SLOT_BACKUP_DONE"]            = "Backup restored.";
 L["SLOT_ERR_COMBAT"]             = "Can't do this in combat.";
 L["SLOT_ERR_EMPTY"]              = "Paste a string first.";
@@ -282,17 +210,9 @@ L["SLOT_ERR_NOBACKUP"]           = "There is no backup yet.";
 L["SLOT_ERR_NOPROFILE"]          = "That setup no longer exists.";
 L["SLOT_MACRO_FULL"]             = "Macro '%s' skipped: no free macro slots.";
 
--- Utility
-
--- Arena Timers
 L["ARENA_END_PREFIX"]            = "Arena: ";
 L["TIMERS_TEST_HINT"]            = "Arena timers test mode toggled. Hold Alt and drag to move them.";
 
--- Action Bar Text
-
--- Frames subtabs
-
--- Mover todo
 L["MOVE_RESET_DONE"]             = "Every frame is back to its default position.";
 L["MOVE_HELP_ALL"]               = "unlock everything";
 L["MOVE_HELP_FRAMES"]            = "only the unit frames";
@@ -305,7 +225,6 @@ L["PARTYTEST_COMBAT"]            = "Cannot start party test mode during combat."
 L["BTN_MOVE_RESET"]              = "Reset";
 L["MOVE_COMBAT_BLOCK"]           = "Action bars cannot be moved during combat.";
 
--- Minimapa
 L["MOD_MINIMAP_TOGGLE"]          = "Minimap Icon Toggle";
 L["MOD_MINIMAP_TOGGLE_DESC"]     = "Button on the minimap corner that hides or shows the addon icons.";
 L["MINIMAP_TOGGLE_TITLE"]        = "Minimap Icons";
@@ -316,7 +235,6 @@ L["BTN_MODULE_MOVE"]             = "Move";
 L["BTN_MODULE_LOCK"]             = "Lock";
 L["BTN_MODULE_TOGGLE"]           = "Toggle";
 
--- Nuevos modulos
 L["MOD_ARROWCOUNT"]              = "Arrow / Bullet Count";
 L["MOD_DUNGEONROLES"]            = "Dungeon Finder Roles";
 L["MOD_DUNGEONROLES_DESC"]       = "While queued for a dungeon, shows tank, healer and 3 dps icons and lights up the roles already filled. Alt + drag to move.";
@@ -338,17 +256,9 @@ L["MOD_CLASSOUTLINE"]            = "Class Colored Outlines";
 L["MOD_CLASSOUTLINE_DESC"]       = "Adds a class colored ring around the player, target and focus portraits.";
 L["SWING_USE_GLOBAL"]            = "Move Everything is on: drag the blue box from there.";
 
--- Barras
-
--- Subtabs
-
--- Unit Name Color
-
--- Chat
 L["CHATCOPY_DISABLED"]           = "Chat copy is disabled in the options.";
 L["URL_POPUP_TEXT"]              = "Copy the link (Ctrl+C):";
 
--- Avisos sueltos en el chat (antes salian en español en los dos idiomas)
 L["ARENA_INVITE_STILL_OPEN"]     = "You closed the entry popup, but you can still join: %d s. Reopen it from the battleground icon on the minimap.";
 L["ARENA_LOAD_FAIL"]             = "Couldn't load the arena modules";
 L["ARENA_LOAD_HINT"]             = "Check that the Nidhaus_UnitFrames_Arena folder sits next to the addon's folder and is enabled in the AddOns list.";
@@ -358,11 +268,6 @@ L["PALADINICD_MOVE_ON"]          = "Move mode on: drag it, then /paladinicd agai
 L["PALADINICD_MOVE_OFF"]         = "Position locked.";
 L["RESET_AFTER_COMBAT"]          = "You're in combat: the reset will apply when combat ends.";
 
--- Module collapse
-
--- Tab 6 - About
-
--- === MINIMAP BUTTON ===
 L["MINIMAP_TITLE"]               = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["MINIMAP_LEFT_CLICK"]          = "|cffFFFFFFLeft Click:|r Open Options";
 L["MINIMAP_RIGHT_CLICK"]         = "|cffFFFFFFRight Click:|r Toggle Arena Mover";
@@ -370,17 +275,6 @@ L["MINIMAP_CTRL_CLICK"]          = "|cffFFFFFFCtrl + Click:|r Move Everything";
 L["MINIMAP_SHIFT_CLICK"]         = "|cffFFFFFFShift + Click:|r Reload UI";
 L["MINIMAP_DRAG"]                = "|cffFFFFFFDrag:|r Move icon";
 
--- === UNIFY ACTION BARS MODULE ===
-
--- ============================================================
--- ESPAÑOL (override si el cliente es esES o esMX)
--- ============================================================
-
--- === LISTA DE COMANDOS (/nuf help) ===
--- Faltaban ENTERAS: el codigo las pedia con L["..."] or "ingles", asi
--- que la lista salia en ingles en los dos idiomas y nadie lo notaba,
--- porque el texto de respaldo estaba ahi mismo. Definidas aca, la
--- version en español de mas abajo ya tiene que traducir.
 L["CMDLIST_GENERAL"] = "General";
 L["CMDLIST_NUF"] = "Open the options panel";
 L["CMDLIST_NUF_HELP"] = "This list";
@@ -431,7 +325,6 @@ L["CMDLIST_ND"] = "Floating combat text (also /nd)";
 L["CMDLIST_HEADER"] = "commands";
 L["CMDLIST_OFF"] = "module off";
 
--- === ARENA: OJO / DR / DOTS ===
 L["HEADER_ARENA_DR"]             = "Diminishing Returns";
 L["DR_MOVE_HINT"]                = "Preview: Shift+Alt+drag the icons to move them (all five frames move together).";
 L["DR_PREVIEW_NEEDS_ARENA"]      = "the preview needs the arena frames mod (Arena > Frames).";
@@ -439,7 +332,6 @@ L["DR_NEED_ENABLE"]              = "turn it on in Arena > DR.";
 L["HEADER_ARENA_DOT"]            = "DoT warning";
 L["DOT_NEED_ENABLE"]             = "turn it on in Arena > DoT.";
 
--- === TEXTOS QUE ESTABAN FIJOS EN EL CODIGO (modulos, mensajes de comandos, modo mover) ===
 L["ERR_IN_EVENT"]                = "Error in";
 L["ERR_CONFIG_LOAD"]             = "Config load error:";
 L["ARENA_MOVER_COMBAT"]          = "Cannot toggle arena mover in combat.";
@@ -609,21 +501,9 @@ L["MOVER_LBL_MirrorImg"]         = "Mirror Image";
 
 if isSpanish then
 
--- Tags
 local INSTANTE = "|cffFFD100\226\156\147 Aplica al instante|r";
 local RECARGA  = "|cffFFAA00\226\154\160 Requiere /reload|r";
 
--- === TOOLTIPS ===
-
--- FLAT STYLE TOOLTIPS
-
--- CAST BAR TOOLTIPS
-
--- === OPTIONS PANEL ===
-
--- Tabs
-
--- ── Pestañas y secciones nuevas (rediseño estilo TidyPlates) ──
 L["DUEL_BLOCKED"]                = "Duelo de %s rechazado.";
 L["DUEL_BLOCK_ON"]               = "Los duelos ahora se rechazan solos.";
 L["DUEL_BLOCK_OFF"]              = "Los duelos vuelven a estar permitidos.";
@@ -724,30 +604,8 @@ L["MOD_GARGOYLE_DESC"]           = "Tiempo, barra de casteo y vida de la Gargola
 L["MOD_ENEMYALERT"]              = "Alerta de hechizos enemigos";
 L["MOD_ENEMYALERT_DESC"]         = "Muestra el icono del hechizo en pantalla cuando un enemigo lanza una trampa, miedo o interrupci\195\179n.";
 
--- Tab 1 - General
-
--- Tab 2 - Frames
-
--- Missing keys for Frames/General panels
-
--- Tab 3 - Arena
-
--- Flat Style UI
-
--- Cast Bar UI
-
--- Pet Frame
-
--- Visual Theme
-
--- Flat Style labels (sArena style)
-
--- Tab 4 - Modules
-
--- Bottom buttons
 L["BTN_CLOSE"]                   = "Cerrar";
 
--- === COMMANDS ===
 L["CMD_HEADER"]                  = "|cffFF0000NUF|r: Comandos:";
 L["CMD_HELP"]                    = "  |cff00FFFFhelp|r - Mostrar ayuda";
 L["CMD_OPTIONS"]                 = "  |cff00FFFFoptions|r - Abrir panel de opciones";
@@ -756,7 +614,6 @@ L["CMD_ARENA"]                   = "  |cff00FFFFarena|r - Mostrar/Ocultar mover 
 L["CMD_MODULES"]                 = "  |cff00FFFFmodules|r - Listar módulos registrados";
 L["CMD_RESET"]                   = "  |cff00FFFFreset|r - Resetear configuración";
 
--- === MODULE MANAGER ===
 L["MM_REGISTER_ERROR"]           = "|cffFF0000NUF:|r RegisterModule: falta id o info";
 L["MM_ERROR_ENABLING"]           = "|cffFF0000NUF:|r Error activando ";
 L["MM_ERROR_DISABLING"]          = "|cffFF0000NUF:|r Error desactivando ";
@@ -765,7 +622,6 @@ L["MM_LIST_HEADER"]              = "|cffFFFF00NUF Módulos:|r";
 L["MM_LIST_EMPTY"]               = "  (No hay módulos registrados)";
 L["MM_LIST_HINT"]                = "  Agregá archivos .lua en Modules2/ y registralos con K.RegisterModule()";
 
--- === CONFIG MANAGER ===
 L["CFG_HEADER"]                  = "|cffFFFF00Configuración NUF|r";
 L["CFG_NOT_LOADED"]              = "|cffFF0000ERROR: ¡La configuración todavía no cargó!|r";
 L["CFG_FORMAT"]                  = "|cffFFFF00Formato: [OK/ERR] Clave: valor_DB (tipo) | valor_C (tipo)|r";
@@ -778,11 +634,9 @@ L["CFG_RESET_OK"]                = "|cffFFD100NUF ConfigManager:|r ¡Configuraci
 L["PPF_PREVIEW_PET"]          = "Mascota";
 L["DRAG_LABEL"]                  = "ARRASTRAR";
 
--- === Ventanas propias de los modulos ===
 L["BTN_SAVE"]                    = "Guardar";
 L["BTN_RESET_SHORT"]             = "Resetear";
 
--- Arena Points Calculator
 L["APC_TITLE"]                   = "Calculadora de Puntos de Arena";
 L["APC_MY_POINTS"]               = "Mis Puntos Esta Semana";
 L["APC_NO_TEAMS"]                = "No estás en ningún equipo de arena.";
@@ -799,7 +653,6 @@ L["APC_BTN_TIP_BEST"]            = "Puntos que vas a recibir esta semana";
 L["APC_BTN_TIP_CLICK"]           = "Click para abrir la calculadora";
 L["TT_SOLO_QUEUE"]               = "Solo Queue";
 
--- Party Targets
 L["PT_HIDE_NAME"]                = "Ocultar el nombre del objetivo";
 L["PT_CLASS_ICON"]               = "Icono de clase en el retrato";
 L["PT_CLASS_ICON_TIP"]           = "Muestra el icono de la clase en vez de la cara (solo jugadores; los NPC siguen con su cara).";
@@ -815,13 +668,11 @@ L["PT_LOCK"]                     = "Bloquear Frames";
 L["PT_LOCK_HINT"]                = "Shift+Alt+arrastrar siempre ignora el bloqueo";
 L["PT_SCALE"]                    = "Escala:";
 
--- Party Buffs
 L["PB_TITLE"]                    = "Party Buffs";
 L["PB_SCALEMAX"]                 = "Escala / Máx";
 L["PB_SCALE_ICONS"]              = "Escala de iconos:";
 L["PB_MAX_ICONS"]                = "Máx. iconos:";
 
--- NiceDamage
 L["ND_TITLE"]                    = "Selector de Fuente";
 L["ND_FONT"]                     = "Fuente";
 L["ND_TIP_D"]                    = "Daño Enemigo";
@@ -832,12 +683,10 @@ L["ND_LEG_D"]                    = "= Daño Enemigo (requiere reabrir el WoW)";
 L["ND_LEG_H"]                    = "= Sanaciones / Auras / Texto Propio (al instante)";
 L["ND_OPEN"]                     = "Abrir Selector de Fuente";
 
--- Gargoyle Tracker
 L["GT_DUR"]                      = "Dur";
 L["GT_HP"]                       = "PS";
 L["GT_CAST"]                     = "Casteo";
 
--- Varios
 L["SW_NO_SHIELD"]                = "sin escudo";
 L["LBL_STYLE"]                   = "Estilo:";
 L["SPECICONS_HINT"]              = "Icono redondo en Blizzard/Custom, rectangular en estilo Flat.";
@@ -847,17 +696,8 @@ L["BOSS_DRAG"]                   = "FRAMES DE BOSS [arrastrar]";
 L["HP_NA"]                       = "N/D";
 L["HP_DEAD"]                     = "Muerto";
 
--- Paneles de Config
 L["CMD_MODULE_OFF"]              = "%s est\195\161 apagado. Prendelo en el panel de opciones para poder usar sus comandos.";
 
--- Claves que se usaban en el codigo pero nunca se habian definido.
-
--- Tab 5 - Extra Options
-
--- Profiles
-
--- Character Setup (barras / macros / bindeos) - NADA que ver con los
--- perfiles de arriba, que son la config del addon.
 L["SLOT_BACKUP_DONE"]            = "Backup restaurado.";
 L["SLOT_ERR_COMBAT"]             = "No se puede hacer esto en combate.";
 L["SLOT_ERR_EMPTY"]              = "Pegá una cadena primero.";
@@ -867,17 +707,9 @@ L["SLOT_ERR_NOBACKUP"]           = "Todavía no hay backup.";
 L["SLOT_ERR_NOPROFILE"]          = "Esa configuración ya no existe.";
 L["SLOT_MACRO_FULL"]             = "Macro '%s' salteada: no quedan espacios de macro libres.";
 
--- Utility
-
--- Timers de Arena
 L["ARENA_END_PREFIX"]            = "Arena: ";
 L["TIMERS_TEST_HINT"]            = "Modo test de timers activado/desactivado. Manten\195\169 Alt y arrastr\195\161 para moverlos.";
 
--- Texto de Barras de Acci\195\179n
-
--- Subpesta\195\177as de Frames
-
--- Mover todo
 L["MOVE_RESET_DONE"]             = "Todos los marcos volvieron a su posici\195\179n por defecto.";
 L["MOVE_HELP_ALL"]               = "desbloquear todo";
 L["MOVE_HELP_FRAMES"]            = "solo los marcos de unidad";
@@ -890,7 +722,6 @@ L["PARTYTEST_COMBAT"]            = "No se puede activar el modo prueba de party 
 L["BTN_MOVE_RESET"]              = "Resetear";
 L["MOVE_COMBAT_BLOCK"]           = "Las barras de acci\195\179n no se pueden mover en combate.";
 
--- Minimapa
 L["MOD_MINIMAP_TOGGLE"]          = "Ocultar Iconos del Minimapa";
 L["MOD_MINIMAP_TOGGLE_DESC"]     = "Boton en la esquina del minimapa que oculta o muestra los iconos de addon.";
 L["MINIMAP_TOGGLE_TITLE"]        = "Iconos del Minimapa";
@@ -901,7 +732,6 @@ L["BTN_MODULE_MOVE"]             = "Mover";
 L["BTN_MODULE_LOCK"]             = "Bloquear";
 L["BTN_MODULE_TOGGLE"]           = "Alternar";
 
--- Modulos nuevos
 L["MOD_ARROWCOUNT"]              = "Contador de Flechas / Balas";
 L["MOD_DUNGEONROLES"]            = "Roles del buscador de mazmorras";
 L["MOD_DUNGEONROLES_DESC"]       = "Mientras estas en la cola, muestra tanque, sanador y 3 dps, y enciende los puestos que ya estan cubiertos. Alt + arrastrar para moverlo.";
@@ -923,21 +753,9 @@ L["MOD_CLASSOUTLINE"]            = "Contorno del color de clase";
 L["MOD_CLASSOUTLINE_DESC"]       = "Agrega un anillo del color de la clase alrededor de los retratos de jugador, objetivo y foco.";
 L["SWING_USE_GLOBAL"]            = "Mover todo esta activo: arrastr\195\161 la caja azul desde ahi.";
 
--- Barras
-
--- Subpesta\195\177as
-
--- Color de Nombres
-
--- Chat
 L["CHATCOPY_DISABLED"]           = "La copia del chat est\195\161 desactivada en las opciones.";
 L["URL_POPUP_TEXT"]              = "Copi\195\161 el link (Ctrl+C):";
 
--- Module collapse
-
--- Tab 6 - About
-
--- === MINIMAP BUTTON ===
 L["MINIMAP_TITLE"]               = "|cffffffffNidhaus|r |cffFFD100UnitFrames|r";
 L["MINIMAP_LEFT_CLICK"]          = "|cffFFFFFFClick Izquierdo:|r Abrir Opciones";
 L["MINIMAP_RIGHT_CLICK"]         = "|cffFFFFFFClick Derecho:|r Toggle Arena Mover";
@@ -945,9 +763,6 @@ L["MINIMAP_CTRL_CLICK"]          = "|cffFFFFFFCtrl + Click:|r Mover todo";
 L["MINIMAP_SHIFT_CLICK"]         = "|cffFFFFFFShift + Click:|r Recargar UI";
 L["MINIMAP_DRAG"]                = "|cffFFFFFFArrastrar:|r Mover icono";
 
--- === UNIFY ACTION BARS MODULE ===
-
--- === LISTA DE COMANDOS (/nuf help) ===
 L["CMDLIST_GENERAL"] = "General";
 L["CMDLIST_NUF"] = "Abrir el panel de opciones";
 L["CMDLIST_NUF_HELP"] = "Esta lista";
@@ -998,7 +813,6 @@ L["CMDLIST_ND"] = "Texto de combate flotante (tambi\195\169n /nd)";
 L["CMDLIST_HEADER"] = "comandos";
 L["CMDLIST_OFF"] = "m\195\179dulo apagado";
 
--- === ARENA: OJO / DR / DOTS ===
 L["HEADER_ARENA_DR"]             = "Diminishing Returns (DR)";
 L["DR_MOVE_HINT"]                = "Vista previa: Shift+Alt+arrastrar los iconos para moverlos (se mueven los cinco marcos juntos).";
 L["DR_PREVIEW_NEEDS_ARENA"]      = "la vista previa necesita el mod de marcos de arena (Arena > Frames).";
@@ -1006,7 +820,6 @@ L["DR_NEED_ENABLE"]              = "activalo en Arena > DR.";
 L["HEADER_ARENA_DOT"]            = "Aviso de DoTs";
 L["DOT_NEED_ENABLE"]             = "activalo en Arena > DoT.";
 
--- === TEXTOS QUE ESTABAN FIJOS EN EL CODIGO (modulos, mensajes de comandos, modo mover) ===
 L["ERR_IN_EVENT"]                = "Error en";
 L["ERR_CONFIG_LOAD"]             = "Error al cargar la configuraci\195\179n:";
 L["ARENA_MOVER_COMBAT"]          = "No se puede abrir el modo mover de arena en combate.";
@@ -1174,7 +987,6 @@ L["MOVER_LBL_ShadowSight"]       = "Ojo (Shadow Sight)";
 L["MOVER_LBL_WaterEle"]          = "Elemental de agua";
 L["MOVER_LBL_MirrorImg"]         = "Reflejo exacto";
 
--- Avisos sueltos en el chat
 L["ARENA_INVITE_STILL_OPEN"]     = "Cerraste el cartel de entrada y todav\195\173a pod\195\169s entrar: %d s. Volv\195\169 a abrirlo con el \195\173cono de battleground del minimapa.";
 L["ARENA_LOAD_FAIL"]             = "No se pudieron cargar los m\195\179dulos de arena";
 L["ARENA_LOAD_HINT"]             = "Revis\195\161 que la carpeta Nidhaus_UnitFrames_Arena est\195\169 junto a la del addon y activada en la lista de AddOns.";
@@ -1184,4 +996,4 @@ L["PALADINICD_MOVE_ON"]          = "Modo mover activado: arrastralo y escrib\195
 L["PALADINICD_MOVE_OFF"]         = "Posici\195\179n fijada.";
 L["RESET_AFTER_COMBAT"]          = "Est\195\161s en combate: el reset se aplica cuando termine.";
 
-end -- isSpanish
+end

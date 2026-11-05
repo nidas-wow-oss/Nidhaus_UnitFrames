@@ -1,25 +1,9 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- UnitNameColor.lua
--- Color de los nombres en los marcos de unidad.
---   C.UnitNameColorMode = "Default" | "White" | "Class"
---     Default -> devuelve a cada nombre SU color original, que se captura
---                la primera vez que lo tocamos (no todos son blancos: el
---                de la mascota es amarillo, target/focus dependen de la
---                reaccion, etc.)
---     White   -> todos los nombres en blanco
---     Class   -> nombres con el color de la clase (los que no son jugadores
---                se quedan con su color original)
--- Afecta: Player, Target, ToT, Focus, FocusToT, Pet,
---         Party 1-4 y Arena 1-5.
--- =========================================================
-
-local NEUTRAL_R, NEUTRAL_G, NEUTRAL_B = 1, 0.86, 0;   -- amarillo NPC de Blizzard
+local NEUTRAL_R, NEUTRAL_G, NEUTRAL_B = 1, 0.86, 0;
 local WHITE_R,   WHITE_G,   WHITE_B   = 1, 1, 1;
 
--- unit -> nombre global del frame
 local unitFrames = {
 	{ unit = "player",       frame = "PlayerFrame"       },
 	{ unit = "target",       frame = "TargetFrame"       },
@@ -42,7 +26,7 @@ local function GetNameString(frameName)
 	local frame = _G[frameName];
 	if not frame then return nil; end
 	if frame.name and frame.name.SetTextColor then return frame.name; end
-	-- Fallbacks: distintos frames de 3.3.5a guardan el nombre en globales distintos
+
 	local fs = _G[frameName .. "Name"];
 	if fs and fs.SetTextColor then return fs; end
 	fs = _G[frameName .. "TextureFrameName"];
@@ -50,9 +34,6 @@ local function GetNameString(frameName)
 	return nil;
 end
 
--- Color ORIGINAL de cada nombre, capturado la primera vez que lo tocamos.
--- Es la unica forma confiable de volver a "Default": el blanco no es el
--- color de todos (el nombre de la mascota, por ejemplo, es amarillo).
 local originalColor = {};
 
 local function EnsureCaptured(frameName, nameString)
@@ -61,7 +42,7 @@ local function EnsureCaptured(frameName, nameString)
 	if ok and r then
 		originalColor[frameName] = { r, g, b };
 	else
-		-- Fallback por si el cliente no devuelve el color
+
 		if frameName == "PetFrame" then
 			originalColor[frameName] = { 1, 0.82, 0 };
 		else
@@ -70,19 +51,14 @@ local function EnsureCaptured(frameName, nameString)
 	end
 end
 
--- Fuente ORIGINAL (cara, tamaño, flags), para poder restaurar el borde.
 local originalFont = {};
 local function EnsureFontCaptured(frameName, nameString)
 	if originalFont[frameName] then return; end
 	if not nameString.GetFont then return; end
 	local ok, f, s, fl = pcall(nameString.GetFont, nameString);
-	-- Si el cliente no devuelve una fuente valida NO guardamos nada: asi
-	-- ApplyBorder no la toca. Antes se guardaba {nil,...} y cada SetFont(nil)
-	-- tiraba error; como esto corre en el ticker y en hooks que disparan
-	-- todo el tiempo, el spam de errores congelaba el juego.
+
 	if not ok or type(f) ~= "string" or f == "" then return; end
 
-	-- La sombra tambien: el modo "Shadow" la cambia y hay que poder volver.
 	local sx, sy = 0, 0;
 	if nameString.GetShadowOffset then
 		local okS, x, y = pcall(nameString.GetShadowOffset, nameString);
@@ -98,19 +74,10 @@ local function EnsureFontCaptured(frameName, nameString)
 		shadow = { sx, sy, sr, sg, sb, sa } };
 end
 
--- ── Fuente del texto de vida/mana ─────────────────────────────
--- No se hardcodea nada: se crea un FontString que hereda
--- TextStatusBarText (el mismo FontObject que usan los numeros de las
--- barras) y se le leen fuente, flags y sombra REALES del cliente.
---
--- Se hizo asi despues de meter la pata: primero se asumio que ese texto
--- no llevaba flag de contorno y solo sombra, y el resultado se veia como
--- un sombreado, nada que ver con el borde negro del original. Copiando
--- el FontObject sale igual, sea cual sea la definicion del cliente.
 local sbFont, sbFlags, sbShadow;
 local function StatusBarFont()
 	if sbFont ~= nil then return sbFont, sbFlags, sbShadow; end
-	sbFont = false;   -- marca de "ya se intento", para no repetir
+	sbFont = false;
 	local probe = UIParent:CreateFontString(nil, "BACKGROUND", "TextStatusBarText");
 	if not probe then return nil; end
 
@@ -130,12 +97,8 @@ local function StatusBarFont()
 	return sbFont, sbFlags, sbShadow;
 end
 
--- Nombres a los que este modulo les cambio fuente o sombra:
--- [frameName] = { face = cara que tenia antes, shadow = true si puso la sombra }
 local borderTouched = {};
 
--- Con un estilo de grupo propio, la fuente del nombre del compañero es de
--- K.ApplyPartyTextFont (tamaño y contorno del panel de Party): no se toca.
 local function PartyStyleOwnsName(frameName)
 	if not string.find(frameName, "^PartyMemberFrame%d$") then return false; end
 	local style = (K.GetPartyFrameStyle and K.GetPartyFrameStyle()) or "Default";
@@ -150,8 +113,6 @@ local function RestoreShadow(nameString, of)
 	end
 end
 
--- Deshace lo que puso ApplyBorder (y nada si no puso nada). La cara y el
--- tamaño ACTUALES se respetan: pueden ser de otro modulo.
 local function UndoBorder(frameName, nameString)
 	local t = borderTouched[frameName];
 	if not t then return; end
@@ -165,12 +126,8 @@ local function UndoBorder(frameName, nameString)
 	if t.shadow then RestoreShadow(nameString, of); end
 end
 
--- Aplica el borde de forma segura (nunca puede tirar error en un hook).
--- Corre cada 0.25 s: solo cambia los FLAGS (y la cara en "Shadow"), lee
--- cara y tamaño actuales en vez de la foto, y no escribe si ya esta igual.
--- Asi no le pisa al grupo el tamaño que pone K.ApplyPartyTextFont.
 local function ApplyBorder(frameName, nameString)
-	if _G.NUF_SAFE then return; end   -- modo seguro: no toca la fuente
+	if _G.NUF_SAFE then return; end
 	local of = originalFont[frameName];
 	if not of or not of[1] or not nameString.SetFont then return; end
 	if PartyStyleOwnsName(frameName) then
@@ -183,13 +140,11 @@ local function ApplyBorder(frameName, nameString)
 		Thick   = "THICKOUTLINE",
 	};
 
-	-- "Shadow": copiar el look del texto de vida/mana — fuente, flags y
-	-- sombra. Si el FontObject no existiera, queda como "None".
 	local sbF, sbFl, sbSh;
 	if border == "Shadow" then sbF, sbFl, sbSh = StatusBarFont(); end
 
 	if not FLAGS[border] and not sbF then
-		-- "None": la fuente es de quien la puso; solo se deshace lo nuestro.
+
 		UndoBorder(frameName, nameString);
 		return;
 	end
@@ -207,7 +162,7 @@ local function ApplyBorder(frameName, nameString)
 		face, flag = sbF, sbFl;
 		t.shadow = true;
 	else
-		-- Viniendo de "Shadow" se devuelve la cara que tenia antes.
+
 		face = t.shadow and t.face or curF;
 		flag = FLAGS[border];
 	end
@@ -226,7 +181,6 @@ local function ApplyBorder(frameName, nameString)
 	end
 end
 
--- El modulo "hace algo" si el color no es Default o el borde no es None.
 local function IsActive()
 	return (C.UnitNameColorMode or "Default") ~= "Default"
 		or (C.UnitNameBorder or "None") ~= "None";
@@ -239,7 +193,6 @@ local function ApplyToUnit(unit, frameName)
 	EnsureCaptured(frameName, nameString);
 	EnsureFontCaptured(frameName, nameString);
 
-	-- Borde/contorno del texto (independiente del color).
 	ApplyBorder(frameName, nameString);
 
 	local mode = C.UnitNameColorMode or "Default";
@@ -257,11 +210,11 @@ local function ApplyToUnit(unit, frameName)
 				return;
 			end
 		end
-		-- Unidades sin clase (NPCs, mascotas): dejarlas como venian
+
 		local orig = originalColor[frameName];
 		if orig then nameString:SetTextColor(orig[1], orig[2], orig[3]); end
 
-	else -- Default
+	else
 		local orig = originalColor[frameName];
 		if orig then nameString:SetTextColor(orig[1], orig[2], orig[3]); end
 	end
@@ -275,8 +228,6 @@ local function ApplyAll()
 end
 K.ApplyUnitNameColor = ApplyAll;
 
--- Volver a "Default" = devolver a cada nombre SU color original,
--- no pintar todo de blanco (ese era el bug).
 function K.ResetUnitNameColor()
 	for _, entry in ipairs(unitFrames) do
 		local nameString = GetNameString(entry.frame);
@@ -285,24 +236,19 @@ function K.ResetUnitNameColor()
 			EnsureFontCaptured(entry.frame, nameString);
 			local orig = originalColor[entry.frame];
 			if orig then nameString:SetTextColor(orig[1], orig[2], orig[3]); end
-			-- La fuente: solo se deshace el borde que pusimos. Reescribir la
-			-- foto vieja le pisaba al grupo el tamaño del panel de Party.
+
 			if nameString.SetFont and not PartyStyleOwnsName(entry.frame) then
 				UndoBorder(entry.frame, nameString);
 			end
 		end
 	end
 
-	-- Target y Focus dependen de la reaccion: que Blizzard los recalcule
 	if type(TargetFrame_CheckFaction) == "function" then
 		if TargetFrame and UnitExists("target") then pcall(TargetFrame_CheckFaction, TargetFrame); end
 		if FocusFrame and UnitExists("focus") then pcall(TargetFrame_CheckFaction, FocusFrame); end
 	end
 end
 
--- ---------------------------------------------------------
--- Eventos
--- ---------------------------------------------------------
 local events = CreateFrame("Frame");
 events:RegisterEvent("PLAYER_ENTERING_WORLD");
 events:RegisterEvent("PLAYER_TARGET_CHANGED");
@@ -311,23 +257,16 @@ events:RegisterEvent("UNIT_TARGET");
 events:RegisterEvent("UNIT_PET");
 events:RegisterEvent("PARTY_MEMBERS_CHANGED");
 events:RegisterEvent("ARENA_OPPONENT_UPDATE");
--- GROUP_ROSTER_UPDATE no existe en 3.3.5a (llega en Cataclysm). Sin pcall,
--- RegisterEvent aborta la ejecucion del archivo desde esta linea: se perdian
--- el OnEvent y el registro del modulo. El equivalente de WotLK es
--- PARTY_MEMBERS_CHANGED, que ya esta registrado arriba.
+
 pcall(events.RegisterEvent, events, "GROUP_ROSTER_UPDATE");
 events:SetScript("OnEvent", function(self, event)
 	if event == "PLAYER_ENTERING_WORLD" and not IsAddOnLoaded("Blizzard_ArenaUI") then
-		-- Cargar la UI de arena para poder pintar sus nombres
+
 		pcall(LoadAddOn, "Blizzard_ArenaUI");
 	end
 	ApplyAll();
 end);
 
--- ---------------------------------------------------------
--- Hooks: Blizzard reescribe el color del nombre en cada update
--- del frame, asi que hay que reaplicar despues de cada uno.
--- ---------------------------------------------------------
 local function HookIfExists(funcName, handler)
 	if type(_G[funcName]) == "function" then
 		hooksecurefunc(funcName, handler);
@@ -359,16 +298,6 @@ HookIfExists("PartyMemberFrame_UpdateMember", function(self)
 	ApplyToUnit("party" .. self.id, "PartyMemberFrame" .. self.id);
 end);
 
--- ---------------------------------------------------------
--- Aplicar en TIEMPO REAL al cambiar la opcion.
--- Un solo ApplyAll no alcanza: varios frames se redibujan uno o
--- dos frames despues, asi que reaplicamos por medio segundo.
--- ---------------------------------------------------------
--- Enforcement continuo. Los hooks de arriba cubren la mayoria de los casos,
--- pero varios frames (arena, focus target, mascotas) se redibujan por caminos
--- que no pasan por ninguna funcion hookeable. Un tick barato cada 0.25s
--- garantiza que el color se vea al instante y no se pierda.
--- Solo corre cuando el modo NO es "Default".
 local ticker = CreateFrame("Frame");
 local tickAcc = 0;
 ticker:Hide();
@@ -388,12 +317,6 @@ local function UpdateTickerState()
 	end
 end
 
--- SOLO AL PASAR DE ACTIVO A "Default" se devuelven los colores y las
--- fuentes. Antes, estando en Default (lo de fabrica), CADA cambio de
--- cualquier opcion del panel llamaba a ResetUnitNameColor: capturaba la
--- fuente que hubiera en pantalla la primera vez y la volvia a escribir
--- despues, pisando la del estilo de grupo nuevo (el nombre chico del
--- estilo Improved volvia aunque ya hubieras cambiado de estilo).
 local wasActive = false;
 
 local function ApplyNow()
@@ -412,7 +335,6 @@ if K.RegisterConfigEvent then
 	K.RegisterConfigEvent("CONFIG_CHANGED", ApplyNow);
 end
 
--- Arrancar el ticker si al loguear ya hay un modo activo
 local initFrame = CreateFrame("Frame");
 initFrame:RegisterEvent("PLAYER_LOGIN");
 initFrame:SetScript("OnEvent", function(self)
@@ -421,16 +343,10 @@ initFrame:SetScript("OnEvent", function(self)
 	UpdateTickerState();
 end);
 
--- =========================================================
--- /nufnames  -> diagnostico
--- Dice si el modulo cargo, en que modo esta, si el ticker corre,
--- y para cada frame si encontro el texto del nombre y de que color esta.
--- =========================================================
 SLASH_NUFNAMES1 = "/nufnames";
 SlashCmdList["NUFNAMES"] = function(msg)
 	msg = string.lower(msg or "");
 
-	-- /nufnames white|class|default  -> forzar un modo sin usar el panel
 	if msg == "white" or msg == "class" or msg == "default" then
 		local mode = (msg == "white" and "White") or (msg == "class" and "Class") or "Default";
 		if K.SaveConfig then K.SaveConfig("UnitNameColorMode", mode); end

@@ -1,9 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
 ..\FrameXML\UI.xsd">
-	<!-- ============================================================ -->
-	<!-- PartyTargets - Target of Target Style                        -->
-	<!-- Movable with ALT+drag. /ptarget for commands.                -->
-	<!-- ============================================================ -->
+
 	<Button name="PartyTargetFrameTemp" frameStrata="LOW" toplevel="true" movable="true" hidden="true" inherits="SecureUnitButtonTemplate" virtual="true">
 		<Size>
 			<AbsDimension x="96" y="46"/>
@@ -12,7 +9,7 @@
 			<AbsInset left="4" right="4" top="4" bottom="4"/>
 		</HitRectInsets>
 		<Layers>
-			<!-- Portrait -->
+
 			<Layer level="BACKGROUND">
 				<Texture name="$parentPortrait">
 					<Size>
@@ -29,7 +26,7 @@
 			</Layer>
 		</Layers>
 		<Frames>
-			<!-- Flash -->
+
 			<Frame name="$parentFlash" hidden="true">
 				<Size>
 					<AbsDimension x="96" y="46"/>
@@ -41,7 +38,7 @@
 					</Layer>
 				</Layers>
 			</Frame>
-			<!-- Dropdown -->
+
 			<Frame name="$parentDropDown" inherits="UIDropDownMenuTemplate" id="1" hidden="true">
 				<Size><AbsDimension x="10" y="10"/></Size>
 				<Anchors>
@@ -55,7 +52,7 @@
 					</OnLoad>
 				</Scripts>
 			</Frame>
-			<!-- Border art overlay (on top of bars) -->
+
 			<Frame setAllPoints="true" frameLevel="3">
 				<Layers>
 					<Layer level="ARTWORK">
@@ -72,7 +69,7 @@
 					</Layer>
 				</Layers>
 			</Frame>
-			<!-- Name right below mana bar -->
+
 			<Frame frameLevel="4">
 				<Size><AbsDimension x="66" y="10"/></Size>
 				<Anchors>
@@ -94,7 +91,7 @@
 					</Layer>
 				</Layers>
 			</Frame>
-			<!-- Hidden text (required by UnitFrame_Initialize) -->
+
 			<Frame hidden="true">
 				<Size><AbsDimension x="1" y="1"/></Size>
 				<Anchors><Anchor point="TOPLEFT"/></Anchors>
@@ -109,7 +106,7 @@
 					</Layer>
 				</Layers>
 			</Frame>
-			<!-- Health Bar -->
+
 			<StatusBar name="$parentHealthBar" inherits="TextStatusBar" frameLevel="1">
 				<Size>
 					<AbsDimension x="33" y="4"/>
@@ -134,7 +131,7 @@
 				</Scripts>
 				<BarTexture file="Interface\TargetingFrame\UI-StatusBar"/>
 			</StatusBar>
-			<!-- Mana Bar -->
+
 			<StatusBar name="$parentManaBar" inherits="TextStatusBar" frameLevel="1">
 				<Size>
 					<AbsDimension x="33" y="4"/>
@@ -163,10 +160,10 @@
 				self.noTextPrefix = 1;
 				local prefix = "PartyTargetFrame"..id;
 				UnitFrame_Initialize(self, "party"..id.."target", getglobal(prefix.."Name"), getglobal(prefix.."Portrait"),
-					getglobal(prefix.."HealthBar"), getglobal(prefix.."HealthBarText"), 
+					getglobal(prefix.."HealthBar"), getglobal(prefix.."HealthBarText"),
 					getglobal(prefix.."ManaBar"), getglobal(prefix.."ManaBarText"));
 				SetTextStatusBarTextZeroText(getglobal(prefix.."HealthBar"), DEAD);
-				
+
 				LibStub:GetLibrary("PartyTargets-3.3").OnLoad(self);
 			</OnLoad>
 			<OnEvent>
@@ -178,7 +175,6 @@
 		</Scripts>
 	</Button>
 
-	<!-- Instances -->
 	<Button name="PartyTargetFrame1" inherits="PartyTargetFrameTemp" parent="PartyMemberFrame1" toplevel="true" id="1">
 		<Anchors>
 			<Anchor point="TOPLEFT" relativeTo="PartyMemberFrame1" relativePoint="BOTTOMLEFT">

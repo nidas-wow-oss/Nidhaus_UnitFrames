@@ -1,32 +1,7 @@
 local AddOnName = ...;
--- Addon a pedido: el namespace de NUF llega por el global (ver ArenaLoader).
+
 local ns = NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
-
--- =========================================================
--- CADA ESTILO DE ARENA RECUERDA LO SUYO
---
--- Blizzard, Custom, Borderless, Compact 2 y Flat no tienen el mismo
--- tamaño ni la misma forma: lo que acomodas en uno no sirve en otro.
--- Antes la escala, la separacion, el tamaño de los iconos de DR y DoT, la
--- barra de casteo y el lugar de los marcos eran UNO solo para todos, y al
--- cambiar de estilo te quedaba lo del anterior.
---
--- Dos niveles:
---   * Por ESTILO (el aspecto): escalas, separaciones y tamaños.
---   * Por MODO (estilo + espejo, K.GetArenaPositionKey): las posiciones.
---     El espejo es para tener los marcos del otro lado de la pantalla,
---     asi que cada lado tiene su lugar.
---
--- Las posiciones de la barra de casteo, el trinket, la mascota, el ToT y
--- las filas de DR y DoT ya se guardaban por modo, cada una en su tabla.
--- Lo que se guardaba una sola vez (los valores de C y el ancla de los
--- marcos) se intercambia aca al cambiar: C y positions tienen SIEMPRE lo
--- del estilo y el modo que estan puestos, asi que el resto del addon los
--- sigue leyendo como siempre.
---
--- La primera vez que entras a un estilo arranca de fabrica: es nuevo.
--- =========================================================
 
 local STYLE_KEYS = {
 	"ArenaFrameScale", "ArenaFrameSpacing",
@@ -37,7 +12,6 @@ local STYLE_KEYS = {
 };
 K.ArenaStyleKeys = STYLE_KEYS;
 
--- El ancla de los marcos, en NidhausUnitFramesDB.positions.
 local ANCHOR_KEYS = { "ArenaMover", "NidhausArenaAnchor" };
 
 local function StyleOf() return C.ArenaFrameStyle or "Custom"; end
@@ -59,7 +33,6 @@ local function Copy(t)
 	return o;
 end
 
--- De que estilo y modo son los valores que hay HOY en C y en positions.
 local activeStyle, activeMode;
 
 local function StashStyle(style)
@@ -99,7 +72,6 @@ local function SavedPoint(p)
 	return point, rel, p.relativePoint or p[3], p.x or p[4] or 0, p.y or p[5] or 0;
 end
 
--- El ancla (y el cuadro del Test) al lugar del modo puesto.
 local function ApplyAnchor()
 	if K.AfterCombat("ArenaModeAnchor", ApplyAnchor) then return; end
 	local pos = NidhausUnitFramesDB and NidhausUnitFramesDB.positions;
@@ -117,17 +89,14 @@ local function ApplyAnchor()
 	end
 end
 
--- Escalas, separacion y tamaños del estilo puesto.
 local function ApplyStyleValues()
 	if K.ApplyArenaScale then K.ApplyArenaScale(C.ArenaFrameScale); end
 	if C.ArenaFrameOn and K.ApplyArenaSpacing then K.ApplyArenaSpacing(); end
 	if C.ArenaCastBarEnable and K.ToggleArenaCastBar then K.ToggleArenaCastBar(true); end
 	if K.ApplyArenaToTScale then K.ApplyArenaToTScale(C.ArenaToTScale); end
-	-- DR y DoT leen su tamaño al redibujarse (K.RefreshArenaModeLayout).
+
 end
 
--- Todo lo que se coloca por modo: cada pieza vuelve a SU lugar del modo
--- puesto, o al de fabrica si en ese modo nunca la moviste.
 function K.RefreshArenaModeLayout()
 	if K.RestoreCastBarPositions then pcall(K.RestoreCastBarPositions); end
 	if K.PositionArenaTrinkets then pcall(K.PositionArenaTrinkets); end
@@ -138,20 +107,10 @@ function K.RefreshArenaModeLayout()
 	if K.RefreshArenaPanelSliders then pcall(K.RefreshArenaPanelSliders); end
 end
 
--- LOS DATOS AL INSTANTE, LO VISUAL DESPUES DEL ESTILO.
---
--- El cambio de estilo dispara CONFIG_CHANGED ANTES de que el panel arme el
--- estilo nuevo. Ahi se intercambian solo los datos (C y positions); lo que
--- se ve se aplica cuando el estilo ya esta armado: lo llama el panel al
--- final, y si nadie lo llama, sale solo en el cuadro siguiente. Aplicar la
--- escala antes (con Flat la escala rearma el estilo Flat) le sacaba la
--- "foto de fabrica" al estilo viejo.
 local applyPending = false;
 local applier = CreateFrame("Frame");
 applier:Hide();
 
--- Si cambio el estilo o el espejo: guarda lo del que se fue y trae lo del
--- que llega (solo datos). Devuelve true si hubo cambio.
 local function SwapIfChanged()
 	if not activeStyle then activeStyle, activeMode = StyleOf(), ModeOf(); end
 	local style, mode = StyleOf(), ModeOf();
@@ -176,7 +135,6 @@ local function SwapIfChanged()
 end
 K.SwapArenaModeData = SwapIfChanged;
 
--- Aplica lo que quedo pendiente del cambio. true si habia algo.
 local function ApplyPending()
 	applier:Hide();
 	if not applyPending then return false; end
@@ -188,8 +146,6 @@ local function ApplyPending()
 end
 applier:SetScript("OnUpdate", function() ApplyPending(); end);
 
--- Intercambia (si hace falta) y aplica ya. Llamarla de mas no hace nada;
--- devuelve true si hubo cambio.
 function K.SyncArenaMode()
 	SwapIfChanged();
 	return ApplyPending();
@@ -197,16 +153,6 @@ end
 
 function K.GetActiveArenaStyle() return activeStyle or StyleOf(); end
 
--- ---------------------------------------------------------
--- Lo guardado por versiones viejas
---
--- La barra de casteo, el trinket y la mascota caian a una posicion "sin
--- estilo" (normal / mirror / global) cuando el modo no tenia la suya: por
--- eso lo movido en un estilo aparecia igual en todos. Ahora eso pasa a ser
--- del estilo que tenes puesto y los demas arrancan de fabrica. Corre en
--- cada carga: si no queda nada viejo no hace nada, y asi tambien cubre un
--- perfil importado de una version anterior.
--- ---------------------------------------------------------
 local LEGACY_TABLES = { "CastBarPositions", "TrinketPositions", "PetFramePositions" };
 
 local function MigrateLegacy()
@@ -224,14 +170,11 @@ local function MigrateLegacy()
 	end
 end
 
--- Al cargar (y tras "Reset Defaults"): lo que hay en C es del estilo puesto.
 K.RegisterConfigEvent("CONFIG_LOADED", function()
 	MigrateLegacy();
 	activeStyle, activeMode = StyleOf(), ModeOf();
 end);
 
--- Red de seguridad: cualquier cambio de estilo o espejo, venga de donde
--- venga, pasa por aca (el panel ademas la llama directo).
 K.RegisterConfigEvent("CONFIG_CHANGED", function()
 	if activeStyle then SwapIfChanged(); end
 end);

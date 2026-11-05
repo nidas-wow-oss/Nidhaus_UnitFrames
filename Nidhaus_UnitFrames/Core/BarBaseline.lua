@@ -1,45 +1,6 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- BarBaseline.lua
---
--- UNA SOLA FOTO del layout limpio de las barras de Blizzard, compartida
--- por los dos modos de barras (MiniBar y Unify Action Bars).
---
--- EL PROBLEMA QUE RESUELVE
---
--- Los dos modos reescriben el layout entero: ancho de MainMenuBar, apilado
--- de filas, grifos, micro botones, bolsas, escalas. Cada uno sacaba SU
--- PROPIA foto del "antes" justo al activarse, para poder revertir despues.
---
--- Eso funciona la primera vez y falla siempre despues:
---
---   login          MiniBar saca su foto      -> estado LIMPIO, bien
---   paso a Unify   MiniBar revierte (y le faltan cosas)
---                  Unify saca su foto        -> estado SUCIO
---   vuelvo         Unify revierte a esa foto -> queda peor
---
--- La suciedad se acumula en cada cambio. Por eso terminaban las filas
--- descolocadas y la barra angosta: el modo nuevo armaba su layout sobre
--- restos del anterior. Tapar los huecos de cada lista de restauracion no
--- alcanza — son dos listas largas que hay que mantener sincronizadas a
--- mano, y cualquier olvido futuro reintroduce lo mismo.
---
--- LA SOLUCION
---
--- Sacar la foto UNA vez, cuando el estado todavia es el de Blizzard, y que
--- los dos modos vuelvan SIEMPRE a esa misma foto antes de aplicar lo suyo.
--- Asi el punto de partida es identico en cada cambio y no hay deriva
--- posible, sin importar cuantas veces alternes.
---
--- La foto se toma sola la primera vez que se pide (EnsureBaseline), que es
--- justo antes de que se active el primer modo de la sesion. En ese momento
--- todavia no toco nada nadie.
--- =========================================================
-
--- Todo lo que cualquiera de los dos modos mueve, redimensiona, reescala o
--- reparenta. La lista salio de leer los dos archivos, no de memoria.
 local BAR_FRAMES = {
 	"MainMenuBar", "MainMenuBarArtFrame",
 	"MainMenuExpBar", "MainMenuBarMaxLevelBar",
@@ -47,36 +8,26 @@ local BAR_FRAMES = {
 	"MainMenuBarExpText", "ExhaustionTick",
 	"MainMenuBarLeftEndCap", "MainMenuBarRightEndCap",
 
-	-- Filas de botones
 	"MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarLeft", "MultiBarRight",
 	"BonusActionButton1", "PossessBarFrame", "PossessButton1",
 
-	-- Paginado
 	"ActionBarUpButton", "ActionBarDownButton", "MainMenuBarPageNumber",
 
-	-- Mascota / cambio de forma / totems / vehiculo
 	"PetActionBarFrame", "PetActionButton1", "PetActionBarHealthBar", "PetActionBarManaBar",
 	"ShapeshiftBarFrame", "ShapeshiftButton1",
 	"MultiCastActionBarFrame", "MainMenuBarVehicleLeaveButton",
 
-	-- Bolsas y llavero. Estos son los que MiniBar guardaba pero NUNCA
-	-- restauraba (33 guardados contra 28 restaurados): uno de los huecos
-	-- que encontre al medir.
 	"MainMenuBarBackpackButton", "KeyRingButton",
 	"CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot",
 
-	-- Micro botones: los dos modos los reparentan.
 	"CharacterMicroButton", "SpellbookMicroButton", "TalentMicroButton",
 	"AchievementMicroButton", "QuestLogMicroButton", "SocialsMicroButton",
 	"PVPMicroButton", "LFDMicroButton", "MainMenuMicroButton", "HelpMicroButton",
 };
 
-local baseline   = nil;   -- nil = todavia no se saco la foto
+local baseline   = nil;
 local capturing  = false;
 
--- ---------------------------------------------------------
--- Sacar la foto
--- ---------------------------------------------------------
 local function SnapshotFrame(frame)
 	local snap = {
 		width  = frame.GetWidth  and frame:GetWidth()  or nil,
@@ -88,9 +39,6 @@ local function SnapshotFrame(frame)
 		points = {},
 	};
 
-	-- Se guardan TODOS los puntos de anclaje, no solo el primero: varios de
-	-- estos frames usan dos (por ejemplo TOPLEFT + TOPRIGHT para estirarse)
-	-- y quedarse con uno solo los deformaria al restaurar.
 	if frame.GetNumPoints and frame.GetPoint then
 		for i = 1, (frame:GetNumPoints() or 0) do
 			local p, rel, rp, x, y = frame:GetPoint(i);
@@ -105,28 +53,12 @@ local function SnapshotFrame(frame)
 	return snap;
 end
 
--- Devuelve true si la foto quedo tomada (ahora o antes).
 function K.EnsureBarBaseline()
 	if baseline or capturing then return baseline ~= nil; end
 	capturing = true;
 
-	-- QUE NADIE ESTE ESCONDIENDO ARTE CUANDO SACAMOS LA FOTO.
-	--
-	-- "En ese momento todavia no toco nada nadie" era falso en un caso, y
-	-- es el que contaminaba la foto para toda la sesion: Hide Action Bar
-	-- Textures esconde el arte al entrar al mundo, mucho antes de que se
-	-- prenda ningun modo. Con esa casilla puesta, la foto guardaba los end
-	-- caps y la barra de experiencia en alfa 0 y ESCONDIDOS, como si asi
-	-- los trajera el juego -- y desde ahi cada rearmado reponia esa
-	-- suciedad, incluso despues de destildar la casilla.
-	--
-	-- Se le pide que devuelva lo suyo ANTES de disparar. Del arte se hace
-	-- cargo el modo que esta por prenderse, y cuando el modo se apague,
-	-- HideActionBarTextures vuelve a aplicar lo que el usuario tenga
-	-- tildado.
 	if K._habRelease then pcall(K._habRelease); end
 
-	-- Que Blizzard termine de acomodar todo antes de fotografiar.
 	if UIParent_ManageFramePositions then pcall(UIParent_ManageFramePositions); end
 	if MainMenuBar_UpdateExperienceBars then pcall(MainMenuBar_UpdateExperienceBars); end
 
@@ -145,18 +77,6 @@ function K.EnsureBarBaseline()
 	return true;
 end
 
--- ---------------------------------------------------------
--- Volver a la foto
--- ---------------------------------------------------------
--- LOS QUE APARECEN Y DESAPARECEN SOLOS NO VUELVEN A LA FOTO.
---
--- La barra de mascota, la de posesion, la de totems y el boton de salir
--- del vehiculo los muestra Blizzard segun lo que pasa en el juego. La foto
--- se saca una vez por sesion: invocabas la mascota despues, cambiabas de
--- modo de barras y la foto la escondia. Blizzard no la vuelve a mostrar
--- (ShowPetActionBar no hace nada si cree que ya esta a la vista), asi que
--- quedaba sin barra hasta volver a invocarla. Para estos se pregunta lo
--- mismo que pregunta Blizzard, en el momento.
 local LIVE_VISIBILITY = {
 	PetActionBarFrame = function() return PetHasActionBar and PetHasActionBar() and true or false; end,
 	PossessBarFrame   = function() return IsPossessBarVisible and IsPossessBarVisible() and true or false; end,
@@ -167,8 +87,6 @@ local LIVE_VISIBILITY = {
 local function RestoreFrame(frame, snap, name)
 	if not (frame and snap) then return; end
 
-	-- El parent primero: cambiarlo despues de anclar tirapor la borda los
-	-- puntos que acabamos de poner.
 	if snap.parent and frame.SetParent and frame:GetParent() ~= snap.parent then
 		frame:SetParent(snap.parent);
 	end
@@ -183,12 +101,6 @@ local function RestoreFrame(frame, snap, name)
 	if snap.scale  and snap.scale  > 0 and frame.SetScale  then frame:SetScale(snap.scale);   end
 	if snap.alpha  and frame.SetAlpha then frame:SetAlpha(snap.alpha); end
 
-	-- La visibilidad SI se restaura, junto con la geometria.
-	--
-	-- Probe sacarla de la foto y delegarla en MultiActionBar_Update, con la
-	-- idea de que quien decide que barras se ven es Blizzard segun las
-	-- CVars. En la practica salio peor: al togglear, las barras se subian.
-	-- Se vuelve a como estaba, que es lo que funciona.
 	if frame.Show and frame.Hide then
 		local shown = snap.shown;
 		local live = name and LIVE_VISIBILITY[name];
@@ -200,11 +112,8 @@ local function RestoreFrame(frame, snap, name)
 	end
 end
 
--- Deja las barras exactamente como estaban antes de que cualquier modo las
--- tocara. Se llama entre apagar un modo y prender el otro.
 function K.RestoreBarBaseline()
-	-- Los botones vuelven a su anclaje y su padre antes que nada:
-	-- el espaciado y el Holder de posturas los reanclan uno por uno.
+
 	if K.RestoreActionBarButtonSpace then K.RestoreActionBarButtonSpace(); end
 	if K.DetachStanceButtons then K.DetachStanceButtons(); end
 
@@ -216,7 +125,6 @@ function K.RestoreBarBaseline()
 		if f then pcall(RestoreFrame, f, snap, name); end
 	end
 
-	-- Y que Blizzard recalcule lo suyo encima de un estado limpio.
 	if UIParent_ManageFramePositions then pcall(UIParent_ManageFramePositions); end
 	if MainMenuBar_UpdateExperienceBars then pcall(MainMenuBar_UpdateExperienceBars); end
 	return true;
@@ -224,8 +132,6 @@ end
 
 function K.HasBarBaseline() return baseline ~= nil; end
 
--- Un solo marco a la foto (lo usa el Reset de "Mover todo" cuando el
--- original que tiene guardado es de otro modo de barras). true si pudo.
 function K.RestoreBarBaselineFrame(name)
 	if not (baseline and name and baseline[name]) then return false; end
 	if InCombatLockdown() then return false; end
@@ -233,16 +139,3 @@ function K.RestoreBarBaselineFrame(name)
 	if not f then return false; end
 	return pcall(RestoreFrame, f, baseline[name], name) and true or false;
 end
-
--- ---------------------------------------------------------
--- Diagnostico
---
--- SOLO LECTURA. Aca hubo un "/nufbars restore" que devolvia las barras a la
--- foto original, y se saco: con un modo activo dejaba las barras en el
--- layout de Blizzard pero al modo creyendose aplicado, sus hooks seguian
--- corriendo y terminaba peor que antes. Intente arreglarlo haciendo que
--- re-aplicara el modo, y tampoco: las barras se subian.
---
--- El toggle normal ya funciona, asi que el comando no aportaba nada y solo
--- daba una forma de romper el layout. Este comando ahora no toca nada.
--- ---------------------------------------------------------

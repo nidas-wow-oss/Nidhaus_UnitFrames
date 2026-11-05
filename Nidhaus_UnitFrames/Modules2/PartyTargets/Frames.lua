@@ -1,48 +1,23 @@
-----------------------------------------------------
--- PartyTargets
--- Shows who your party members are targeting.
--- Features:
---   - Optional mirror for PartyMemberFrames
---   - Target-of-Target style compact target frames
---   - ALT+drag to move target frames
---   - Config panel: /ptarget or /ptarget config
-----------------------------------------------------
 local addon = LibStub:NewLibrary("PartyTargets-3.3", 200912123.9)
 assert(addon, "Failed to load library 'PartyTargets-3.3' with LibStub")
 
--- FIX: Capture NUF namespace to access K.IsNewPartyFrameActive
 local _, _nufNS = ...;
 local _nufK = _nufNS and _nufNS[1] or nil;
-local _nufL = _nufNS and _nufNS[3] or {};   -- traducciones de NUF
+local _nufL = _nufNS and _nufNS[3] or {};
 
-----------------------------------------------------
--- Saved Variables, Defaults & State
-----------------------------------------------------
 PartyTargetsDB = PartyTargetsDB or {}
 local unlocked = false
-PartyTargets_configOpen = false  -- global, set by Options.lua
+PartyTargets_configOpen = false
 
 local DEFAULTS = {
 	mirror = false,
 	anchor = true,
 	scale = 1.0,
 	locked = false,
-	style = "Classic",   -- "Classic" (Target-of-Target) o "Square"
-	hideName = false,    -- ocultar el nombre del objetivo
+	style = "Classic",
+	hideName = false,
 }
 
--- ---------------------------------------------------------
--- Escala, guardada POR ESTILO
---
--- Classic y Square son marcos de tamaño muy distinto, asi que una sola
--- escala obligaba a reajustar el slider cada vez que se cambiaba de uno al
--- otro. Ahora cada estilo recuerda la suya.
---
--- PartyTargetsDB.scale sigue existiendo: es lo que habia antes y sirve de
--- punto de partida para los dos estilos la primera vez.
---
--- OJO: en este archivo el namespace de NUF es _nufK, no K.
--- ---------------------------------------------------------
 local function StyleKey()
 	local v = PartyTargetsDB.style;
 	if v == "Square" or v == "Icon" then return v; end
@@ -62,14 +37,10 @@ local function SaveScale(value, style)
 		PartyTargetsDB.scaleByStyle = {};
 	end
 	PartyTargetsDB.scaleByStyle[key] = value;
-	-- Se mantiene al dia por si algo viejo todavia lee .scale
+
 	PartyTargetsDB.scale = value;
 end
 
--- Los PartyTargetFrame heredan SecureUnitButtonTemplate, o sea que son
--- marcos protegidos y SetScale sobre ellos esta vedado en combate. Si toca
--- en plena pelea se anota y se aplica al salir, en vez de comerse un
--- "Interface action failed because of an AddOn" por cada marco.
 local scalePending = false;
 
 local function ApplyScale()
@@ -79,7 +50,7 @@ local function ApplyScale()
 		return v;
 	end
 	scalePending = false;
-	-- La version que no mueve los marcos (mas abajo, necesita el anclaje).
+
 	if PartyTargets_ApplyScale then
 		PartyTargets_ApplyScale();
 		return v;
@@ -135,7 +106,6 @@ local function LoadPosition(self)
 	return false
 end
 
--- Default anchor offset (TOPLEFT of target -> BOTTOMLEFT of party frame)
 local DEFAULT_ANCHOR_X = 105
 local DEFAULT_ANCHOR_Y = 32
 
@@ -152,20 +122,6 @@ local function AnchorAllToParty(offX, offY)
 	end
 end
 
--- Offset del marco de objetivo respecto del marco de su compañero.
---
--- LAS ESCALAS. GetLeft/GetTop devuelven coordenadas en el espacio PROPIO de
--- cada frame, y ese espacio depende de su escala. El marco de objetivo tiene
--- la suya (PartyTargetsDB.scale) y el del compañero la suya — que ademas en
--- modo 3v3 es 1.5 o 1.3 segun el miembro.
---
--- Restar los valores crudos de dos frames con escalas distintas da un numero
--- que no significa nada. Ese era el "se imanta al techo": con el objetivo al
--- 1.0 y el compañero al 1.5, el offset vertical salia enorme y el marco se
--- iba arriba de todo.
---
--- Se pasa todo a pixeles de PANTALLA para restar, y el resultado se traduce
--- al espacio del marco de objetivo, que es donde SetPoint lo va a interpretar.
 local function ComputeAnchorOffset(frame)
 	local id = frame:GetID()
 	local parent = _G["PartyMemberFrame"..id]
@@ -190,40 +146,31 @@ local function MakeDraggable(frame)
 	frame:SetMovable(true)
 	frame:SetClampedToScreen(true)
 	frame:RegisterForDrag("LeftButton")
-	
+
 	frame:HookScript("OnDragStart", function(self)
-		-- Config panel open: always draggable
+
 		if PartyTargets_configOpen then
 			self:StartMoving()
 			return
 		end
-		-- Shift+Alt: ALWAYS draggable (override lock & anchor)
+
 		if IsShiftKeyDown() and IsAltKeyDown() then
 			self:StartMoving()
 			return
 		end
-		-- Locked: block
+
 		if PartyTargetsDB.locked then return end
-		-- Anchored: block normal drag
+
 		if PartyTargetsDB.anchor then return end
-		-- Free mode: drag if unlocked or ALT
+
 		if unlocked or IsAltKeyDown() then
 			self:StartMoving()
 		end
 	end)
-	
+
 	frame:HookScript("OnDragStop", function(self)
 		self:StopMovingOrSizing()
-		
-		-- En modo anclado, mover uno mueve los cuatro. SIEMPRE.
-		--
-		-- Antes esto pedia ademas que el panel estuviera abierto, o que
-		-- Shift+Alt siguieran apretados AL SOLTAR. Lo segundo es facil de
-		-- fallar: arrastras con Shift+Alt, largas las teclas y despues el
-		-- boton, y el marco quedaba solo, desalineado de los otros tres.
-		--
-		-- Si el arrastre llego hasta aca es porque OnDragStart lo permitio;
-		-- no hace falta volver a preguntar por que.
+
 		if PartyTargetsDB.anchor then
 			local offX, offY = ComputeAnchorOffset(self)
 			PartyTargetsDB.anchorX = offX
@@ -234,10 +181,6 @@ local function MakeDraggable(frame)
 		end
 	end)
 end
-
-----------------------------------------------------
--- PART 1: Mirror Party Member Frames (Optional)
-----------------------------------------------------
 
 local partyOrigState = {}
 local partyMirrored = {}
@@ -254,13 +197,13 @@ end
 
 local function CapturePartyOriginals(index)
 	if partyOrigState[index] then return end
-	
+
 	local pre = "PartyMemberFrame"..index
 	local frame = _G[pre]
 	if not frame then return end
-	
+
 	local s = {}
-	
+
 	local tex = _G[pre.."Texture"]
 	if tex then
 		s.texCoords = {tex:GetTexCoord()}
@@ -270,7 +213,7 @@ local function CapturePartyOriginals(index)
 		end
 		s.texW, s.texH = tex:GetWidth(), tex:GetHeight()
 	end
-	
+
 	local portrait = _G[pre.."Portrait"]
 	if portrait then
 		s.portPoints = {}
@@ -280,7 +223,7 @@ local function CapturePartyOriginals(index)
 		s.portW, s.portH = portrait:GetWidth(), portrait:GetHeight()
 		s.portLayer = portrait:GetDrawLayer()
 	end
-	
+
 	local hb = _G[pre.."HealthBar"]
 	if hb then
 		s.hbPoints = {}
@@ -288,7 +231,7 @@ local function CapturePartyOriginals(index)
 			s.hbPoints[p] = {hb:GetPoint(p)}
 		end
 		s.hbW, s.hbH = hb:GetWidth(), hb:GetHeight()
-		-- Health bar text
+
 		local hbText = _G[pre.."HealthBarText"]
 		if hbText then
 			s.hbTextPoints = {}
@@ -297,7 +240,7 @@ local function CapturePartyOriginals(index)
 			end
 		end
 	end
-	
+
 	local mb = _G[pre.."ManaBar"]
 	if mb then
 		s.mbPoints = {}
@@ -313,7 +256,7 @@ local function CapturePartyOriginals(index)
 			end
 		end
 	end
-	
+
 	local name = _G[pre.."Name"]
 	if name then
 		s.namePoints = {}
@@ -322,7 +265,7 @@ local function CapturePartyOriginals(index)
 		end
 		s.nameJustify = name:GetJustifyH()
 	end
-	
+
 	local flash = _G[pre.."Flash"]
 	if flash then
 		s.flashPoints = {}
@@ -331,7 +274,7 @@ local function CapturePartyOriginals(index)
 		end
 		s.flashCoords = {flash:GetTexCoord()}
 	end
-	
+
 	local leader = _G[pre.."LeaderIcon"]
 	if leader then
 		s.leaderPoints = {}
@@ -339,7 +282,7 @@ local function CapturePartyOriginals(index)
 			s.leaderPoints[p] = {leader:GetPoint(p)}
 		end
 	end
-	
+
 	local ml = _G[pre.."MasterIcon"]
 	if ml then
 		s.mlPoints = {}
@@ -347,7 +290,7 @@ local function CapturePartyOriginals(index)
 			s.mlPoints[p] = {ml:GetPoint(p)}
 		end
 	end
-	
+
 	local pvp = _G[pre.."PVPIcon"]
 	if pvp then
 		s.pvpPoints = {}
@@ -355,7 +298,7 @@ local function CapturePartyOriginals(index)
 			s.pvpPoints[p] = {pvp:GetPoint(p)}
 		end
 	end
-	
+
 	partyOrigState[index] = s
 end
 
@@ -363,12 +306,11 @@ local function ApplyMirrorToParty(index)
 	local pre = "PartyMemberFrame"..index
 	local frame = _G[pre]
 	if not frame then return end
-	
+
 	CapturePartyOriginals(index)
 	local s = partyOrigState[index]
 	if not s then return end
-	
-	-- Mirror main texture
+
 	local tex = _G[pre.."Texture"]
 	if tex and s.texCoords then
 		local ULx,ULy, LLx,LLy, URx,URy, LRx,LRy = unpack(s.texCoords)
@@ -379,8 +321,7 @@ local function ApplyMirrorToParty(index)
 			tex:SetPoint(MirrorPoint(point), rel, MirrorPoint(relPoint), -(x or 0), y or 0)
 		end
 	end
-	
-	-- Mirror portrait (raise layer so texture doesn't cover it)
+
 	local portrait = _G[pre.."Portrait"]
 	if portrait and s.portPoints then
 		portrait:ClearAllPoints()
@@ -390,8 +331,7 @@ local function ApplyMirrorToParty(index)
 		end
 		portrait:SetDrawLayer("OVERLAY")
 	end
-	
-	-- Mirror health bar
+
 	local hb = _G[pre.."HealthBar"]
 	if hb and s.hbPoints then
 		hb:ClearAllPoints()
@@ -400,15 +340,13 @@ local function ApplyMirrorToParty(index)
 			hb:SetPoint(MirrorPoint(point), rel, MirrorPoint(relPoint), -(x or 0), y or 0)
 		end
 	end
-	
-	-- Reposition health bar text to center of bar
+
 	local hbText = _G[pre.."HealthBarText"]
 	if hbText and hb then
 		hbText:ClearAllPoints()
 		hbText:SetPoint("CENTER", hb, "CENTER", 0, 0)
 	end
-	
-	-- Mirror mana bar
+
 	local mb = _G[pre.."ManaBar"]
 	if mb and s.mbPoints then
 		mb:ClearAllPoints()
@@ -417,15 +355,13 @@ local function ApplyMirrorToParty(index)
 			mb:SetPoint(MirrorPoint(point), rel, MirrorPoint(relPoint), -(x or 0), y or 0)
 		end
 	end
-	
-	-- Reposition mana bar text to center of bar
+
 	local mbText = _G[pre.."ManaBarText"]
 	if mbText and mb then
 		mbText:ClearAllPoints()
 		mbText:SetPoint("CENTER", mb, "CENTER", 0, 0)
 	end
-	
-	-- Mirror name
+
 	local name = _G[pre.."Name"]
 	if name and s.namePoints then
 		name:ClearAllPoints()
@@ -435,8 +371,7 @@ local function ApplyMirrorToParty(index)
 		end
 		name:SetJustifyH("RIGHT")
 	end
-	
-	-- Mirror flash
+
 	local flash = _G[pre.."Flash"]
 	if flash and s.flashCoords then
 		local ULx,ULy, LLx,LLy, URx,URy, LRx,LRy = unpack(s.flashCoords)
@@ -449,8 +384,7 @@ local function ApplyMirrorToParty(index)
 			end
 		end
 	end
-	
-	-- Mirror leader icon
+
 	local leader = _G[pre.."LeaderIcon"]
 	if leader and s.leaderPoints then
 		leader:ClearAllPoints()
@@ -459,8 +393,7 @@ local function ApplyMirrorToParty(index)
 			leader:SetPoint(MirrorPoint(point), rel, MirrorPoint(relPoint), -(x or 0), y or 0)
 		end
 	end
-	
-	-- Mirror master looter
+
 	local ml = _G[pre.."MasterIcon"]
 	if ml and s.mlPoints then
 		ml:ClearAllPoints()
@@ -469,8 +402,7 @@ local function ApplyMirrorToParty(index)
 			ml:SetPoint(MirrorPoint(point), rel, MirrorPoint(relPoint), -(x or 0), y or 0)
 		end
 	end
-	
-	-- Mirror PvP icon
+
 	local pvp = _G[pre.."PVPIcon"]
 	if pvp and s.pvpPoints then
 		pvp:ClearAllPoints()
@@ -479,18 +411,16 @@ local function ApplyMirrorToParty(index)
 			pvp:SetPoint(MirrorPoint(point), rel, MirrorPoint(relPoint), -(x or 0), y or 0)
 		end
 	end
-	
+
 	partyMirrored[index] = true
 end
 
--- Restore party frame to original state
 local function RestorePartyFrame(index)
 	local pre = "PartyMemberFrame"..index
 	local frame = _G[pre]
 	local s = partyOrigState[index]
 	if not frame or not s then return end
-	
-	-- Restore texture
+
 	local tex = _G[pre.."Texture"]
 	if tex and s.texCoords then
 		tex:SetTexCoord(unpack(s.texCoords))
@@ -499,8 +429,7 @@ local function RestorePartyFrame(index)
 			tex:SetPoint(unpack(pt))
 		end
 	end
-	
-	-- Restore portrait
+
 	local portrait = _G[pre.."Portrait"]
 	if portrait and s.portPoints then
 		portrait:ClearAllPoints()
@@ -509,8 +438,7 @@ local function RestorePartyFrame(index)
 		end
 		if s.portLayer then portrait:SetDrawLayer(s.portLayer) end
 	end
-	
-	-- Restore health bar
+
 	local hb = _G[pre.."HealthBar"]
 	if hb and s.hbPoints then
 		hb:ClearAllPoints()
@@ -518,8 +446,7 @@ local function RestorePartyFrame(index)
 			hb:SetPoint(unpack(pt))
 		end
 	end
-	
-	-- Restore health bar text
+
 	local hbText = _G[pre.."HealthBarText"]
 	if hbText and s.hbTextPoints then
 		hbText:ClearAllPoints()
@@ -527,8 +454,7 @@ local function RestorePartyFrame(index)
 			hbText:SetPoint(unpack(pt))
 		end
 	end
-	
-	-- Restore mana bar
+
 	local mb = _G[pre.."ManaBar"]
 	if mb and s.mbPoints then
 		mb:ClearAllPoints()
@@ -536,8 +462,7 @@ local function RestorePartyFrame(index)
 			mb:SetPoint(unpack(pt))
 		end
 	end
-	
-	-- Restore mana bar text
+
 	local mbText = _G[pre.."ManaBarText"]
 	if mbText and s.mbTextPoints then
 		mbText:ClearAllPoints()
@@ -545,8 +470,7 @@ local function RestorePartyFrame(index)
 			mbText:SetPoint(unpack(pt))
 		end
 	end
-	
-	-- Restore name
+
 	local name = _G[pre.."Name"]
 	if name and s.namePoints then
 		name:ClearAllPoints()
@@ -555,8 +479,7 @@ local function RestorePartyFrame(index)
 		end
 		name:SetJustifyH(s.nameJustify or "LEFT")
 	end
-	
-	-- Restore flash
+
 	local flash = _G[pre.."Flash"]
 	if flash and s.flashCoords then
 		flash:SetTexCoord(unpack(s.flashCoords))
@@ -567,8 +490,7 @@ local function RestorePartyFrame(index)
 			end
 		end
 	end
-	
-	-- Restore leader icon
+
 	local leader = _G[pre.."LeaderIcon"]
 	if leader and s.leaderPoints then
 		leader:ClearAllPoints()
@@ -576,8 +498,7 @@ local function RestorePartyFrame(index)
 			leader:SetPoint(unpack(pt))
 		end
 	end
-	
-	-- Restore master looter
+
 	local ml = _G[pre.."MasterIcon"]
 	if ml and s.mlPoints then
 		ml:ClearAllPoints()
@@ -585,8 +506,7 @@ local function RestorePartyFrame(index)
 			ml:SetPoint(unpack(pt))
 		end
 	end
-	
-	-- Restore PvP icon
+
 	local pvp = _G[pre.."PVPIcon"]
 	if pvp and s.pvpPoints then
 		pvp:ClearAllPoints()
@@ -594,15 +514,14 @@ local function RestorePartyFrame(index)
 			pvp:SetPoint(unpack(pt))
 		end
 	end
-	
+
 	partyMirrored[index] = false
 end
 
 local function ApplyMirrorSetting()
-	-- FIX: NewPartyFrame uses custom textures that break when mirrored.
-	-- Skip party frame mirroring if NPF is active to avoid garbled visuals.
+
 	if _nufK and _nufK.IsNewPartyFrameActive and _nufK.IsNewPartyFrameActive() then
-		-- Still allow un-mirroring (restore) in case it was enabled before NPF
+
 		if not PartyTargetsDB.mirror then
 			for i = 1, MAX_PARTY_MEMBERS do
 				RestorePartyFrame(i)
@@ -619,15 +538,12 @@ local function ApplyMirrorSetting()
 	end
 end
 
--- FIX PERF: Reusable delay timer (before: created a new frame per call)
--- Uses a pending-flags approach so multiple OnShow hooks don't overwrite each other.
--- When the timer fires, it applies mirror to ALL pending frames at once.
 local _delayTimer = CreateFrame("Frame")
 _delayTimer:Hide()
 local _delayElapsed = 0
 local _delayTarget = 0
-local _delayPendingMirror = {}  -- indices pending mirror re-apply
-local _delayPendingFull = false -- full ApplyMirrorSetting pending
+local _delayPendingMirror = {}
+local _delayPendingFull = false
 
 _delayTimer:SetScript("OnUpdate", function(self, dt)
 	_delayElapsed = _delayElapsed + dt
@@ -648,7 +564,6 @@ _delayTimer:SetScript("OnUpdate", function(self, dt)
 	end
 end)
 
--- Queue a full mirror setting apply (from events)
 local function DelayedApplyMirrorSetting(delay)
 	_delayPendingFull = true
 	_delayTarget = delay
@@ -656,7 +571,6 @@ local function DelayedApplyMirrorSetting(delay)
 	_delayTimer:Show()
 end
 
--- Queue a single frame mirror apply (from OnShow hooks)
 local function DelayedApplyMirrorToFrame(delay, index)
 	_delayPendingMirror[index] = true
 	_delayTarget = delay
@@ -684,9 +598,6 @@ for i = 1, MAX_PARTY_MEMBERS do
 	end
 end
 
-----------------------------------------------------
--- Global API (used by Options.lua)
-----------------------------------------------------
 function PartyTargets_ApplyMirrorSetting()
 	ApplyMirrorSetting()
 end
@@ -695,16 +606,9 @@ function PartyTargets_AnchorToParty()
 	AnchorAllToParty()
 end
 
--- Recalcula el offset compartido a partir de donde quedo UN marco, y
--- reancla los cuatro.
---
--- Es lo mismo que hace OnDragStop, pero expuesto para que el modo mover
--- global de NUF lo pueda usar: ese arrastra el frame por su cuenta y
--- despues necesita que el modulo se entere.
 function PartyTargets_AnchorFromFrame(frame)
 	if not frame then return end
-	-- Modo libre ("Anchor to Party Frames" apagado): se guarda la posicion
-	-- del marco. Antes volvia sin guardar nada y se perdia al recargar.
+
 	if not PartyTargetsDB.anchor then
 		SavePosition(frame)
 		return
@@ -735,18 +639,9 @@ function PartyTargets_ApplyAnchorSetting()
 	end
 end
 
--- Cambiar la escala NO tiene que mover el marco.
---
--- El offset guardado esta en el espacio del marco de objetivo, o sea que
--- depende de su escala: al pasar de 1.0 a 1.5, el mismo numero pasa a valer
--- un 50% mas de pixeles reales y los marcos se corrian solos.
---
--- Se anota donde estaba el primero EN PANTALLA, se escala, y se recalcula
--- el offset para dejarlo donde estaba. La escala cambia el tamaño; la
--- posicion la decide el usuario arrastrando, no el slider.
 function PartyTargets_ApplyScale()
 	local s = GetScale()
-	-- Marcos protegidos: en combate se anota y lo aplica scaleWatcher.
+
 	if InCombatLockdown() then
 		scalePending = true
 		return
@@ -778,9 +673,6 @@ function PartyTargets_ApplyScale()
 	end
 end
 
-----------------------------------------------------
--- Slash Commands
-----------------------------------------------------
 SLASH_PARTYTARGETS1 = "/ptarget"
 SLASH_PARTYTARGETS2 = "/partytargets"
 SlashCmdList["PARTYTARGETS"] = function(msg)
@@ -801,11 +693,7 @@ SlashCmdList["PARTYTARGETS"] = function(msg)
 	end
 end
 
-----------------------------------------------------
--- PART 2: Party Target Frames (ToT style)
-----------------------------------------------------
-
-local NAME_MAX_CHARS = 12  -- max characters before truncation at font size 7
+local NAME_MAX_CHARS = 12
 
 local function TruncateName(fontString)
 	local fullName = fontString:GetText()
@@ -815,19 +703,6 @@ local function TruncateName(fontString)
 	end
 end
 
--- GUARDIA DEL NOMBRE OCULTO
---
--- "Hide target name" andaba a veces si y a veces no porque dependia de
--- que NUESTRO Hide() fuera lo ultimo en correr. Cualquier otro Show()
--- (el layout de un estilo, un Restore, otro addon) que corriera despues
--- en el mismo evento lo volvia a mostrar, y el orden entre manejadores
--- del mismo evento no esta garantizado.
---
--- Con un gancho en el Show() del propio FontString el orden deja de
--- importar: venga de donde venga, si la opcion esta tildada se vuelve a
--- ocultar en el acto. hooksecurefunc corre despues del original sin
--- reemplazarlo, y el FontString no es protegido, asi que no ensucia nada
--- ni en combate. Se instala una sola vez por marco.
 local function GuardName(nameText)
 	if nameText.nufHideGuard then return end
 	nameText.nufHideGuard = true
@@ -841,21 +716,12 @@ local function StyleNameText(self)
 	if not nameText then return end
 	GuardName(nameText)
 
-	-- Mostrar u ocultar va ACA y no en un sitio aparte porque esta funcion
-	-- es el unico punto por el que pasa el nombre, y ya la llaman tanto
-	-- OnLoad como OnEvent. Cualquier otro lugar habria quedado a merced de
-	-- que Blizzard reescriba el texto en la proxima actualizacion.
-	--
-	-- Se oculta el FontString, no se le pone texto vacio: con SetText("")
-	-- el nombre reaparece solo en cuanto UnitFrame_Update lo repinta.
 	if PartyTargetsDB.hideName then
 		nameText:Hide()
 		return
 	end
 	nameText:Show()
 
-	-- El estilo Square le pone su propia fuente y posicion. Si aca se
-	-- forzara la de Classic, cambiar de objetivo se la pisaria.
 	if PartyTargetsDB.style == "Classic" or PartyTargetsDB.style == nil then
 		nameText:SetFont("Fonts\\FRIZQT__.TTF", 7)
 		nameText:SetTextColor(1.0, 0.82, 0)
@@ -865,13 +731,8 @@ local function StyleNameText(self)
 	TruncateName(nameText)
 end
 
--- Reaplicar a los cuatro, para el checkbox del panel.
 function PartyTargets_ApplyNameVisibility()
-	-- En Square el nombre va centrado sobre el cuadrado, y ese lugar se lo
-	-- da el layout del estilo, que lo saltea mientras esta oculto. Sin esto,
-	-- al destildar aparecia en la posicion de Classic hasta el proximo
-	-- cambio de objetivo. Va ANTES del bucle para que el ultimo en tocar
-	-- el nombre sea StyleNameText.
+
 	if (PartyTargetsDB.style == "Square" or PartyTargetsDB.style == "Icon") and _nufK and _nufK.ApplyPartyTargetStyle then
 		_nufK.ApplyPartyTargetStyle()
 	end
@@ -883,24 +744,22 @@ end
 
 addon.OnLoad = function(self)
 	EnsureDefaults()
-	
+
 	self:SetAttribute("unit", "party" .. self:GetID() .. "target")
 	self:SetAttribute("type", "party" .. self:GetID() .. "target")
 	RegisterUnitWatch(self)
-	
+
 	self.statusCounter = 0
 	self.statusSign = -1
 	self.unitHPPercent = 1
-	
+
 	addon.HideBarText(self)
 	addon.UpdateMember(self)
-	
+
 	MakeDraggable(self)
-	
-	-- Apply scale
+
 	self:SetScale(GetScale())
-	
-	-- If anchored, apply saved anchor offset; otherwise load free position
+
 	if PartyTargetsDB.anchor then
 		local parent = _G["PartyMemberFrame"..self:GetID()]
 		if parent and (PartyTargetsDB.anchorX or PartyTargetsDB.anchorY) then
@@ -912,8 +771,7 @@ addon.OnLoad = function(self)
 	else
 		LoadPosition(self)
 	end
-	
-	-- Register Events
+
 	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 	self:RegisterEvent("PARTY_MEMBERS_CHANGED")
 	self:RegisterEvent("PARTY_MEMBER_ENABLE")
@@ -930,13 +788,12 @@ addon.OnLoad = function(self)
 	self:RegisterEvent("UNIT_FOCUS")
 	self:RegisterEvent("UNIT_RAGE")
 	self:RegisterEvent("UNIT_RUNIC_POWER")
-	
+
 	local showmenu = function()
 		ToggleDropDownMenu(1, nil, _G["PartyTargetFrame" .. self:GetID() .. "DropDown"], self:GetName(), 47, 15)
 	end
 	SecureUnitButton_OnLoad(self, "party" .. self:GetID() .. "target", showmenu)
-	
-	-- Name styling
+
 	StyleNameText(self)
 end
 
@@ -963,16 +820,14 @@ end
 addon.OnEvent = function(self, e, ...)
 	UnitFrame_OnEvent(self, e, ...)
 	addon.HideBarText(self)
-	
+
 	if (e == "VARIABLES_LOADED") then
 		EnsureDefaults()
-		-- OnLoad corre desde el XML ANTES de que carguen las variables
-		-- guardadas, o sea con la opcion todavia en "no". Aca ya esta la de
-		-- verdad: se aplica sin esperar a que el companero elija objetivo.
+
 		StyleNameText(self)
 		self:SetScale(GetScale())
 		if PartyTargetsDB.anchor then
-			-- Apply saved anchor offset
+
 			local parent = _G["PartyMemberFrame"..self:GetID()]
 			if parent then
 				self:ClearAllPoints()
@@ -984,7 +839,7 @@ addon.OnEvent = function(self, e, ...)
 			LoadPosition(self)
 		end
 	end
-	
+
 	local unit = select(1, ...)
 	if (e == "PLAYER_ENTERING_WORLD") then
 		if (GetPartyMember(self:GetID())) then
@@ -992,12 +847,12 @@ addon.OnEvent = function(self, e, ...)
 			return
 		end
 	end
-	
+
 	if (e == "PARTY_MEMBERS_CHANGED" or e == "UNIT_TARGET") then
 		addon.UpdateMember(self)
 		return
 	end
-	
+
 	if (unit) then
 		for i = 1, MAX_PARTY_MEMBERS, 1 do
 			if (unit == "party" .. i .. "target" and UnitExists("party"..i.."target")) then
@@ -1023,21 +878,21 @@ addon.UpdateMemberHealth = function(self, e)
 		local alpha = 255
 		local counter = self.statusCounter + e
 		local sign = self.statusSign
-		
+
 		if (counter > 0.5) then
 			sign = -sign
 			self.statusSign = sign
 		end
-		
+
 		counter = mod(counter, 0.5)
 		self.statusCounter = counter
-		
+
 		if (sign == 1) then
 			alpha = (127 + (counter * 256)) / 255
 		else
 			alpha = (255 - (counter * 256)) / 255
 		end
-		
+
 		_G[self:GetName().."Portrait"]:SetAlpha(alpha)
 	end
 end
@@ -1049,41 +904,24 @@ end
 addon.HealthCheck = function(self, value)
 	local UnitHealth, UnitHealthMax = self:GetMinMaxValues()
 	local UnitHealthCurrent = self:GetValue()
-	
+
 	if (UnitHealthMax > 0) then
 		self:GetParent().unitHPPercent = UnitHealthCurrent / UnitHealthMax
 	else
 		self:GetParent().unitHPPercent = 0
 	end
-	
+
 	_G[self:GetParent():GetName() .. "Portrait"]:SetVertexColor(1, 1, 1, 1)
 	addon.HideBarText(self:GetParent())
 end
 
--- SIN UIDropDownMenu_Initialize AL CARGAR.
--- Esa funcion escribe las globales UIDROPDOWNMENU_* de Blizzard. Hecho
--- desde el addon en cada login, quedaban manchadas (taint) y despues el
--- codigo de Blizzard que las lee en combate (RaidPullout en arena,
--- PartyMemberFrame...) fallaba con "action blocked". Solo se dejan los
--- datos en NUESTRO marco; ToggleDropDownMenu inicializa al abrir el menu.
 addon.DropDownOnLoad = function(self)
 	self.initialize = addon.DropDownInitialize
 	self.displayMode = "MENU"
 end
 
 addon.DropDownInitialize = function(self)
-	-- OJO: antes esto era "UIDROPDOWNMENU_OPEN_MENU or self".
-	--
-	-- Esa global apunta al menu desplegable que este abierto en ese momento,
-	-- que NO tiene por que ser el nuestro: si el jugador abria el menu de un
-	-- nombre del chat, era FriendsDropDown. Y UnitPopup_ShowMenu escribe
-	-- .unit y .name en el frame que recibe, asi que le pisabamos al menu del
-	-- chat su unidad con "partyNtarget".
-	--
-	-- Consecuencia: las opciones que dependen de resolver la unidad por
-	-- nombre (Target y Report player Away) desaparecian de ese menu.
-	--
-	-- La funcion de inicializacion ya recibe el dropdown correcto en self.
+
 	local parent = self and self:GetParent();
 	if not (parent and parent.GetID) then return; end
 

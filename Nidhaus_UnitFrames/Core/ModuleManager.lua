@@ -1,17 +1,11 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- ModuleManager.lua - Sistema de registro y gestión de módulos
-
 K.Modules = {};
 K.ModuleOrder = {};
 
--- true desde que corrio K.InitializeModules (PLAYER_LOGIN). Lo mira
--- K.RegisterModule para prender en el acto a los que llegan tarde.
 local modulesInitialized = false;
 
--- Cuerpos de los modulos diferidos que todavia no corrieron (id -> funcion).
--- Ver K.DeferModule mas abajo.
 local deferredBodies = {};
 
 function K.RegisterModule(id, info)
@@ -22,9 +16,7 @@ function K.RegisterModule(id, info)
 
 	local existing = K.Modules[id];
 	if existing then
-		-- Un modulo diferido se vuelve a registrar cuando corre su cuerpo:
-		-- ahi trae sus funciones y completa la ficha que dejo K.DeferModule.
-		-- El default queda el de la ficha, que es el que ya uso la DB.
+
 		if existing._deferred and not existing._filled then
 			existing._filled = true;
 			for k, v in pairs(info) do
@@ -42,8 +34,7 @@ function K.RegisterModule(id, info)
 		createUI  = info.createUI or nil,
 		default   = (info.default ~= false),
 		hideFromModulesTab = info.hideFromModulesTab or false,
-		-- Boton opcional al lado del checkbox, para abrir el "menu" del modulo
-		-- (normalmente: mostrar el frame y desbloquearlo para moverlo)
+
 		configFunc  = info.configFunc,
 		configLabel = info.configLabel,
 		_deferred   = deferredBodies[id] ~= nil,
@@ -51,12 +42,6 @@ function K.RegisterModule(id, info)
 
 	table.insert(K.ModuleOrder, id);
 
-	-- REGISTRADO DESPUES DEL ARRANQUE.
-	--
-	-- K.InitializeModules corre en PLAYER_LOGIN y prende los que esten
-	-- tildados. Un modulo que llega despues (los de arena, que ahora se
-	-- cargan a pedido) se perdia esa pasada: quedaba registrado, el panel
-	-- lo mostraba tildado, y no hacia nada hasta el proximo /reload.
 	if modulesInitialized then
 		if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 		if not NidhausUnitFramesDB.Modules then NidhausUnitFramesDB.Modules = {}; end
@@ -71,27 +56,6 @@ function K.RegisterModule(id, info)
 	end
 end
 
--- ---------------------------------------------------------
--- CARGA DIFERIDA
---
--- Antes cada archivo de modulo creaba sus marcos, eventos y hooks al
--- cargar el addon, estuviera tildado o no: apagado solo queria decir
--- "no hace nada", pero todo eso seguia en memoria.
---
--- Con DeferModule el modulo deja anotados nombre y descripcion (para el
--- panel) y guarda el resto en una funcion que corre recien la primera vez
--- que se prende. Apagado y con /reload, no crea nada.
---
---     K.DeferModule("Id", { name = ..., desc = ..., default = false }, function()
---         ...el archivo de siempre, con su K.RegisterModule al final...
---     end);
---
--- Si un archivo trae dos modulos, se le pasa la misma funcion a los dos
--- DeferModule: corre una sola vez, apenas se prende cualquiera.
---
--- No se puede saltear el archivo entero: WoW lee todos los .lua antes de
--- cargar la DB, asi que en ese momento todavia no se sabe que esta tildado.
--- ---------------------------------------------------------
 function K.DeferModule(id, info, body)
 	if not id or not info or type(body) ~= "function" then
 		print(L["MM_REGISTER_ERROR"]);
@@ -102,14 +66,10 @@ function K.DeferModule(id, info, body)
 	K.RegisterModule(id, info);
 end
 
--- Corre el cuerpo de un modulo diferido, una sola vez. Los que no son
--- diferidos (o ya corrieron) pasan de largo.
 function K.LoadModuleBody(id)
 	local body = deferredBodies[id];
 	if not body then return true; end
-	-- Se borra antes de correr: si falla, no se reintenta en cada clic.
-	-- Un archivo con dos modulos (PaladinAuras + TurnEvil) les pasa el
-	-- mismo cuerpo a los dos: se borra para todos los que lo comparten.
+
 	for other, b in pairs(deferredBodies) do
 		if b == body then deferredBodies[other] = nil; end
 	end
@@ -118,7 +78,7 @@ function K.LoadModuleBody(id)
 		print((L["MM_ERROR_INIT"] or "") .. id .. ": " .. tostring(err));
 		return false;
 	end
-	-- Su comando recien existe ahora: CommandGuard tiene que envolverlo.
+
 	if K.GuardModuleCommands then pcall(K.GuardModuleCommands); end
 	return true;
 end
@@ -127,27 +87,12 @@ function K.IsModuleLoaded(id)
 	return K.Modules[id] ~= nil and deferredBodies[id] == nil;
 end
 
--- El panel llama a funciones de los modulos aunque esten apagados
--- (vistas previas, estilos, boton Mover). Se cargan todos antes de
--- abrirlo; cargar no es prender, eso lo sigue decidiendo la casilla.
 function K.LoadAllModuleBodies()
 	for _, id in ipairs(K.ModuleOrder) do
 		if deferredBodies[id] then K.LoadModuleBody(id); end
 	end
 end
 
--- ---------------------------------------------------------
--- EL BOTON DEL PANEL PUEDE CAMBIAR DE TEXTO
---
--- Los movibles usan ese boton como interruptor: el primer clic desbloquea
--- y el segundo fija. Pero el texto era fijo ("Mover"), asi que mirando el
--- panel no habia forma de saber en que estado estaba -- y si algo lo
--- bloqueaba por su cuenta (entrar en combate, apagar el modulo), el boton
--- seguia diciendo lo mismo.
---
--- Con esto el modulo avisa el estado y el boton lo muestra. El que no lo
--- use se queda con su etiqueta de siempre.
--- ---------------------------------------------------------
 K._moduleConfigButtons = K._moduleConfigButtons or {};
 
 function K.RegisterModuleConfigButton(id, btn)
@@ -164,8 +109,6 @@ function K.SetModuleConfigLabel(id, text)
 	end
 end
 
--- Un mismo modulo puede tener su checkbox en mas de un panel.
--- Se guardan todos para poder refrescarlos juntos.
 K._moduleCheckboxes = K._moduleCheckboxes or {};
 
 function K.RegisterModuleCheckbox(id, cb)
@@ -174,8 +117,6 @@ function K.RegisterModuleCheckbox(id, cb)
 	table.insert(K._moduleCheckboxes[id], cb);
 end
 
--- Refresca los checkboxes del panel para un modulo (si ya fueron creados).
--- Lo usan los slash commands y los paneles para no desincronizar la UI.
 function K.RefreshModuleCheckbox(id)
 	local list = K._moduleCheckboxes and K._moduleCheckboxes[id];
 	if not list then return; end
@@ -213,9 +154,6 @@ function K.SetModuleEnabled(id, enabled)
 		if not ok then print(L["MM_ERROR_DISABLING"]..id..": "..tostring(err)); end
 	end
 
-	-- Si el modo mover esta abierto, que el recuadro de este modulo aparezca
-	-- o desaparezca en el acto. Sin esto habia que cerrar y volver a abrir el
-	-- modo mover para ver el marco de lo que acababas de tildar.
 	if K.RefreshGlobalUnlockOverlays then
 		pcall(K.RefreshGlobalUnlockOverlays);
 	end
@@ -223,36 +161,24 @@ function K.SetModuleEnabled(id, enabled)
 	return true;
 end
 
--- Modulos que arrancan APAGADOS por decision del usuario. El reseteo de
--- una sola vez (abajo) los pone en off aunque hubieran quedado prendidos,
--- para descartar que alguno estuviera causando el freeze. Se activan a mano
--- desde el panel cuando el usuario quiera.
 local FORCE_OFF_ONCE = {
 	"AbbreviatedStatus", "DTSU", "PaladinICD", "EnemySpellAlert",
 	"PowerBar", "ShieldWatch",
-	-- Agregados: antes venian prendidos de fabrica y ahora no. Cambiar el
-	-- default solo no alcanza, porque la DB ya los tiene guardados en true.
+
 	"PartyBuffs",
 };
 
--- Lo mismo pero para opciones sueltas (no son modulos, viven en la DB
--- directamente). Misma logica: el default nuevo no pisa lo ya guardado.
--- (PartyShowPetFrames salio de la lista: ahora las mascotas se ven de
--- fabrica, y forzarlo en false las ocultaba en cada instalacion nueva.)
 local FORCE_OFF_SETTINGS_ONCE = {
 	"PartyTargetsEnabled",
 	"HealthPercentage",
 };
 
--- Subir esta version cada vez que se agregue algo a las listas de arriba:
--- es lo que hace que el apagado corra una sola vez y no todos los logins.
 local FORCE_OFF_FLAG = "_forcedOff_v39";
 
 function K.InitializeModules()
 	if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 	if not NidhausUnitFramesDB.Modules then NidhausUnitFramesDB.Modules = {}; end
 
-	-- Reseteo de una sola vez, controlado por FORCE_OFF_FLAG.
 	if not NidhausUnitFramesDB[FORCE_OFF_FLAG] then
 		NidhausUnitFramesDB[FORCE_OFF_FLAG] = true;
 		for _, id in ipairs(FORCE_OFF_ONCE) do
@@ -286,8 +212,6 @@ function K.InitializeModules()
 	end
 end
 
--- Orden en el que se muestran en la pestaña Modules.
--- Los que no esten en esta lista van despues, en orden de carga.
 local DISPLAY_PRIORITY = {
 	"LortiUI", "NiceDamage", "ClassIcons", "SpecIcons", "PartyBuffs",
 };
@@ -309,71 +233,32 @@ function K.GetModuleDisplayOrder()
 	return out;
 end
 
--- =========================================================
--- Grupos de la pestaña "Addons"
---
--- Antes era una lista plana de 12 modulos con descripcion cada uno:
--- habia que scrollear hasta el final para saber que existia. Agrupados
--- por para-que-sirve se encuentra todo de un vistazo.
---
--- Lo especifico de clase (ArrowCount, AutoShotTimer, ...) NO va aca:
--- vive en la pestaña PvP, que muestra solo lo de tu clase.
--- =========================================================
--- Dos grupos y basta. Antes eran cuatro (Interfaz / HUD / Utilidades /
--- Otros) y con 6-7 modulos en total sobraban divisiones: cada seccion
--- quedaba con uno o dos items. "Interfaz" junta lo visual, "Extras" el
--- resto.
--- Orden en que salen los modulos arriba de todo en la pestana Addons.
---
--- ANTES esto eran GRUPOS con nombre traducido: "interface" y "extras",
--- y K.GetAddonGroups los devolvia con su L["ADDONGRP_..."] puesto. Pero
--- el panel los recibia y los aplanaba en una sola lista con un doble
--- for: los nombres se calculaban y se tiraban en la misma pantalla.
---
--- Como la pestana ES una lista sola, esto pasa a ser una lista sola. Si
--- algun dia se le pone lista lateral por categoria se vuelve a partir en
--- grupos; mientras tanto no hay maquinaria manteniendose por las dudas.
 local ADDON_ORDER = {
 	"LortiUI", "NiceDamage", "ClassIcons", "SpecIcons",
 	"ShieldWatch", "HideChatButton", "MinimapIconToggle",
 };
 
--- Modulos que YA tienen su lugar en otra pestaña. No se repiten aca para
--- no terminar con la misma opcion en tres lados distintos.
 local ADDON_ELSEWHERE = {
-	ArrowCount            = true,  -- Interface > <clase> (cazador)
-	AutoShotTimer         = true,  -- Interface > <clase> (cazador)
-	ComboWatch            = true,  -- Interface > <clase> (picaro / druida)
-	HunterPetBuffs        = true,  -- Interface > <clase> (cazador)
-	PowerBar              = true,  -- Interface > PvP
-	MeleeSwingTimer       = true,  -- Interface > PvP
-	ArenaTimes            = true,  -- Arena
-	ArenaToT              = true,  -- Arena
-	ArenaPointsCalc       = true,  -- Arena (con su boton Abrir)
-	ButtonRange           = true,  -- Interface > Action Bars
-	HideActionBarTextures = true,  -- Interface > Action Bars
-	PartyBuffs            = true,  -- Frames > Party
-	PartyFramesImproved   = true,  -- Frames > Party (selector de estilo)
-	AbbreviatedStatus     = true,  -- Interface > General (checkbox + boton Abrir)
-	PaladinICD            = true,  -- Interface > General > Paladin
-	EnemySpellAlert       = true,  -- Interface > PvP (Enemy awareness)
-	PaladinAuras          = true,  -- Interface > PvP > Paladin (Auras)
-	TurnEvil              = true,  -- Interface > PvP > Paladin (Auras)
+	ArrowCount            = true,
+	AutoShotTimer         = true,
+	ComboWatch            = true,
+	HunterPetBuffs        = true,
+	PowerBar              = true,
+	MeleeSwingTimer       = true,
+	ArenaTimes            = true,
+	ArenaToT              = true,
+	ArenaPointsCalc       = true,
+	ButtonRange           = true,
+	HideActionBarTextures = true,
+	PartyBuffs            = true,
+	PartyFramesImproved   = true,
+	AbbreviatedStatus     = true,
+	PaladinICD            = true,
+	EnemySpellAlert       = true,
+	PaladinAuras          = true,
+	TurnEvil              = true,
 };
 
--- Los modulos que van en la pestana Addons, en orden.
---
--- Dos pasadas:
---
---   1. Los de ADDON_ORDER, que van primero porque son los que mas se
---      tocan. Estos entran aunque tengan hideFromModulesTab: esa marca
---      servia para sacarlos de una lista vieja, pero aca se quieren
---      poder prender.
---
---   2. TODO lo demas que este registrado y no tenga su lugar en otra
---      pestana. Esta segunda pasada es la que importa de verdad: sin
---      ella habria que acordarse de anotar a mano cada modulo nuevo, y
---      el que se olvide no aparece en ningun lado del panel.
 function K.GetAddonTabIds()
 	local ids, placed = {}, {};
 
@@ -420,35 +305,12 @@ initFrame:SetScript("OnEvent", function(self, event)
 	end
 end);
 
--- =========================================================
--- DONDE SE MUESTRA UN MODULO  (Arena / Battlegrounds / Duelos / Mundo)
---
--- Las casillas "Mostrarlo en:" de los modulos de clase. Cada modulo dice
--- en que tabla guarda las cuatro opciones y que hacer cuando cambian (o
--- cuando cambias de zona):
---
---     K.RegisterModuleZones("TurnEvil", TeDB, RefreshTurnEvil)
---
--- y despues pregunta K.ModuleZoneAllowed("TurnEvil") antes de mostrarse.
--- El panel usa K.GetModuleZone / K.SetModuleZone para las casillas.
---
--- De fabrica las cuatro tildadas: el modulo se ve en todos lados, como
--- antes de que existiera la opcion.
---
--- El duelo cuenta como zona propia: con "Duelos" destildado no se ve
--- mientras duelas, aunque "Mundo abierto" este tildado; y con solo
--- "Duelos" tildado se ve unicamente en los duelos. Se sigue por los
--- eventos del duelo y por StartDuel (el que desafia no recibe
--- DUEL_REQUESTED).
--- =========================================================
 local ZONE_KEYS = { "inArena", "inBG", "inDuel", "inWorld" };
-local zoneOwners = {};   -- id -> { db = funcion, onChange = funcion }
+local zoneOwners = {};
 local inDuel = false;
 
 function K.InDuel() return inDuel; end
 
--- La tabla se pide cada vez, no se guarda: el Reset de posiciones de
--- "Mover todo" puede reemplazar la tabla del modulo por otra.
 local function ZoneDB(id)
 	local o = zoneOwners[id];
 	local db = o and o.db and o.db();
@@ -505,7 +367,7 @@ zoneWatch:RegisterEvent("DUEL_OUTOFBOUNDS");
 zoneWatch:RegisterEvent("DUEL_FINISHED");
 zoneWatch:SetScript("OnEvent", function(self, event)
 	if event == "PLAYER_ENTERING_WORLD" or event == "DUEL_FINISHED" then
-		-- Un duelo no sobrevive a una pantalla de carga.
+
 		inDuel = false;
 	elseif event ~= "ZONE_CHANGED_NEW_AREA" then
 		inDuel = true;

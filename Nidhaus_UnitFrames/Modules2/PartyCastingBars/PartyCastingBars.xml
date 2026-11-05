@@ -10,7 +10,7 @@
 			</OnEvent>
 		</Scripts>
 	</Frame>
-	
+
 	<StatusBar name="PartyCastingBarTemplate" toplevel="true" hidden="true" inherits="CastingBarFrameTemplate" movable="true" virtual="true">
 		<Size>
 			<AbsDimension x="195" y="13"/>
@@ -56,7 +56,7 @@
 			</OnHide>
 		</Scripts>
 	</StatusBar>
-	
+
 	<StatusBar name="$parentCastingBarFrame" parent="PartyMemberFrame1" inherits="PartyCastingBarTemplate" />
 	<StatusBar name="$parentCastingBarFrame" parent="PartyMemberFrame2" inherits="PartyCastingBarTemplate" />
 	<StatusBar name="$parentCastingBarFrame" parent="PartyMemberFrame3" inherits="PartyCastingBarTemplate" />

@@ -4,5 +4,4 @@
 ## Version: 4.4
 ## SavedVariables: NidhausUnitFramesDB, PartyBuffsDB, NiceDamageDB, DTSU_DB, PaladinICD_DB, PartyTargetsDB, PartyCastingBarsDB, SacredShieldDB, SacredShieldTrackerDB, SeductionAlertDB
 
-# Todo el orden de carga vive en el XML.
 Nidhaus_UnitFrames.xml

@@ -1,59 +1,30 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- CommandGuard.lua
---
--- Si un modulo esta APAGADO, su comando no tiene que hacer nada.
---
--- Antes cada comando corria igual sin importar el estado del checkbox.
--- Podias tener PaladinICD destildado y hacer /paladinicd, y te aparecia el
--- icono igual — o peor, entrabas en su modo mover sin que el modulo
--- existiera del todo. Lo mismo con los otros quince.
---
--- COMO SE HACE
---
--- No se toca ningun modulo. Se envuelve el handler que cada uno ya dejo en
--- SlashCmdList, agregandole el chequeo adelante. La ventaja de hacerlo
--- desde afuera es que un modulo nuevo no tiene que acordarse de nada: se
--- agrega una linea a la tabla de abajo y listo.
---
--- Se envuelve en PLAYER_LOGIN, cuando todos los archivos ya registraron
--- lo suyo. Antes de ese momento SlashCmdList todavia no esta completo.
--- =========================================================
-
--- La clave es la de SlashCmdList (no el texto del comando), sacada de leer
--- cada archivo. El comando que ve el usuario va al lado como referencia.
 local GUARDED = {
-	{ key = "ARENACALC",     module = "ArenaPointsCalc"      },  -- /apc, /arenapts
-	{ key = "NUFARROWCOUNT", module = "ArrowCount",     optional = true },  -- solo cazador  -- /arrowcount
-	{ key = "NUFAUTOSHOT",   module = "AutoShotTimer",  optional = true },  -- solo cazador  -- /nufshot
-	{ key = "HIDEACTIONBAR", module = "HideActionBarTextures"},  -- /hidebar
-	{ key = "HCB",           module = "HideChatButton"       },  -- /hcb
-	{ key = "NUFPETBUFFS",   module = "HunterPetBuffs", optional = true },  -- solo cazador  -- /nufpetbuffs
-	{ key = "NUFSWING",      module = "MeleeSwingTimer"      },  -- /nufswing
-	{ key = "NUFMINIMAP",    module = "MinimapIconToggle"    },  -- /nufminimap
-	{ key = "PARTYBUFFS",    module = "PartyBuffs"           },  -- /pbuffs, /partybuffs
-	{ key = "NUFPOWERBAR",   module = "PowerBar"             },  -- /nufpower
-	{ key = "NUFCOMBO",      module = "ComboWatch",     optional = true },  -- picaro / druida  -- /nufcombo
-	{ key = "GT",            module = "GargoyleTracker", optional = true },  -- /gt (diferido: existe recien al prenderlo)
-	{ key = "NICEDAMAGE",    module = "NiceDamage"           },  -- /nicedamage, /nd
-	{ key = "DTSU",          module = "DTSU"                 },  -- /dtsu
-	{ key = "PALADINICD",    module = "PaladinICD",     optional = true },  -- solo paladin  -- /paladinicd
-	{ key = "PARTYPETFRAME", module = "PartyPetFrame"        },  -- /ppf, /partypetframe
-	{ key = "NUFSACREDSHIELD", module = "SacredShield",        optional = true },  -- solo paladin  -- /ss
-	{ key = "NUFSSTRACKER",    module = "SacredShieldTracker", optional = true },  -- solo paladin  -- /sst
-	{ key = "NUFSEDUCTION",    module = "SeductionAlert",      optional = true },  -- /seduction
-	-- ShieldWatch esta sacado del XML (cuelga el cliente, causa sin
-	-- identificar). Al no cargarse tampoco registra su comando, asi que es
-	-- normal que no aparezca: por eso va como opcional y no se cuenta como
-	-- faltante. Cuando vuelva al XML, esta linea ya lo protege sola.
-	{ key = "shieldwatch",   module = "ShieldWatch", optional = true },  -- /shieldwatch, /swh
+	{ key = "ARENACALC",     module = "ArenaPointsCalc"      },
+	{ key = "NUFARROWCOUNT", module = "ArrowCount",     optional = true },
+	{ key = "NUFAUTOSHOT",   module = "AutoShotTimer",  optional = true },
+	{ key = "HIDEACTIONBAR", module = "HideActionBarTextures"},
+	{ key = "HCB",           module = "HideChatButton"       },
+	{ key = "NUFPETBUFFS",   module = "HunterPetBuffs", optional = true },
+	{ key = "NUFSWING",      module = "MeleeSwingTimer"      },
+	{ key = "NUFMINIMAP",    module = "MinimapIconToggle"    },
+	{ key = "PARTYBUFFS",    module = "PartyBuffs"           },
+	{ key = "NUFPOWERBAR",   module = "PowerBar"             },
+	{ key = "NUFCOMBO",      module = "ComboWatch",     optional = true },
+	{ key = "GT",            module = "GargoyleTracker", optional = true },
+	{ key = "NICEDAMAGE",    module = "NiceDamage"           },
+	{ key = "DTSU",          module = "DTSU"                 },
+	{ key = "PALADINICD",    module = "PaladinICD",     optional = true },
+	{ key = "PARTYPETFRAME", module = "PartyPetFrame"        },
+	{ key = "NUFSACREDSHIELD", module = "SacredShield",        optional = true },
+	{ key = "NUFSSTRACKER",    module = "SacredShieldTracker", optional = true },
+	{ key = "NUFSEDUCTION",    module = "SeductionAlert",      optional = true },
 
-	-- /nufpal maneja DOS modulos (Paladin auras y Turn Evil). Alcanza con
-	-- que uno este prendido para que el comando tenga sentido, asi que se
-	-- pasa una lista en vez de un solo id.
-	{ key = "NUFPALAURAS",   module = { "PaladinAuras", "TurnEvil" }, optional = true },  -- solo paladin  -- /nufpal
+	{ key = "shieldwatch",   module = "ShieldWatch", optional = true },
+
+	{ key = "NUFPALAURAS",   module = { "PaladinAuras", "TurnEvil" }, optional = true },
 };
 
 local function AnyEnabled(mod)
@@ -67,26 +38,18 @@ local function AnyEnabled(mod)
 	return K.IsModuleEnabled(mod) and true or false;
 end
 
--- Nombre legible para el aviso.
 local function ModuleLabel(mod)
 	local id = (type(mod) == "table") and mod[1] or mod;
 	local m = K.Modules and K.Modules[id];
 	return (m and m.name) or id;
 end
 
--- Registro de los que ya envolvimos.
---
--- Al principio marcaba la funcion misma (wrapped._nufGuarded = true), y eso
--- era un error: en Lua 5.1 las funciones NO se pueden indexar, asi que el
--- solo hecho de leer handler._nufGuarded tiraba
--- "attempt to index local 'handler' (a function value)".
--- Una tabla comun al costado hace lo mismo sin tocar la funcion.
 local wrappedFns = {};
 
 local function GuardOne(entry)
 	local handler = SlashCmdList and SlashCmdList[entry.key];
 	if type(handler) ~= "function" then return false; end
-	if wrappedFns[handler] then return true; end   -- ya envuelto
+	if wrappedFns[handler] then return true; end
 
 	local wrapped = function(...)
 		if not AnyEnabled(entry.module) then
@@ -104,8 +67,6 @@ local function GuardOne(entry)
 	return true;
 end
 
--- Un modulo diferido y apagado todavia no corrio su cuerpo, asi que su
--- comando no existe. Es lo esperado, igual que un modulo opcional.
 local function NotLoadedYet(mod)
 	if not K.IsModuleLoaded then return false; end
 	local id = (type(mod) == "table") and mod[1] or mod;
@@ -119,7 +80,7 @@ local function GuardAll()
 			ok    = ok + 1;
 			total = total + 1;
 		elseif entry.optional or NotLoadedYet(entry.module) then
-			-- El modulo no esta cargado. Esperable, no cuenta como faltante.
+
 		else
 			total = total + 1;
 			miss[#miss + 1] = entry.key;
@@ -131,8 +92,6 @@ local function GuardAll()
 	K._cmdGuardMiss  = miss;
 end
 
--- Lo llama K.LoadModuleBody cuando un modulo diferido arranca tarde y
--- recien ahi deja su comando. Envolver dos veces no pasa: GuardOne lo sabe.
 local guardReady = false;
 function K.GuardModuleCommands()
 	if guardReady then GuardAll(); end
@@ -145,4 +104,3 @@ guard:SetScript("OnEvent", function(self)
 	guardReady = true;
 	GuardAll();
 end);
-

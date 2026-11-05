@@ -7,22 +7,8 @@ local nomoreplay = function() end
 
 local classcolor = RAID_CLASS_COLORS[select(2, UnitClass("player"))]
 
--- FIX: Cache del estado de LortiUI para evitar DB lookups en cada ActionButton_Update
--- (antes se llamaba K.IsModuleEnabled("LortiUI") decenas de veces por segundo en combate)
 local lortiEnabled = false;
 
--- =========================================================
--- EL CONTORNO DE LOS BOTONES, DEL COLOR ELEGIDO
---
--- Lo que lleva el color propio es la SOMBRA de alrededor de cada boton
--- (el borde "outer_shadow" del fondo, negro en Lorti). Con la zona
--- "Barras de accion" con "Lorti" y "Color" tildadas, ese contorno va de su
--- color, como en el Lorti UI "frost". Con Unify o MiniBar el arte de la
--- barra de Blizzard esta escondido, asi que esto es lo que se ve.
---
--- El borde de adentro del boton (el "gloss") queda negro, como siempre:
--- hubo una version que lo pintaba a el y no era lo que se queria.
--- =========================================================
 local function NormalColor()
 	return cfg.color.normal.r, cfg.color.normal.g, cfg.color.normal.b;
 end
@@ -37,40 +23,24 @@ local function ShadowColor()
 	return sc.r, sc.g, sc.b, sc.a;
 end
 
-local shadowButtons = {};   -- [boton] = true, los que tienen fondo/contorno
+local shadowButtons = {};
 
--- =========================================================
--- CONTORNO ROJO FUERA DE RANGO (Button Range > "Lorti UI red border")
---
--- Es el MISMO contorno que lleva el color de "Action Bars": un solo aro.
--- Mientras el boton esta fuera de rango el rojo ocupa su lugar (no se
--- dibuja otro aro encima) y al volver al rango se repone el color que
--- corresponda en ese momento: el elegido o el negro de siempre.
---
--- rangeRed marca los botones que estan en rojo, para que cambiar el color
--- de Lorti mientras tanto no les borre el rojo (K.ApplyLortiButtonColor
--- los saltea) y para poder apagarlos todos de una (LortiRangeBorderReset).
--- =========================================================
 local RANGE_RED = { 1, 0.1, 0.1, 1 };
-local rangeRed = {};   -- [boton] = true mientras su contorno esta en rojo
+local rangeRed = {};
 
-local styledButtons = {};   -- [boton] = true, los que ya tienen el estilo
--- Blizzard repone el borde a blanco y el gancho de abajo lo vuelve a
--- pintar. Si el color elegido fuera justo blanco, el gancho se llamaria a
--- si mismo sin fin: esto lo corta.
+local styledButtons = {};
+
 local inHook = false;
 
 local function UpdateLortiCache()
 	lortiEnabled = K.IsModuleEnabled and K.IsModuleEnabled("LortiUI") or false;
 end
 
--- Actualizar cache cuando cambia la config
 if K.RegisterConfigEvent then
 	K.RegisterConfigEvent("CONFIG_LOADED", UpdateLortiCache);
 	K.RegisterConfigEvent("CONFIG_CHANGED", UpdateLortiCache);
 end
 
--- También actualizar en PLAYER_LOGIN por si los módulos se inicializan después
 local lortiCacheFrame = CreateFrame("Frame");
 lortiCacheFrame:RegisterEvent("PLAYER_LOGIN");
 lortiCacheFrame:SetScript("OnEvent", function(self)
@@ -168,16 +138,6 @@ local function rActionButtonStyler_AB_style(self)
 		bo:Hide()
 		bo.Show = nomoreplay
 
-		-- LA FAMILIA PUEDE NO SER NUESTRA.
-		--
-		-- El addon Nidhaus Frame Borders tambien cambia la letra de estos
-		-- tres textos. Antes se los peleaban: ganaba el que corriera
-		-- ultimo, y como esto reaplica en cada actualizacion de boton, casi
-		-- siempre ganaba Lorti. Ahora Lorti pone TAMANO y POSICION, que es
-		-- lo suyo, y pregunta la familia.
-		--
-		-- Es una global porque el otro es un addon aparte. Si no esta
-		-- instalado, fam queda nil y todo sigue como siempre.
 		local fam = NidhausFrameBorders_ButtonFont
 			and NidhausFrameBorders_ButtonFont() or nil;
 
@@ -271,11 +231,6 @@ local function rActionButtonStyler_AB_stylepet()
 			bu.rABS_Styled = true
 		end
 
-		-- Style NormalTexture2 directly — do NOT use SetNormalTexture().
-		-- Blizzard resets NormalTexture2 every PetActionBar_Update.
-		-- Using SetNormalTexture creates a SECOND texture that fights with
-		-- NormalTexture2, causing visual corruption. Style the one Blizzard
-		-- owns so there's only one texture, no conflict.
 		local nt2 = _G[name.."NormalTexture2"]
 		if nt2 then
 			nt2:SetTexture(cfg.textures.normal)
@@ -310,7 +265,6 @@ local function rActionButtonStyler_AB_styleshapeshift()
 			bu.rABS_Styled = true
 		end
 
-		-- Style NormalTexture directly (same approach as pet bar)
 		local nt = _G[name.."NormalTexture"]
 		if nt then
 			nt:SetTexture(cfg.textures.normal)
@@ -321,18 +275,6 @@ local function rActionButtonStyler_AB_styleshapeshift()
 	end
 end
 
--- Repinta en el acto el contorno de todos los botones ya estilizados (lo
--- llama K.ApplyLortiColor al cambiar el color o la casilla). De paso deja
--- el borde de adentro en su negro (por si quedo pintado de la version
--- anterior, sin tener que hacer /reload).
--- =========================================================
--- nExtraBars: SUS BOTONES TAMBIEN LLEVAN EL COLOR
---
--- nExtraBars le pone a sus 24 botones su propio fondo de Lorti, con el
--- contorno siempre negro. Ese contorno es el mismo que aca lleva el color
--- de "Barras de accion", asi que se le pone el mismo: si no, al cambiar
--- el color las barras de Blizzard cambiaban y las de nExtraBars no.
--- =========================================================
 local function ColorNEBButtons()
 	if not lortiEnabled then return end
 	local sr, sg, sb, sa = ShadowColor()
@@ -348,8 +290,6 @@ local function ColorNEBButtons()
 end
 K.LortiColorNEB = ColorNEBButtons
 
--- nExtraBars arma su fondo al entrar al mundo: se pinta despues de eso,
--- en el cuadro siguiente y otra vez al segundo (por si tarda).
 do
 	local nebWait = CreateFrame("Frame")
 	local t = 0
@@ -369,8 +309,7 @@ function K.ApplyLortiButtonColor()
 	if not lortiEnabled then return end
 	local sr, sg, sb, sa = ShadowColor()
 	for bu in pairs(shadowButtons) do
-		-- Los que estan fuera de rango siguen en rojo: el color nuevo les
-		-- llega solo al volver al rango.
+
 		if not rangeRed[bu] and bu.bg and bu.bg.SetBackdropBorderColor then
 			bu.bg:SetBackdropBorderColor(sr, sg, sb, sa)
 		end
@@ -390,11 +329,6 @@ function K.ApplyLortiButtonColor()
 	ColorNEBButtons()
 end
 
--- Lo llama Button Range en cada chequeo de rango (cada 0.2 s por boton).
--- out = true: fuera de rango -> contorno rojo. Devuelve true si el boton
--- tiene contorno de Lorti y lo pinto (si no, Button Range sigue como
--- siempre). out = false: si estaba en rojo, vuelve a su color.
--- Solo se toca el contorno cuando el estado CAMBIA.
 function K.LortiRangeBorder(bu, out)
 	if not bu then return false end
 	if out then
@@ -413,7 +347,6 @@ function K.LortiRangeBorder(bu, out)
 	return false
 end
 
--- Apagar Button Range o su sub-opcion: todos los contornos a su color.
 function K.LortiRangeBorderReset()
 	for bu in pairs(rangeRed) do
 		rangeRed[bu] = nil

@@ -1,40 +1,17 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- SOLO PALADIN. Para las demas clases el archivo termina aca, antes de crear
--- nada: Lua descarta todo su codigo y el modulo no ocupa memoria. El panel,
--- el modo mover y los comandos ya preguntan si el modulo existe.
 if select(2, UnitClass("player")) ~= "PALADIN" then return; end
 
--- =========================================================
--- SacredShield.lua  (integrado a NUF, de NidhausTools)
--- Portado de la WeakAura "SS".
---
--- Muestra un icono cuando tu OBJETIVO tiene el buff Sacred Shield (58597).
---
--- Comportamiento original que se respeta:
---   * icono 74x74, sin barrido de cooldown, sin glow, sin desaturar
---   * trigger aura2: unidad "target", HELPFUL, spellId 58597 exacto
---   * posicion inicial: centro de pantalla en (-132.27, 169.24)
---
--- Cambios respecto de la WA:
---   * sin texto (la WA pintaba "%s" = cargas, y este aura no acumula)
---   * movible, con la posicion guardada entre sesiones
---   * se prende/apaga como modulo de NUF: apagado no escucha UNIT_AURA
--- =========================================================
-
-local SPELL_ID = 58597;   -- Sacred Shield (coincidencia exacta por ID)
+local SPELL_ID = 58597;
 local UNIT     = "target";
 local FILTER   = "HELPFUL";
 local SIZE     = 74;
 
--- OJO: WoW carga SavedVariables DESPUES de ejecutar este archivo, asi que
--- "X = X or {...}" no basta: si la tabla guardada llega vacia o incompleta los
--- campos quedan en nil. Los defaults se fusionan tambien en ADDON_LOADED.
 local DEFAULTS = {
     point = "CENTER",
-    x     = -132.26660218206,   -- xOffset de la WeakAura
-    y     = 169.24457389997,    -- yOffset de la WeakAura
+    x     = -132.26660218206,
+    y     = 169.24457389997,
 };
 
 SacredShieldDB = SacredShieldDB or {};
@@ -47,7 +24,6 @@ local function ApplyDefaults()
 end
 ApplyDefaults();
 
--- ===== marco =====
 local frame = CreateFrame("Frame", "NUF_SacredShieldFrame", UIParent);
 frame:SetWidth(SIZE);
 frame:SetHeight(SIZE);
@@ -57,7 +33,6 @@ frame:SetClampedToScreen(true);
 frame:EnableMouse(false);
 frame:Hide();
 
--- Escala configurable desde el panel, igual que DTSU.
 if K.RegisterScalable then K.RegisterScalable("SacredShield", frame, 1.0); end
 
 frame.bg = frame:CreateTexture(nil, "BACKGROUND");
@@ -67,7 +42,7 @@ frame.bg:Hide();
 
 frame.icon = frame:CreateTexture(nil, "ARTWORK");
 frame.icon:SetAllPoints(frame);
--- zoom = 0 y keepAspectRatio = false en la WA: textura completa, sin recortar.
+
 frame.icon:SetTexCoord(0, 1, 0, 1);
 
 frame.moveBorder = frame:CreateTexture(nil, "OVERLAY");
@@ -75,8 +50,6 @@ frame.moveBorder:SetAllPoints(frame);
 frame.moveBorder:SetTexture(0, 1, 0, 0.30);
 frame.moveBorder:Hide();
 
--- ===== icono del hechizo =====
--- Se resuelve una vez; se reintenta si el cliente aun no lo cacheo.
 local iconTexture;
 local function ResolveIcon()
     if iconTexture then return iconTexture; end
@@ -89,9 +62,6 @@ local function ResolveIcon()
 end
 ResolveIcon();
 
--- ===== deteccion del buff =====
--- En 3.3.5 UnitAura no permite filtrar por spellId, hay que recorrer los huecos
--- y comparar el id del ultimo retorno. Asi no salta con otro hechizo homonimo.
 local function HasAura()
     for i = 1, 40 do
         local name, _, _, _, _, _, _, _, _, _, spellId = UnitAura(UNIT, i, FILTER);
@@ -104,16 +74,14 @@ end
 local moving = false;
 local enabled = false;
 
--- Donde se muestra (Arena / BG / Duelos / Mundo, ver ModuleManager).
 local function ZoneOK()
     if not K.ModuleZoneAllowed then return true; end
     return K.ModuleZoneAllowed("SacredShield");
 end
 
 local function Update()
-    if moving then return; end   -- en modo mover el icono se queda fijo y visible
-    -- Apagado no se muestra: SetMoving(false) llega aunque el modulo este
-    -- apagado ("Mover todo") y sin eventos nadie lo volvia a esconder.
+    if moving then return; end
+
     if enabled and ZoneOK() and UnitExists(UNIT) and HasAura() then
         ResolveIcon();
         frame:Show();
@@ -122,7 +90,6 @@ local function Update()
     end
 end
 
--- ===== eventos =====
 local f = CreateFrame("Frame");
 
 f:SetScript("OnEvent", function(self, event, arg1)
@@ -134,13 +101,12 @@ local dbLoader = CreateFrame("Frame");
 dbLoader:RegisterEvent("ADDON_LOADED");
 dbLoader:SetScript("OnEvent", function(self, event, addon)
     if addon ~= AddOnName then return; end
-    ApplyDefaults();   -- ahora si, sobre la tabla que trajo SavedVariables
+    ApplyDefaults();
     frame:ClearAllPoints();
     frame:SetPoint(SacredShieldDB.point, UIParent, SacredShieldDB.point, SacredShieldDB.x, SacredShieldDB.y);
     self:UnregisterEvent("ADDON_LOADED");
 end);
 
--- ===== mover =====
 local function SetMoving(on)
     moving = on;
     if on then
@@ -168,7 +134,6 @@ local function SetMoving(on)
     end
 end
 
--- API que consume el panel (Interface > ... > Paladin).
 function K.SetSacredShieldMove(on)
     SetMoving(on and true or false);
     return moving;
@@ -182,7 +147,7 @@ function K.ResetSacredShieldPosition()
     SacredShieldDB.point, SacredShieldDB.x, SacredShieldDB.y = DEFAULTS.point, DEFAULTS.x, DEFAULTS.y;
     frame:ClearAllPoints();
     frame:SetPoint(SacredShieldDB.point, UIParent, SacredShieldDB.point, SacredShieldDB.x, SacredShieldDB.y);
-    -- Sin aviso: lo usa el boton del panel. El /ss reset tiene el suyo.
+
 end
 
 SLASH_NUFSACREDSHIELD1 = "/ss";
@@ -201,7 +166,6 @@ SlashCmdList["NUFSACREDSHIELD"] = function(msg)
     end
 end
 
--- ===== integracion NUF: on/off del modulo =====
 local function SS_SetEnabled(on)
     enabled = on and true or false;
     if on then
@@ -232,7 +196,7 @@ K.RegisterModule("SacredShield", {
     desc    = L["MOD_SACREDSHIELD_DESC"]
         or "Shows an icon while your target has Sacred Shield. /ss to move it.",
     default = false,
-    hideFromModulesTab = true,  -- vive en Interface > ... > Paladin, como PaladinICD
+    hideFromModulesTab = true,
     onEnable    = function() SS_SetEnabled(true); end,
     onDisable   = function() SS_SetEnabled(false); end,
 });

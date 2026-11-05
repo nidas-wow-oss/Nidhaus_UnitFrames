@@ -23,8 +23,7 @@ local Core = CreateFrame("FRAME", "TargetFramePercent", TargetFrameTextureFrame)
 local isInitialized = false;
 local playerExecutePhase = 0;
 local frameCreated = false;
--- FIX: Cachear estado de execute phase para evitar GetBackdropColor() en cada tick de vida
--- (antes: select(1, Core:GetBackdropColor()) se llamaba en cada update de health bar)
+
 local isExecutePhase = false;
 
 local function CreateMainFrame()
@@ -35,15 +34,15 @@ local function CreateMainFrame()
 	Core:SetBackdropColor(0, 0, 0, .8);
 	Core:SetPoint("TOPLEFT", 17, -2);
 	Core:SetFrameLevel(TargetFrameTextureFrame:GetFrameLevel()-1);
-	
+
 	Core.edge = Core:CreateTexture(nil, "ARTWORK");
 	Core.edge:SetTexture([[Interface\TARGETINGFRAME\NumericThreatBorder]]);
 	Core.edge:SetPoint("TOPLEFT", Core, "TOPLEFT", -8, 3);
 	Core.edge:SetSize(80, 40);
-	
+
 	Core.Text = Core:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 	Core.Text:SetPoint("CENTER", 0, 0);
-	
+
 	Core:Hide();
 	frameCreated = true;
 end
@@ -57,41 +56,41 @@ local function SetupThreatIndicators()
 end
 
 local function GetPlayerExecutePhase()
-	-- FIX: Acceso directo por key en vez de iterar toda la tabla
+
 	playerExecutePhase = ExecutePhase[select(2, UnitClass("player"))] or 0;
 end
 
 local function TextStatusBar_Update(self)
 	if self ~= TargetFrameHealthBar then return end;
 	if not Core.Text then return; end
-	
+
 	if not C.HealthPercentage then
 		if Core:IsShown() then
 			Core:Hide();
 		end
 		return;
 	end
-	
+
 	if not Core:IsShown() then
 		Core:Show();
 	end
-	
+
 	local Value = self.currValue;
 	local _, MaxValue = self:GetMinMaxValues();
-	
+
 	if MaxValue == 0 then
 		Core.Text:SetText(L["HP_NA"] or "N/A");
 		return;
 	end
-	
+
 	local HealthPercent = (Value / MaxValue) * 100;
-	
+
 	if Value == 0 then
 		Core.Text:SetText(L["HP_DEAD"] or "Dead");
 	else
 		Core.Text:SetText(math_ceil(HealthPercent).."%");
 	end;
-	
+
 	if HealthPercent < playerExecutePhase and not isExecutePhase then
 		Core:SetBackdropColor(1, 0, 0, .8);
 		isExecutePhase = true;
@@ -103,13 +102,13 @@ end;
 
 local function InitializeHealthPercentage()
 	if isInitialized then return; end
-	
+
 	CreateMainFrame();
 	SetupThreatIndicators();
 	GetPlayerExecutePhase();
-	
+
 	hooksecurefunc("TextStatusBar_UpdateTextString", TextStatusBar_Update);
-	
+
 	if C.HealthPercentage then
 		Core:Show();
 		if TargetFrameHealthBar then
@@ -118,13 +117,13 @@ local function InitializeHealthPercentage()
 	else
 		Core:Hide();
 	end
-	
+
 	isInitialized = true;
 end
 
 function K.ToggleHealthPercentage(enabled)
 	if not isInitialized then return; end
-	
+
 	if enabled then
 		Core:Show();
 		if TargetFrameHealthBar then

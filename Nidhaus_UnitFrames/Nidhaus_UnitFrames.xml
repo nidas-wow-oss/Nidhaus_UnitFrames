@@ -6,18 +6,11 @@
 	<Script file="Config\Settings.lua"/>
 	<Script file="Core\API.lua"/>
 	<Script file="Core\ModuleManager.lua"/>
-	<!-- Foto compartida del layout limpio de las barras. Tiene que cargar
-	     ANTES que ActionBars.lua y MiniBar.lua: los dos la usan. -->
-	<!-- LayoutCore va ANTES que todo el que se anote en el: los modulos
-	     llaman a K.LayoutRegisterStore al cargarse. -->
+
 	<Script file="Core\LayoutCore.lua"/>
-	<!-- Core/LayoutWatch.lua (la caja negra de las barras, /nufwatch) es una
-	     herramienta de diagnostico y NO se publica: esta en .gitignore y no
-	     se carga desde aca. Si hace falta depurar las barras, se descomenta
-	     la linea de abajo con el archivo presente en el disco.
-	     <Script file="Core\LayoutWatch.lua"/> -->
+
 	<Script file="Core\BarBaseline.lua"/>
-	<!-- Registro central de escalas: debe cargar antes que los modulos -->
+
 	<Script file="Core\ScaleAPI.lua"/>
 	<Script file="UnitFrames\PlayerFrame.lua"/>
 	<Script file="UnitFrames\TargetFrame.lua"/>
@@ -30,16 +23,15 @@
 	<Script file="Modules\HealthPercentage.lua"/>
 	<Script file="Modules\CastingBarTimer.lua"/>
 	<Script file="Modules\ActionBars.lua"/>
-	<!-- PartyTargets -->
+
 	<Script file="Modules2\PartyTargets\LibStub\LibStub.lua"/>
 	<Script file="Modules2\PartyTargets\Frames.lua"/>
 	<Include file="Modules2\PartyTargets\FrameTemplate.xml"/>
-	<!-- Despues del template a proposito: reubica las piezas que ese XML
-	     crea, asi que los frames tienen que existir antes. -->
+
 	<Script file="Modules2\PartyTargets\SquareStyle.lua"/>
 	<Script file="Modules2\PartyTargets\Options.lua"/>
 	<Script file="Modules2\PartyTargets\PartyTargets_Integration.lua"/>
-	<!-- PartyCastingBars -->
+
 	<Script file="Modules2\PartyCastingBars\localization.en.lua"/>
 	<Script file="Modules2\PartyCastingBars\localization.de.lua"/>
 	<Script file="Modules2\PartyCastingBars\PartyCastingBars.lua"/>
@@ -54,22 +46,13 @@
 	<Script file="Modules2\SystemSpamFilter.lua"/>
 	<Script file="Core\MinimapButton.lua"/>
 	<Script file="Config\UIKit.lua"/>
-	<!-- El panel de opciones vive en Nidhaus_UnitFrames_Config
-	     (LoadOnDemand). Esto es solo el gatillo que lo carga. -->
+
 	<Script file="Core\ConfigLoader.lua"/>
 	<Script file="Core\ArenaLoader.lua"/>
-	<!-- SideList: lista vertical de secciones. La usan Interface, Frames, Arena, Addons y PvP -->
-	<!-- ThemeManager must load before OptionsPanel so K.GetPanelThemes() is available -->
-	<!-- La lista de comandos: la usa la ayuda de /nuf, tiene que cargar antes. -->
+
 	<Script file="Core\CommandList.lua"/>
 	<Script file="Core\Commands.lua"/>
 
-	<!-- ═══════════════════════════════════════════════════════════════
-	     MODULOS INDEPENDIENTES
-	     Antes estaban listados en el .toc, que carga DESPUES de este XML.
-	     Se movieron aca al final para respetar ese mismo orden y para que
-	     todo el orden de carga se pueda leer en un solo archivo.
-	     ═══════════════════════════════════════════════════════════════ -->
 	<Script file="Modules2\NewPartyFrame.lua"/>
 	<Script file="Modules2\PartyBuffs.lua"/>
 	<Script file="Modules2\ArenaTimes.lua"/>
@@ -90,19 +73,9 @@
 	<Script file="Modules2\PartyFramePW.lua"/>
 	<Script file="Modules2\CastBarPW.lua"/>
 	<Script file="Modules2\AuraBorders.lua"/>
-	<!-- Coordinador: carga despues de NewPartyFrame, PartyFramesImproved y PW -->
+
 	<Script file="Modules2\PartyFrameStyle.lua"/>
-	<!-- ShieldWatch: vuelve a la carga.
-	     Tildaba el cliente al entrar, sin error en pantalla. La causa era
-	     recursion infinita: shieldwatch_showoptions es el OnShow del marco
-	     de opciones y ademas llamaba a InterfaceOptionsFrame_OpenToCategory.
-	     Abrir el panel MUESTRA el marco, mostrarlo dispara el OnShow, y el
-	     OnShow lo vuelve a abrir.
-	     Saltaba sola al cargar porque el marco venia sin hidden en su XML:
-	     nacia mostrado y el bucle arrancaba antes de terminar de entrar al
-	     mundo. Por eso no habia error: no era un error, era un bucle.
-	     Arreglado separando las dos funciones (showoptions solo refresca,
-	     openoptions abre) y poniendole hidden al marco. -->
+
 	<Script file="Modules2\ShieldWatch\ShieldWatch.lua"/>
 	<Include file="Modules2\ShieldWatch\ShieldWatch.xml"/>
 
@@ -124,13 +97,11 @@
 	<Script file="Modules2\SlotProfiles.lua"/>
 	<Script file="Modules2\MiniBar.lua"/>
 	<Script file="Modules2\SideBarHover.lua"/>
-	<!-- Mochila/micromenu y barras de abajo con mouseover (Unify o MiniBar) -->
+
 	<Script file="Modules2\BarFade.lua"/>
 
-	<!-- Modulos de esta sesion. Cargan pero arrancan APAGADOS (reset de
-	     emergencia + default off). El panel se arma diferido al abrirlo. -->
 	<Script file="Modules2\AbbreviatedStatus\NUF_AbbreviatedStatus.lua"/>
-	<!-- Texto grande (Status Text > Big text): DESPUES del abreviado, su hook tiene que correr despues -->
+
 	<Script file="Modules2\BigStatusText.lua"/>
 	<Script file="Modules2\NidhausTools\DTSU.lua"/>
 	<Script file="Modules2\NidhausTools\PaladinICD.lua"/>
@@ -141,20 +112,11 @@
 	<Script file="Modules2\TooltipExtras.lua"/>
 	<Script file="Modules2\TabBinder.lua"/>
 
-	<!-- Party1 Pet Frame (marco propio para la mascota del compa 1) -->
 	<Script file="Modules2\PartyPetFrame\PartyPetTargetFrame.lua"/>
 
-	<!-- Gargoyle Tracker (DK enemigo) -->
 	<Script file="Modules2\GargoyleTracker\GargoyleTracker.lua"/>
 
-	<!-- ULTIMO: envuelve los comandos de los modulos para que no hagan nada
-	     con el modulo apagado. Tiene que cargar despues de todos, porque lo
-	     que hace es tomar los handlers que cada uno dejo en SlashCmdList. -->
 	<Script file="Core\CommandGuard.lua"/>
-	<!-- ULTIMO A PROPOSITO.
-	     Es el dueno de la logica de reset y llama a GlobalUnlock, MiniBar y
-	     ActionBars. Como los llama por campo de tabla se resuelven recien al
-	     apretar el boton, pero cargarlo al final deja claro que depende de
-	     todos ellos y de nadie al reves. -->
+
 	<Script file="Core\ResetManager.lua"/>
 </Ui>

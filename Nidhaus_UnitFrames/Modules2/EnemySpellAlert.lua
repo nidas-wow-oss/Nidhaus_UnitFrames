@@ -1,123 +1,98 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- =========================================================
--- EnemySpellAlert.lua
--- Portado de la idea del WeakAura "Announce Spells": cuando un ENEMIGO
--- castea uno de los hechizos vigilados aparece su icono en pantalla unos
--- segundos, para reaccionar.
---
--- Deteccion: COMBAT_LOG_EVENT_UNFILTERED, solo fuentes HOSTILES.
---
--- El menu propio (boton "Spell list") tiene la lista completa agrupada por
--- CLASE, cada hechizo con su checkbox, y arriba una vista previa del icono
--- tal como se vera en pantalla.
---
--- Movible con boton izquierdo (desbloqueado); se fija con el checkbox del
--- panel. Bloqueado = transparente al mouse. El combat log (evento caro)
--- solo se registra con el modulo activo.
--- =========================================================
-
--- Diferido: apagado no crea nada hasta que se prende (ver K.DeferModule).
 K.DeferModule("EnemySpellAlert", {
 	name    = L["MOD_ENEMYALERT"] or "Enemy Spell Alert",
 	desc    = L["MOD_ENEMYALERT_DESC"]
 		or "Shows the spell icon on screen when an enemy casts a trap, fear or interrupt.",
 	default = false,
-	hideFromModulesTab = true,   -- vive en Interface > PvP
+	hideFromModulesTab = true,
 }, function()
-	local ICON_SIZE = 40;   -- valor por defecto; el real sale de la DB
+	local ICON_SIZE = 40;
 	local SPACING   = 6;
 	local MAX_ICONS = 10;
-	local DURATION  = 3;      -- segundos que se muestra cada icono
+	local DURATION  = 3;
 
 	local HOSTILE = COMBATLOG_OBJECT_REACTION_HOSTILE or 0x00000040;
 
-	-- ---------------------------------------------------------
-	-- Hechizos vigilados, agrupados por clase.
-	-- { id, porDefecto }  -- porDefecto = si viene tildado de fabrica
-	-- ---------------------------------------------------------
 	local SPELLS = {
 		{ class = "MAGE", color = "|cff69CCF0", ids = {
-			{ 2139,  true  },  -- Contrahechizo
-			{ 118,   true  },  -- Polimorfia
-			{ 44572, true  },  -- Congelacion profunda
-			{ 122,   false },  -- Nova de escarcha
-			{ 45438, false },  -- Bloque de hielo
+			{ 2139,  true  },
+			{ 118,   true  },
+			{ 44572, true  },
+			{ 122,   false },
+			{ 45438, false },
 		}},
 		{ class = "PRIEST", color = "|cffFFFFFF", ids = {
-			{ 8122,  true  },  -- Grito psiquico
-			{ 15487, true  },  -- Silencio
-			{ 605,   true  },  -- Control mental
-			{ 47585, false },  -- Dispersion
+			{ 8122,  true  },
+			{ 15487, true  },
+			{ 605,   true  },
+			{ 47585, false },
 		}},
 		{ class = "WARLOCK", color = "|cff9482C9", ids = {
-			{ 5484,  true  },  -- Aullido de terror
-			{ 5782,  true  },  -- Miedo
-			{ 19647, true  },  -- Bloqueo de hechizo (felhunter)
-			{ 6358,  true  },  -- Seduccion (succubus)
-			{ 30283, false },  -- Furia de las sombras
-			{ 6789,  false },  -- Toque de la muerte
+			{ 5484,  true  },
+			{ 5782,  true  },
+			{ 19647, true  },
+			{ 6358,  true  },
+			{ 30283, false },
+			{ 6789,  false },
 		}},
 		{ class = "HUNTER", color = "|cffABD473", ids = {
-			{ 1499,  true  },  -- Trampa congelante
-			{ 60192, true  },  -- Flecha congelante
-			{ 34490, true  },  -- Disparo silenciador
-			{ 19503, true  },  -- Disparo dispersor
-			{ 13809, false },  -- Trampa de escarcha
-			{ 34600, false },  -- Trampa de serpientes
-			{ 19263, false },  -- Disuasion
+			{ 1499,  true  },
+			{ 60192, true  },
+			{ 34490, true  },
+			{ 19503, true  },
+			{ 13809, false },
+			{ 34600, false },
+			{ 19263, false },
 		}},
 		{ class = "ROGUE", color = "|cffFFF569", ids = {
-			{ 1766,  true  },  -- Patada
-			{ 2094,  true  },  -- Cegar
-			{ 408,   true  },  -- Punetazo renal
-			{ 1833,  true  },  -- Golpe bajo
-			{ 6770,  false },  -- Apalear
-			{ 1776,  false },  -- Gubia
-			{ 51713, true  },  -- Danza de las sombras
-			{ 31224, false },  -- Capa de sombras
-			{ 5277,  false },  -- Evasion
+			{ 1766,  true  },
+			{ 2094,  true  },
+			{ 408,   true  },
+			{ 1833,  true  },
+			{ 6770,  false },
+			{ 1776,  false },
+			{ 51713, true  },
+			{ 31224, false },
+			{ 5277,  false },
 		}},
 		{ class = "WARRIOR", color = "|cffC79C6E", ids = {
-			{ 6552,  true  },  -- Aporrear
-			{ 72,    true  },  -- Golpe de escudo
-			{ 5246,  true  },  -- Grito intimidatorio
-			{ 46924, true  },  -- Torbellino de espadas
-			{ 23920, false },  -- Reflexion de hechizos
-			{ 871,   false },  -- Muro de escudos
+			{ 6552,  true  },
+			{ 72,    true  },
+			{ 5246,  true  },
+			{ 46924, true  },
+			{ 23920, false },
+			{ 871,   false },
 		}},
 		{ class = "DRUID", color = "|cffFF7D0A", ids = {
-			{ 33786, true  },  -- Ciclon
-			{ 339,   true  },  -- Raices enredadoras
-			{ 2637,  true  },  -- Hibernar
-			{ 16979, false },  -- Carga salvaje
-			{ 22812, false },  -- Corteza
+			{ 33786, true  },
+			{ 339,   true  },
+			{ 2637,  true  },
+			{ 16979, false },
+			{ 22812, false },
 		}},
 		{ class = "SHAMAN", color = "|cff0070DE", ids = {
-			{ 51514, true  },  -- Embrujo
-			{ 57994, true  },  -- Viento cortante
-			{ 30823, false },  -- Furia chamanica
+			{ 51514, true  },
+			{ 57994, true  },
+			{ 30823, false },
 		}},
 		{ class = "PALADIN", color = "|cffF58CBA", ids = {
-			{ 853,   true  },  -- Martillo de justicia
-			{ 20066, true  },  -- Arrepentimiento
-			{ 642,   false },  -- Escudo divino
-			{ 1022,  false },  -- Mano de proteccion
-			{ 31884, false },  -- Ira vengadora
+			{ 853,   true  },
+			{ 20066, true  },
+			{ 642,   false },
+			{ 1022,  false },
+			{ 31884, false },
 		}},
 		{ class = "DEATHKNIGHT", color = "|cffC41F3B", ids = {
-			{ 47528, true  },  -- Congelar mente
-			{ 47476, true  },  -- Estrangular
-			{ 49203, true  },  -- Frio hambriento
-			{ 48792, false },  -- Fortaleza gelida
-			{ 48707, false },  -- Caparazon antimagia
+			{ 47528, true  },
+			{ 47476, true  },
+			{ 49203, true  },
+			{ 48792, false },
+			{ 48707, false },
 		}},
 	};
 
-	-- ---------------------------------------------------------
-	-- DB / estado
-	-- ---------------------------------------------------------
 	local function DB()
 		if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 		if not NidhausUnitFramesDB.EnemySpellAlert then
@@ -125,31 +100,14 @@ K.DeferModule("EnemySpellAlert", {
 		end
 		local db = NidhausUnitFramesDB.EnemySpellAlert;
 		if not db.iconSize then db.iconSize = ICON_SIZE; end
-		-- DONDE MOSTRARSE, DE FABRICA: solo arena y duelos.
-		--
-		-- Antes venia encendido en los cuatro lados. En battleground y en
-		-- mundo abierto hay demasiada gente casteando y la alerta se vuelve
-		-- ruido constante en vez de aviso. Quien la quiera ahi la prende.
-		--
-		-- El == nil es importante: solo pone el valor si NUNCA se toco, asi
-		-- que a quien ya lo tenia configurado no se le cambia nada.
+
 		if db.inArena == nil then db.inArena = true;  end
 		if db.inBG    == nil then db.inBG    = false; end
 		if db.inDuel  == nil then db.inDuel  = true;  end
 		if db.inWorld == nil then db.inWorld = false; end
-		if not db.custom then db.custom = {}; end   -- hechizos agregados a mano
+		if not db.custom then db.custom = {}; end
 		if not db.spells then db.spells = {}; end
 
-		-- LOS HECHIZOS NUEVOS TAMBIEN LLEGAN A QUIEN YA TENIA LA LISTA.
-		--
-		-- Antes esto corria SOLO la primera vez ("if not db.spells"). Al sumar
-		-- un hechizo a la tabla de arriba, el que ya tenia su lista guardada no
-		-- lo veia nunca: quedaba en nil, que es lo mismo que apagado, y encima
-		-- sin aparecer tildado en el menu.
-		--
-		-- Recorriendo siempre y escribiendo solo lo que FALTA, los nuevos
-		-- entran con su valor de fabrica y lo que vos hayas tildado o destildado
-		-- queda intacto.
 		for _, grp in ipairs(SPELLS) do
 			for _, e in ipairs(grp.ids) do
 				if db.spells[e[1]] == nil then
@@ -167,7 +125,6 @@ K.DeferModule("EnemySpellAlert", {
 	end
 	K.GetEnemyAlertIconSize = GetIconSize;
 
-	-- Filtro de zona: igual que el Gargoyle Tracker.
 	local function ZoneAllowed()
 		local db = DB();
 		local _, itype = GetInstanceInfo();
@@ -190,7 +147,6 @@ K.DeferModule("EnemySpellAlert", {
 	local enabled = false;
 	local preview = false;
 
-	-- name -> icon, armado solo con los hechizos ACTIVADOS
 	local watch = {};
 
 	local function BuildWatch()
@@ -207,8 +163,6 @@ K.DeferModule("EnemySpellAlert", {
 			end
 		end
 
-		-- Hechizos agregados a mano por el usuario (por ID o por nombre).
-		-- Con el nombre suelto no hay icono, asi que se usa uno generico.
 		for key, entry in pairs(DB().custom or {}) do
 			if entry then
 				local nm, ic = entry.name, entry.icon;
@@ -223,8 +177,6 @@ K.DeferModule("EnemySpellAlert", {
 		end
 	end
 
-	-- Agrega un hechizo a mano. Acepta un ID numerico o un nombre suelto.
-	-- Devuelve true + el nombre mostrado, o false + motivo.
 	function K.AddEnemyAlertSpell(text)
 		if not text or text == "" then return false, "empty"; end
 		local db = DB();
@@ -236,7 +188,7 @@ K.DeferModule("EnemySpellAlert", {
 			BuildWatch();
 			return true, name;
 		end
-		-- Nombre suelto: se guarda tal cual (matchea contra el combat log)
+
 		db.custom["nm" .. string.lower(text)] = { name = text };
 		BuildWatch();
 		return true, text;
@@ -253,9 +205,6 @@ K.DeferModule("EnemySpellAlert", {
 	end
 	K.RebuildEnemyAlertWatch = BuildWatch;
 
-	-- ---------------------------------------------------------
-	-- Anchor (lo que se arrastra)
-	-- ---------------------------------------------------------
 	local anchor = CreateFrame("Frame", "NUF_EnemyAlertAnchor", UIParent);
 	anchor:SetSize(ICON_SIZE, ICON_SIZE);
 	anchor:SetFrameStrata("HIGH");
@@ -263,9 +212,6 @@ K.DeferModule("EnemySpellAlert", {
 	anchor:SetClampedToScreen(true);
 	anchor:EnableMouse(false);
 
-	-- Escala configurable desde el panel (registro central en ScaleAPI).
-	-- Se escala el ANCLA, no el icono: todo lo demas cuelga de ella, asi que
-	-- crece o se achica el conjunto entero y no hay que tocar cada pieza.
 	if K.RegisterScalable then K.RegisterScalable("EnemySpellAlert", anchor, 1.0); end
 
 	anchor.bg = anchor:CreateTexture(nil, "BACKGROUND");
@@ -295,9 +241,6 @@ K.DeferModule("EnemySpellAlert", {
 		end
 	end
 
-	-- ---------------------------------------------------------
-	-- Pool de iconos
-	-- ---------------------------------------------------------
 	local pool, active, states = {}, {}, {};
 
 	local function CreateIcon()
@@ -357,7 +300,6 @@ K.DeferModule("EnemySpellAlert", {
 		anchor:SetSize(sz, sz);
 	end
 
-	-- La llama el slider del panel
 	function K.SaveEnemyAlertIconSize(v)
 		DB().iconSize = v;
 		for _, f in ipairs(pool) do f:SetSize(v, v); end
@@ -380,17 +322,11 @@ K.DeferModule("EnemySpellAlert", {
 		for _, k in ipairs(keys) do Remove(k); end
 	end
 
-	-- El ancla es invisible: con el mouse prendido y sin icono a la vista se
-	-- comia los clicks en el centro de la pantalla. Solo agarra el mouse en
-	-- el modo mover o, desbloqueada, mientras hay un icono que arrastrar.
 	local function UpdateMouse()
 		local on = preview or (enabled and not IsLocked() and next(states) ~= nil);
 		anchor:EnableMouse(on and true or false);
 	end
 
-	-- ---------------------------------------------------------
-	-- Ticker de expiracion (solo corre mientras hay iconos)
-	-- ---------------------------------------------------------
 	local ticker = CreateFrame("Frame");
 	ticker:Hide();
 	ticker.acc = 0;
@@ -415,9 +351,6 @@ K.DeferModule("EnemySpellAlert", {
 		if not next(states) then self:Hide(); end
 	end);
 
-	-- ---------------------------------------------------------
-	-- Disparar un icono
-	-- ---------------------------------------------------------
 	local function Trigger(name)
 		local w = watch[name];
 		if not w then return; end
@@ -439,25 +372,18 @@ K.DeferModule("EnemySpellAlert", {
 		UpdateMouse();
 	end
 
-	-- ---------------------------------------------------------
-	-- Deteccion (combat log)
-	-- ---------------------------------------------------------
 	local clog = CreateFrame("Frame");
 	clog:SetScript("OnEvent", function(self, event, ...)
-		-- 3.3.5a: timestamp, sub, srcGUID, srcName, srcFlags, dstGUID, dstName,
-		-- dstFlags, spellId, spellName, ...
+
 		local _, sub, _, _, srcFlags, _, _, _, _, spellName = ...;
 		if sub == "SPELL_CAST_SUCCESS" or sub == "SPELL_CAST_START" then
-			if bit.band(srcFlags or 0, HOSTILE) == 0 then return; end   -- solo enemigos
+			if bit.band(srcFlags or 0, HOSTILE) == 0 then return; end
 			if spellName and watch[spellName] then
 				Trigger(spellName);
 			end
 		end
 	end);
 
-	-- ---------------------------------------------------------
-	-- Preview / lock / reset
-	-- ---------------------------------------------------------
 	function K.SetEnemyAlertPreview(state)
 		preview = state and true or false;
 		BuildWatch();
@@ -465,7 +391,7 @@ K.DeferModule("EnemySpellAlert", {
 
 		ClearAll();
 		if preview then
-			-- UN SOLO icono de referencia para arrastrar.
+
 			anchor.bg:Show();
 			local name, w = next(watch);
 			local key = name or "preview";
@@ -495,14 +421,11 @@ K.DeferModule("EnemySpellAlert", {
 		RestorePosition();
 	end
 
-	-- =========================================================
-	-- MENU PROPIO: lista de hechizos por clase
-	-- =========================================================
 	local win;
 
 	local function BuildMenu()
 		win = CreateFrame("Frame", "NUF_EnemyAlertWindow", UIParent);
-		-- Cajita con el valor debajo de cada slider (UIKit).
+
 		if K.UI and K.UI.AutoRestyle then K.UI.AutoRestyle(win); end
 
 		win:SetSize(420, 600);
@@ -539,7 +462,6 @@ K.DeferModule("EnemySpellAlert", {
 		close:SetPoint("TOPRIGHT", -4, -4);
 		close:SetScript("OnClick", function() win:Hide(); end);
 
-		-- ── Vista previa: como se ve el icono en pantalla ──
 		local prevLabel = win:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 		prevLabel:SetPoint("TOPLEFT", 20, -40);
 		prevLabel:SetText((K.UI and K.UI.Header(L["ALERT_PREVIEW"] or "Preview"))
@@ -569,7 +491,6 @@ K.DeferModule("EnemySpellAlert", {
 		prevNote:SetText("|cff8EAEC9" .. (L["ALERT_PREVIEW_NOTE"]
 			or "This is how the icon appears on screen when an enemy casts a watched spell.") .. "|r");
 
-		-- ── Tamaño del icono ──
 		local szSlider = CreateFrame("Slider", "NUF_EnemyAlertSize", win, "OptionsSliderTemplate");
 		szSlider:SetPoint("TOPLEFT", 24, -118);
 		szSlider:SetWidth(170);
@@ -589,11 +510,9 @@ K.DeferModule("EnemySpellAlert", {
 			self._last = v;
 			_G["NUF_EnemyAlertSizeText"]:SetText((L["ALERT_ICON_SIZE"] or "Icon size") .. ": " .. v);
 			if K.SaveEnemyAlertIconSize then K.SaveEnemyAlertIconSize(v); end
-			-- La vista previa NO cambia de tamaño: es solo una muestra del icono
-			-- dentro de la ventana. El slider afecta al icono real en pantalla.
+
 		end);
 
-		-- ── Agregar hechizo por ID o nombre ──
 		local addLbl = win:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
 		addLbl:SetPoint("TOPLEFT", 220, -114);
 		addLbl:SetText("|cff8EAEC9" .. (L["ALERT_ADD_HINT"] or "Add by ID or name:") .. "|r");
@@ -627,7 +546,6 @@ K.DeferModule("EnemySpellAlert", {
 
 		if K.UI and K.UI.Separator then K.UI.Separator(win, 16, -156, 388); end
 
-		-- ── Lista scrolleable por clase ──
 		local scroll = CreateFrame("ScrollFrame", "NUF_EnemyAlertScroll", win, "UIPanelScrollFrameTemplate");
 		scroll:SetPoint("TOPLEFT", 16, -166);
 		scroll:SetPoint("BOTTOMRIGHT", -34, 48);
@@ -641,7 +559,7 @@ K.DeferModule("EnemySpellAlert", {
 		local y = -6;
 
 		for _, grp in ipairs(SPELLS) do
-			-- Encabezado de clase, con su color
+
 			local ch = pane:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 			ch:SetPoint("TOPLEFT", 6, y);
 			local cname = LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[grp.class] or grp.class;
@@ -682,7 +600,6 @@ K.DeferModule("EnemySpellAlert", {
 			y = y - 8;
 		end
 
-		-- ── Hechizos agregados a mano (con boton para quitarlos) ──
 		win.customRows = {};
 		win.customPane = pane;
 		win.customStartY = y;
@@ -746,7 +663,6 @@ K.DeferModule("EnemySpellAlert", {
 
 		win:BuildCustomRows();
 
-		-- ── Botones de abajo ──
 		local allBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate");
 		allBtn:SetSize(90, 22);
 		allBtn:SetPoint("BOTTOMLEFT", 20, 16);
@@ -792,7 +708,7 @@ K.DeferModule("EnemySpellAlert", {
 		for _, cb in ipairs(win.cells) do
 			cb:SetChecked(IsSpellOn(cb._id));
 		end
-		-- Icono de muestra: el primero que este activado
+
 		if win.BuildCustomRows then win:BuildCustomRows(); end
 		local _, w = next(watch);
 		if win.prevIcon then
@@ -812,9 +728,6 @@ K.DeferModule("EnemySpellAlert", {
 		end
 	end
 
-	-- ---------------------------------------------------------
-	-- On / Off del modulo
-	-- ---------------------------------------------------------
 	local function SetEnabled(on)
 		enabled = on;
 		if on then

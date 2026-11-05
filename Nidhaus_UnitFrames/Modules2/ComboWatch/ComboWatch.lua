@@ -1,38 +1,11 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- SOLO PICARO Y DRUIDA (los unicos con puntos de combo). Para las demas clases el archivo termina aca, antes de crear
--- nada: Lua descarta todo su codigo y el modulo no ocupa memoria. El panel,
--- el modo mover y los comandos ya preguntan si el modulo existe.
 do
 	local _, class = UnitClass("player");
 	if class ~= "ROGUE" and class ~= "DRUID" then return; end
 end
 
--- =========================================================
--- ComboWatch.lua  (integrado a NUF)
--- Fuente: !ComboWatch 3.3.5
---
--- QUE HACE: numero grande con los puntos de combo, coloreado segun
--- cuantos llevas (1 verde, 2 celeste, 3 amarillo, 4 naranja, 5 rojo).
--- Al llegar a 5 aparece un marco rojo que late, y se va cuando gastas
--- los puntos.
---
--- Solo tiene sentido para PICARO y DRUIDA: son las unicas dos clases
--- que generan puntos de combo. Para el resto ni se crea el frame.
---
--- CAMBIOS respecto del addon suelto:
---   * Se prende y apaga desde Interface > <tu clase>. Con el modulo
---     apagado no registra UNIT_COMBO_POINTS.
---   * Se puede MOVER (antes estaba clavado en el centro) y la posicion
---     se guarda en la DB de NUF.
---   * El PlaySoundFile del original apuntaba a Res\Alert.ogg, un archivo
---     que NO viene en el addon. Se saco: en 3.3.5a PlaySoundFile con una
---     ruta invalida no avisa, simplemente no suena, asi que era codigo
---     muerto que confundia.
--- =========================================================
-
--- Diferido: apagado no crea nada hasta que se prende (ver K.DeferModule).
 K.DeferModule("ComboWatch", {
 	name    = L["MOD_COMBOWATCH"] or "Combo Points",
 	desc    = L["MOD_COMBOWATCH_DESC"]
@@ -49,9 +22,6 @@ K.DeferModule("ComboWatch", {
 	local lastValue = 0;
 	local preview   = false;
 
-	-- ---------------------------------------------------------
-	-- DB
-	-- ---------------------------------------------------------
 	local function DB()
 		if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 		if not NidhausUnitFramesDB.ComboWatch then NidhausUnitFramesDB.ComboWatch = {}; end
@@ -62,9 +32,6 @@ K.DeferModule("ComboWatch", {
 		return C.ComboWatchLocked == true;
 	end
 
-	-- ---------------------------------------------------------
-	-- Colores por cantidad de puntos
-	-- ---------------------------------------------------------
 	local function Colorize(p)
 		if p == 1 then return 0, 1, 0, 1; end
 		if p == 2 then return 0.4, 0.7, 1, 1; end
@@ -74,9 +41,6 @@ K.DeferModule("ComboWatch", {
 		return 1, 1, 1, 1;
 	end
 
-	-- ---------------------------------------------------------
-	-- Construccion
-	-- ---------------------------------------------------------
 	local function Build()
 		if frame then return; end
 
@@ -84,8 +48,7 @@ K.DeferModule("ComboWatch", {
 		frame:SetSize(50, 50);
 		frame:SetFrameStrata("HIGH");
 		frame:SetMovable(true);
-		-- Bloqueado = transparente al mouse, para no comerse los clicks de
-		-- lo que haya detras (barras de accion, marcos, el mundo).
+
 		frame:EnableMouse(not IsLocked());
 		frame:SetClampedToScreen(true);
 
@@ -97,7 +60,6 @@ K.DeferModule("ComboWatch", {
 		text:SetJustifyH("CENTER");
 		text:SetVertexColor(1, 1, 1, 1);
 
-		-- ── Marco animado de "5 puntos" ──
 		animFrame = CreateFrame("Frame", "NUF_ComboWatchAnim", frame);
 		animFrame:SetSize(50, 45);
 		animFrame:SetPoint("CENTER", frame, "CENTER", 0, 3);
@@ -155,7 +117,6 @@ K.DeferModule("ComboWatch", {
 
 		animFrame:SetAlpha(0);
 
-		-- ── Arrastre ──
 		frame:RegisterForDrag("LeftButton");
 		frame:SetScript("OnDragStart", function(self)
 			if IsLocked() then return; end
@@ -187,9 +148,6 @@ K.DeferModule("ComboWatch", {
 		RestorePosition();
 	end
 
-	-- ---------------------------------------------------------
-	-- Actualizacion
-	-- ---------------------------------------------------------
 	local function Update()
 		if not frame or not enabled then return; end
 		if preview then return; end
@@ -212,9 +170,6 @@ K.DeferModule("ComboWatch", {
 		lastValue = value;
 	end
 
-	-- ---------------------------------------------------------
-	-- Modo "mostrar para acomodar"
-	-- ---------------------------------------------------------
 	function K.SetComboWatchPreview(state)
 		if not CAN_HAVE_COMBO then return; end
 		Build();
@@ -229,14 +184,12 @@ K.DeferModule("ComboWatch", {
 		else
 			animFrame:SetAlpha(0);
 			lastValue = 0;
-			-- Con el modulo apagado, Update no hace nada: el "5" de prueba
-			-- quedaba en pantalla comiendose los clicks.
+
 			if not enabled then frame:Hide(); end
 			Update();
 		end
 	end
 
-	-- La llama el checkbox de "Fijarlo en su lugar" del panel
 	function K.ApplyComboWatchLock()
 		if not frame then return; end
 		frame:EnableMouse(preview or not IsLocked());
@@ -246,9 +199,6 @@ K.DeferModule("ComboWatch", {
 		return preview;
 	end
 
-	-- ---------------------------------------------------------
-	-- Eventos (solo con el modulo activo)
-	-- ---------------------------------------------------------
 	local events = CreateFrame("Frame");
 	events:SetScript("OnEvent", function(self, event, unit)
 		if event == "PLAYER_ENTERING_WORLD" then
@@ -260,9 +210,6 @@ K.DeferModule("ComboWatch", {
 		Update();
 	end);
 
-	-- ---------------------------------------------------------
-	-- Registro del modulo
-	-- ---------------------------------------------------------
 	if CAN_HAVE_COMBO then
 		K.RegisterModule("ComboWatch", {
 			onEnable = function()

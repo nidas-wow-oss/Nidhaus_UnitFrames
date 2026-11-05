@@ -1,45 +1,5 @@
--- =========================================================
--- ArenaDoTMark  ·  Aviso de DoTs en los marcos de arena enemigos.
---
--- Al lado de cada marco aparece "DoT" en rojo + los iconos de los DoTs que
--- tiene ese enemigo. Funciona AUNQUE no lo tengas de target ni focus: se
--- apoya en el combat log, no en UnitDebuff. Sirve para no romperte el
--- Arrepentimiento / Polimorfia / Trampa con un tick de dano.
---
--- Como detecta:
---  * Cada SPELL_PERIODIC_DAMAGE sobre un enemigo de arena lo marca durante
---    DOT_GRACE segundos (se renueva con cada tick). No hace falta lista de
---    hechizos: tambien agarra sangrados y DoTs que no esten en KNOWN_DOTS.
---  * Para los DoTs de KNOWN_DOTS, ademas se marca apenas cae el debuff (sin
---    esperar el primer tick) y se saca apenas se va.
---  * Un tick absorbido por un escudo (SPELL_PERIODIC_MISSED / ABSORB) tambien
---    cuenta: el DoT sigue ahi y rompe el CC apenas se cae el escudo.
--- Solo escucha el combat log dentro de una arena.
---
--- Limite: si un DoT es nuevo y todavia no hizo tick, un hechizo fuera de
--- KNOWN_DOTS recien se ve en el primer tick (hasta ~3 s).
---
--- OPCIONES (pestaña Arena > DoT):
---   C.ArenaDoTWarn     prendido / apagado
---   C.ArenaDoTSize     tamaño de los iconos (el texto "DoT" acompaña)
---   C.ArenaDoTSpacing  separacion
---   C.ArenaDoTMax      cuantos iconos como maximo
---   C.ArenaDoTGrow     AUTO / LEFT / RIGHT / UP / DOWN
---   C.ArenaDoTLabel    mostrar el texto "DoT"
---   C.ArenaDoTBorder   borde rojo (si no, borde negro fino)
---
--- POSICION. Sin posicion guardada va debajo del marco. Con el modo Test de
--- arena prendido aparece la vista previa: Shift+Alt+arrastrar la mueve (las
--- cinco filas a la vez). Se guarda por estilo + espejo, como el trinket
--- (NidhausUnitFramesDB.ArenaDoTPositions).
---
--- Prueba:  /nufdot        (vista previa: prende el modo Test de arena)
---          /nufdot clear  (la apaga)
--- =========================================================
 local AddOnName = ...;
--- Este addon se carga a pedido (ver Core/ArenaLoader.lua del addon
--- principal), asi que el "..." de arriba NO trae el namespace de NUF: es el
--- suyo propio. El de NUF se publica como global en Core/Init.lua.
+
 local ns = NidhausUnitFramesNS;
 local K, C, L = unpack(ns);
 
@@ -50,43 +10,35 @@ local ipairs, pairs, tinsert, tremove, select, max, min, floor =
 
 local MAX_ARENA = MAX_ARENA_ENEMIES or 5;
 
--- ---------- Fijos ----------
-local DOT_GRACE = 4.5;   -- segundos sin tick para dar el DoT por terminado
-local KNOWN_TTL = 30;    -- un DoT conocido marcado al caer el debuff se queda
-                         -- hasta el "aura removed" (Curse of Doom no hace
-                         -- ticks); esto es solo el tope por si ese aviso
-                         -- no llega (enemigo fuera de rango del log)
-local OFFSET_Y  = -4;    -- posicion auto: debajo del marco (en Flat el pet
-                         -- asoma 3 px por debajo del marco)
-local DEF_SIZE, DEF_GAP, DEF_MAX = 14, 0, 3;   -- igual que ConfigManager
-local MAX_CAP   = 6;     -- tope del slider "maximo de iconos"
+local DOT_GRACE = 4.5;
+local KNOWN_TTL = 30;
 
--- DoTs conocidos (cualquier rank). Para el aviso inmediato.
--- (Por nombre: casi todos los ranks comparten nombre. Los venenos no:
--- "Deadly Poison IX" es otro nombre, por eso van los ranks altos aparte.)
+local OFFSET_Y  = -4;
+
+local DEF_SIZE, DEF_GAP, DEF_MAX = 14, 0, 3;
+local MAX_CAP   = 6;
+
 local KNOWN_DOT_IDS = {
-	-- Brujo
-	172, 980, 30108, 348, 27243, 603, 47960, 17962,  -- Corruption, Agony, UA, Immolate, Seed, Doom, Shadowflame, Conflagrate
-	-- Sacerdote
-	589, 34914, 2944, 14914,                          -- SW:Pain, VT, Devouring Plague, Holy Fire
-	-- Druida
-	8921, 5570, 1079, 1822, 33745, 9007,              -- Moonfire, Insect Swarm, Rip, Rake, Lacerate, Pounce Bleed
-	-- Picaro
-	703, 1943, 2818, 57969, 57970,                    -- Garrote, Rupture, Deadly Poison (I, VIII, IX)
-	-- Cazador
-	1978, 3674, 53301, 63468,                         -- Serpent Sting, Black Arrow, Explosive Shot, Piercing Shots
-	-- (el DoT de Wyvern Sting NO va: el sueño se llama igual y marcaria
-	-- "DoT" a alguien dormido. Lo agarra el tick generico.)
-	-- Mago
-	44457, 11366, 12654, 44614,                       -- Living Bomb, Pyroblast, Ignite, Frostfire Bolt
-	-- Chaman
-	8050,                                             -- Flame Shock
-	-- DK
-	55095, 55078, 50536,                              -- Frost Fever, Blood Plague, Unholy Blight
-	-- Guerrero
-	772, 12721,                                       -- Rend, Deep Wounds
-	-- Paladin
-	31803, 53742, 61840,                              -- Holy Vengeance, Blood Corruption, Righteous Vengeance
+
+	172, 980, 30108, 348, 27243, 603, 47960, 17962,
+
+	589, 34914, 2944, 14914,
+
+	8921, 5570, 1079, 1822, 33745, 9007,
+
+	703, 1943, 2818, 57969, 57970,
+
+	1978, 3674, 53301, 63468,
+
+	44457, 11366, 12654, 44614,
+
+	8050,
+
+	55095, 55078, 50536,
+
+	772, 12721,
+
+	31803, 53742, 61840,
 };
 local knownDot = {};
 for _, id in ipairs(KNOWN_DOT_IDS) do
@@ -94,14 +46,12 @@ for _, id in ipairs(KNOWN_DOT_IDS) do
 	if name then knownDot[name] = true; end
 end
 
--- ---------- Estado ----------
--- dots[idx] = lista de { name, icon, expire, preview }
 local dots = {};
 local holders = {};
 local guidToIdx = {};
-local enabled = false;   -- opcion prendida
-local listening = false; -- escuchando el combat log (prendida + en arena)
-local previewOn = false; -- vista previa (modo Test de arena)
+local enabled = false;
+local listening = false;
+local previewOn = false;
 
 local function InArena()
 	local _, instanceType = IsInInstance();
@@ -130,7 +80,6 @@ local function IdxFromGUID(guid)
 	return guidToIdx[guid];
 end
 
--- ---------- Opciones ----------
 local function OptSize()
 	local s = tonumber(C.ArenaDoTSize) or DEF_SIZE;
 	if s < 10 then s = 10; elseif s > 40 then s = 40; end
@@ -152,16 +101,11 @@ local function OptGrow()
 	return GROW_OK[g] and g or "AUTO";
 end
 
--- ---------- Posicion guardada (por estilo + espejo) ----------
 local function PosKey()
 	if K.GetArenaPositionKey then return K.GetArenaPositionKey(); end
 	return C.ArenaMirrorMode and "mirror" or "normal";
 end
 
--- { x, y, dir }: dir es hacia donde crecia la fila al soltarla. Con la
--- direccion en Auto se respeta esa: antes se recalculaba segun de que lado
--- del centro del marco habia quedado, y al soltar un poco del otro lado
--- la fila se daba vuelta (parecia que "se imantaba" a cualquier lado).
 local DIR_OK = { LEFT = true, RIGHT = true, UP = true, DOWN = true };
 local function GetSavedPos()
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaDoTPositions;
@@ -179,8 +123,7 @@ local function SavePos(x, y, dir)
 	NidhausUnitFramesDB.ArenaDoTPositions[PosKey()] = { x, y, dir };
 end
 
--- ---------- Widgets ----------
-local RefreshAll;   -- se define abajo (el arrastre la usa)
+local RefreshAll;
 
 local function StartDrag(h)
 	if not previewOn or h._moving then return; end
@@ -197,14 +140,11 @@ local function StopDrag(h)
 	h._moving = false;
 	local af = h:GetParent();
 	local hx, hy = h:GetCenter();
-	-- OJO: "af and af:GetCenter()" se queda solo con el primer valor.
+
 	local ax, ay;
 	if af then ax, ay = af:GetCenter(); end
 	if hx and hy and ax and ay then
-		-- A pixeles de pantalla para restar y de vuelta al espacio de la
-		-- fila, que es donde SetPoint interpreta el offset (la misma cuenta
-		-- que Party Targets). Hoy fila y marco tienen la misma escala, pero
-		-- asi no depende de eso.
+
 		local hs = h:GetEffectiveScale() or 1;
 		local as = af:GetEffectiveScale() or 1;
 		if hs == 0 then hs = 1; end
@@ -228,11 +168,7 @@ local function CreateHolder(idx)
 	if not af then return nil; end
 
 	local h = CreateFrame("Frame", nil, af);
-	-- MEDIUM, como el trinket: en el modo Test el contenedor de los marcos
-	-- de arena (NidhausArenaEnemyFrames) toma el mouse y tapa los huecos
-	-- entre marcos, que es justo donde va esta fila. En el estrato de los
-	-- marcos (LOW) el click se lo llevaba el contenedor y no se podia
-	-- arrastrar.
+
 	h:SetFrameStrata("MEDIUM");
 	h:SetFrameLevel(af:GetFrameLevel() + 6);
 	h:SetClampedToScreen(true);
@@ -243,8 +179,6 @@ local function CreateHolder(idx)
 		if self._moving then self:StopMovingOrSizing(); self._moving = false; end
 	end);
 
-	-- Un FontString sin plantilla no tiene fuente: SetText antes de SetFont
-	-- tira "Font not set". La fuente va primero (Layout la ajusta al tamaño).
 	h.label = h:CreateFontString(nil, "OVERLAY");
 	h.label:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE");
 	h.label:SetTextColor(1, 0.15, 0.15);
@@ -274,7 +208,6 @@ local function CreateIcon(h)
 	return ic;
 end
 
--- Borde rojo de 1 px o negro de 1 px (los iconos son chicos).
 local function ApplyLook(ic, size)
 	ic:SetWidth(size);
 	ic:SetHeight(size);
@@ -297,8 +230,6 @@ local function Layout(idx, h, shown)
 	local size, gap = OptSize(), OptGap();
 	local dir = OptGrow();
 
-	-- La fila se agarra por el primer elemento: si es el texto "DoT", que el
-	-- area agarrable lo cubra entero (es mas ancho que un icono).
 	local w = size;
 	if C.ArenaDoTLabel ~= false then
 		h.label:SetFont("Fonts\\FRIZQT__.TTF", max(9, floor(size * 0.7 + 0.5)), "OUTLINE");
@@ -324,7 +255,6 @@ local function Layout(idx, h, shown)
 	end
 	h._lastDir = dir;
 
-	-- Elementos en orden: texto "DoT" (si va) y despues los iconos.
 	local elems = {};
 	if C.ArenaDoTLabel ~= false then
 		h.label:SetFont("Fonts\\FRIZQT__.TTF", max(9, floor(size * 0.7 + 0.5)), "OUTLINE");
@@ -400,9 +330,8 @@ local function WipeAll()
 	RefreshAll();
 end
 
--- ---------- Vista previa ----------
-local PREVIEW_IDS = { 589, 172, 8921, 1978, 12654, 31803 };  -- SW:P, Corrupcion, Fuego lunar, Picadura, Ignite, Vengeance
-local PREVIEW_COUNT = { 3, 2, 6, 1, 4 };                    -- cuantos por marco (el maximo los recorta)
+local PREVIEW_IDS = { 589, 172, 8921, 1978, 12654, 31803 };
+local PREVIEW_COUNT = { 3, 2, 6, 1, 4 };
 
 local function FillPreview()
 	for idx = 1, MAX_ARENA do
@@ -419,7 +348,7 @@ local function FillPreview()
 	end
 end
 
-local driver;   -- se define abajo
+local driver;
 
 local function SetPreview(on)
 	on = (on and enabled) and true or false;
@@ -432,7 +361,6 @@ local function SetPreview(on)
 	RefreshAll();
 end
 
--- ---------- Reloj ----------
 driver = CreateFrame("Frame");
 driver:Hide();
 local acc = 0;
@@ -460,9 +388,6 @@ driver:SetScript("OnUpdate", function(self, elapsed)
 	if not any then self:Hide(); end
 end);
 
--- ---------- Combat log ----------
--- ttl: cuanto dura la marca sin novedades. Nunca acorta una marca que ya
--- dura mas (un tick no le quita el tope largo a un DoT conocido).
 local function Mark(idx, name, spellID, ttl)
 	local now = GetTime();
 	dots[idx] = dots[idx] or {};
@@ -470,7 +395,7 @@ local function Mark(idx, name, spellID, ttl)
 	for _, d in ipairs(list) do
 		if d.name == name then
 			d.expire = max(d.expire, now + ttl);
-			return false;   -- ya estaba: nada que redibujar
+			return false;
 		end
 	end
 	tinsert(list, {
@@ -481,8 +406,6 @@ local function Mark(idx, name, spellID, ttl)
 	return true;
 end
 
--- 3.3.5a: timestamp, evento, srcGUID, srcName, srcFlags, dstGUID, dstName,
--- dstFlags, spellID, spellName, school, auraType / missType
 local function OnCLEU(...)
 	local _, sub, _, _, _, dstGUID, _, _, spellID, spellName, _, extra = ...;
 
@@ -512,7 +435,6 @@ local function OnCLEU(...)
 	end
 end
 
--- ---------- Activar / desactivar ----------
 local ev = CreateFrame("Frame");
 
 local function ApplyState()
@@ -559,33 +481,14 @@ ev:SetScript("OnEvent", function(self, event, ...)
 	end
 end);
 
--- ---------------------------------------------------------
--- ARRANQUE AL CARGAR
---
--- Hasta aca este modulo solo reaccionaba a eventos. Con el paquete de
--- arena a pedido eso no alcanza: la carga la dispara el propio
--- PLAYER_ENTERING_WORLD de entrar a la arena (Core/ArenaLoader.lua del
--- addon principal), asi que este archivo empieza a correr MIENTRAS ese
--- evento se esta repartiendo y no lo oye nunca.
---
--- Y el combat log se registra adentro de ApplyState. Sin esta llamada, en
--- esa primera arena el modulo no se enteraba de NADA: ni un CC, ni un DoT.
---
--- Es el mismo bug que dejaba los trinkets sin aparecer. ApplyState se
--- puede llamar de mas sin problema: compara contra 'listening' y
--- 'enabled' antes de tocar algo.
--- ---------------------------------------------------------
 ApplyState();
 
--- El modo Test de arena prende y apaga el mouse de los trinkets al abrirse
--- y al cerrarse (ArenaMover): mismo momento para la vista previa.
 if type(K.SetTrinketMouseState) == "function" then
 	hooksecurefunc(K, "SetTrinketMouseState", function(on)
 		SetPreview(on and IsTestMode() and not InArena());
 	end);
 end
 
--- ---------- API para el panel ----------
 function K.ToggleArenaDoTWarn()
 	ApplyState();
 end
@@ -598,7 +501,6 @@ function K.IsArenaDoTPreviewOn()
 	return previewOn;
 end
 
--- Boton "Vista previa": abre o cierra el modo Test de arena.
 function K.ToggleArenaDoTPreview()
 	if not C.ArenaDoTWarn or not C.ArenaFrameOn or InArena() then return false; end
 	if InCombatLockdown and InCombatLockdown() then return false; end
@@ -614,14 +516,12 @@ function K.ToggleArenaDoTPreview()
 	return true;
 end
 
--- Solo el modo puesto: cada estilo (y cada lado del espejo) guarda su lugar.
 function K.ResetArenaDoTPosition()
 	local db = NidhausUnitFramesDB and NidhausUnitFramesDB.ArenaDoTPositions;
 	if type(db) == "table" then db[PosKey()] = nil; end
 	RefreshAll();
 end
 
--- ---------- Prueba por chat ----------
 SLASH_NUFDOT1 = "/nufdot";
 SlashCmdList["NUFDOT"] = function(msg)
 	if msg == "clear" then

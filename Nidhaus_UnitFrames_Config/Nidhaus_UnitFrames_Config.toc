@@ -6,7 +6,6 @@
 ## Dependencies: Nidhaus_UnitFrames
 ## LoadOnDemand: 1
 
-# El orden importa: UIKit vive en el addon principal y ya esta cargado.
 SubTabs.lua
 SideList.lua
 OptionsPanelFrames.lua

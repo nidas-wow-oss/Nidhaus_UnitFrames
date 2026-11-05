@@ -1,70 +1,28 @@
 local AddOnName, ns = ...;
 local K, C, L = unpack(ns);
 
--- SOLO PALADIN. Para las demas clases el archivo termina aca, antes de crear
--- nada: Lua descarta todo su codigo y el modulo no ocupa memoria. El panel,
--- el modo mover y los comandos ya preguntan si el modulo existe.
 if select(2, UnitClass("player")) ~= "PALADIN" then return; end
 
--- =========================================================
--- PaladinAuras.lua
--- Port del grupo de WeakAuras "paladin wa" a codigo nativo.
---
--- Son tres iconos:
---   1) Holy Strength  — proc del encantamiento Crusader (buff propio).
---   2) Healing debuff — Mortal Strike / Aimed Shot / Wound Poison VII
---      sobre CUALQUIER miembro del grupo. Muestra de quien es.
---   3) The Art of War — mientras corre el cooldown del hechizo 59578.
---
--- Las posiciones y tamaños salen de las auras originales, relativas al
--- centro del grupo (que estaba en CENTER, -60, +38, escala 0.95):
---      Party1        (-134, -69)  55x55
---      Art of War    (-134,-128)  55x55
---      Holy Strength ( -73,-128)  50x50
---
--- NOTA 3.3.5a: no hay C_UnitAuras ni AuraUtil; se recorre UnitAura con
--- indice hasta que devuelve nil. Y UnitAura devuelve el spellId en la
--- posicion 11, no en la 10 como en versiones modernas.
--- =========================================================
-
--- Diferido: el cuerpo es de los dos modulos (Turn Evil y Paladin tracker) y
--- corre apenas se prende cualquiera; las fichas van al final del archivo.
 local function Body()
 	local ART_OF_WAR_SPELL = 59578;
 
-	-- Buff propio a vigilar
 	local SELF_BUFF = "Holy Strength";
 
-	-- Debuffs de reduccion de curacion.
-	--
-	-- Se comparan por NOMBRE y no por spellId, porque cada rango tiene el
-	-- suyo (Wound Poison tiene siete) y habria que listarlos todos.
-	--
-	-- Pero los nombres NO se escriben a mano: se resuelven con GetSpellInfo
-	-- a partir de un id de referencia, asi salen en el idioma del cliente.
-	-- Con las cadenas en ingles hardcodeadas, en un cliente en español el
-	-- modulo no habria detectado nada nunca — y el sintoma habria sido
-	-- "no funciona", sin ningun error que lo delatara.
-	-- Todo lo que en 3.3.5a baja la curacion recibida y se ve en arena.
-	-- Antes eran solo los tres primeros: faltaban Furious Attacks (el arma
-	-- rapida del guerrero furia), Mind Trauma (Improved Mind Blast del
-	-- sombra) y Monstrous Bite (la mascota devilsaur del cazador).
 	local HEAL_DEBUFF_IDS = {
-		12294,   -- Mortal Strike (guerrero armas)
-		19434,   -- Aimed Shot (cazador)
-		13218,   -- Wound Poison (picaro) — vale para todos los rangos
-		56112,   -- Furious Attacks (guerrero furia)
-		48301,   -- Mind Trauma (sacerdote sombra, Improved Mind Blast)
-		54680,   -- Monstrous Bite (mascota devilsaur)
+		12294,
+		19434,
+		13218,
+		56112,
+		48301,
+		54680,
 	};
 
-	-- Respaldo en ingles por si el cliente no conoce alguno de esos ids.
 	local HEAL_DEBUFF_FALLBACK = {
 		"Mortal Strike", "Aimed Shot", "Wound Poison",
 		"Furious Attacks", "Mind Trauma", "Monstrous Bite",
 	};
 
-	local HEAL_DEBUFFS;   -- se llena en la primera pasada
+	local HEAL_DEBUFFS;
 
 	local function BuildHealDebuffNames()
 		if HEAL_DEBUFFS then return HEAL_DEBUFFS; end
@@ -84,29 +42,19 @@ local function Body()
 	local enabled  = false;
 	local previewOn = false;
 
-	-- ---------------------------------------------------------
-	-- DB
-	-- ---------------------------------------------------------
 	local function DB()
 		if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 		if not NidhausUnitFramesDB.PaladinAuras then
 			NidhausUnitFramesDB.PaladinAuras = { x = -60, y = 38, scale = 0.95 };
 		end
 		local db = NidhausUnitFramesDB.PaladinAuras;
-		-- Que iconos mostrar: cada uno tiene su casilla en el panel. De
-		-- fabrica los tres, como hasta ahora (el == nil no pisa lo elegido).
+
 		if db.showHoly == nil then db.showHoly = true; end
 		if db.showHeal == nil then db.showHeal = true; end
 		if db.showWar  == nil then db.showWar  = true; end
 		return db;
 	end
 
-	-- ---------------------------------------------------------
-	-- DONDE MOSTRARSE: Arena / Battlegrounds / Duelos / Mundo abierto.
-	-- La logica (y el seguimiento del duelo) es comun a los modulos de clase:
-	-- vive en ModuleManager (K.RegisterModuleZones). Las opciones se siguen
-	-- guardando en esta misma tabla (inArena, inBG, inDuel, inWorld).
-	-- ---------------------------------------------------------
 	local function ZoneAllowed()
 		if not K.ModuleZoneAllowed then return true; end
 		return K.ModuleZoneAllowed("PaladinAuras");
@@ -117,9 +65,6 @@ local function Body()
 		return true;
 	end
 
-	-- ---------------------------------------------------------
-	-- Ancla del grupo (es lo que se arrastra)
-	-- ---------------------------------------------------------
 	local anchor = CreateFrame("Frame", "NUF_PaladinAuras", UIParent);
 	anchor:SetWidth(200);
 	anchor:SetHeight(120);
@@ -130,20 +75,12 @@ local function Body()
 
 	if K.RegisterScalable then K.RegisterScalable("PaladinAuras", anchor, 0.95); end
 
-	-- OJO: hay que guardar el PUNTO completo, no solo x/y.
-	--
-	-- StartMoving() reancla el frame usando su propio punto, que con
-	-- SetClampedToScreen no tiene por que seguir siendo "CENTER". Guardando
-	-- solo las coordenadas y reponiendo siempre con CENTER, los numeros
-	-- quedaban interpretados contra otro punto de referencia y el grupo
-	-- saltaba a otro lado al fijarlo.
 	local function RestorePosition()
 		local db = DB();
 		anchor:ClearAllPoints();
 		anchor:SetPoint(db.point or "CENTER", UIParent,
 			db.relativePoint or "CENTER", db.x or -60, db.y or 38);
-		-- La escala es la del slider del modulo (ScaleAPI). db.scale era fija
-		-- (0.95) y pisaba el slider en cada login.
+
 		anchor:SetScale((K.GetModuleScale and K.GetModuleScale("PaladinAuras")) or db.scale or 0.95);
 	end
 
@@ -164,15 +101,12 @@ local function Body()
 		end
 	end);
 
-	-- ---------------------------------------------------------
-	-- Fabrica de iconos
-	-- ---------------------------------------------------------
 	local function MakeIcon(name, size, x, y, parent)
 		parent = parent or anchor;
 		local f = CreateFrame("Frame", "NUF_PalAura_" .. name, parent);
 		f:SetWidth(size);
 		f:SetHeight(size);
-		-- Los offsets originales son respecto del CENTRO del grupo.
+
 		if parent == anchor then
 			f:SetPoint("CENTER", parent, "CENTER", x + 134, y + 98);
 		else
@@ -181,7 +115,7 @@ local function Body()
 
 		f.tex = f:CreateTexture(nil, "ARTWORK");
 		f.tex:SetAllPoints(f);
-		-- Recorte del borde: sin esto el icono se ve con el marco gris feo.
+
 		f.tex:SetTexCoord(0.07, 0.93, 0.07, 0.93);
 
 		f.border = f:CreateTexture(nil, "BACKGROUND");
@@ -191,20 +125,9 @@ local function Body()
 
 		f.cd = CreateFrame("Cooldown", nil, f, "CooldownFrameTemplate");
 		f.cd:SetAllPoints(f);
-		-- El numero del medio lo dibuja tu addon contador de cooldowns (OmniCC
-		-- o similar). Se deja pasar: alcanza con NO poner noCooldownCount.
-		--
-		-- SENTIDO DEL BARRIDO: true.
-		--
-		-- Verificado a ojo, no deducido: con false el sector oscuro CRECE (el
-		-- icono se va de claro a oscuro) y con true ARRANCA oscuro y se va
-		-- destapando, que es lo que se quiere para una duracion que corre.
-		-- El nombre "reverse" engaÃ±a, porque suena a lo contrario.
+
 		f.cd:SetReverse(true);
 
-		-- Texto de abajo: SOLO para nombres de unidad (quien tiene el debuff).
-		-- Los segundos restantes se sacaron: ya los muestra el barrido y el
-		-- numerito abajo ensuciaba el icono.
 		f.label = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 		f.label:SetPoint("BOTTOM", f, "BOTTOM", 0, -12);
 		f.label:SetText("");
@@ -217,45 +140,14 @@ local function Body()
 	local icoHeal = MakeIcon("HealDebuff",   55, -134,  -69);
 	local icoWar  = MakeIcon("ArtOfWar",     55, -134, -128);
 
-	-- ---------------------------------------------------------
-	-- TURN EVIL — grupo dinamico aparte
-	--
-	-- Del grupo de WeakAuras "Turn Evil 123": dynamicgroup que crece hacia
-	-- ABAJO, 2px de separacion, escala 1.2, en CENTER (+98.7, +200.5), con
-	-- hasta 3 iconos de 64x64. Cada uno marca a un miembro del grupo que
-	-- tenga el debuff "Turn Evil" encima.
-	--
-	-- Va con ancla propia porque su posicion en pantalla no tiene nada que
-	-- ver con la del grupo "paladin wa".
-	-- ---------------------------------------------------------
-	-- Idem: nombre localizado a partir del id, con respaldo en ingles.
 	local TURN_EVIL     = GetSpellInfo(10326) or "Turn Evil";
-	-- Unidades que vigila ESTE tracker: las mascotas enemigas de arena.
-	-- No usa UNITS (player + party1..4) porque eso son las unidades propias:
-	-- lo que interesa es ver cuando una mascota rival quedo bajo Turn Evil.
+
 	local TE_UNITS = { "arenapet1", "arenapet2", "arenapet3", "arenapet4", "arenapet5" };
 
-	-- La gargola del DK (y cualquier otro invocado temporal) NO es la mascota:
-	-- es un "guardian" y no tiene unidad propia, asi que arenapetN nunca la ve.
-	-- La unica forma de detectarla es leyendo el registro de combate: se anota
-	-- a quien le entro el Turn Evil y se borra cuando el aura cae o se agota.
 	local TURN_EVIL_ID  = 10326;
-	-- DOS DURACIONES, NO UNA.
-	--
-	-- Turn Evil dura 20 segundos sobre un no-muerto o demonio del mundo, pero
-	-- el juego le aplica el TOPE DE PVP a todo lo que maneja un jugador — y
-	-- las mascotas cuentan: el felguard de un brujo o la gargola de un DK se
-	-- quedan 10, no 20.
-	--
-	-- El icono mostraba 20 siempre, asi que en arena la cuenta atras iba
-	-- mintiendo la mitad del tiempo: creias tener diez segundos mas de los
-	-- que tenias.
-	--
-	-- El registro de combate ya trae el dato: el bit CONTROL_PLAYER de las
-	-- banderas del objetivo se prende cuando lo maneja un jugador, sea el
-	-- jugador mismo o su mascota.
-	local TE_DURATION     = 20;        -- npc del mundo
-	local TE_DURATION_PVP = 10;        -- jugadores y sus mascotas
+
+	local TE_DURATION     = 20;
+	local TE_DURATION_PVP = 10;
 	local TE_ICON       = select(3, GetSpellInfo(TURN_EVIL_ID))
 	                      or "Interface\\Icons\\Spell_Holy_TurnUndead";
 
@@ -269,16 +161,8 @@ local function Body()
 		return TE_DURATION;
 	end
 
-	local teLog = {};                  -- [GUID] = { name = ..., expires = ... }
-	-- UN SOLO icono, no tres.
-	--
-	-- La WeakAura original eran tres clones porque un "dynamic group" crea uno
-	-- por cada coincidencia. Pero en la practica alcanza con uno: te avisa que
-	-- Turn Evil esta activo y sobre quien. Tres iconos ocupaban pantalla para
-	-- repetir la misma informacion.
-	--
-	-- El codigo sigue siendo una lista, asi que subir este numero es lo unico
-	-- que hace falta si alguna vez se quieren ver varios a la vez.
+	local teLog = {};
+
 	local TURN_EVIL_MAX = 1;
 	local TE_SIZE, TE_SPACE = 64, 2;
 
@@ -305,7 +189,7 @@ local function Body()
 		teAnchor:ClearAllPoints();
 		teAnchor:SetPoint(db.point or "TOP", UIParent,
 			db.relativePoint or "CENTER", db.x or 99, db.y or 201);
-		-- Igual que el de auras: manda el slider (ScaleAPI).
+
 		teAnchor:SetScale((K.GetModuleScale and K.GetModuleScale("TurnEvil")) or db.scale or 1.2);
 	end
 
@@ -328,47 +212,23 @@ local function Body()
 		end
 	end);
 
-	-- ---------------------------------------------------------
-	-- GLOW VERDE (portado de Cheese / Spell Activation Overlay)
-	--
-	-- Dos capas, como en el original:
-	--   ANTS  — borde de "hormigas" que recorre el contorno. Es una HOJA DE
-	--           SPRITES de 256x256 con celdas de 48x48 y 22 cuadros; se anima
-	--           cambiando TexCoords, no con AnimationGroups (que en 3.3.5a no
-	--           existen: Cheese las reimplementa en APIAnimation.lua).
-	--   GLOW  — resplandor que late por fuera del icono.
-	--
-	-- LO QUE ME FALTABA EN EL PRIMER INTENTO: IconAlert.blp es un ATLAS, no una
-	-- imagen sola. Dibujarlo completo apila todos los sprites encima del icono
-	-- (de ahi el engendro verde con puas). Hay que recortar la sub-region, con
-	-- las mismas TexCoords que usa Cheese en ActionBarFrame.xml.
-	-- ---------------------------------------------------------
 	local GLOW_PATH = "Interface\\AddOns\\" .. AddOnName .. "\\Media\\Glow\\";
-	local GLOW_R, GLOW_G, GLOW_B = 0.15, 1.0, 0.25;   -- verde
+	local GLOW_R, GLOW_G, GLOW_B = 0.15, 1.0, 0.25;
 
-	-- Sub-region del atlas correspondiente al resplandor.
 	local GLOW_L, GLOW_RI, GLOW_T, GLOW_B2 = 0.00781250, 0.50781250, 0.27734375, 0.52734375;
 
-	-- Hoja de las hormigas: 256x256, celdas de 48x48, 22 cuadros.
 	local ANTS_SHEET, ANTS_CELL, ANTS_FRAMES = 256, 48, 22;
-	local ANTS_PER_ROW = math.floor(ANTS_SHEET / ANTS_CELL);   -- 5
-	-- Segundos por cuadro: MAS ALTO = MAS DESPACIO. Cheese usa 0.01, que a 22
-	-- cuadros da una vuelta completa cada 0.22s (muy rapido). Con 0.02 la
-	-- vuelta tarda 0.44s.
+	local ANTS_PER_ROW = math.floor(ANTS_SHEET / ANTS_CELL);
+
 	local ANTS_STEP    = 0.05;
-	-- Cuanto sobresale el borde giratorio respecto del icono, en fraccion del
-	-- ancho. En Cheese va setAllPoints (calza exacto); aca se agranda un poco
-	-- para que el borde se lea por fuera del icono.
+
 	local ANTS_GROW    = 0.14;
 
-	-- Intensidad del resplandor exterior ("el humo"). Es un rango: el latido
-	-- va de GLOW_ALPHA_MIN a GLOW_ALPHA_MIN + GLOW_ALPHA_RANGE.
 	local GLOW_ALPHA_MIN   = 0.22;
 	local GLOW_ALPHA_RANGE = 0.26;
-	-- Segundos que tarda un latido completo del resplandor. MAS ALTO = MAS LENTO.
+
 	local GLOW_PULSE       = 2.2;
 
-	-- Equivalente de Cheese_AnimateTexCoords, en una funcion.
 	local function AntsFrame(tex, index)
 		local col = index % ANTS_PER_ROW;
 		local row = math.floor(index / ANTS_PER_ROW);
@@ -381,21 +241,17 @@ local function Body()
 	local function AttachGlow(icon)
 		if icon.glow then return icon.glow; end
 
-		-- Frame propio por encima: asi el barrido del cooldown no le pasa por
-		-- arriba al resplandor.
 		local g = CreateFrame("Frame", nil, icon);
 		g:SetAllPoints(icon);
 		g:SetFrameLevel(icon:GetFrameLevel() + 4);
 		g:Hide();
 
-		-- Resplandor: por FUERA del icono, con la sub-region recortada.
 		g.ring = g:CreateTexture(nil, "ARTWORK");
 		g.ring:SetTexture(GLOW_PATH .. "IconAlert");
 		g.ring:SetTexCoord(GLOW_L, GLOW_RI, GLOW_T, GLOW_B2);
 		g.ring:SetBlendMode("ADD");
 		g.ring:SetVertexColor(GLOW_R, GLOW_G, GLOW_B);
 
-		-- Hormigas: calzan EXACTO sobre el icono, es el borde que recorre.
 		g.ants = g:CreateTexture(nil, "OVERLAY");
 		g.ants:SetTexture(GLOW_PATH .. "IconAlertAnts");
 		do
@@ -409,7 +265,7 @@ local function Body()
 
 		g.t, g.antT, g.antI = 0, 0, 0;
 		g:SetScript("OnUpdate", function(self, elapsed)
-			-- Hormigas: avanzan de cuadro a ritmo fijo.
+
 			self.antT = self.antT + elapsed;
 			while self.antT >= ANTS_STEP do
 				self.antT = self.antT - ANTS_STEP;
@@ -417,7 +273,6 @@ local function Body()
 				AntsFrame(self.ants, self.antI);
 			end
 
-			-- Resplandor: latido de 1.2s, creciendo por fuera del icono.
 			self.t = self.t + elapsed;
 			local wave = math.sin((self.t % GLOW_PULSE) / GLOW_PULSE * math.pi * 2) * 0.5 + 0.5;
 			local grow = icon:GetWidth() * (0.35 + wave * 0.15);
@@ -431,18 +286,6 @@ local function Body()
 		return g;
 	end
 
-	-- OJO: PRENDER NO ES REINICIAR.
-	--
-	-- Aca estaba el borde que "parpadeaba" en vivo mientras que en el modo
-	-- mover se veia perfecto. Los contadores de la animacion (el cuadro de
-	-- las hormigas y la fase del latido) se ponian en cero en CADA llamada, y
-	-- en vivo RefreshTurnEvil corre cada 0.1 s desde el ticker: el borde no
-	-- pasaba nunca del segundo cuadro y volvia a empezar diez veces por
-	-- segundo. En el modo mover el glow se prende una sola vez y nadie lo
-	-- vuelve a tocar, por eso ahi giraba bien.
-	--
-	-- Ahora los contadores se reinician SOLO cuando el glow estaba apagado,
-	-- asi la animacion sigue de largo mientras el icono siga en la pila.
 	local function SetGlow(icon, on)
 		if on then
 			local g = AttachGlow(icon);
@@ -455,10 +298,6 @@ local function Body()
 		end
 	end
 
-	-- Borde base VERDE, no negro (los iconos del grupo "paladin wa" siguen en
-	-- negro: solo Turn Evil lleva el tratamiento verde).
-	-- Se deriva del color del glow multiplicado por BORDER_DIM, asi cambiando
-	-- GLOW_R/G/B se mueven las dos cosas juntas y no se desincronizan.
 	local BORDER_DIM = 0.55;
 
 	local teIcons = {};
@@ -470,10 +309,6 @@ local function Body()
 		teIcons[i] = f;
 	end
 
-	-- ---------------------------------------------------------
-	-- Escaneo de auras
-	-- ---------------------------------------------------------
-	-- Devuelve icono, expiracion y duracion del buff propio, o nil.
 	local function FindSelfBuff()
 		for i = 1, 40 do
 			local nm, _, icon, _, _, duration, expires = UnitAura("player", i, "HELPFUL");
@@ -482,8 +317,6 @@ local function Body()
 		end
 	end
 
-	-- Proc de The Art of War sobre uno mismo. Coincide por nombre o por el
-	-- spellId 59578, que es el que trae la aura original.
 	local function FindArtOfWar()
 		local wanted = GetSpellInfo(ART_OF_WAR_SPELL);
 		for i = 1, 40 do
@@ -496,15 +329,8 @@ local function Body()
 		end
 	end
 
-	-- EL DEBUFF DE CURACION, POR UNIDAD Y CON MEMORIA.
-	--
-	-- Antes se recorrian las 40 auras de los cinco del grupo cada 0.1 s y en
-	-- cada UNIT_AURA de cualquier unidad (los enemigos de arena incluidos):
-	-- cientos de llamadas por segundo en una pelea. Ahora cada unidad se
-	-- vuelve a mirar solo cuando le cambian las auras (healDirty), y el
-	-- resto del tiempo se lee lo guardado.
-	local healCache = {};   -- [unit] = { icon, expires, duration } o false
-	local healDirty = {};   -- [unit] = true si hay que volver a mirarla
+	local healCache = {};
+	local healDirty = {};
 	for _, u in ipairs(UNITS) do healDirty[u] = true; end
 	local IS_GROUP_UNIT = {};
 	for _, u in ipairs(UNITS) do IS_GROUP_UNIT[u] = true; end
@@ -512,12 +338,11 @@ local function Body()
 	local function ScanHealDebuff(unit)
 		if not UnitExists(unit) or UnitIsDeadOrGhost(unit) then return false; end
 		local names = BuildHealDebuffNames();
-		local woundBase = GetSpellInfo(13218);   -- "Wound Poison" localizado
+		local woundBase = GetSpellInfo(13218);
 		for i = 1, 40 do
 			local nm, _, icon, _, _, duration, expires = UnitAura(unit, i, "HARMFUL");
 			if not nm then break; end
-			-- El nombre exacto, o cualquier rango de Wound Poison: en
-			-- 3.3.5a el rango va en el nombre ("Wound Poison VII").
+
 			if names[nm]
 				or (woundBase and string.sub(nm, 1, string.len(woundBase)) == woundBase) then
 				return { icon, expires, duration };
@@ -526,15 +351,12 @@ local function Body()
 		return false;
 	end
 
-	-- Devuelve icono, expiracion, duracion, el nombre (en color de clase)
-	-- del que lo tiene y cuantos mas lo tienen. Si son varios, muestra el
-	-- que mas tiempo le queda: es al que mas le va a pesar.
 	local function FindHealDebuff()
 		local now = GetTime();
 		local best, bestUnit, count = nil, nil, 0;
 		for _, unit in ipairs(UNITS) do
 			local e = healCache[unit];
-			-- Vencido sin aviso (se murio, se fue de rango): mirarlo de nuevo.
+
 			if e and e[2] and e[2] > 0 and e[2] < now then healDirty[unit] = true; end
 			if healDirty[unit] then
 				e = ScanHealDebuff(unit);
@@ -556,15 +378,11 @@ local function Body()
 		return best[1], best[2], best[3], who;
 	end
 
-	local ApplyPreviewIcons;   -- mas abajo, junto al preview
+	local ApplyPreviewIcons;
 
-	-- ---------------------------------------------------------
-	-- Refresco
-	-- ---------------------------------------------------------
 	local function Refresh()
 		if not enabled then return; end
 
-		-- Fuera de las zonas elegidas no se muestra (salvo en modo mover).
 		if not previewOn then
 			if ZoneAllowed() then
 				if not anchor:IsShown() then anchor:Show(); end
@@ -576,7 +394,6 @@ local function Body()
 
 		local db = DB();
 
-		-- 1) Holy Strength
 		local icon, expires, duration;
 		if db.showHoly then icon, expires, duration = FindSelfBuff(); end
 		if icon then
@@ -591,8 +408,6 @@ local function Body()
 			icoHoly:Hide();
 		end
 
-		-- 2) Reduccion de curacion en el grupo (si esta destildado ni se
-		-- recorre el grupo).
 		local dIcon, dExp, dDur, who;
 		if db.showHeal then dIcon, dExp, dDur, who = FindHealDebuff(); end
 		if dIcon then
@@ -608,16 +423,6 @@ local function Body()
 			icoHeal:Hide();
 		end
 
-		-- 3) The Art of War
-		--
-		-- La WeakAura original lo tenia como "Cooldown Progress (Spell)" con
-		-- showOnCooldown, o sea esperando que el hechizo 59578 tuviera cooldown.
-		-- En 3.3.5a no lo tiene: es un proc pasivo y GetSpellCooldown devuelve
-		-- 0/0 siempre, asi que ese trigger no se disparaba NUNCA.
-		--
-		-- Lo que sirve es el BUFF del proc, que es lo que te habilita el
-		-- Exorcism / Flash of Light instantaneo. Se busca por nombre y tambien
-		-- por spellId, porque algunos servidores le cambian el nombre.
 		local wIcon, wExp, wDur;
 		if db.showWar then wIcon, wExp, wDur = FindArtOfWar(); end
 		if wIcon then
@@ -633,10 +438,9 @@ local function Body()
 		end
 	end
 
-	-- Llena la pila con las mascotas enemigas de arena que tengan Turn Evil encima.
 	local function RefreshTurnEvil()
 		if not teEnabled then return; end
-		-- Fuera de las zonas elegidas no se muestra (salvo en modo mover).
+
 		if not tePreview and K.ModuleZoneAllowed and not K.ModuleZoneAllowed("TurnEvil") then
 			for i = 1, TURN_EVIL_MAX do
 				SetGlow(teIcons[i], false);
@@ -671,7 +475,7 @@ local function Body()
 				end
 			end
 		end
-		-- Lo que no tiene unidad propia (gargola y demas invocados) sale de aca.
+
 		local ahora = GetTime();
 		for guid, info in pairs(teLog) do
 			if info.expires <= ahora then
@@ -697,11 +501,6 @@ local function Body()
 		end
 	end
 
-	-- Los dos marcos de este archivo guardan al soltar el MOUSE, y "Mover
-	-- todo" arrastra con su propio recuadro: se le deja el guardado aca.
-	-- Ver "UN SOLO DUEÑO POR POSICION" en GlobalUnlock.lua.
-	-- type() y no "or {}": K tiene un indice por defecto en algunos
-	-- entornos, y "or" no lo filtra.
 	if type(K.FramePositionOwners) ~= "table" then K.FramePositionOwners = {}; end
 	K.FramePositionOwners["PalAuras"] = function() SavePosition(); end
 	K.FramePositionOwners["TurnEvil"] = function() TeSave(); end
@@ -709,7 +508,7 @@ local function Body()
 	function K.SetTurnEvilPreview(state)
 		tePreview = state and true or false;
 		teAnchor:EnableMouse(tePreview);
-		-- Mismo criterio que arriba: reponer al entrar, guardar al salir.
+
 		if tePreview then
 			TeRestore();
 		else
@@ -722,8 +521,7 @@ local function Body()
 				local f = teIcons[i];
 				if not f.tex:GetTexture() then f.tex:SetTexture(qm); end
 				f.label:SetText("");
-				-- El glow tambien en el test: es lo que se quiere ver para
-				-- decidir donde poner el icono.
+
 				SetGlow(f, true);
 				f:Show();
 			end
@@ -744,14 +542,11 @@ local function Body()
 		TeRestore();
 	end
 
-	-- ---------------------------------------------------------
-	-- Eventos + ticker
-	-- ---------------------------------------------------------
 	local acc = 0;
 	local ticker = CreateFrame("Frame");
 	ticker:Hide();
 	ticker:SetScript("OnUpdate", function(self, elapsed)
-		-- 0.1s alcanza para que los numeros no salten y no cuesta nada.
+
 		acc = acc + elapsed;
 		if acc < 0.1 then return; end
 		acc = 0;
@@ -762,13 +557,11 @@ local function Body()
 	local events = CreateFrame("Frame");
 	events:SetScript("OnEvent", function(self, event, ...)
 		if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-			-- 3.3.5a: timestamp, subevento, srcGUID, srcName, srcFlags,
-			--         dstGUID, dstName, dstFlags, spellId, spellName, ...
+
 			local _, sub, _, _, _, dstGUID, dstName, dstFlags, spellId, spellName = ...;
 			if spellId == TURN_EVIL_ID or spellName == TURN_EVIL then
 				if sub == "SPELL_AURA_APPLIED" or sub == "SPELL_AURA_REFRESH" then
-					-- Se guarda TAMBIEN la duracion que le toco: el icono la
-					-- necesita despues para dibujar bien la cuenta atras.
+
 					local dur = TurnEvilDuration(dstFlags);
 					teLog[dstGUID] = {
 						name = dstName, dur = dur, expires = GetTime() + dur,
@@ -778,29 +571,22 @@ local function Body()
 					teLog[dstGUID] = nil;
 				end
 			end
-			-- Sin refrescar aca: el ticker lo hace cada 0.1s y asi no se paga
-			-- un Refresh() completo por cada linea del registro de combate.
+
 			return;
 		end
 		if event == "UNIT_AURA" then
-			-- Solo cuenta el grupo: el resto (enemigos, objetivo, foco) lo
-			-- mira Turn Evil por su lado.
+
 			local unit = ...;
 			if IS_GROUP_UNIT[unit] then healDirty[unit] = true; Refresh(); end
 			RefreshTurnEvil();
 			return;
 		end
-		-- Cambio el grupo o se entro al mundo: todos de nuevo.
+
 		for _, u in ipairs(UNITS) do healDirty[u] = true; end
 		Refresh();
 		RefreshTurnEvil();
 	end);
 
-	-- ---------------------------------------------------------
-	-- Preview / mover
-	-- ---------------------------------------------------------
-	-- En modo mover se ven los iconos que tenes tildados, nada mas: asi lo
-	-- acomodas viendo lo que despues va a aparecer.
 	ApplyPreviewIcons = function()
 		local db = DB();
 		if db.showHoly then icoHoly:Show(); else icoHoly:Hide(); end
@@ -811,13 +597,7 @@ local function Body()
 	function K.SetPaladinAurasPreview(state)
 		previewOn = state and true or false;
 		anchor:EnableMouse(previewOn);
-		-- Reponer SOLO al entrar en modo mover. Con el modulo apagado, onEnable
-		-- nunca corrio y el frame no tendria ningun SetPoint (y un frame sin
-		-- anclaje no se dibuja: por eso /nufpal parecia no hacer nada).
-		--
-		-- Al SALIR no se repone: el frame ya esta donde lo dejaste, y llamar a
-		-- RestorePosition aca lo mandaba de vuelta al valor guardado — que era
-		-- justamente el sintoma de "no me guarda la posicion al fijar".
+
 		if previewOn then
 			RestorePosition();
 		else
@@ -826,9 +606,7 @@ local function Body()
 		if previewOn then
 			anchor:Show();
 			local qm = "Interface\\Icons\\INV_Misc_QuestionMark";
-			-- En preview se usan iconos reales cuando se pueden resolver: si
-			-- alguno sale con signo de pregunta, es que ese hechizo no existe
-			-- en este cliente y por eso nunca se iba a mostrar.
+
 			local _, _, warIcon = GetSpellInfo(ART_OF_WAR_SPELL);
 			if warIcon then icoWar.tex:SetTexture(warIcon); end
 			icoHoly.tex:SetTexture("Interface\\Icons\\INV_Sword_04");
@@ -855,7 +633,6 @@ local function Body()
 		if K.SetModuleZone then K.SetModuleZone("PaladinAuras", key, v); end
 	end
 
-	-- Casillas de cada icono (panel): showHoly / showHeal / showWar.
 	function K.GetPaladinAurasShow(key)
 		return DB()[key] and true or false;
 	end
@@ -881,9 +658,6 @@ local function Body()
 	SlashCmdList["NUFPALAURAS"] = function(msg)
 		msg = string.lower(msg or "");
 
-		-- /nufpal debug -> volcado del estado. Sirve para saber si el problema
-		-- es que el modulo no carga, que el frame no tiene posicion, o que el
-		-- hechizo simplemente no tiene cooldown que mostrar.
 		if msg == "debug" then
 			local p = function(t) DEFAULT_CHAT_FRAME:AddMessage("|cff4FC3F7NUFpal:|r " .. t); end
 			p("PaladinAuras module on: " .. tostring(enabled));
@@ -919,16 +693,9 @@ local function Body()
 			or  (L["PAL_PREVIEW_OFF"] or "Paladin tracker: position locked.")));
 	end
 
-	-- ---------------------------------------------------------
-	-- Registro del modulo
-	-- ---------------------------------------------------------
-	-- Posicion inicial al cargar el archivo, este el modulo prendido o no:
-	-- asi /nufpal y el modo mover siempre encuentran un frame ubicable.
 	RestorePosition();
 	TeRestore();
 
-	-- Donde se muestra cada uno (ver ModuleManager). Cambiar una casilla o de
-	-- zona los refresca en el acto; el ticker igual lo revisa cada 0.1 s.
 	if K.RegisterModuleZones then
 		K.RegisterModuleZones("PaladinAuras", DB, function() Refresh(); end);
 		K.RegisterModuleZones("TurnEvil", TeDB, function() RefreshTurnEvil(); end);
@@ -941,9 +708,9 @@ local function Body()
 			events:RegisterEvent("UNIT_AURA");
 			events:RegisterEvent("PARTY_MEMBERS_CHANGED");
 			events:RegisterEvent("PLAYER_ENTERING_WORLD");
-			-- Las unidades de arena aparecen y desaparecen con este evento.
+
 			events:RegisterEvent("ARENA_OPPONENT_UPDATE");
-			-- Para la gargola y demas invocados sin unidad propia.
+
 			events:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
 			ticker:Show();
 			RefreshTurnEvil();
@@ -960,8 +727,7 @@ local function Body()
 				events:UnregisterAllEvents();
 				ticker:Hide();
 			else
-				-- El registro de combate y la arena son solo de Turn Evil: con el
-				-- tracker del paladin prendido quedaban escuchando para nada.
+
 				events:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
 				events:UnregisterEvent("ARENA_OPPONENT_UPDATE");
 			end
@@ -986,8 +752,7 @@ local function Body()
 			enabled = false;
 			icoHoly:Hide(); icoHeal:Hide(); icoWar:Hide();
 			if not previewOn then anchor:Hide(); end
-			-- Los dos modulos comparten el ticker y los eventos: solo se apagan
-			-- cuando NINGUNO de los dos queda activo.
+
 			if not teEnabled then
 				events:UnregisterAllEvents();
 				ticker:Hide();
