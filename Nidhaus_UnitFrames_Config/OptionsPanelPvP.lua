@@ -1211,7 +1211,65 @@ function K.BuildPvPSection(pane)
 				L["SLIDER_SCALE"] or "Scale");
 		end
 
-		eaBlk:SetBodyHeight(180);
+		do
+			local s = CreateFrame("Slider", nil, eaBody, "OptionsSliderTemplate");
+			s:SetPoint("TOPLEFT", 260, -142);
+			s:SetWidth(180);
+			s:SetMinMaxValues(1, 10);
+			s:SetValueStep(1);
+			K.UI.SliderEnds(s, "1", "10");
+			local t = s:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+			t:SetPoint("BOTTOMLEFT", s, "TOPLEFT", 0, 2);
+			t:SetText(L["ALERT_DURATION"] or "Seconds on screen");
+			local val = s:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+			val:SetPoint("BOTTOMRIGHT", s, "TOPRIGHT", 0, 2);
+			local function Sync()
+				local v = (K.GetEnemyAlertOption and K.GetEnemyAlertOption("duration")) or 3;
+				s._last = v; s:SetValue(v); val:SetText(tostring(v));
+			end
+			Sync();
+			eaBody:HookScript("OnShow", Sync);
+			s:SetScript("OnValueChanged", function(self, v)
+				v = math.floor(v + 0.5);
+				if self._last == v then return; end
+				self._last = v;
+				self:SetValue(v);
+				val:SetText(tostring(v));
+				if K.SetEnemyAlertOption then K.SetEnemyAlertOption("duration", v); end
+			end);
+		end
+
+		local _, eaBorderRefresh = ChoiceSelector(eaBody, 26, -182, L["BTN_BORDER_LABEL"] or "Border:", {
+			{ value = "thin",  text = L["ALERT_BORDER_THIN"]  or "Thin" },
+			{ value = "class", text = L["ALERT_BORDER_CLASS"] or "Class color" },
+			{ value = "none",  text = L["BORDER_NONE"]        or "No border" },
+		},
+			function() return (K.GetEnemyAlertOption and K.GetEnemyAlertOption("border")) or "thin"; end,
+			function(v) if K.SetEnemyAlertOption then K.SetEnemyAlertOption("border", v); end end);
+		eaBody:HookScript("OnShow", eaBorderRefresh);
+
+		checkboxCount = checkboxCount + 1;
+		local sndName = "NidhausEASoundCB" .. checkboxCount;
+		local sndCB = CreateFrame("CheckButton", sndName, eaBody, "InterfaceOptionsCheckButtonTemplate");
+		sndCB:SetPoint("TOPLEFT", 312, -198);
+		sndCB:SetHitRectInsets(0, -100, 0, 0);
+		if _G[sndName .. "Text"] then _G[sndName .. "Text"]:SetText(L["ALERT_SOUND"] or "Play a sound"); end
+		local function SyncSound() sndCB:SetChecked(K.GetEnemyAlertOption and K.GetEnemyAlertOption("sound")); end
+		SyncSound();
+		eaBody:HookScript("OnShow", SyncSound);
+		sndCB:SetScript("OnClick", function(self)
+			local v = (self:GetChecked() == 1 or self:GetChecked() == true);
+			if K.SetEnemyAlertOption then K.SetEnemyAlertOption("sound", v); end
+		end);
+		sndCB:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(L["ALERT_SOUND"] or "Play a sound", 1, 1, 1);
+			GameTooltip:AddLine(L["TIP_ALERT_SOUND"] or "A raid warning sound when a new icon shows up (at most once per second).", nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		sndCB:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+
+		eaBlk:SetBodyHeight(232);
 		eaBlk:Refresh();
 
 		AddMover("EnemySpellAlert",
@@ -1378,6 +1436,74 @@ function K.BuildPvPSection(pane)
 			function(v) if K.SetGargoylePreview then K.SetGargoylePreview(v); end end,
 			function() if K.ResetGargoylePosition then K.ResetGargoylePosition(); end end,
 			gtTest, L["BTN_HIDE_BARS"] or "Hide", L["BTN_TEST_MODE"] or "Test mode");
+	end
+
+	local teBlk, teBody = ModuleBlock(pane, prev, "TurnEvil",
+		L["MOD_TURN_EVIL"] or "Turn Evil tracker", L["MOD_TURN_EVIL_DESC"]);
+	prev = teBlk;
+	if teBlk.checkbox then
+		local teMove = CreateFrame("Button", nil, teBody, "UIPanelButtonTemplate");
+		teMove:SetPoint("TOPLEFT", 24, -4);
+		teMove:SetSize(150, 22);
+		local function SyncTeMove()
+			teMove:SetText((K.IsTurnEvilPreview and K.IsTurnEvilPreview()) and LOCK or MOVE);
+		end
+		SyncTeMove();
+		teMove:SetScript("OnClick", function()
+			if K.SetTurnEvilPreview then K.SetTurnEvilPreview(not (K.IsTurnEvilPreview and K.IsTurnEvilPreview())); end
+			SyncTeMove();
+		end);
+		teBody:HookScript("OnShow", SyncTeMove);
+
+		local teReset = CreateFrame("Button", nil, teBody, "UIPanelButtonTemplate");
+		teReset:SetPoint("LEFT", teMove, "RIGHT", 8, 0);
+		teReset:SetSize(100, 22);
+		teReset:SetText(L["BTN_MOVE_RESET"] or "Reset");
+		teReset:SetScript("OnClick", function()
+			if K.ResetTurnEvilPosition then K.ResetTurnEvilPosition(); end
+			if K.ResetModuleScale then K.ResetModuleScale("TurnEvil"); end
+		end);
+
+		local teWhere = teBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
+		teWhere:SetPoint("TOPLEFT", 24, -34);
+		teWhere:SetText((K.UI and K.UI.Label(L["GARG_WHERE"] or "Show it in:"))
+			or (L["GARG_WHERE"] or "Show it in:"));
+		local teZones = {
+			{ key = "inArena", text = L["GARG_ARENA"] or "Arena",         x = 26,  y = -52 },
+			{ key = "inBG",    text = L["GARG_BG"]    or "Battlegrounds", x = 150, y = -52 },
+			{ key = "inDuel",  text = L["GARG_DUEL"]  or "Duels",         x = 300, y = -52 },
+			{ key = "inWorld", text = L["GARG_WORLD"] or "Open world",    x = 26,  y = -78 },
+		};
+		for _, z in ipairs(teZones) do
+			checkboxCount = checkboxCount + 1;
+			local cbName = "NidhausTEZoneCB" .. checkboxCount;
+			local cb = CreateFrame("CheckButton", cbName, teBody, "InterfaceOptionsCheckButtonTemplate");
+			cb:SetPoint("TOPLEFT", z.x, z.y);
+			cb:SetHitRectInsets(0, 0, 0, 0);
+			local fs = _G[cbName .. "Text"];
+			if fs then fs:SetText(z.text); end
+
+			local function Sync() cb:SetChecked(K.GetModuleZone and K.GetModuleZone("TurnEvil", z.key)); end
+			Sync();
+			teBody:HookScript("OnShow", Sync);
+			cb:SetScript("OnClick", function(self)
+				local v = (self:GetChecked() == 1 or self:GetChecked() == true);
+				if K.SetModuleZone then K.SetModuleZone("TurnEvil", z.key, v); end
+			end);
+		end
+
+		if K.UI and K.UI.ScaleSlider then
+			K.UI.ScaleSlider(teBody, "TurnEvil", 26, -126, 200);
+		end
+
+		teBlk:SetBodyHeight(160);
+		teBlk:Refresh();
+
+		AddMover("TurnEvil",
+			function() return K.IsTurnEvilPreview and K.IsTurnEvilPreview(); end,
+			function(v) if K.SetTurnEvilPreview then K.SetTurnEvilPreview(v); end end,
+			function() if K.ResetTurnEvilPosition then K.ResetTurnEvilPosition(); end end,
+			teMove, LOCK, MOVE);
 	end
 
 	local total = 0;

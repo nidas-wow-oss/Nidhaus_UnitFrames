@@ -88,6 +88,9 @@ K.DeferModule("EnemySpellAlert", {
 			{ 47528, true  },
 			{ 47476, true  },
 			{ 49203, true  },
+
+			{ 49158, true  },
+			{ 47496, true  },
 			{ 48792, false },
 			{ 48707, false },
 		}},
@@ -106,6 +109,9 @@ K.DeferModule("EnemySpellAlert", {
 		if db.inDuel  == nil then db.inDuel  = true;  end
 		if db.inWorld == nil then db.inWorld = false; end
 		if not db.custom then db.custom = {}; end
+		if db.border == nil then db.border = "thin"; end
+		if type(db.duration) ~= "number" then db.duration = DURATION; end
+		if db.sound == nil then db.sound = false; end
 		if not db.spells then db.spells = {}; end
 
 		for _, grp in ipairs(SPELLS) do
@@ -266,6 +272,19 @@ K.DeferModule("EnemySpellAlert", {
 		return f;
 	end
 
+	local function StyleBorder(f, cls)
+		local style = DB().border;
+		if style == "none" then f.border:Hide(); return; end
+		local o = (style == "class") and 2 or 1;
+		f.border:ClearAllPoints();
+		f.border:SetPoint("TOPLEFT", -o, o);
+		f.border:SetPoint("BOTTOMRIGHT", o, -o);
+		local c = (style == "class") and cls and ((CUSTOM_CLASS_COLORS and CUSTOM_CLASS_COLORS[cls])
+			or (RAID_CLASS_COLORS and RAID_CLASS_COLORS[cls]));
+		if c then f.border:SetVertexColor(c.r, c.g, c.b, 1); else f.border:SetVertexColor(0, 0, 0, 1); end
+		f.border:Show();
+	end
+
 	local function GetIcon()
 		for _, f in ipairs(pool) do
 			if not f.inUse then f.inUse = true; return f; end
@@ -298,6 +317,28 @@ K.DeferModule("EnemySpellAlert", {
 			end
 		end
 		anchor:SetSize(sz, sz);
+	end
+
+	local function Duration()
+		local d = DB().duration;
+		if type(d) ~= "number" or d < 1 then return DURATION; end
+		return d;
+	end
+
+	function K.GetEnemyAlertOption(key) return DB()[key]; end
+	function K.SetEnemyAlertOption(key, v)
+		local db = DB();
+		if key == "border" then
+			if v ~= "thin" and v ~= "class" and v ~= "none" then return; end
+			db.border = v;
+			for _, f in ipairs(pool) do if f.inUse then StyleBorder(f, f.cls); end end
+		elseif key == "duration" then
+			v = tonumber(v);
+			if not v then return; end
+			db.duration = math.max(1, math.min(10, v));
+		elseif key == "sound" then
+			db.sound = v and true or false;
+		end
 	end
 
 	function K.SaveEnemyAlertIconSize(v)
@@ -351,7 +392,8 @@ K.DeferModule("EnemySpellAlert", {
 		if not next(states) then self:Hide(); end
 	end);
 
-	local function Trigger(name)
+	local lastSound = 0;
+	local function Trigger(name, cls)
 		local w = watch[name];
 		if not w then return; end
 		if not preview and not ZoneAllowed() then return; end
@@ -363,9 +405,17 @@ K.DeferModule("EnemySpellAlert", {
 			states[name] = st;
 			table.insert(active, name);
 			st.widget.tex:SetTexture(w.icon);
+
+			if DB().sound and GetTime() - lastSound > 1 then
+				lastSound = GetTime();
+				PlaySound("RaidWarning");
+			end
 		end
-		st.expire = GetTime() + DURATION;
-		st.widget.cd:SetCooldown(GetTime(), DURATION);
+		st.widget.cls = cls;
+		StyleBorder(st.widget, cls);
+		local d = Duration();
+		st.expire = GetTime() + d;
+		st.widget.cd:SetCooldown(GetTime(), d);
 		st.widget:Show();
 		ticker:Show();
 		Layout();
@@ -375,11 +425,17 @@ K.DeferModule("EnemySpellAlert", {
 	local clog = CreateFrame("Frame");
 	clog:SetScript("OnEvent", function(self, event, ...)
 
-		local _, sub, _, _, srcFlags, _, _, _, _, spellName = ...;
+		local _, sub, srcGUID, _, srcFlags, _, _, _, _, spellName = ...;
 		if sub == "SPELL_CAST_SUCCESS" or sub == "SPELL_CAST_START" then
 			if bit.band(srcFlags or 0, HOSTILE) == 0 then return; end
 			if spellName and watch[spellName] then
-				Trigger(spellName);
+
+				local cls;
+				if DB().border == "class" and srcGUID and GetPlayerInfoByGUID then
+					local ok, _, c = pcall(GetPlayerInfoByGUID, srcGUID);
+					if ok then cls = c; end
+				end
+				Trigger(spellName, cls);
 			end
 		end
 	end);
@@ -399,6 +455,8 @@ K.DeferModule("EnemySpellAlert", {
 			states[key] = st;
 			table.insert(active, key);
 			st.widget.tex:SetTexture(w and w.icon or "Interface\\Icons\\INV_Misc_QuestionMark");
+			st.widget.cls = select(2, UnitClass("player"));
+			StyleBorder(st.widget, st.widget.cls);
 			st.widget.cd:SetCooldown(0, 0);
 			st.widget:Show();
 			Layout();

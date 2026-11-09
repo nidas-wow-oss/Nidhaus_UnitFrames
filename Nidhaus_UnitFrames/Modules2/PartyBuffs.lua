@@ -142,6 +142,40 @@ K.DeferModule("PartyBuffs", {
 	local function ShowBuffs()   return PartyBuffsDB.showBuffs   ~= false; end
 	local function ShowDebuffs() return PartyBuffsDB.showDebuffs ~= false; end
 
+	local function BlizDebuffPos()
+		local t = PartyBuffsDB.blizDbfPos;
+		return t and t[StyleKey()] or nil;
+	end
+
+	local function LiveBlizDebuffPos()
+		local f1 = GetPartyAnchor();
+		local d1 = f1 and _G[f1:GetName() .. "Debuff1"];
+		local l = d1 and d1:GetLeft();
+		local _, dcy = d1 and d1:GetCenter();
+		local _, fcy = f1 and f1:GetCenter();
+		local fr = f1 and f1:GetRight();
+		if not (l and dcy and fcy and fr) then
+			local d = GetCurrentDefaults().debuffs;
+			return { x = d.x, y = d.y };
+		end
+		local k = d1:GetEffectiveScale() / f1:GetEffectiveScale();
+		return { x = math.floor(l * k - fr + 0.5), y = math.floor(dcy * k - fcy + 0.5) };
+	end
+
+	local function EnsureBlizDebuffPos()
+		local pos = BlizDebuffPos();
+		if pos then return pos; end
+		PartyBuffsDB.blizDbfPos = PartyBuffsDB.blizDbfPos or {};
+		pos = LiveBlizDebuffPos();
+		PartyBuffsDB.blizDbfPos[StyleKey()] = pos;
+		return pos;
+	end
+
+	local function DebuffAnchorPos()
+		if ShowDebuffs() then return GetCurrentDebuffs(); end
+		return BlizDebuffPos();
+	end
+
 	local function RestoreOrigAnchor(i, f, which)
 		local o = origAnchors[i];
 		if which == "debuff" then
@@ -304,10 +338,10 @@ K.DeferModule("PartyBuffs", {
 	end
 
 	local function AnchorFirstIcons(f, doB, doD)
-		if doD then
+		local debuffs = doD and DebuffAnchorPos()
+		if debuffs then
 			local d1 = _G[f:GetName() .. "Debuff1"]
 			if d1 then
-				local debuffs = GetCurrentDebuffs()
 				local s = (d1.GetScale and d1:GetScale()) or 1
 				if not s or s <= 0 then s = 1 end
 				d1:ClearAllPoints()
@@ -330,6 +364,10 @@ K.DeferModule("PartyBuffs", {
 		ApplyDefaults()
 		local sb = tonumber(scaleTable and scaleTable.buffs)   or tonumber(PartyBuffsDB.scale.buffs)   or 1
 		local sd = tonumber(scaleTable and scaleTable.debuffs) or tonumber(PartyBuffsDB.scale.debuffs) or 1
+
+		if pbEnabled and not ShowDebuffs() and math.abs(sd - 1) > 0.001 and not BlizDebuffPos() then
+			EnsureBlizDebuffPos()
+		end
 		for i = 1, 4 do
 			local f = _G["PartyMemberFrame" .. i]
 			if f then
@@ -337,10 +375,10 @@ K.DeferModule("PartyBuffs", {
 					local b = _G[f:GetName() .. "Buff"   .. j]
 					local d = _G[f:GetName() .. "Debuff" .. j]
 					if b and b.SetScale then b:SetScale(ShowBuffs() and sb or 1) end
-					if d and d.SetScale then d:SetScale(ShowDebuffs() and sd or 1) end
+					if d and d.SetScale then d:SetScale(pbEnabled and sd or 1) end
 				end
 
-				if pbEnabled then AnchorFirstIcons(f, ShowBuffs(), ShowDebuffs()) end
+				if pbEnabled then AnchorFirstIcons(f, ShowBuffs(), true) end
 			end
 		end
 
@@ -361,7 +399,7 @@ K.DeferModule("PartyBuffs", {
 			if f then
 				EnsureAuraFrames(f)
 
-				AnchorFirstIcons(f, doB, doD)
+				AnchorFirstIcons(f, doB, true)
 
 				for j = (doB and maxB or 0) + 1, 20 do
 					local b = _G[f:GetName() .. "Buff"   .. j]
@@ -453,6 +491,16 @@ K.DeferModule("PartyBuffs", {
 		PartyBuffsDB.panel      = { x=DEFAULTS_SHARED.panel.x, y=DEFAULTS_SHARED.panel.y }
 		PartyBuffsDB.maxBuffs   = DEFAULTS_SHARED.maxBuffs
 		PartyBuffsDB.maxDebuffs = DEFAULTS_SHARED.maxDebuffs
+
+		local hadBliz = PartyBuffsDB.blizDbfPos and next(PartyBuffsDB.blizDbfPos)
+		PartyBuffsDB.blizDbfPos = nil
+		if hadBliz and pbEnabled and not ShowDebuffs() then
+			for i = 1, 4 do
+				local f = _G["PartyMemberFrame" .. i]
+				if f then RestoreOrigAnchor(i, f, "debuff") end
+			end
+			if K.UpdateNewPartyFrames then K.UpdateNewPartyFrames() end
+		end
 	end
 
 	local function CreateMoverFrame(name, label)
@@ -492,8 +540,12 @@ K.DeferModule("PartyBuffs", {
 		if not f1 then return end
 		ApplyDefaults()
 		local buffs   = GetCurrentBuffs();
-		local debuffs = GetCurrentDebuffs();
+
+		local debuffs = DebuffAnchorPos() or LiveBlizDebuffPos();
 		if movers.debuffs then
+			if movers.debuffs.text then
+				movers.debuffs.text:SetText(ShowDebuffs() and "Debuffs (drag)" or "Blizzard debuffs (drag)")
+			end
 			movers.debuffs:ClearAllPoints()
 			movers.debuffs:SetPoint("LEFT",  f1, "RIGHT",   debuffs.x, debuffs.y)
 		end
@@ -533,7 +585,7 @@ K.DeferModule("PartyBuffs", {
 			if self._pb_elapsed < 0.03 then return end
 			self._pb_elapsed = 0
 			if which == "debuffs" then
-				local s = GetCurrentDebuffs();
+				local s = ShowDebuffs() and GetCurrentDebuffs() or EnsureBlizDebuffPos();
 				s.x, s.y = ComputeDebuffOffsetsFromMover(self)
 			else
 				local s = GetCurrentBuffs();
@@ -566,7 +618,8 @@ K.DeferModule("PartyBuffs", {
 		end)
 		movers.debuffs:SetScript("OnDragStop", function(self)
 			self:StopMovingOrSizing(); StopRealtime(self); dragState.debuffs = false
-			local s = GetCurrentDebuffs(); s.x, s.y = ComputeDebuffOffsetsFromMover(self)
+			local s = ShowDebuffs() and GetCurrentDebuffs() or EnsureBlizDebuffPos()
+			s.x, s.y = ComputeDebuffOffsetsFromMover(self)
 			ReanchorAll(); UpdateMoverPositions()
 		end)
 		movers.buffs:SetScript("OnDragStart", function(self)
@@ -581,7 +634,7 @@ K.DeferModule("PartyBuffs", {
 
 	local function ShowMovers(show)
 
-		local sd, sb = show and ShowDebuffs(), show and ShowBuffs()
+		local sd, sb = show and pbEnabled, show and ShowBuffs()
 		if movers.debuffs then if sd then movers.debuffs:Show() else movers.debuffs:Hide() end end
 		if movers.buffs   then if sb then movers.buffs:Show()   else movers.buffs:Hide()   end end
 	end
@@ -929,7 +982,7 @@ K.DeferModule("PartyBuffs", {
 		if K.UpdateNewPartyFrames then K.UpdateNewPartyFrames(); end
 	end
 
-	function K.PartyBuffsOwnsDebuffs() return pbEnabled and ShowDebuffs(); end
+	function K.PartyBuffsOwnsDebuffs() return pbEnabled and (ShowDebuffs() or BlizDebuffPos() ~= nil) and true or false; end
 	function K.PartyBuffsOwnsBuffs()   return pbEnabled and ShowBuffs();   end
 
 	function K.PartyBuffs_GetShown()
@@ -965,7 +1018,7 @@ K.DeferModule("PartyBuffs", {
 				ReanchorAll();
 				ApplyScaleAll(PartyBuffsDB.scale);
 				RefreshAllAuras();
-				if scalePanel and scalePanel:IsShown() then ShowMovers(true); end
+				if scalePanel and scalePanel:IsShown() then ShowMovers(true); UpdateMoverPositions(); end
 
 				if K.UpdateNewPartyFrames then K.UpdateNewPartyFrames(); end
 			end

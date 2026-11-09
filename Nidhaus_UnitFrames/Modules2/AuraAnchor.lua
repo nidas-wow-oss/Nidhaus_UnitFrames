@@ -206,8 +206,15 @@ local function BlizzardDebuffOffset()
 	local nc  = (bf and tonumber(bf.numConsolidated)) or 0;
 	if nc > 0 then nb = nb - nc + 1; end
 	local rows = math.ceil(nb / per);
-	if rows < 2 then return (2 * sp) + h; end
-	return rows * (sp + h);
+	local px;
+	if rows < 2 then px = (2 * sp) + h; else px = rows * (sp + h); end
+
+	local te_es = te and te.GetEffectiveScale and te:GetEffectiveScale();
+	local da_es = debuffAnchor.GetEffectiveScale and debuffAnchor:GetEffectiveScale();
+	if te_es and da_es and te_es > 0 and da_es > 0 then
+		px = px * te_es / da_es;
+	end
+	return px;
 end
 
 local function ApplyDefaultDebuffPos()
@@ -307,7 +314,41 @@ function K.ResetAuraAnchor()
 	if K.UpdateAuraAnchorEvents then K.UpdateAuraAnchorEvents(); end
 end
 
+local function ScaledLayout()
+	return math.abs(BuffScale() - 1) > 0.001 or math.abs(DebuffScale() - 1) > 0.001;
+end
+
+local function RowHead()
+	local cb = _G["ConsolidatedBuffs"];
+	if cb and cb:IsShown() then return cb; end
+	local te = _G["TempEnchant1"];
+	if te and te:IsShown() then return te; end
+	for i = 1, (BUFF_ACTUAL_DISPLAY or 0) do
+		local b = _G["BuffButton" .. i];
+		if b and b:IsShown() and not b.consolidated then return b; end
+	end
+end
+
+local function FixBuffRows()
+	local cb = _G["ConsolidatedBuffs"];
+	if not cb then return; end
+	local head = RowHead();
+	if not head or head == cb then return; end
+	local sp = tonumber(BUFF_ROW_SPACING) or 0;
+	for i = 1, (BUFF_ACTUAL_DISPLAY or 0) do
+		local b = _G["BuffButton" .. i];
+		if b and b ~= head and b:GetNumPoints() > 0 then
+			local p, rel = b:GetPoint(1);
+			if p == "TOP" and rel == cb then
+				b:ClearAllPoints();
+				b:SetPoint("TOP", head, "BOTTOM", 0, -sp);
+			end
+		end
+	end
+end
+
 local function ReanchorAuras()
+	if HasCustomPosition() or ScaledLayout() then FixBuffRows(); end
 	if not HasCustomPosition() then return; end
 
 	local first = _G["BuffButton1"];
@@ -329,7 +370,7 @@ local function ReanchorAuras()
 end
 
 local function ReanchorDebuffs()
-	if not HasCustomDebuffPosition() then return; end
+	if not (HasCustomDebuffPosition() or ScaledLayout()) then return; end
 	local first = _G["DebuffButton1"];
 	if first then
 		first:ClearAllPoints();
@@ -382,6 +423,11 @@ local function OnAuraScaleChanged(id)
 	elseif id == "PlayerDebuffs" then
 		ApplyDebuffIconScale();
 		if not HasCustomDebuffPosition() then ApplyDefaultDebuffPos(); end
+	end
+
+	if id == "PlayerBuffs" or id == "PlayerDebuffs" then
+		ReanchorAuras();
+		ReanchorDebuffs();
 	end
 end
 if type(K.SetModuleScale) == "function" then

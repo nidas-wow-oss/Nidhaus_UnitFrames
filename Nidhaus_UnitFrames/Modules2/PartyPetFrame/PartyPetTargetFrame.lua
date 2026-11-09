@@ -606,11 +606,14 @@ K.DeferModule("PartyPetFrame", {
     	if K.SyncPartyPetAuraSize then pcall(K.SyncPartyPetAuraSize, pf) end
     end
 
+    local AURA_REF_SCALE = 1.5
     local function RefSize(name, fallback, pf)
     	local ref = _G[name]
     	if not (ref and ref.GetWidth and ref:GetWidth() and ref:GetWidth() > 0) then return fallback end
 
-    	local base = pf:GetEffectiveScale()
+    	local own = pf:GetScale()
+    	if not own or own <= 0 then return fallback end
+    	local base = pf:GetEffectiveScale() / own * AURA_REF_SCALE
     	if not base or base <= 0 then return fallback end
     	local px = ref:GetWidth() * ref:GetEffectiveScale() / base
     	if px < 8 or px > 64 then return fallback end
@@ -630,7 +633,9 @@ K.DeferModule("PartyPetFrame", {
     	local ref = _G[refName]
     	if not (fs and ref and ref.GetFont) then return end
     	local font, size, flags = ref:GetFont()
-    	local es = pf:GetEffectiveScale()
+    	local own = pf:GetScale()
+    	if not (own and own > 0) then return end
+    	local es = pf:GetEffectiveScale() / own * AURA_REF_SCALE
     	if not (font and size and es and es > 0) then return end
 
     	local holder = ref:GetParent()
