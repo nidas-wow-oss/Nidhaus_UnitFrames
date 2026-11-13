@@ -45,6 +45,13 @@ frame.icon:SetAllPoints(frame);
 
 frame.icon:SetTexCoord(0, 1, 0, 1);
 
+frame.judgeBorder = CreateFrame("Frame", nil, frame);
+frame.judgeBorder:SetPoint("TOPLEFT", frame, "TOPLEFT", -3, 3);
+frame.judgeBorder:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 3, -3);
+frame.judgeBorder:SetFrameLevel(frame:GetFrameLevel() + 1);
+frame.judgeBorder:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 3 });
+frame.judgeBorder:SetBackdropBorderColor(1, 0.82, 0, 1);
+
 frame.moveBorder = frame:CreateTexture(nil, "OVERLAY");
 frame.moveBorder:SetAllPoints(frame);
 frame.moveBorder:SetTexture(0, 1, 0, 0.30);
@@ -71,6 +78,81 @@ local function HasAura()
     return false;
 end
 
+local JUDGEMENT_IDS = {
+    [20187] = true,
+    [20467] = true,
+    [31804] = true,
+    [53733] = true,
+    [31898] = true,
+    [53726] = true,
+    [54158] = true,
+};
+local SHIELD_DURATION = 6;
+local MAX_SAMPLES     = 5;
+local PLAYER_FLAG     = 0x400;
+
+local shields      = {};
+local learnedCap   = {};
+local recentAbsT   = {};
+local recentAbsA   = {};
+local judgeSamples = {};
+local playerGUID;
+
+local function MyJudgementDamage()
+    local n = #judgeSamples;
+    if n == 0 then return nil; end
+    local m = judgeSamples[1];
+    for i = 2, n do
+        if judgeSamples[i] < m then m = judgeSamples[i]; end
+    end
+    return m;
+end
+
+local function AddSample(v)
+    if not v or v <= 0 then return; end
+    judgeSamples[#judgeSamples + 1] = v;
+    if #judgeSamples > MAX_SAMPLES then table.remove(judgeSamples, 1); end
+end
+
+local function OnAbsorb(guid, amount, flags)
+
+    if not amount or amount <= 0 or bit.band(flags or 0, PLAYER_FLAG) == 0 then return; end
+    local st = shields[guid];
+    local now = GetTime();
+    if st then
+        st.used, st.lastAbs = st.used + amount, now;
+    elseif recentAbsT[guid] == now then
+        recentAbsA[guid] = recentAbsA[guid] + amount;
+    else
+        recentAbsT[guid], recentAbsA[guid] = now, amount;
+    end
+end
+
+local function CloseShield(guid, st)
+    local now = GetTime();
+    if st.used > 0 and st.caster then
+        local broken = (now - st.t) < (SHIELD_DURATION - 0.3)
+            and st.lastAbs and (now - st.lastAbs) < 0.3;
+        if broken or st.used > (learnedCap[st.caster] or 0) then
+            learnedCap[st.caster] = st.used;
+        end
+    end
+    shields[guid] = nil;
+end
+
+local function BorderColor()
+    local guid = UnitGUID(UNIT);
+    local st   = guid and shields[guid];
+    local cap  = st and st.caster and learnedCap[st.caster];
+    local dmg  = MyJudgementDamage();
+    if not cap or not dmg then return 1, 0.82, 0; end
+    local left = cap - st.used;
+
+    if left <= 0 then return 1, 0.82, 0; end
+    if dmg > left then return 0, 1, 0; end
+    return 1, 0, 0;
+end
+
 local moving = false;
 local enabled = false;
 
@@ -84,6 +166,7 @@ local function Update()
 
     if enabled and ZoneOK() and UnitExists(UNIT) and HasAura() then
         ResolveIcon();
+        frame.judgeBorder:SetBackdropBorderColor(BorderColor());
         frame:Show();
     else
         frame:Hide();
@@ -92,8 +175,56 @@ end
 
 local f = CreateFrame("Frame");
 
-f:SetScript("OnEvent", function(self, event, arg1)
-    if event == "UNIT_AURA" and arg1 ~= UNIT then return; end
+local function OnCombatLog(_, sub, srcGUID, _, _, dstGUID, _, dstFlags, a9, a10, _, a12, a13, a14, _, _, a17, a18)
+    if sub == "SWING_DAMAGE" then
+        OnAbsorb(dstGUID, a14, dstFlags);
+    elseif sub == "SPELL_DAMAGE" or sub == "SPELL_PERIODIC_DAMAGE" or sub == "RANGE_DAMAGE"
+        or sub == "DAMAGE_SHIELD" or sub == "DAMAGE_SPLIT" then
+        OnAbsorb(dstGUID, a17, dstFlags);
+        if srcGUID == playerGUID and JUDGEMENT_IDS[a9] and not a18
+            and bit.band(dstFlags or 0, PLAYER_FLAG) > 0 then
+            AddSample(a12 + (a17 or 0));
+        end
+    elseif sub == "SWING_MISSED" then
+        if a9 == "ABSORB" then OnAbsorb(dstGUID, a10, dstFlags); end
+    elseif sub == "SPELL_MISSED" or sub == "SPELL_PERIODIC_MISSED" or sub == "RANGE_MISSED" then
+        if a12 ~= "ABSORB" then return; end
+        OnAbsorb(dstGUID, a13, dstFlags);
+        if srcGUID == playerGUID and JUDGEMENT_IDS[a9] and bit.band(dstFlags or 0, PLAYER_FLAG) > 0 then
+            AddSample(a13);
+        end
+    elseif sub == "SPELL_AURA_APPLIED" or sub == "SPELL_AURA_REFRESH" then
+        if a9 ~= SPELL_ID then return; end
+        local old = shields[dstGUID];
+        if old then CloseShield(dstGUID, old); end
+        local now = GetTime();
+        local st = { caster = srcGUID, used = 0, t = now };
+
+        if recentAbsT[dstGUID] and (now - recentAbsT[dstGUID]) < 0.3 then
+            st.used, st.lastAbs = recentAbsA[dstGUID], recentAbsT[dstGUID];
+        end
+        shields[dstGUID] = st;
+    elseif sub == "SPELL_AURA_REMOVED" then
+        if a9 ~= SPELL_ID then return; end
+        local st = shields[dstGUID];
+        if st then CloseShield(dstGUID, st); end
+    else
+        return;
+    end
+    if frame:IsShown() and dstGUID == UnitGUID(UNIT) then Update(); end
+end
+
+f:SetScript("OnEvent", function(self, event, ...)
+    if event == "COMBAT_LOG_EVENT_UNFILTERED" then
+        OnCombatLog(...);
+        return;
+    end
+    if event == "UNIT_AURA" and ... ~= UNIT then return; end
+    if event == "PLAYER_ENTERING_WORLD" then
+
+        playerGUID = UnitGUID("player");
+        wipe(shields); wipe(recentAbsT); wipe(recentAbsA);
+    end
     Update();
 end);
 
@@ -122,6 +253,7 @@ local function SetMoving(on)
         end);
         frame.bg:Show();
         frame.moveBorder:Show();
+        frame.judgeBorder:SetBackdropBorderColor(1, 0.82, 0, 1);
         frame:Show();
     else
         frame:EnableMouse(false);
@@ -172,6 +304,8 @@ local function SS_SetEnabled(on)
         f:RegisterEvent("PLAYER_ENTERING_WORLD");
         f:RegisterEvent("PLAYER_TARGET_CHANGED");
         f:RegisterEvent("UNIT_AURA");
+        f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
+        playerGUID = UnitGUID("player");
         Update();
     else
         f:UnregisterAllEvents();

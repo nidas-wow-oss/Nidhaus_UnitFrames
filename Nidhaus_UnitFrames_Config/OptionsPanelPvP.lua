@@ -1492,11 +1492,28 @@ function K.BuildPvPSection(pane)
 			end);
 		end
 
+		checkboxCount = checkboxCount + 1;
+		local allyName = "NidhausTEAllyCB" .. checkboxCount;
+		local allyCB = CreateFrame("CheckButton", allyName, teBody, "InterfaceOptionsCheckButtonTemplate");
+		allyCB:SetPoint("TOPLEFT", 26, -104);
+		allyCB:SetHitRectInsets(0, 0, 0, 0);
+		local allyFS = _G[allyName .. "Text"];
+		if allyFS then
+			allyFS:SetText(L["TE_ALLY_PET"] or "Warn when an ally's pet (Gargoyle) gets Turn Evil or Shackle Undead");
+		end
+		local function SyncAlly() allyCB:SetChecked(K.GetTurnEvilAllyPet and K.GetTurnEvilAllyPet()); end
+		SyncAlly();
+		teBody:HookScript("OnShow", SyncAlly);
+		allyCB:SetScript("OnClick", function(self)
+			local v = (self:GetChecked() == 1 or self:GetChecked() == true);
+			if K.SetTurnEvilAllyPet then K.SetTurnEvilAllyPet(v); end
+		end);
+
 		if K.UI and K.UI.ScaleSlider then
-			K.UI.ScaleSlider(teBody, "TurnEvil", 26, -126, 200);
+			K.UI.ScaleSlider(teBody, "TurnEvil", 26, -152, 200);
 		end
 
-		teBlk:SetBodyHeight(160);
+		teBlk:SetBodyHeight(186);
 		teBlk:Refresh();
 
 		AddMover("TurnEvil",

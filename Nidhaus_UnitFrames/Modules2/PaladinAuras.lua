@@ -163,6 +163,24 @@ local function Body()
 
 	local teLog = {};
 
+	local SHACKLE       = GetSpellInfo(9484) or "Shackle Undead";
+	local SHACKLE_IDS   = { [9484] = true, [9485] = true, [10955] = true };
+	local SHACKLE_ICON  = select(3, GetSpellInfo(10955))
+	                      or "Interface\\Icons\\Spell_Nature_Slow";
+	local SHACKLE_DURATION = 50;
+	local allyLog = {};
+
+	local REACTION_FRIENDLY = COMBATLOG_OBJECT_REACTION_FRIENDLY or 0x00000010;
+	local TYPE_PETLIKE  = (COMBATLOG_OBJECT_TYPE_PET or 0x1000) + (COMBATLOG_OBJECT_TYPE_GUARDIAN or 0x2000);
+	local AFFIL_MASK    = COMBATLOG_OBJECT_AFFILIATION_MASK or 0x0000000F;
+	local AFFIL_OUTSIDER = COMBATLOG_OBJECT_AFFILIATION_OUTSIDER or 0x00000008;
+	local function IsAllyPet(flags)
+		if not (band and flags) then return false; end
+		return band(flags, REACTION_FRIENDLY) > 0
+			and band(flags, TYPE_PETLIKE) > 0
+			and band(flags, AFFIL_MASK) ~= AFFIL_OUTSIDER;
+	end
+
 	local TURN_EVIL_MAX = 1;
 	local TE_SIZE, TE_SPACE = 64, 2;
 
@@ -176,12 +194,23 @@ local function Body()
 
 	if K.RegisterScalable then K.RegisterScalable("TurnEvil", teAnchor, 1.2); end
 
+	local ALLY_X, ALLY_Y = 25, 201;
+	local allyAnchor = CreateFrame("Frame", "NUF_TurnEvilAlly", UIParent);
+	allyAnchor:SetWidth(TE_SIZE);
+	allyAnchor:SetHeight(TE_SIZE + TE_SPACE);
+	allyAnchor:SetMovable(true);
+	allyAnchor:SetClampedToScreen(true);
+	allyAnchor:EnableMouse(false);
+	allyAnchor:Hide();
+
 	local function TeDB()
 		if not NidhausUnitFramesDB then NidhausUnitFramesDB = {}; end
 		if not NidhausUnitFramesDB.TurnEvil then
 			NidhausUnitFramesDB.TurnEvil = { x = 99, y = 201, scale = 1.2 };
 		end
-		return NidhausUnitFramesDB.TurnEvil;
+		local db = NidhausUnitFramesDB.TurnEvil;
+		if db.allyPet == nil then db.allyPet = true; end
+		return db;
 	end
 
 	local function TeRestore()
@@ -190,7 +219,12 @@ local function Body()
 		teAnchor:SetPoint(db.point or "TOP", UIParent,
 			db.relativePoint or "CENTER", db.x or 99, db.y or 201);
 
-		teAnchor:SetScale((K.GetModuleScale and K.GetModuleScale("TurnEvil")) or db.scale or 1.2);
+		local sc = (K.GetModuleScale and K.GetModuleScale("TurnEvil")) or db.scale or 1.2;
+		teAnchor:SetScale(sc);
+		allyAnchor:ClearAllPoints();
+		allyAnchor:SetPoint(db.allyPoint or "TOP", UIParent,
+			db.allyRel or "CENTER", db.allyX or ALLY_X, db.allyY or ALLY_Y);
+		allyAnchor:SetScale(sc);
 	end
 
 	local function TeSave()
@@ -198,6 +232,11 @@ local function Body()
 		local point, _, relativePoint, x, y = teAnchor:GetPoint();
 		db.point, db.relativePoint = point, relativePoint;
 		db.x, db.y = x or 99, y or 201;
+		local ap, _, ar, ax, ay = allyAnchor:GetPoint();
+		if ap then
+			db.allyPoint, db.allyRel = ap, ar;
+			db.allyX, db.allyY = ax or ALLY_X, ay or ALLY_Y;
+		end
 	end
 
 	local teEnabled, tePreview = false, false;
@@ -211,6 +250,8 @@ local function Body()
 			TeSave();
 		end
 	end);
+	allyAnchor:SetScript("OnMouseDown", teAnchor:GetScript("OnMouseDown"));
+	allyAnchor:SetScript("OnMouseUp", teAnchor:GetScript("OnMouseUp"));
 
 	local GLOW_PATH = "Interface\\AddOns\\" .. AddOnName .. "\\Media\\Glow\\";
 	local GLOW_R, GLOW_G, GLOW_B = 0.15, 1.0, 0.25;
@@ -298,6 +339,18 @@ local function Body()
 		end
 	end
 
+	local ALLY_R, ALLY_G, ALLY_B = 1.0, 0.2, 0.2;
+	local function SetGlowColor(icon, ally)
+		local r, g, b = GLOW_R, GLOW_G, GLOW_B;
+		if ally then r, g, b = ALLY_R, ALLY_G, ALLY_B; end
+		if icon._allyTint == ally then return; end
+		icon._allyTint = ally;
+		local gl = AttachGlow(icon);
+		gl.ring:SetVertexColor(r, g, b);
+		gl.ants:SetVertexColor(r, g, b);
+		icon.border:SetTexture(r * 0.55, g * 0.55, b * 0.55, 0.95);
+	end
+
 	local BORDER_DIM = 0.55;
 
 	local teIcons = {};
@@ -308,6 +361,8 @@ local function Body()
 			GLOW_B * BORDER_DIM, 0.95);
 		teIcons[i] = f;
 	end
+	local allyIcon = MakeIcon("TurnEvilAlly", TE_SIZE, 0, 0, allyAnchor);
+	SetGlowColor(allyIcon, true);
 
 	local function FindSelfBuff()
 		for i = 1, 40 do
@@ -447,10 +502,36 @@ local function Body()
 				teIcons[i]:Hide();
 			end
 			teAnchor:Hide();
+			SetGlow(allyIcon, false);
+			allyIcon:Hide();
+			allyAnchor:Hide();
 			return;
 		end
 		local n = 0;
 		local vistos = {};
+		local ahora = GetTime();
+
+		local allyOn = TeDB().allyPet;
+		local best;
+		for guid, info in pairs(allyLog) do
+			if info.expires <= ahora or not allyOn then
+				allyLog[guid] = nil;
+			elseif not best or info.expires > best.expires then
+				best = info;
+			end
+		end
+		if best then
+			allyIcon.tex:SetTexture(best.icon);
+			allyIcon.cd:SetCooldown(best.expires - best.dur, best.dur);
+			allyIcon.label:SetText("|cffff4040" .. (best.name or "") .. "|r");
+			SetGlow(allyIcon, true);
+			allyIcon:Show();
+			allyAnchor:Show();
+		elseif not tePreview then
+			SetGlow(allyIcon, false);
+			allyIcon:Hide();
+			allyAnchor:Hide();
+		end
 		for _, unit in ipairs(TE_UNITS) do
 			if n >= TURN_EVIL_MAX then break; end
 			if UnitExists(unit) then
@@ -468,6 +549,7 @@ local function Body()
 							f.cd:SetCooldown(0, 0);
 						end
 						f.label:SetText(UnitName(unit) or unit);
+						SetGlowColor(f, false);
 						SetGlow(f, true);
 						f:Show();
 						break;
@@ -476,7 +558,6 @@ local function Body()
 			end
 		end
 
-		local ahora = GetTime();
 		for guid, info in pairs(teLog) do
 			if info.expires <= ahora then
 				teLog[guid] = nil;
@@ -487,6 +568,7 @@ local function Body()
 				local dur = info.dur or TE_DURATION;
 				f.cd:SetCooldown(info.expires - dur, dur);
 				f.label:SetText(info.name or "");
+				SetGlowColor(f, false);
 				SetGlow(f, true);
 				f:Show();
 			end
@@ -508,6 +590,7 @@ local function Body()
 	function K.SetTurnEvilPreview(state)
 		tePreview = state and true or false;
 		teAnchor:EnableMouse(tePreview);
+		allyAnchor:EnableMouse(tePreview);
 
 		if tePreview then
 			TeRestore();
@@ -521,23 +604,41 @@ local function Body()
 				local f = teIcons[i];
 				if not f.tex:GetTexture() then f.tex:SetTexture(qm); end
 				f.label:SetText("");
+				SetGlowColor(f, false);
 
 				SetGlow(f, true);
 				f:Show();
 			end
+			allyAnchor:Show();
+			if not allyIcon.tex:GetTexture() then allyIcon.tex:SetTexture(SHACKLE_ICON); end
+			allyIcon.label:SetText("|cffff4040Party pet|r");
+			SetGlow(allyIcon, true);
+			allyIcon:Show();
 		else
 			RefreshTurnEvil();
-			if not teEnabled then teAnchor:Hide(); end
+			if not teEnabled then
+				teAnchor:Hide();
+				SetGlow(allyIcon, false);
+				allyAnchor:Hide();
+			end
 		end
 		return tePreview;
 	end
 
 	function K.IsTurnEvilPreview() return tePreview; end
 
+	function K.GetTurnEvilAllyPet() return TeDB().allyPet and true or false; end
+	function K.SetTurnEvilAllyPet(on)
+		TeDB().allyPet = on and true or false;
+		if not on then wipe(allyLog); end
+		RefreshTurnEvil();
+	end
+
 	function K.ResetTurnEvilPosition()
 		local db = TeDB();
 		db.point, db.relativePoint = "TOP", "CENTER";
 		db.x, db.y, db.scale = 99, 201, 1.2;
+		db.allyPoint, db.allyRel, db.allyX, db.allyY = "TOP", "CENTER", ALLY_X, ALLY_Y;
 		if K.ResetModuleScale then K.ResetModuleScale("TurnEvil"); end
 		TeRestore();
 	end
@@ -559,7 +660,34 @@ local function Body()
 		if event == "COMBAT_LOG_EVENT_UNFILTERED" then
 
 			local _, sub, _, _, _, dstGUID, dstName, dstFlags, spellId, spellName = ...;
-			if spellId == TURN_EVIL_ID or spellName == TURN_EVIL then
+			local isTE = (spellId == TURN_EVIL_ID or spellName == TURN_EVIL);
+			local isSh = (SHACKLE_IDS[spellId] or spellName == SHACKLE);
+
+			if (isTE or isSh) and TeDB().allyPet and IsAllyPet(dstFlags) then
+				if sub == "SPELL_AURA_APPLIED" or sub == "SPELL_AURA_REFRESH" then
+					local base = isTE and TE_DURATION or SHACKLE_DURATION;
+					local dur = (band and band(dstFlags, CONTROL_PLAYER) > 0) and TE_DURATION_PVP or base;
+					local nuevo = not allyLog[dstGUID];
+					allyLog[dstGUID] = {
+						name = dstName, dur = dur, expires = GetTime() + dur,
+						icon = isTE and TE_ICON or SHACKLE_ICON,
+					};
+
+					if nuevo and sub == "SPELL_AURA_APPLIED"
+						and (not K.ModuleZoneAllowed or K.ModuleZoneAllowed("TurnEvil")) then
+						local msg = (dstName or "Pet") .. ": " .. (isTE and TURN_EVIL or SHACKLE) .. "!";
+						if RaidNotice_AddMessage and RaidWarningFrame then
+							RaidNotice_AddMessage(RaidWarningFrame, msg, ChatTypeInfo["RAID_WARNING"]);
+						end
+						PlaySound("RaidWarning");
+					end
+				elseif sub == "SPELL_AURA_REMOVED" or sub == "SPELL_AURA_BROKEN"
+					or sub == "SPELL_AURA_BROKEN_SPELL" then
+					allyLog[dstGUID] = nil;
+				end
+				return;
+			end
+			if isTE then
 				if sub == "SPELL_AURA_APPLIED" or sub == "SPELL_AURA_REFRESH" then
 
 					local dur = TurnEvilDuration(dstFlags);
@@ -722,7 +850,12 @@ local function Body()
 				SetGlow(teIcons[i], false);
 				teIcons[i]:Hide();
 			end
-			if not tePreview then teAnchor:Hide(); end
+			if not tePreview then
+				teAnchor:Hide();
+				SetGlow(allyIcon, false);
+				allyIcon:Hide();
+				allyAnchor:Hide();
+			end
 			if not enabled then
 				events:UnregisterAllEvents();
 				ticker:Hide();
@@ -732,6 +865,7 @@ local function Body()
 				events:UnregisterEvent("ARENA_OPPONENT_UPDATE");
 			end
 			wipe(teLog);
+			wipe(allyLog);
 		end,
 	});
 
