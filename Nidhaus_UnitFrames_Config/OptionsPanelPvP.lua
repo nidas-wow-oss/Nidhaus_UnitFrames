@@ -1148,13 +1148,9 @@ function K.BuildPvPSection(pane)
 		L["PVP_ENEMYALERT_NOTE"] or L["MOD_ENEMYALERT_DESC"]);
 	prev = eaBlk;
 	do
-		SettingCB(eaBody, L["CB_LOCK_ENEMYALERT"] or "Lock it in place", "EnemySpellAlertLocked",
-			22, 0, L["TIP_EnemyAlertLocked"]
-			or "While locked it ignores the mouse: you can click through it.",
-			function() if K.ApplyEnemyAlertLock then K.ApplyEnemyAlertLock(); end end);
 
 		local eaShow = CreateFrame("Button", nil, eaBody, "UIPanelButtonTemplate");
-		eaShow:SetPoint("TOPLEFT", 24, -32);
+		eaShow:SetPoint("TOPLEFT", 24, -4);
 		eaShow:SetSize(150, 22);
 		eaShow:SetText(L["BTN_SHOW_BARS"] or "Show to position");
 		eaShow:SetScript("OnClick", function(self)
@@ -1181,15 +1177,15 @@ function K.BuildPvPSection(pane)
 		end);
 
 		local eaWhere = eaBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
-		eaWhere:SetPoint("TOPLEFT", 24, -62);
+		eaWhere:SetPoint("TOPLEFT", 24, -34);
 		eaWhere:SetText((K.UI and K.UI.Label(L["GARG_WHERE"] or "Show it in:"))
 			or (L["GARG_WHERE"] or "Show it in:"));
 
 		local eaZones = {
-			{ key = "inArena", text = L["GARG_ARENA"] or "Arena",         x = 26,  y = -80 },
-			{ key = "inBG",    text = L["GARG_BG"]    or "Battlegrounds", x = 150, y = -80 },
-			{ key = "inDuel",  text = L["GARG_DUEL"]  or "Duels",         x = 300, y = -80 },
-			{ key = "inWorld", text = L["GARG_WORLD"] or "Open world",    x = 26,  y = -106 },
+			{ key = "inArena", text = L["GARG_ARENA"] or "Arena",         x = 26,  y = -52 },
+			{ key = "inBG",    text = L["GARG_BG"]    or "Battlegrounds", x = 150, y = -52 },
+			{ key = "inDuel",  text = L["GARG_DUEL"]  or "Duels",         x = 300, y = -52 },
+			{ key = "inWorld", text = L["GARG_WORLD"] or "Open world",    x = 26,  y = -78 },
 		};
 		for _, z in ipairs(eaZones) do
 			checkboxCount = checkboxCount + 1;
@@ -1207,13 +1203,13 @@ function K.BuildPvPSection(pane)
 		end
 
 		if K.UI and K.UI.ScaleSlider then
-			K.UI.ScaleSlider(eaBody, "EnemySpellAlert", 26, -142, 200,
+			K.UI.ScaleSlider(eaBody, "EnemySpellAlert", 26, -114, 200,
 				L["SLIDER_SCALE"] or "Scale");
 		end
 
 		do
 			local s = CreateFrame("Slider", nil, eaBody, "OptionsSliderTemplate");
-			s:SetPoint("TOPLEFT", 260, -142);
+			s:SetPoint("TOPLEFT", 260, -114);
 			s:SetWidth(180);
 			s:SetMinMaxValues(1, 10);
 			s:SetValueStep(1);
@@ -1239,7 +1235,7 @@ function K.BuildPvPSection(pane)
 			end);
 		end
 
-		local _, eaBorderRefresh = ChoiceSelector(eaBody, 26, -182, L["BTN_BORDER_LABEL"] or "Border:", {
+		local _, eaBorderRefresh = ChoiceSelector(eaBody, 26, -154, L["BTN_BORDER_LABEL"] or "Border:", {
 			{ value = "thin",  text = L["ALERT_BORDER_THIN"]  or "Thin" },
 			{ value = "class", text = L["ALERT_BORDER_CLASS"] or "Class color" },
 			{ value = "none",  text = L["BORDER_NONE"]        or "No border" },
@@ -1251,7 +1247,7 @@ function K.BuildPvPSection(pane)
 		checkboxCount = checkboxCount + 1;
 		local sndName = "NidhausEASoundCB" .. checkboxCount;
 		local sndCB = CreateFrame("CheckButton", sndName, eaBody, "InterfaceOptionsCheckButtonTemplate");
-		sndCB:SetPoint("TOPLEFT", 312, -198);
+		sndCB:SetPoint("TOPLEFT", 312, -170);
 		sndCB:SetHitRectInsets(0, -100, 0, 0);
 		if _G[sndName .. "Text"] then _G[sndName .. "Text"]:SetText(L["ALERT_SOUND"] or "Play a sound"); end
 		local function SyncSound() sndCB:SetChecked(K.GetEnemyAlertOption and K.GetEnemyAlertOption("sound")); end
@@ -1269,7 +1265,7 @@ function K.BuildPvPSection(pane)
 		end);
 		sndCB:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 
-		eaBlk:SetBodyHeight(232);
+		eaBlk:SetBodyHeight(204);
 		eaBlk:Refresh();
 
 		AddMover("EnemySpellAlert",

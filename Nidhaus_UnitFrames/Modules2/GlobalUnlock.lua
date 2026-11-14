@@ -91,8 +91,8 @@ local MOVABLES = {
 
 	  preview = "SetGargoylePreview", module = "GargoyleTracker", noOverlay = true },
 
-	{ key = "EnemyAlert", group = "extra", frames = {"NUF_EnemyAlertAnchor"},  label = "Spell Alert",
-	  preview = "SetEnemyAlertPreview", module = "EnemySpellAlert", noOverlay = true },
+	{ key = "EnemyAlert", group = "extra", frames = {"NUF_EnemyAlertAnchor"},  label = "Spell Alert", scalable = true,
+	  preview = "SetEnemyAlertPreview", module = "EnemySpellAlert" },
 	{ key = "ArrowCount", group = "extra", frames = {"NUF_ArrowCountFrame"},   label = "Ammo",      scalable = true,
 	  module = "ArrowCount", class = "HUNTER" },
 	{ key = "DungeonRoles", group = "extra", frames = {"NUF_DungeonRoles"},   label = "Dungeon roles", scalable = true,
@@ -547,6 +547,7 @@ local function ClearSavedScale(entry)
 end
 
 local MODULE_SCALE_ID = {
+	EnemyAlert   = "EnemySpellAlert",
 	Buffs        = "PlayerBuffs",
 	Debuffs      = "PlayerDebuffs",
 	DalaranPipe  = "ArenaDalaranPipeTimer",

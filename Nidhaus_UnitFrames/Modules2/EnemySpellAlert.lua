@@ -148,8 +148,6 @@ K.DeferModule("EnemySpellAlert", {
 		return v == true;
 	end
 
-	local function IsLocked() return C.EnemySpellAlertLocked == true; end
-
 	local enabled = false;
 	local preview = false;
 
@@ -227,7 +225,7 @@ K.DeferModule("EnemySpellAlert", {
 
 	anchor:RegisterForDrag("LeftButton");
 	anchor:SetScript("OnDragStart", function(self)
-		if IsLocked() and not preview then return; end
+		if not preview then return; end
 		self:StartMoving();
 	end);
 	anchor:SetScript("OnDragStop", function(self)
@@ -364,7 +362,7 @@ K.DeferModule("EnemySpellAlert", {
 	end
 
 	local function UpdateMouse()
-		local on = preview or (enabled and not IsLocked() and next(states) ~= nil);
+		local on = preview;
 		anchor:EnableMouse(on and true or false);
 	end
 
