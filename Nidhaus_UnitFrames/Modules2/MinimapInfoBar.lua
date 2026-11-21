@@ -11,6 +11,10 @@ local ADDON_LIST = 25;
 
 local bar;
 local slots = {};
+local active = {};
+local showIcons = true;
+local ICON_SIZE, ICON_GAP = 12, 3;
+local FONT_SIZES = { 10, 9, 8 };
 
 local function PercentColor(pct)
 	if pct < 0 then pct = 0 elseif pct > 100 then pct = 100 end
@@ -126,11 +130,43 @@ ITEMS.ping = {
 
 local ORDER = { "clock", "fps", "ping" };
 
-local function UpdateAll()
-	for _, slot in ipairs(slots) do
-		local item = slot.item;
-		if item and slot:IsShown() then slot.text:SetText(item.text()) end
+local function SlotWidth(slot)
+	local iw = (showIcons and slot.item.icon) and (ICON_SIZE + ICON_GAP) or 0;
+	return iw + (slot.text:GetStringWidth() or 0), iw;
+end
+
+local function Relayout()
+	if not bar or #active == 0 then return end
+	local width = (bar:GetWidth() or 0) - 2;
+	local n = #active;
+	local total, gap;
+	for _, size in ipairs(FONT_SIZES) do
+		total = 0;
+		for _, slot in ipairs(active) do
+			slot.text:SetFont(STANDARD_TEXT_FONT, size, "OUTLINE");
+			total = total + SlotWidth(slot);
+		end
+		gap = (width - total) / (n + 1);
+		if gap >= 3 then break end
 	end
+	if gap < 1 then gap = 1 end
+	local x = 1 + gap;
+	for _, slot in ipairs(active) do
+		local w, iw = SlotWidth(slot);
+		slot:ClearAllPoints();
+		slot:SetPoint("LEFT", bar, "LEFT", x, 0);
+		slot:SetWidth(math.max(w, 1));
+		slot.text:ClearAllPoints();
+		slot.text:SetPoint("LEFT", slot, "LEFT", iw, 0);
+		x = x + w + gap;
+	end
+end
+
+local function UpdateAll()
+	for _, slot in ipairs(active) do
+		slot.text:SetText(slot.item.text());
+	end
+	Relayout();
 end
 
 local function CreateSlot()
@@ -208,35 +244,28 @@ function K.ApplyMinimapInfoBar()
 	b:SetPoint("TOPRIGHT", Minimap, "BOTTOMRIGHT",  side, -gap);
 	b:SetFrameLevel((Minimap:GetFrameLevel() or 0) + 4);
 
-	local active = {};
+	local items = {};
 	for _, id in ipairs(ORDER) do
 		local item = ITEMS[id];
-		if C[item.setting] ~= false then active[#active + 1] = item end
+		if C[item.setting] ~= false then items[#items + 1] = item end
 	end
-	if #active == 0 then b:Hide(); return end
+	wipe(active);
+	if #items == 0 then b:Hide(); return end
 
-	local width = (Minimap:GetWidth() or 140) + side * 2;
-	local slotW = (width - 2) / #active;
-	local icons = (C.MinimapInfoIcons ~= false);
+	showIcons = (C.MinimapInfoIcons ~= false);
 	for i, slot in ipairs(slots) do
-		local item = active[i];
+		local item = items[i];
 		slot.item = item;
 		if item then
-			slot:ClearAllPoints();
-			slot:SetPoint("LEFT", b, "LEFT", 1 + (i - 1) * slotW, 0);
-			slot:SetWidth(slotW);
-			slot.text:ClearAllPoints();
-			if icons and item.icon then
+			if showIcons and item.icon then
 				slot.icon:SetTexture(ICONS .. item.icon);
 				slot.icon:ClearAllPoints();
-				slot.icon:SetPoint("RIGHT", slot.text, "LEFT", -3, 0);
+				slot.icon:SetPoint("LEFT", slot, "LEFT", 0, 0);
 				slot.icon:Show();
-
-				slot.text:SetPoint("CENTER", slot, "CENTER", 7, 0);
 			else
 				slot.icon:Hide();
-				slot.text:SetPoint("CENTER", slot, "CENTER", 0, 0);
 			end
+			active[#active + 1] = slot;
 			slot:Show();
 		else
 			slot:Hide();
