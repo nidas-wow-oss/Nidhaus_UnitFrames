@@ -548,6 +548,36 @@ K.DeferModule("PartyPetFrame", {
     	},
     }
 
+    local function FitContentBox(pf)
+    	if not pf or InCombatLockdown() then return end
+    	local fl, fr, ft, fb = pf:GetLeft(), pf:GetRight(), pf:GetTop(), pf:GetBottom()
+    	if not (fl and fr and ft and fb) then return end
+    	local L, R, T, B
+    	for _, r in ipairs({ pf.portraitFrame, pf.healthBar, pf.manaBar, pf.name }) do
+    		local l, rr, t, b = r:GetLeft(), r:GetRight(), r:GetTop(), r:GetBottom()
+    		if l and rr and t and b then
+    			L = L and math.min(L, l) or l;  R = R and math.max(R, rr) or rr
+    			T = T and math.max(T, t) or t;  B = B and math.min(B, b) or b
+    		end
+    	end
+    	if not L then return end
+    	local il = math.max(0, L - fl - 2);  local ir = math.max(0, fr - R - 2)
+    	local it = math.max(0, ft - T - 2);  local ib = math.max(0, B - fb - 2)
+    	pf:SetHitRectInsets(il, ir, it, ib)
+    	pf:SetClampRectInsets(il, -ir, -it, ib)
+    	local box = pf.moveBox
+    	if not box then
+    		box = CreateFrame("Frame", pf:GetName() .. "MoveBox", pf)
+    		pf.moveBox = box
+    	end
+    	box:ClearAllPoints()
+    	box:SetPoint("TOPLEFT", pf, "TOPLEFT", il, -it)
+    	box:SetPoint("BOTTOMRIGHT", pf, "BOTTOMRIGHT", -ir, ib)
+    end
+    K.FitPartyPetBoxes = function()
+    	for n = 1, NUM_PETS do FitContentBox(_G["CustomParty" .. n .. "PetFrame"]) end
+    end
+
     local function ApplyPetFrameStyle(pf)
     	if not pf then return end
 
@@ -604,6 +634,7 @@ K.DeferModule("PartyPetFrame", {
     	pf.manaBar:SetStatusBarTexture(barTex)
 
     	if K.SyncPartyPetAuraSize then pcall(K.SyncPartyPetAuraSize, pf) end
+    	pcall(FitContentBox, pf)
     end
 
     local AURA_REF_SCALE = 1.5
@@ -646,6 +677,39 @@ K.DeferModule("PartyPetFrame", {
     	fs:SetFont(font, px, flags)
     end
 
+    local function SyncCastBar(pf)
+    	local cb, ref = pf.castBar, _G.PartyMemberFrame1CastingBarFrame
+    	if not (cb and ref and (ref:GetWidth() or 0) > 0) then return end
+    	local own = pf:GetScale()
+    	if not (own and own > 0) then return end
+    	local base = pf:GetEffectiveScale() / own * AURA_REF_SCALE
+    	if not (base and base > 0) then return end
+    	local k = ref:GetEffectiveScale() / base
+    	local w, h = ref:GetWidth() * k, ref:GetHeight() * k
+    	if w < 30 or w > 400 or h < 6 or h > 40 then return end
+    	cb:SetSize(w, h)
+    	cb.spark:SetSize(h * 1.7, h * 1.7)
+    	local st = ref:GetStatusBarTexture()
+    	local tex = st and st:GetTexture()
+    	if tex then cb:SetStatusBarTexture(tex) end
+    	local name = ref:GetName()
+    	local icon = ref.barIcon or _G[name .. "Icon"]
+    	if icon and (icon:GetWidth() or 0) > 0 then
+    		cb.icon:SetSize(icon:GetWidth() * k, icon:GetHeight() * k)
+    	end
+    	local border = ref.border or _G[name .. "Border"]
+    	local btex = border and border:IsShown() and border:GetTexture()
+    	if btex then
+    		cb.border:SetTexture(btex)
+    		cb.border:SetSize(border:GetWidth() * k, border:GetHeight() * k)
+    		cb.border:Show()
+    	else
+    		cb.border:Hide()
+    	end
+    	MatchFont(cb.text, name .. "Text", pf)
+    	MatchFont(cb.timeText, name .. "Time", pf)
+    end
+
     function K.SyncPartyPetAuraSize(pf)
     	if not (pf and pf.buffs and pf.debuffs) then return end
     	MatchFont(pf.name, "PartyMemberFrame1Name", pf)
@@ -657,6 +721,7 @@ K.DeferModule("PartyPetFrame", {
     	local d = pbOn and RefSize("PartyMemberFrame1Debuff1", 28, pf) or 28
     	for n = 1, #pf.buffs do ResizeIcon(pf.buffs[n], b) end
     	for n = 1, #pf.debuffs do ResizeIcon(pf.debuffs[n], d) end
+    	SyncCastBar(pf)
     end
 
     local function PPF_Build(i)
@@ -666,6 +731,9 @@ K.DeferModule("PartyPetFrame", {
     		UIParent, "SecureUnitButtonTemplate")
 
     	petFrame:SetSize(FRAME_W, FRAME_H)
+
+    	petFrame.moveBox = CreateFrame("Frame", "CustomParty" .. i .. "PetFrameMoveBox", petFrame)
+    	petFrame.moveBox:SetAllPoints(petFrame)
     	petFrame.index = i
     	petFrame.unit  = unit
     	petFrame.owner = "party" .. i
@@ -769,7 +837,8 @@ K.DeferModule("PartyPetFrame", {
 
     	local castBar = CreateFrame("StatusBar", nil, petFrame)
     	castBar:SetSize(110, 14)
-    	castBar:SetPoint("TOPLEFT", petFrame.manaBar, "BOTTOMLEFT", 0, -4)
+
+    	castBar:SetPoint("BOTTOMLEFT", petFrame.debuffs[1], "TOPLEFT", 14, 3)
     	castBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     	castBar:SetStatusBarColor(1, 0.7, 0.2)
     	castBar:Hide()
@@ -780,6 +849,10 @@ K.DeferModule("PartyPetFrame", {
     	castBarBG:SetPoint("TOPLEFT", castBar, "TOPLEFT", -1, 1)
     	castBarBG:SetPoint("BOTTOMRIGHT", castBar, "BOTTOMRIGHT", 1, -1)
     	castBarBG:SetVertexColor(0, 0, 0, 0.7)
+
+    	castBar.border = castBar:CreateTexture(nil, "OVERLAY")
+    	castBar.border:SetPoint("CENTER", castBar, "CENTER", 0, 0)
+    	castBar.border:Hide()
 
     	castBar.icon = castBar:CreateTexture(nil, "ARTWORK")
     	castBar.icon:SetSize(14, 14)
@@ -794,12 +867,12 @@ K.DeferModule("PartyPetFrame", {
     	castBar.spark = spark
 
     	castBar.text = castBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    	castBar.text:SetPoint("LEFT", castBar, "LEFT", 4, 0)
-    	castBar.text:SetJustifyH("LEFT")
+    	castBar.text:SetPoint("CENTER", castBar, "CENTER", 0, 0)
+    	castBar.text:SetJustifyH("CENTER")
 
     	castBar.timeText = castBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    	castBar.timeText:SetPoint("RIGHT", castBar, "RIGHT", -4, 0)
-    	castBar.timeText:SetJustifyH("RIGHT")
+    	castBar.timeText:SetPoint("LEFT", castBar, "RIGHT", 7, 0)
+    	castBar.timeText:SetJustifyH("LEFT")
 
     	castBar:SetScript("OnUpdate", function(self)
     		if not self.endTime then return end
@@ -822,34 +895,45 @@ K.DeferModule("PartyPetFrame", {
     	return petFrame
     end
 
-    local function PPF_Layout()
-    	if InCombatLockdown() then return end
+    local function PosOf(i)
     	local pos = PPF_DB()
-    	local f1 = petFrames[1]
-    	if not f1 then return end
-
-    	f1:ClearAllPoints()
-    	f1:SetPoint(pos.point or "CENTER", UIParent, pos.relPoint or "CENTER",
-    		pos.x or DEF_X, pos.y or DEF_Y)
-
-    	for i = 2, NUM_PETS do
-    		local f = petFrames[i]
-    		if f then
-    			f:ClearAllPoints()
-    			f:SetPoint("TOPLEFT", petFrames[i-1], "BOTTOMLEFT", 0, -STACK_GAP)
-    		end
-    	end
+    	if i == 1 then return pos end
+    	return type(pos[i]) == "table" and pos[i] or nil
     end
 
-    local function PPF_SavePosition()
-    	local f1 = petFrames[1]
-    	if not f1 then return end
-    	local point, rel, relPoint, x, y = f1:GetPoint(1)
-    	if not point then return end
+    local function PPF_Layout()
+    	if InCombatLockdown() then return end
+    	for i = 1, NUM_PETS do
+    		local f, p = petFrames[i], PosOf(i)
+    		if f then
+    			f:ClearAllPoints()
+    			if i == 1 then
+    				f:SetPoint(p.point or "CENTER", UIParent, p.relPoint or "CENTER",
+    					p.x or DEF_X, p.y or DEF_Y)
+    			elseif p and p.x then
+    				f:SetPoint(p.point or "CENTER", UIParent, p.relPoint or "CENTER", p.x, p.y or 0)
+    			else
+    				f:SetPoint("TOPLEFT", petFrames[i-1], "BOTTOMLEFT", 0, -STACK_GAP)
+    			end
+    		end
+    	end
+    	K.FitPartyPetBoxes()
+    end
 
-    	if rel and rel ~= UIParent then return end
-    	local pos = PPF_DB()
-    	pos.point, pos.relPoint, pos.x, pos.y = point, relPoint, x, y
+    local function PPF_SavePosition(f)
+    	local i = f and f.index
+    	if not i or InCombatLockdown() then return end
+    	local l, t = f:GetLeft(), f:GetTop()
+    	if not (l and t) then return end
+    	local p
+    	if i == 1 then
+    		p = PPF_DB()
+    	else
+    		local pos = PPF_DB()
+    		pos[i] = pos[i] or {}
+    		p = pos[i]
+    	end
+    	p.point, p.relPoint, p.x, p.y = "TOPLEFT", "BOTTOMLEFT", l, t
     end
 
     local function PPF_MakeDraggable(f)
@@ -863,7 +947,7 @@ K.DeferModule("PartyPetFrame", {
     	end)
     	f:SetScript("OnDragStop", function(self)
     		self:StopMovingOrSizing()
-    		PPF_SavePosition()
+    		PPF_SavePosition(self)
     		PPF_Layout()
     	end)
     end
@@ -871,7 +955,7 @@ K.DeferModule("PartyPetFrame", {
     for i = 1, NUM_PETS do
     	petFrames[i] = PPF_Build(i)
     end
-    PPF_MakeDraggable(petFrames[1])
+    for i = 1, NUM_PETS do PPF_MakeDraggable(petFrames[i]) end
     PPF_Layout()
 
     local POWER_COLORS = {
@@ -888,7 +972,7 @@ K.DeferModule("PartyPetFrame", {
         local icon = pf.buffs[n]
         icon:ClearAllPoints()
         if n == 1 then
-            icon:SetPoint("TOPLEFT", pf.portraitFrame, "TOPRIGHT", 8, 30)
+            icon:SetPoint("TOPLEFT", pf.manaBar, "BOTTOMLEFT", 0, -3)
         else
             icon:SetPoint("LEFT", pf.buffs[n-1], "RIGHT", 1, 0)
         end
@@ -1091,8 +1175,7 @@ K.DeferModule("PartyPetFrame", {
                 end
             end
         end
-
-        petFrames[1]:SetMovable(not o.locked)
+        for i = 1, NUM_PETS do petFrames[i]:SetMovable(not o.locked) end
 
     end
 
@@ -1111,7 +1194,7 @@ K.DeferModule("PartyPetFrame", {
                 if o.locked then f.lockIndicator:Show() else f.lockIndicator:Hide() end
             end
         end
-        petFrames[1]:SetMovable(not o.locked)
+        for i = 1, NUM_PETS do petFrames[i]:SetMovable(not o.locked) end
     end
 
     local function ToggleClickable()
@@ -1129,6 +1212,8 @@ K.DeferModule("PartyPetFrame", {
     local function ResetPosition()
         local pos = PPF_DB()
         pos.point, pos.relPoint, pos.x, pos.y = "CENTER", "CENTER", DEF_X, DEF_Y
+
+        for i = 2, NUM_PETS do pos[i] = nil end
         PPF_Layout()
     end
 
@@ -1273,6 +1358,7 @@ K.DeferModule("PartyPetFrame", {
     			FillPreview(f, i)
     			f:Show()
     		end
+    		K.FitPartyPetBoxes()
     		previewWatch:RegisterEvent("PLAYER_REGEN_DISABLED")
     		previewWatch:SetScript("OnUpdate", PreviewTick)
     	else
@@ -1341,14 +1427,13 @@ K.DeferModule("PartyPetFrame", {
     end
 
     if type(K.FramePositionOwners) ~= "table" then K.FramePositionOwners = {} end
-    K.FramePositionOwners["PartyPets"] = function()
-    	local f1 = petFrames[1]
-    	if not f1 or InCombatLockdown() then return end
-    	local l, t = f1:GetLeft(), f1:GetTop()
-    	if not (l and t) then return end
-    	local pos = PPF_DB()
-    	pos.point, pos.relPoint, pos.x, pos.y = "TOPLEFT", "BOTTOMLEFT", l, t
-    	PPF_Layout()
+
+    for i = 1, NUM_PETS do
+    	K.FramePositionOwners[i == 1 and "PartyPets" or ("PartyPets" .. i)] = function()
+    		if InCombatLockdown() then return end
+    		PPF_SavePosition(petFrames[i])
+    		PPF_Layout()
+    	end
     end
 
     function K.SetPartyPetPreview(on)
@@ -1365,6 +1450,13 @@ K.DeferModule("PartyPetFrame", {
     		return
     	end
     	for n = 1, NUM_PETS do K.SyncPartyPetAuraSize(petFrames[n]) end
+
+    	if not K._ppfPCBHooked and PartyCastingBars and PartyCastingBars.ApplyBarStyle then
+    		K._ppfPCBHooked = true
+    		hooksecurefunc(PartyCastingBars, "ApplyBarStyle", function(bar)
+    			if bar == _G.PartyMemberFrame1CastingBarFrame then K.SyncAllPartyPetAuraSizes() end
+    		end)
+    	end
     end
     if type(K.ApplyPartyFrameScale) == "function" then
     	hooksecurefunc(K, "ApplyPartyFrameScale", function() K.SyncAllPartyPetAuraSizes() end)

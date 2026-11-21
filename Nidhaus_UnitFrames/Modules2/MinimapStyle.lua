@@ -199,9 +199,100 @@ local function GetThinBorder()
 	return thinBorder;
 end
 
+local W2UI_BG     = { 0.015, 0.028, 0.04, 0.90 };
+local W2UI_BORDER = { 0.34, 0.28, 0.24, 0.90 };
+local WHITE8      = "Interface\\Buttons\\WHITE8X8";
+K.W2UI_BG, K.W2UI_BORDER = W2UI_BG, W2UI_BORDER;
+
+local w2Outer, w2Inner, w2Zone;
+
+local function EdgeFrame(name, off, color)
+	local f = CreateFrame("Frame", name, Minimap);
+	f:SetBackdrop({ edgeFile = WHITE8, edgeSize = 1 });
+	f:SetBackdropBorderColor(color[1], color[2], color[3], color[4]);
+	f:SetPoint("TOPLEFT",     Minimap, "TOPLEFT",     -off,  off);
+	f:SetPoint("BOTTOMRIGHT", Minimap, "BOTTOMRIGHT",  off, -off);
+	f:Hide();
+	return f;
+end
+
+local function GetW2UIBorder()
+	if not Minimap then return nil; end
+	if not w2Outer then
+		w2Outer = EdgeFrame("NUF_MinimapW2UIBorder", 2, W2UI_BORDER);
+		w2Inner = EdgeFrame("NUF_MinimapW2UIInner", 1, W2UI_BG);
+	end
+	return w2Outer, w2Inner;
+end
+
+local function W2UIActive()
+	return BorderStyle() == "W2UI" and C.MinimapSquare == true;
+end
+K.MinimapW2UIActive = W2UIActive;
+
+local PVP_COLORS = {
+	sanctuary = { 0.41, 0.80, 0.94 }, friendly  = { 0.10, 1.00, 0.10 },
+	hostile   = { 1.00, 0.10, 0.10 }, contested = { 1.00, 0.70, 0.00 },
+	arena     = { 1.00, 0.10, 0.10 }, combat    = { 1.00, 0.10, 0.10 },
+};
+local ZONE_DEFAULT = { 1.0, 0.93, 0.76 };
+
+local function UpdateW2UIZone()
+	if not (w2Zone and w2Zone:IsShown()) then return; end
+	w2Zone.text:SetText(GetMinimapZoneText() or "");
+	local c = PVP_COLORS[GetZonePVPInfo() or ""] or ZONE_DEFAULT;
+	w2Zone.text:SetTextColor(c[1], c[2], c[3]);
+end
+
+local function GetW2UIZone()
+	if w2Zone or not Minimap then return w2Zone; end
+	w2Zone = CreateFrame("Frame", "NUF_MinimapW2UIZone", Minimap);
+	w2Zone:SetHeight(16);
+	w2Zone:SetPoint("TOPLEFT",  Minimap, "TOPLEFT",  0, 0);
+	w2Zone:SetPoint("TOPRIGHT", Minimap, "TOPRIGHT", 0, 0);
+	local bg = w2Zone:CreateTexture(nil, "BACKGROUND");
+	bg:SetAllPoints();
+	bg:SetTexture(0, 0, 0, 0.55);
+	w2Zone.text = w2Zone:CreateFontString(nil, "OVERLAY");
+	w2Zone.text:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE");
+	w2Zone.text:SetPoint("LEFT",  w2Zone, "LEFT",   4, 0);
+	w2Zone.text:SetPoint("RIGHT", w2Zone, "RIGHT", -4, 0);
+	w2Zone:RegisterEvent("ZONE_CHANGED");
+	w2Zone:RegisterEvent("ZONE_CHANGED_INDOORS");
+	w2Zone:RegisterEvent("ZONE_CHANGED_NEW_AREA");
+	w2Zone:RegisterEvent("PLAYER_ENTERING_WORLD");
+	w2Zone:SetScript("OnEvent", UpdateW2UIZone);
+	w2Zone:SetScript("OnShow", UpdateW2UIZone);
+	w2Zone:Hide();
+	return w2Zone;
+end
+
+local function ApplyW2UIZone()
+	local want = W2UIActive() and not C.MinimapHideZone;
+	local z = (want or w2Zone) and GetW2UIZone();
+	if not z then return false; end
+	z:SetFrameLevel((Minimap:GetFrameLevel() or 0) + 3);
+	if want then z:Show(); UpdateW2UIZone(); else z:Hide(); end
+	return want;
+end
+
 function K.ApplyMinimapBorderStyle()
 	local style = BorderStyle();
 	local cs = GetCorners();
+
+	if w2Outer then w2Outer:Hide(); w2Inner:Hide(); end
+	if style == "W2UI" then
+		if cs then for _, tx in ipairs(cs) do tx:Hide(); end end
+		local tb = GetThinBorder(); if tb then tb:Hide(); end
+		if squareBorder then squareBorder:Hide(); end
+		if MinimapBorder then MinimapBorder:Hide(); end
+		if C.MinimapSquare and GetW2UIBorder() then
+			local lv = (Minimap:GetFrameLevel() or 0) + 1;
+			w2Outer:SetFrameLevel(lv); w2Inner:SetFrameLevel(lv);
+			w2Outer:Show(); w2Inner:Show();
+		end
+		return;
+	end
 
 	if style == "None" then
 		if cs then for _, tx in ipairs(cs) do tx:Hide(); end end
@@ -374,6 +465,11 @@ function K.ApplyMinimapDecorations()
 	if MiniMapWorldMapButton then
 		if C.MinimapHideWorldMap then MiniMapWorldMapButton:Hide(); else MiniMapWorldMapButton:Show(); end
 	end
+
+	if ApplyW2UIZone() then
+		if MinimapZoneTextButton then MinimapZoneTextButton:Hide(); end
+		if MinimapBorderTop then MinimapBorderTop:Hide(); end
+	end
 end
 
 local PROTECTED = {
@@ -386,6 +482,8 @@ local PROTECTED = {
 	["NUF_MinimapIconToggle"] = true, ["NUF_MinimapSquareBorder"] = true,
 
 	["NUF_MinimapThinBorder"] = true,
+	["NUF_MinimapW2UIBorder"] = true, ["NUF_MinimapW2UIInner"] = true,
+	["NUF_MinimapW2UIZone"] = true, ["NUF_MinimapInfoBar"] = true,
 
 	["MiniMapTrackingFrame"] = true, ["MiniMapTracking"] = true,
 	["MiniMapTrackingButton"] = true, ["MiniMapTrackingIcon"] = true,
@@ -394,6 +492,8 @@ local PROTECTED = {
 };
 
 local function RestoreTrackingButton()
+
+	if C.MinimapIconsTracking then return; end
 	for _, n in ipairs({ "MiniMapTrackingFrame", "MiniMapTracking", "MiniMapTrackingButton" }) do
 		local f = _G[n];
 		if f and f.Show and not f:IsShown() then pcall(f.Show, f); end
@@ -481,6 +581,7 @@ function K.ApplyMinimapSettings()
 	if K.ApplyMinimapIconState then K.ApplyMinimapIconState(); end
 	K.ApplyMinimapWheelZoom();
 	K.ApplyMinimapScale();
+	if K.ApplyMinimapInfoBar then K.ApplyMinimapInfoBar(); end
 	RestoreTrackingButton();
 	retryAcc, retryCount = 0, 0;
 	iconRetry:Show();

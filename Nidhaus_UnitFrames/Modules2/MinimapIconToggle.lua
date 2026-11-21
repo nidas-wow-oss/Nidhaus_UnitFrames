@@ -23,6 +23,11 @@ local PROTECTED = {
 
 	["NUF_MinimapThinBorder"]   = true,
 
+	["NUF_MinimapW2UIBorder"]   = true,
+	["NUF_MinimapW2UIInner"]    = true,
+	["NUF_MinimapW2UIZone"]     = true,
+	["NUF_MinimapInfoBar"]      = true,
+
 	["TimeManagerClockButton"]  = true,
 	["TimeManagerClockTicker"]  = true,
 
@@ -82,7 +87,22 @@ local function CollectTargets()
 		end
 	end
 
+	if C.MinimapIconsTracking then
+		local t = MiniMapTracking or MiniMapTrackingFrame;
+		if t then table.insert(list, t); end
+	end
+
 	return list;
+end
+
+local function ReleaseTracking()
+	if C.MinimapIconsTracking then return; end
+	for _, t in ipairs({ MiniMapTracking or false, MiniMapTrackingFrame or false }) do
+		if t and savedShown[t] then
+			savedShown[t] = nil;
+			t:Show();
+		end
+	end
 end
 
 local hoverOver     = false;
@@ -164,6 +184,7 @@ hoverDriver:SetScript("OnUpdate", function(self, elapsed)
 end);
 
 function K.ApplyMinimapIconState()
+	ReleaseTracking();
 	if HoverMode() then
 		hoverTargets = CollectTargets();
 		hoverOver = MouseIsNearMinimap();

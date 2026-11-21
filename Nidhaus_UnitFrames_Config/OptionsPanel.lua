@@ -1663,6 +1663,8 @@ local function PopulateTabs()
 			{ text = L["MINIMAP_BORDER_THIN"]     or "Thin",     value = "Thin"     },
 			{ text = L["MINIMAP_BORDER_FLAT"]     or "Flat",     value = "Flat"     },
 
+			{ text = L["MINIMAP_BORDER_W2UI"]     or "W2UI",     value = "W2UI"     },
+
 			{ text = L["MINIMAP_BORDER_LORTI"] or "Lorti UI", value = "Lorti" },
 
 			{ text = L["MINIMAP_BORDER_NONE"] or "None", value = "None" },
@@ -1695,6 +1697,9 @@ local function PopulateTabs()
 			elseif style == "Light" and C.MinimapSquare ~= true then
 				note:SetText("|cffFFD100" .. (L["NOTE_MINIMAP_BORDER_SQUARE"]
 					or "Light only works with the square shape.") .. "|r");
+			elseif style == "W2UI" and C.MinimapSquare ~= true then
+				note:SetText("|cffFFD100" .. (L["NOTE_MINIMAP_BORDER_W2UI"]
+					or "W2UI only works with the square shape.") .. "|r");
 			else
 				note:SetText("|cff8EAEC9" .. (L["NOTE_MINIMAP_BORDER"]
 					or "Tooltip, Thin, Flat and Blizzard work with both shapes.") .. "|r");
@@ -1774,6 +1779,13 @@ local function PopulateTabs()
 		RefreshIconBoxes();
 	end
 
+	mmR = mmR - 28;
+	CreateCheckBox(paneMap, L["CB_MINIMAP_ICONS_TRACKING"] or "Include tracking button",
+		"MinimapIconsTracking", xR, mmR);
+	checkboxes[#checkboxes]:HookScript("OnClick", function()
+		if K.ApplyMinimapIconState then K.ApplyMinimapIconState(); end
+	end);
+
 	mmR = mmR - 36;
 	CreateModuleCB(paneMap, L["MOD_MINIMAP_TOGGLE"] or "Minimap Icon Toggle",
 		"MinimapIconToggle", xR, mmR, L["MOD_MINIMAP_TOGGLE_DESC"]);
@@ -1796,6 +1808,38 @@ local function PopulateTabs()
 	mapScale:HookScript("OnValueChanged", function()
 		if K.ApplyMinimapScale then K.ApplyMinimapScale(); end
 	end);
+
+	mmR = mmR - 50;
+	SectionHeader(paneMap, L["HEADER_MINIMAP_INFOBAR"] or "Status Bar", xR, mmR);
+	do
+		local function InfoCB(label, setting, x, y)
+			CreateCheckBox(paneMap, label, setting, x, y);
+			local cb = checkboxes[#checkboxes];
+			cb:HookScript("OnClick", function()
+				if K.ApplyMinimapInfoBar then K.ApplyMinimapInfoBar(); end
+			end);
+			return cb;
+		end
+		mmR = mmR - 24;
+		local barCB = InfoCB(L["CB_MINIMAP_INFOBAR"] or "Show status bar", "MinimapInfoBar", xR, mmR); mmR = mmR - 26;
+
+		barCB:HookScript("OnClick", function()
+			local on = C.MinimapInfoBar and true or false;
+			for _, key in ipairs({ "MinimapHideClock", "MinimapHideClockBG" }) do
+				if (C[key] and true or false) ~= on and K.SaveConfig then
+					K.SaveConfig(key, on);
+					if K.RefreshSettingCheckboxes then K.RefreshSettingCheckboxes(key) end
+				end
+			end
+			if K.ApplyMinimapSettings then K.ApplyMinimapSettings() end
+		end);
+		InfoCB(L["CB_MINIMAP_INFO_CLOCK"]    or "Time",                  "MinimapInfoClock",      xR + 16, mmR); mmR = mmR - 26;
+		InfoCB(L["CB_MINIMAP_INFO_FPS"]      or "FPS (memory on hover)", "MinimapInfoFPS",        xR + 16, mmR); mmR = mmR - 26;
+		InfoCB(L["CB_MINIMAP_INFO_PING"]     or "Ping",                  "MinimapInfoPing",       xR + 16, mmR); mmR = mmR - 26;
+		InfoCB(L["CB_MINIMAP_INFO_ICONS"]    or "Icons",                 "MinimapInfoIcons",      xR + 16, mmR); mmR = mmR - 26;
+		InfoCB(L["CB_MINIMAP_INFO_24H"]      or "24-hour clock",         "MinimapInfo24h",        xR + 16, mmR); mmR = mmR - 26;
+		InfoCB(L["CB_MINIMAP_INFO_SERVER"]   or "Server time",           "MinimapInfoServerTime", xR + 16, mmR);
+	end
 
 	sideUI.SetContentHeight(3, math.min(mmY, mmR) - 60);
 

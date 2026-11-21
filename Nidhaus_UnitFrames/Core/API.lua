@@ -21,6 +21,20 @@ function K.CreateBackdrop(Obj)
 	Obj.Backdrop = Backdrop;
 end;
 
+local menuAnchors = {};
+function K.AnchorBlizzMenu(dd, frame, x, y)
+	menuAnchors[dd] = { frame, x or 0, y or 0 };
+	if K._menuAnchorHooked then return; end
+	K._menuAnchorHooked = true;
+	DropDownList1:SetClampedToScreen(true);
+	hooksecurefunc("ToggleDropDownMenu", function(level, _, menu)
+		local a = menu and menuAnchors[menu];
+		if not a or (level or 1) ~= 1 or not DropDownList1:IsShown() then return; end
+		DropDownList1:ClearAllPoints();
+		DropDownList1:SetPoint("TOPLEFT", a[1], "BOTTOMLEFT", a[2], a[3]);
+	end);
+end
+
 function K.MoveFrame(Obj, NewFrameName, UnitId, xOffset, yOffset, ParentBossFrame)
 	CreateFrame("Button", NewFrameName, UIParent, "SecureUnitButtonTemplate");
 	local Frame = _G[NewFrameName];
@@ -34,10 +48,18 @@ function K.MoveFrame(Obj, NewFrameName, UnitId, xOffset, yOffset, ParentBossFram
 
 	Frame:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
-	local ShowMenu = function()
-		ToggleDropDownMenu(1, nil, _G[Obj:GetName().."DropDown"], NewFrameName, xOffset, yOffset);
+	local dd = _G[Obj:GetName().."DropDown"];
+	if dd and type(rawget(Obj, "menu")) == "function" then
+		SecureUnitButton_OnLoad(Frame, UnitId);
+		Frame:SetAttribute("*type2", "click");
+		Frame:SetAttribute("*clickbutton2", Obj);
+		K.AnchorBlizzMenu(dd, Frame, xOffset, yOffset);
+	else
+		local ShowMenu = function()
+			ToggleDropDownMenu(1, nil, dd, NewFrameName, xOffset, yOffset);
+		end
+		SecureUnitButton_OnLoad(Frame, UnitId, ShowMenu);
 	end
-	SecureUnitButton_OnLoad(Frame, UnitId, ShowMenu);
 
 	for _, script in ipairs({"OnEnter", "OnLeave", "OnReceiveDrag"}) do
 		Frame:SetScript(script, Obj:GetScript(script));

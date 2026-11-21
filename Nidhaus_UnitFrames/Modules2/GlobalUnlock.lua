@@ -71,7 +71,17 @@ local MOVABLES = {
 	{ key = "SwingTimer", group = "extra", frames = {"NUF_SwingMover"},        label = "Auto attack", scalable = true,
 	  module = "MeleeSwingTimer" },
 
-	{ key = "PartyPets",  group = "extra", frames = {"CustomParty1PetFrame"},  label = "Party pets", scalable = true,
+	{ key = "PartyPets",  group = "extra", frames = {"CustomParty1PetFrame"},  label = "Party pet 1", scalable = true,
+	  overlayOn = "CustomParty1PetFrameMoveBox",
+	  protected = true, preview = "SetPartyPetPreview", module = "PartyPetFrame" },
+	{ key = "PartyPets2", group = "extra", frames = {"CustomParty2PetFrame"},  label = "Party pet 2", scalable = true,
+	  overlayOn = "CustomParty2PetFrameMoveBox",
+	  protected = true, preview = "SetPartyPetPreview", module = "PartyPetFrame" },
+	{ key = "PartyPets3", group = "extra", frames = {"CustomParty3PetFrame"},  label = "Party pet 3", scalable = true,
+	  overlayOn = "CustomParty3PetFrameMoveBox",
+	  protected = true, preview = "SetPartyPetPreview", module = "PartyPetFrame" },
+	{ key = "PartyPets4", group = "extra", frames = {"CustomParty4PetFrame"},  label = "Party pet 4", scalable = true,
+	  overlayOn = "CustomParty4PetFrameMoveBox",
 	  protected = true, preview = "SetPartyPetPreview", module = "PartyPetFrame" },
 	{ key = "PaladinICD", group = "extra", frames = {"PaladinICDFrame"},       label = "Paladin ICD", scalable = true,
 	  preview = "SetPaladinICDPreview", module = "PaladinICD", class = "PALADIN" },
@@ -561,6 +571,9 @@ local MODULE_SCALE_ID = {
 	PaladinICD   = "PaladinICD",
 	Seduction    = "SeductionAlert",
 	PartyPets    = "PartyPetFrame",
+	PartyPets2   = "PartyPetFrame",
+	PartyPets3   = "PartyPetFrame",
+	PartyPets4   = "PartyPetFrame",
 };
 
 local OWN_SCALE = {

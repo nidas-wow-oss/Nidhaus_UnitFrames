@@ -69,6 +69,7 @@
 	<Script file="Modules2\HunterPetBuffs.lua"/>
 	<Script file="Modules2\PowerBar.lua"/>
 	<Script file="Modules2\MinimapStyle.lua"/>
+	<Script file="Modules2\MinimapInfoBar.lua"/>
 	<Script file="Modules2\PartyFramesImproved\PartyFramesImproved.lua"/>
 	<Script file="Modules2\PartyFramePW.lua"/>
 	<Script file="Modules2\CastBarPW.lua"/>

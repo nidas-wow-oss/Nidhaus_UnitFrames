@@ -182,6 +182,16 @@ local defaults = {
 	MinimapIconsOnHover = false,
 	MinimapAddonIcons = "Always",
 
+	MinimapIconsTracking = false,
+
+	MinimapInfoBar        = false,
+	MinimapInfoClock      = true,
+	MinimapInfoFPS        = true,
+	MinimapInfoPing       = true,
+	MinimapInfoIcons      = true,
+	MinimapInfoServerTime = false,
+	MinimapInfo24h        = true,
+
 	MinimapScale      = 1.0,
 
 	MageWaterEleTimer  = true,
