@@ -35,7 +35,7 @@ K.DeferModule("EnemySpellAlert", {
 			{ 19647, true  },
 			{ 6358,  true  },
 			{ 30283, false },
-			{ 6789,  false },
+			{ 6789,  true  },
 		}},
 		{ class = "HUNTER", color = "|cffABD473", ids = {
 			{ 1499,  true  },
@@ -43,7 +43,7 @@ K.DeferModule("EnemySpellAlert", {
 			{ 34490, true  },
 			{ 19503, true  },
 			{ 13809, false },
-			{ 34600, false },
+			{ 34600, true  },
 			{ 19263, false },
 		}},
 		{ class = "ROGUE", color = "|cffFFF569", ids = {
@@ -115,6 +115,12 @@ K.DeferModule("EnemySpellAlert", {
 		if db.glow == nil then db.glow = false; end
 		if db.soundKey == nil then db.soundKey = "raid"; end
 		if not db.spells then db.spells = {}; end
+
+		if not db._defaultsV2 then
+			db.spells[6789]  = true;
+			db.spells[34600] = true;
+			db._defaultsV2 = true;
+		end
 
 		for _, grp in ipairs(SPELLS) do
 			for _, e in ipairs(grp.ids) do
