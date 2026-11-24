@@ -63,6 +63,59 @@ K.DeferModule("PowerBar", {
 	local healthText = healthBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 	healthText:SetPoint("CENTER", healthBar, "CENTER", 0, 0);
 
+	local HealComm  = LibStub and LibStub:GetLibrary("LibHealComm-4.0", true);
+	local LibAbsorb = LibStub and LibStub:GetLibrary("AbsorbsMonitor-1.0", true);
+	local healTex, absorbTex;
+	local UpdatePrediction = function() end;
+	if HealComm or LibAbsorb then
+		local function Layer(r, g, b, a)
+			local t = healthBar:CreateTexture(nil, "ARTWORK");
+			t:SetTexture("Interface\\TargetingFrame\\UI-StatusBar");
+			t:SetVertexColor(r, g, b, a);
+			t:Hide();
+			return t;
+		end
+		healTex   = Layer(0.0, 0.85, 0.3, 0.55);
+		absorbTex = Layer(1.0, 1.0, 1.0, 0.45);
+
+		local function Place(tex, prev, amount, room, hpmax, w)
+			amount = math.min(amount or 0, room);
+			if amount <= 0 or hpmax <= 0 then tex:Hide(); return prev, room; end
+			tex:ClearAllPoints();
+			tex:SetPoint("TOPLEFT",    prev, "TOPRIGHT",    0, 0);
+			tex:SetPoint("BOTTOMLEFT", prev, "BOTTOMRIGHT", 0, 0);
+			tex:SetWidth(math.max(1, amount / hpmax * w));
+			tex:Show();
+			return tex, room - amount;
+		end
+
+		UpdatePrediction = function()
+			if not healthBar:IsShown() then return; end
+			local hp, hpmax = UnitHealth("player") or 0, UnitHealthMax("player") or 0;
+			local w = healthBar:GetWidth() or 0;
+			local guid = UnitGUID("player");
+			local heal = HealComm and guid
+				and HealComm:GetHealAmount(guid, HealComm.ALL_HEALS, GetTime() + 5) or 0;
+
+			if HealComm and guid and heal > 0 and HealComm.GetHealModifier then
+				heal = heal * (HealComm:GetHealModifier(guid) or 1);
+			end
+			local absorb = LibAbsorb and guid and LibAbsorb.Unit_Total(guid) or 0;
+			local room = math.max(0, hpmax - hp);
+			local prev = healthBar:GetStatusBarTexture();
+			prev, room = Place(healTex, prev, heal, room, hpmax, w);
+			Place(absorbTex, prev, absorb, room, hpmax, w);
+		end
+
+		local predAcc = 0;
+		healthBar:SetScript("OnUpdate", function(_, elapsed)
+			predAcc = predAcc + elapsed;
+			if predAcc < 0.2 then return; end
+			predAcc = 0;
+			UpdatePrediction();
+		end);
+	end
+
 	local bar = CreateFrame("StatusBar", "NUF_PowerBarStatus", frame);
 	bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar");
 	bar:SetMinMaxValues(0, 100);
@@ -77,11 +130,74 @@ K.DeferModule("PowerBar", {
 	text:SetPoint("CENTER", bar, "CENTER", 0, 0);
 	text:SetText("0 / 0");
 
+	local costTex = bar:CreateTexture(nil, "OVERLAY");
+	costTex:SetTexture("Interface\\TargetingFrame\\UI-StatusBar");
+	costTex:SetVertexColor(1, 1, 1, 0.45);
+	costTex:Hide();
+	local castCost = 0;
+
+	local function UpdateCost()
+		local cur, max = UnitPower("player") or 0, UnitPowerMax("player") or 0;
+		local cost = math.min(castCost, cur);
+		if cost <= 0 or max <= 0 then costTex:Hide(); return; end
+		local w = bar:GetWidth() or 0;
+		local fill = bar:GetStatusBarTexture();
+		costTex:ClearAllPoints();
+		costTex:SetPoint("TOPRIGHT",    fill, "TOPRIGHT",    0, 0);
+		costTex:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", 0, 0);
+		costTex:SetWidth(math.max(1, cost / max * w));
+		costTex:Show();
+	end
+
+	local function StartCost(spellName, spellRank, spellID)
+		castCost = 0;
+		local _, _, _, cost, _, powerType;
+		if type(spellID) == "number" and spellID > 0 then
+			_, _, _, cost, _, powerType = GetSpellInfo(spellID);
+		elseif spellName then
+			local q = (spellRank and spellRank ~= "") and (spellName .. "(" .. spellRank .. ")") or spellName;
+			_, _, _, cost, _, powerType = GetSpellInfo(q);
+		end
+		if cost and cost > 0 and powerType == (UnitPowerType("player") or 0) then
+			castCost = cost;
+		end
+		UpdateCost();
+	end
+
+	local function StopCost()
+		castCost = 0;
+		costTex:Hide();
+	end
+
 	local DEF_AURA_SIZE, DEF_AURA_PERROW = 16, 8;
 	local AURA_GAP, AURA_MARGIN = 2, 4;
 
 	local BUFF_FILTER   = "HELPFUL|RAID";
 	local DEBUFF_FILTER = "HARMFUL|RAID";
+
+	local EXTRA_BUFF_IDS = {
+		54428,
+		139,
+		774,
+		8936,
+		33763,
+		48438,
+		61295,
+		51945,
+		28880,
+		56161,
+	};
+	local EXTRA_BUFFS;
+	local function ExtraBuffs()
+		if not EXTRA_BUFFS then
+			EXTRA_BUFFS = {};
+			for _, id in ipairs(EXTRA_BUFF_IDS) do
+				local n = GetSpellInfo(id);
+				if n then EXTRA_BUFFS[n] = true; end
+			end
+		end
+		return EXTRA_BUFFS;
+	end
 
 	local AURA_FILTER_OK;
 
@@ -190,15 +306,44 @@ K.DeferModule("PowerBar", {
 		end
 	end
 
+	local shownExtra = {};
+	local pName, pIcon, pCount, pType = {}, {}, {}, {};
+
 	local function FillRow(list, filter, per)
 		local isDebuff = (filter == DEBUFF_FILTER);
 		local hidden   = DB().auraHidden;
 		local slot, i  = 0, 1;
 
-		while slot < per and i <= 40 do
-			local name, _, icon, count, dtype, duration, expires = AuraAt(i, filter);
-			if not name then break; end
-			i = i + 1;
+		wipe(shownExtra);
+		local extras = (not isDebuff) and ExtraBuffs() or nil;
+		local np = 0;
+		if extras then
+			local j = 1;
+			while np < per and j <= 40 do
+				local name, _, icon, count, dtype = UnitBuff("player", j);
+				if not name then break; end
+				j = j + 1;
+				if icon and extras[name] and not shownExtra[name]
+					and not (hidden and hidden[name]) then
+					shownExtra[name] = true;
+					np = np + 1;
+					pName[np], pIcon[np], pCount[np], pType[np] = name, icon, count, dtype;
+				end
+			end
+		end
+		local p = 1;
+
+		while slot < per and (p <= np or i <= 40) do
+			local name, rank, icon, count, dtype;
+			if p <= np then
+				name, icon, count, dtype = pName[p], pIcon[p], pCount[p], pType[p];
+				p = p + 1;
+			else
+				name, rank, icon, count, dtype = AuraAt(i, filter);
+				if not name then break; end
+				i = i + 1;
+				if shownExtra[name] then icon = nil; end
+			end
 
 			if icon and not (hidden and hidden[name]) then
 				slot = slot + 1;
@@ -416,6 +561,7 @@ K.DeferModule("PowerBar", {
 		bar:SetStatusBarColor(col[1], col[2], col[3]);
 		bar:SetMinMaxValues(0, max);
 		bar:SetValue(cur);
+		if castCost > 0 then UpdateCost(); end
 
 		if C.PowerBarHideText then
 			text:Hide();
@@ -452,6 +598,7 @@ K.DeferModule("PowerBar", {
 					end
 					healthText:Show();
 				end
+				UpdatePrediction();
 			end
 		end
 
@@ -475,6 +622,13 @@ K.DeferModule("PowerBar", {
 		events:RegisterEvent("PLAYER_REGEN_DISABLED");
 		events:RegisterEvent("PLAYER_REGEN_ENABLED");
 
+		for _, ev in ipairs({
+			"UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_FAILED",
+			"UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_SUCCEEDED",
+		}) do
+			events:RegisterEvent(ev);
+		end
+
 		if C.PowerBarShowAuras then events:RegisterEvent("UNIT_AURA"); end
 
 		if C.PowerBarShowHealth or C.PowerBarHideWhenFull then
@@ -483,7 +637,15 @@ K.DeferModule("PowerBar", {
 		end
 	end
 
-	events:SetScript("OnEvent", function(self, event, unit)
+	events:SetScript("OnEvent", function(self, event, unit, a2, a3, a4, a5)
+		if event == "UNIT_SPELLCAST_START" then
+			if unit == "player" then StartCost(a2, a3, a5); end
+			return;
+		elseif event == "UNIT_SPELLCAST_STOP" or event == "UNIT_SPELLCAST_FAILED"
+			or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_SUCCEEDED" then
+			if unit == "player" and castCost > 0 then StopCost(); end
+			return;
+		end
 		if event == "PLAYER_REGEN_DISABLED" then
 			inCombat = true;
 		elseif event == "PLAYER_REGEN_ENABLED" then

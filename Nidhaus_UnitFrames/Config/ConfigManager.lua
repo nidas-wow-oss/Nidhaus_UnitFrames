@@ -184,6 +184,8 @@ local defaults = {
 
 	MinimapIconsTracking = false,
 
+	MinimapSquareSize = 150,
+
 	MinimapInfoBar        = false,
 	MinimapInfoClock      = true,
 	MinimapInfoFPS        = true,

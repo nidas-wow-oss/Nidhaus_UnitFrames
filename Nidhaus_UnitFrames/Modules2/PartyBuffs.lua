@@ -325,7 +325,13 @@ K.DeferModule("PartyBuffs", {
 		refreshHooked = true;
 		hooksecurefunc("RefreshDebuffs", function(frame, unit)
 			if pbEnabled and frame and partyFrameSet[frame] then
-				RefreshFrameAuras(frame, true, unit);
+
+				local id = frame.GetID and frame:GetID();
+				if id and id > 0 and unit ~= ("party" .. id) then
+					RefreshFrameAuras(frame, false);
+				else
+					RefreshFrameAuras(frame, true, unit);
+				end
 			end
 		end);
 	end

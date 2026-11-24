@@ -1019,7 +1019,8 @@ K.DeferModule("PartyPetFrame", {
         for i = 1, (o.showBuffs and 16 or 0) do
             local name, _, texture, count, _, duration, expires = UnitBuff(unit, i)
             if not name then break end
-            if not hiddenAuras[name] then
+
+            if not hiddenAuras[name] and duration and duration > 0 then
                 local icon = pf.buffs[buffIndex]
 
                 if not icon then break end

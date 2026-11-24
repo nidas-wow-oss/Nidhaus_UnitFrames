@@ -1810,6 +1810,15 @@ local function PopulateTabs()
 	end);
 
 	mmR = mmR - 50;
+	local mapSize = CreateSlider(paneMap, L["SLIDER_MINIMAP_SQUARE_SIZE"] or "Square Map Size",
+		"MinimapSquareSize", 130, 180, 5, xR, mmR);
+	mapSize:SetWidth(210);
+	mapSize:HookScript("OnValueChanged", function()
+		if K.ApplyMinimapShape then K.ApplyMinimapShape(); end
+		if K.ApplyMinimapScale then K.ApplyMinimapScale(); end
+	end);
+
+	mmR = mmR - 50;
 	SectionHeader(paneMap, L["HEADER_MINIMAP_INFOBAR"] or "Status Bar", xR, mmR);
 	do
 		local function InfoCB(label, setting, x, y)
@@ -1830,6 +1839,15 @@ local function PopulateTabs()
 					K.SaveConfig(key, on);
 					if K.RefreshSettingCheckboxes then K.RefreshSettingCheckboxes(key) end
 				end
+			end
+
+			if on and K.SaveConfig and (C.MinimapBorderStyle or "Default") ~= "W2UI" then
+				K.SaveConfig("MinimapBorderStyle", "W2UI");
+				if C.LortiUI_Minimap == true then
+					K.SaveConfig("LortiUI_Minimap", false);
+					if K.RefreshLortiSubOptions then pcall(K.RefreshLortiSubOptions) end
+				end
+				if K.RefreshMinimapBorderDropdown then K.RefreshMinimapBorderDropdown() end
 			end
 			if K.ApplyMinimapSettings then K.ApplyMinimapSettings() end
 		end);

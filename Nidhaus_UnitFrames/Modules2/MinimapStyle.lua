@@ -75,6 +75,16 @@ local function Pick(...)
 	return nil;
 end
 
+local function BattlefieldSpot()
+	local e = { f = Pick("MiniMapBattlefieldFrame"), point = "CENTER" };
+	if C.MinimapInfoBar then
+		e.rel, e.x, e.y = "LEFT", 2, -46;
+	else
+		e.rel, e.x, e.y = "BOTTOMLEFT", 2, 2;
+	end
+	return e;
+end
+
 local function SquareLayout()
 	return {
 		{ f = Pick("MiniMapWorldMapButton"),
@@ -93,8 +103,7 @@ local function SquareLayout()
 		  point = "CENTER", rel = "LEFT",        x =  2, y =  10 },
 		{ f = Pick("MiniMapLFGFrame", "MiniMapMeetingStoneButton"),
 		  point = "CENTER", rel = "LEFT",        x =  2, y = -18 },
-		{ f = Pick("MiniMapBattlefieldFrame"),
-		  point = "CENTER", rel = "BOTTOMLEFT",  x =  2, y =  2 },
+		BattlefieldSpot(),
 	};
 end
 
@@ -377,8 +386,26 @@ function K.ApplyMinimapNorth()
 	end
 end
 
+local ROUND_SIZE = 140;
+local function ApplyMinimapSize()
+	local size = ROUND_SIZE;
+	if C.MinimapSquare then
+		size = tonumber(C.MinimapSquareSize) or ROUND_SIZE;
+		if size < 120 then size = 120 elseif size > 200 then size = 200 end
+	end
+	if math.abs((Minimap:GetWidth() or 0) - size) < 0.5 then return; end
+	Minimap:SetWidth(size);
+	Minimap:SetHeight(size);
+
+	local z = Minimap:GetZoom();
+	Minimap:SetZoom(z > 0 and z - 1 or z + 1);
+	Minimap:SetZoom(z);
+end
+
 function K.ApplyMinimapShape()
 	if not Minimap then return; end
+
+	ApplyMinimapSize();
 
 	if C.MinimapSquare then
 		Minimap:SetMaskTexture(SQUARE_MASK);

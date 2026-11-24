@@ -112,6 +112,7 @@ K.DeferModule("EnemySpellAlert", {
 		if db.border == nil then db.border = "thin"; end
 		if type(db.duration) ~= "number" then db.duration = DURATION; end
 		if db.sound == nil then db.sound = false; end
+		if db.glow == nil then db.glow = false; end
 		if not db.spells then db.spells = {}; end
 
 		for _, grp in ipairs(SPELLS) do
@@ -247,6 +248,13 @@ K.DeferModule("EnemySpellAlert", {
 
 	local pool, active, states = {}, {}, {};
 
+	local GLOW_BORDER = "Interface\\AddOns\\Nidhaus_UnitFrames\\Media\\Border\\BigBorder";
+
+	local function GlowPulse(g, dt)
+		g.t = (g.t or 0) + dt;
+		g:SetAlpha(0.725 + 0.275 * math.sin(g.t * 6.283));
+	end
+
 	local function CreateIcon()
 		local sz = GetIconSize();
 		local f = CreateFrame("Frame", nil, anchor);
@@ -266,8 +274,26 @@ K.DeferModule("EnemySpellAlert", {
 		f.cd:SetAllPoints();
 		f.cd:SetReverse(true);
 
+		f.glow = CreateFrame("Frame", nil, f);
+		f.glow:SetFrameLevel(f.cd:GetFrameLevel() + 2);
+		f.glow:SetPoint("TOPLEFT", -4, 4);
+		f.glow:SetPoint("BOTTOMRIGHT", 4, -4);
+		f.glow:SetBackdrop({ edgeFile = GLOW_BORDER, edgeSize = 12 });
+		f.glow:SetBackdropBorderColor(1, 0.82, 0.15, 1);
+		f.glow:SetScript("OnUpdate", GlowPulse);
+		f.glow:Hide();
+
 		f:Hide();
 		return f;
+	end
+
+	local function StyleGlow(f)
+		if DB().glow then
+			f.glow.t = 0;
+			f.glow:Show();
+		else
+			f.glow:Hide();
+		end
 	end
 
 	local function StyleBorder(f, cls)
@@ -336,6 +362,9 @@ K.DeferModule("EnemySpellAlert", {
 			db.duration = math.max(1, math.min(10, v));
 		elseif key == "sound" then
 			db.sound = v and true or false;
+		elseif key == "glow" then
+			db.glow = v and true or false;
+			for _, f in ipairs(pool) do if f.inUse then StyleGlow(f); end end
 		end
 	end
 
@@ -411,6 +440,7 @@ K.DeferModule("EnemySpellAlert", {
 		end
 		st.widget.cls = cls;
 		StyleBorder(st.widget, cls);
+		StyleGlow(st.widget);
 		local d = Duration();
 		st.expire = GetTime() + d;
 		st.widget.cd:SetCooldown(GetTime(), d);

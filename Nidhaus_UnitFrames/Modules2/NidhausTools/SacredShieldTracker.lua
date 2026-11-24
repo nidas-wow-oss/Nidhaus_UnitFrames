@@ -42,23 +42,33 @@ anchor.bg:SetAllPoints(anchor);
 anchor.bg:SetTexture(0, 1, 0, 0.25);
 anchor.bg:Hide();
 
-local function GlowOn(f)
+local BIG_BORDER = "Interface\\AddOns\\Nidhaus_UnitFrames\\Media\\Border\\BigBorder";
+local URGENT_AT  = 2;
+
+local function GlowPulse(g, dt)
+    g.t = (g.t or 0) + dt;
+
+    g:SetAlpha(0.725 + 0.275 * math.sin(g.t * 6.283));
+    local left = g.expires and (g.expires - GetTime()) or 99;
+    if left <= URGENT_AT then
+        g:SetBackdropBorderColor(1, 0.25, 0.1, 1);
+    else
+        g:SetBackdropBorderColor(1, 0.82, 0.15, 1);
+    end
+end
+
+local function GlowOn(f, expires)
+    f.glow.expires = expires;
     if f.glowing then return; end
     f.glowing = true;
-    if type(ActionButton_ShowOverlayGlow) == "function" then
-        local ok = pcall(ActionButton_ShowOverlayGlow, f);
-        if ok then return; end
-    end
-    f.fallbackGlow:Show();
+    f.glow.t = 0;
+    f.glow:Show();
 end
 
 local function GlowOff(f)
     if not f.glowing then return; end
     f.glowing = nil;
-    if type(ActionButton_HideOverlayGlow) == "function" then
-        pcall(ActionButton_HideOverlayGlow, f);
-    end
-    f.fallbackGlow:Hide();
+    f.glow:Hide();
 end
 
 local CHILDREN = {};
@@ -87,11 +97,14 @@ local function CreateChild(id, withText, hideCooldownNumbers)
         if t then t:Hide(); end
     end
 
-    f.fallbackGlow = f:CreateTexture(nil, "OVERLAY");
-    f.fallbackGlow:SetPoint("TOPLEFT", -3, 3);
-    f.fallbackGlow:SetPoint("BOTTOMRIGHT", 3, -3);
-    f.fallbackGlow:SetTexture(1, 0.85, 0.1, 0.45);
-    f.fallbackGlow:Hide();
+    f.glow = CreateFrame("Frame", nil, f);
+    f.glow:SetFrameLevel(f.cd:GetFrameLevel() + 2);
+    f.glow:SetPoint("TOPLEFT", -4, 4);
+    f.glow:SetPoint("BOTTOMRIGHT", 4, -4);
+    f.glow:SetBackdrop({ edgeFile = BIG_BORDER, edgeSize = 12 });
+    f.glow:SetBackdropBorderColor(1, 0.82, 0.15, 1);
+    f.glow:SetScript("OnUpdate", GlowPulse);
+    f.glow:Hide();
 
     if withText then
 
@@ -206,7 +219,7 @@ local function UpdateChild(child, spellId, wantGlow)
     end
 
     if wantGlow and expires then
-        if (expires - GetTime()) <= GLOW_AT then GlowOn(child); else GlowOff(child); end
+        if (expires - GetTime()) <= GLOW_AT then GlowOn(child, expires); else GlowOff(child); end
     end
 
     child:Show();

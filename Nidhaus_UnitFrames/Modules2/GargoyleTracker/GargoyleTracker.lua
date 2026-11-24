@@ -983,6 +983,21 @@ end
 uiBlizz:SetScript("OnDragStop",  GT_SavePos)
 uiCustom:SetScript("OnDragStop", GT_SavePos)
 
+local function GT_ApplyLock()
+  local free = (K.IsGlobalUnlocked and K.IsGlobalUnlocked()) or not GTDB().locked
+  for _, f in ipairs({ uiBlizz, uiCustom }) do
+    f:SetMovable(free and true or false)
+    f:EnableMouse(free and true or false)
+  end
+end
+K.ApplyGargoyleLock = GT_ApplyLock
+
+function K.GetGargoyleLocked() return GTDB().locked and true or false end
+function K.SetGargoyleLocked(on)
+  GTDB().locked = on and true or false
+  GT_ApplyLock()
+end
+
 local function GT_OnLogin(self)
   GT_LoadPos()
   local icon = GetGargoyleIcon()
@@ -992,6 +1007,12 @@ local function GT_OnLogin(self)
   bNameTxt:SetText(GargName())
   cNameTxt:SetText(GargName())
   if not state.active then SetActiveMode(GTDB().mode or MODE_BLIZZARD) end
+  GT_ApplyLock()
+
+  if K.SetGlobalUnlock and not K._gtLockHooked then
+    K._gtLockHooked = true
+    hooksecurefunc(K, "SetGlobalUnlock", GT_ApplyLock)
+  end
   if self then self:UnregisterAllEvents() end
 end
 if IsLoggedIn() then

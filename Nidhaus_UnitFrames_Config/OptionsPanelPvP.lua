@@ -1265,7 +1265,28 @@ function K.BuildPvPSection(pane)
 		end);
 		sndCB:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 
-		eaBlk:SetBodyHeight(204);
+		checkboxCount = checkboxCount + 1;
+		local glwName = "NidhausEAGlowCB" .. checkboxCount;
+		local glwCB = CreateFrame("CheckButton", glwName, eaBody, "InterfaceOptionsCheckButtonTemplate");
+		glwCB:SetPoint("TOPLEFT", sndCB, "BOTTOMLEFT", 0, 2);
+		glwCB:SetHitRectInsets(0, -100, 0, 0);
+		if _G[glwName .. "Text"] then _G[glwName .. "Text"]:SetText(L["ALERT_GLOW"] or "Glow"); end
+		local function SyncGlow() glwCB:SetChecked(K.GetEnemyAlertOption and K.GetEnemyAlertOption("glow")); end
+		SyncGlow();
+		eaBody:HookScript("OnShow", SyncGlow);
+		glwCB:SetScript("OnClick", function(self)
+			local v = (self:GetChecked() == 1 or self:GetChecked() == true);
+			if K.SetEnemyAlertOption then K.SetEnemyAlertOption("glow", v); end
+		end);
+		glwCB:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(L["ALERT_GLOW"] or "Glow", 1, 1, 1);
+			GameTooltip:AddLine(L["TIP_ALERT_GLOW"] or "A pulsing gold border around each icon while it is on screen.", nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		glwCB:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+
+		eaBlk:SetBodyHeight(230);
 		eaBlk:Refresh();
 
 		AddMover("EnemySpellAlert",
@@ -1374,6 +1395,27 @@ function K.BuildPvPSection(pane)
 			GameTooltip:Show();
 		end);
 		mirCB:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+
+		checkboxCount = checkboxCount + 1;
+		local lockName = "NidhausGargLockCB" .. checkboxCount;
+		local lockCB = CreateFrame("CheckButton", lockName, gtBody, "InterfaceOptionsCheckButtonTemplate");
+		lockCB:SetPoint("TOPLEFT", 330, -2);
+		lockCB:SetHitRectInsets(0, -50, 0, 0);
+		if _G[lockName .. "Text"] then _G[lockName .. "Text"]:SetText(L["GARG_LOCK"] or "Lock"); end
+		local function SyncLock() lockCB:SetChecked(K.GetGargoyleLocked and K.GetGargoyleLocked()); end
+		SyncLock();
+		gtBody:HookScript("OnShow", SyncLock);
+		lockCB:SetScript("OnClick", function(self)
+			local v = (self:GetChecked() == 1 or self:GetChecked() == true);
+			if K.SetGargoyleLocked then K.SetGargoyleLocked(v); end
+		end);
+		lockCB:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(L["GARG_LOCK"] or "Lock", 1, 1, 1);
+			GameTooltip:AddLine(L["TIP_GARG_LOCK"] or "Locked, the frame can't be dragged and clicks go through it. Move Everything can still move it.", nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		lockCB:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 
 		local whereLbl = gtBody:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall");
 		whereLbl:SetPoint("TOPLEFT", 24, -34);

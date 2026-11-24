@@ -14,7 +14,7 @@ local slots = {};
 local active = {};
 local showIcons = true;
 local ICON_SIZE, ICON_GAP = 12, 3;
-local FONT_SIZES = { 10, 9, 8 };
+local FONT_SIZES = { 12, 11, 10, 9, 8 };
 
 local function PercentColor(pct)
 	if pct < 0 then pct = 0 elseif pct > 100 then pct = 100 end
