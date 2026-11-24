@@ -17,6 +17,7 @@ local tooltips = {
 	ArenaMirrorMode         = "TIP_ArenaMirrorMode",
 	ArenaFrame_Trinkets     = "TIP_ArenaFrame_Trinkets",
 	ArenaFrame_Trinket_Voice = "TIP_ArenaFrame_Trinket_Voice",
+	ArenaFrame_Trinket_ReadySound = "TIP_ArenaFrame_Trinket_ReadySound",
 	ArenaFlatWidth          = "TIP_ArenaFlatWidth",
 	ArenaFlatHealthBarHeight = "TIP_ArenaFlatHealthBarHeight",
 	ArenaFlatPowerBarHeight = "TIP_ArenaFlatPowerBarHeight",
@@ -122,7 +123,7 @@ local function CreateCheckBox(parent, label, setting, xOffset, yOffset)
 			if K.RefreshArenaDoTLayout then K.RefreshArenaDoTLayout(); end
 		elseif setting == "ArenaFrame_Trinkets" then
 			if K.ToggleArenaTrinketsTracking then K.ToggleArenaTrinketsTracking(checked); end
-		elseif setting == "ArenaFrame_Trinket_Voice" then
+		elseif setting == "ArenaFrame_Trinket_Voice" or setting == "ArenaFrame_Trinket_ReadySound" then
 
 		elseif setting == "ArenaPetFrameShow" then
 
@@ -571,7 +572,13 @@ function K.PopulateArenaTab(panel)
 	CreateCheckBox(lowerSection, L["CB_TRINKET_TRACK"], "ArenaFrame_Trinkets", 285, lY);
 	lY = lY - 28;
 	CreateCheckBox(lowerSection, L["CB_TRINKET_VOICE"], "ArenaFrame_Trinket_Voice", 20, lY);
-	lY = lY - 40;
+	CreateCheckBox(lowerSection, L["CB_TRINKET_READY"] or "Sound when enemy trinket is ready",
+		"ArenaFrame_Trinket_ReadySound", 285, lY);
+	lY = lY - 30;
+	K.UI.SoundPicker(lowerSection, 300, lY, nil,
+		function() return C.ArenaFrame_Trinket_ReadyKey; end,
+		function(v) K.SaveConfig("ArenaFrame_Trinket_ReadyKey", v); end);
+	lY = lY - 50;
 
 	CreateSeparator(lowerSection, 14, lY, 540);
 	lY = lY - 8;

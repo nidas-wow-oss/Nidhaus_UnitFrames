@@ -31,6 +31,8 @@ local function GTDB()
   if db.inDuel  == nil then db.inDuel  = true end
   if db.inWorld == nil then db.inWorld = true end
   if db.mirror  == nil then db.mirror  = false end
+  if db.sound   == nil then db.sound   = false end
+  if db.soundKey == nil then db.soundKey = "AlarmMid" end
   return db
 end
 
@@ -993,6 +995,11 @@ end
 K.ApplyGargoyleLock = GT_ApplyLock
 
 function K.GetGargoyleLocked() return GTDB().locked and true or false end
+function K.GetGargoyleSound() return GTDB().sound, GTDB().soundKey end
+function K.SetGargoyleSound(on, key)
+  if on ~= nil then GTDB().sound = on and true or false end
+  if key then GTDB().soundKey = key end
+end
 function K.SetGargoyleLocked(on)
   GTDB().locked = on and true or false
   GT_ApplyLock()
@@ -1046,8 +1053,13 @@ f:SetScript("OnEvent", function(self, event, ...)
      and IsHostile(sourceFlags) then
 
     if subEvent == "SPELL_SUMMON" then LearnGargName(destName) end
+    local wasActive = state.active
     StartGargoyle(sourceName, false,
       (subEvent == "SPELL_SUMMON") and destGUID or nil)
+
+    if not wasActive and state.active and GTDB().sound then
+      K.PlayNUFSound(GTDB().soundKey)
+    end
     return
   end
   if not state.active then return end

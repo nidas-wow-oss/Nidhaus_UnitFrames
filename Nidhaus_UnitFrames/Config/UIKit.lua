@@ -305,3 +305,179 @@ function K.UI.Collapsible(parent, x, y, width, height, isOpen)
 	body:Refresh();
 	return body;
 end
+
+local SOUND_DIR = "Interface\\AddOns\\Nidhaus_UnitFrames\\Media\\Sound\\";
+K.SOUNDS = {
+	{ key = "raid",        text = "Raid Warning" },
+	{ key = "AlarmShort",  file = "AlarmShort.ogg" },
+	{ key = "AlarmMid",    file = "AlarmMid.ogg" },
+	{ key = "AlarmLong",   file = "AlarmLong.ogg" },
+	{ key = "BeepHigh",    file = "BeepHigh.mp3" },
+	{ key = "BeepLow",     file = "BeepLow.mp3" },
+	{ key = "ChainLink",   file = "ChainLink.ogg" },
+	{ key = "ChurchBell",  file = "ChurchBell.ogg" },
+	{ key = "Duck",        file = "Duck.ogg" },
+	{ key = "ElectroZap1", file = "ElectroZap1.mp3" },
+	{ key = "ElectroZap2", file = "ElectroZap2.mp3" },
+	{ key = "Heartbeat",   file = "Heartbeat.ogg" },
+	{ key = "Message1",    file = "Message1.ogg" },
+	{ key = "Message2",    file = "Message2.ogg" },
+	{ key = "Ringtone1",   file = "Ringtone1.mp3" },
+	{ key = "Ringtone2",   file = "Ringtone2.mp3" },
+	{ key = "Sparkle",     file = "Sparkle.mp3" },
+	{ key = "Squish",      file = "Squish.ogg" },
+	{ key = "WindChime",   file = "WindChime.ogg" },
+	{ key = "Xylophone",   file = "Xylophone.ogg" },
+};
+
+local function SoundIndex(key)
+	for i, s in ipairs(K.SOUNDS) do
+		if s.key == key then return i; end
+	end
+	return 1;
+end
+
+function K.SoundName(key)
+	local s = K.SOUNDS[SoundIndex(key)];
+	return s.text or s.key;
+end
+
+function K.PlayNUFSound(key)
+	local s = K.SOUNDS[SoundIndex(key)];
+	if s.file then
+		PlaySoundFile(SOUND_DIR .. s.file);
+	else
+		PlaySound("RaidWarning");
+	end
+end
+
+local soundMenu;
+local function BuildSoundMenu()
+	local m = CreateFrame("Frame", "NUF_SoundMenu", UIParent);
+	m:SetFrameStrata("FULLSCREEN_DIALOG");
+	m:SetClampedToScreen(true);
+	m:EnableMouse(true);
+	m:SetBackdrop({
+		bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		tile = true, tileSize = 16, edgeSize = 14,
+		insets = { left = 4, right = 4, top = 4, bottom = 4 },
+	});
+	m:SetBackdropColor(0.05, 0.05, 0.05, 0.97);
+	m:SetBackdropBorderColor(0.5, 0.5, 0.5, 1);
+	m.rows = {};
+	local ROW_H = 16;
+	for i, s in ipairs(K.SOUNDS) do
+		local r = CreateFrame("Button", nil, m);
+		r:SetHeight(ROW_H);
+		r:SetPoint("TOPLEFT", 6, -6 - (i - 1) * ROW_H);
+		r:SetPoint("RIGHT", m, "RIGHT", -6, 0);
+		r:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD");
+		r.check = r:CreateTexture(nil, "OVERLAY");
+		r.check:SetSize(14, 14);
+		r.check:SetPoint("LEFT", 2, 0);
+		r.check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check");
+		r.text = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+		r.text:SetPoint("LEFT", 20, 0);
+		r.text:SetText(s.text or s.key);
+		r.key = s.key;
+		r:SetScript("OnClick", function(self)
+			K.PlayNUFSound(self.key);
+			if m.onPick then m.onPick(self.key); end
+			m:Hide();
+		end);
+		m.rows[i] = r;
+	end
+	m:SetHeight(12 + #K.SOUNDS * ROW_H);
+
+	m:SetScript("OnUpdate", function(self)
+
+		if self.owner and not self.owner:IsVisible() then self:Hide(); return; end
+		if (IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton"))
+		   and not self:IsMouseOver() and not (self.owner and self.owner:IsMouseOver()) then
+			self:Hide();
+		end
+	end);
+	m:Hide();
+	return m;
+end
+
+function K.UI.OpenSoundMenu(owner, current, onPick)
+	soundMenu = soundMenu or BuildSoundMenu();
+	if soundMenu:IsShown() and soundMenu.owner == owner then
+		soundMenu:Hide();
+		return;
+	end
+	soundMenu.owner, soundMenu.onPick = owner, onPick;
+	for _, r in ipairs(soundMenu.rows) do
+		if r.key == (K.SOUNDS[SoundIndex(current)].key) then r.check:Show(); else r.check:Hide(); end
+	end
+	soundMenu:SetWidth(math.max(150, owner:GetWidth()));
+	soundMenu:ClearAllPoints();
+	soundMenu:SetPoint("TOPLEFT", owner, "BOTTOMLEFT", 0, -2);
+	soundMenu:Show();
+end
+
+function K.UI.SoundPicker(parent, x, y, labelText, getFn, setFn, width)
+	width = width or 170;
+	local f = CreateFrame("Frame", nil, parent);
+	f:SetPoint("TOPLEFT", x, y);
+	f:SetSize(width + 26, 38);
+
+	local lbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+	lbl:SetPoint("TOPLEFT", 0, 0);
+	lbl:SetText(K.UI.Label(labelText or (L["SOUND_PICK"] or "Sound:")));
+
+	local box = CreateFrame("Frame", nil, f);
+	box:SetPoint("TOPLEFT", 0, -15);
+	box:SetSize(width, 22);
+	box:SetBackdrop({
+		bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		tile = true, tileSize = 16, edgeSize = 12,
+		insets = { left = 3, right = 3, top = 3, bottom = 3 },
+	});
+	box:SetBackdropColor(0.07, 0.07, 0.07, 0.75);
+	box:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.8);
+
+	local name = box:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+	name:SetPoint("LEFT", 8, 0);
+	name:SetPoint("RIGHT", -22, 0);
+	name:SetJustifyH("LEFT");
+
+	local function Refresh()
+		name:SetText(K.SoundName(getFn()));
+	end
+
+	local open = CreateFrame("Button", nil, box);
+	open:SetAllPoints(box);
+	open:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD");
+	local arrow = box:CreateTexture(nil, "OVERLAY");
+	arrow:SetSize(20, 20);
+	arrow:SetPoint("RIGHT", -1, 0);
+	arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up");
+	open:SetScript("OnClick", function()
+		K.UI.OpenSoundMenu(box, getFn(), function(key)
+			setFn(key);
+			Refresh();
+		end);
+	end);
+
+	local play = CreateFrame("Button", nil, f);
+	play:SetSize(22, 22);
+	play:SetPoint("LEFT", box, "RIGHT", 4, 0);
+	play:SetNormalTexture("Interface\\Common\\VoiceChat-Speaker");
+	play:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD");
+	play:SetScript("OnClick", function() K.PlayNUFSound(getFn()); end);
+	play:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+		GameTooltip:SetText(L["SOUND_PLAY"] or "Play", 1, 1, 1);
+		GameTooltip:Show();
+	end);
+	play:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+
+	parent:HookScript("OnShow", Refresh);
+	Refresh();
+	f.Refresh = Refresh;
+	return f, Refresh;
+end

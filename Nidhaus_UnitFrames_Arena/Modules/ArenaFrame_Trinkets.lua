@@ -24,6 +24,26 @@ local TRINKET_SPELLS = {
 
 local trinketExpire = {};
 
+local readyAt = {};
+local readyTicker = CreateFrame("Frame");
+readyTicker:Hide();
+readyTicker.acc = 0;
+readyTicker:SetScript("OnUpdate", function(self, dt)
+	self.acc = self.acc + dt;
+	if self.acc < 0.2 then return; end
+	self.acc = 0;
+	local now, any = GetTime(), false;
+	for f, t in pairs(readyAt) do
+		if now >= t then
+			readyAt[f] = nil;
+			if C.ArenaFrame_Trinket_ReadySound then K.PlayNUFSound(C.ArenaFrame_Trinket_ReadyKey); end
+		else
+			any = true;
+		end
+	end
+	if not any then self:Hide(); end
+end);
+
 ns.ArenaFrame_Trinkets = CreateFrame("Frame");
 local Core = ns.ArenaFrame_Trinkets;
 
@@ -590,6 +610,10 @@ function Core:COMBAT_LOG_EVENT_UNFILTERED(timestamp, eventType,
 	if not (info.shared and left >= info.cd) then
 		trinketExpire[cdFrame] = now + info.cd;
 		CooldownFrame_SetTimer(cdFrame, now, info.cd, 1);
+		if bit.band(srcFlags or 0, COMBATLOG_OBJECT_REACTION_HOSTILE or 0x40) > 0 then
+			readyAt[cdFrame] = now + info.cd;
+			readyTicker:Show();
+		end
 	end
 
 	if C.ArenaFrame_Trinket_Voice and info.voice then

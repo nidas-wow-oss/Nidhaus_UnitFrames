@@ -47,6 +47,8 @@ local defaults = {
 	PartyTrinketsEnabled = false,
 	PartyTrinketSize = 20,
 	ArenaFrame_Trinket_Voice = false,
+	ArenaFrame_Trinket_ReadySound = false,
+	ArenaFrame_Trinket_ReadyKey = "BeepHigh",
 	ArenaMirrorMode = false,
 	ArenaFrameSpacing = 0,
 

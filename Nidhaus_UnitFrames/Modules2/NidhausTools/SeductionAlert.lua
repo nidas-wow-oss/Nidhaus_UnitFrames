@@ -10,6 +10,7 @@ local DEFAULTS = {
     point = "CENTER",
     x     = 0,
     y     = 164.61526768373,
+    soundKey = "raid",
 };
 
 SeductionAlertDB = SeductionAlertDB or {};
@@ -73,7 +74,7 @@ local function Show(unit)
     frame:Show();
     if playing ~= unit then
         playing = unit;
-        PlaySoundFile(SOUND);
+        K.PlayNUFSound(SeductionAlertDB.soundKey);
     end
 end
 
@@ -166,7 +167,7 @@ SlashCmdList["NUFSEDUCTION"] = function(msg)
         ResolveIcon();
         frame.icon:SetTexture(iconTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
         frame:Show();
-        PlaySoundFile(SOUND);
+        K.PlayNUFSound(SeductionAlertDB.soundKey);
         print("|cff4FC3F7NUF:|r " .. (L["SED_TEST"] or "Seduction alert - test. /seduction test again or change zone to hide it."));
     else
         SetMoving(not moving);

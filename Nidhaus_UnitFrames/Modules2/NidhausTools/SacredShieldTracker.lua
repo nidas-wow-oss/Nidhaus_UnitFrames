@@ -13,6 +13,8 @@ local DEFAULTS = {
     point = "CENTER",
     x     = -302.81262135743,
     y     = -321.01764151423,
+    sound    = false,
+    soundKey = "WindChime",
 };
 
 SacredShieldTrackerDB = SacredShieldTrackerDB or {};
@@ -63,6 +65,8 @@ local function GlowOn(f, expires)
     f.glowing = true;
     f.glow.t = 0;
     f.glow:Show();
+
+    if SacredShieldTrackerDB.sound then K.PlayNUFSound(SacredShieldTrackerDB.soundKey); end
 end
 
 local function GlowOff(f)

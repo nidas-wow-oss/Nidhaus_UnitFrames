@@ -831,6 +831,28 @@ local CLASS_MODULES = {
 			isMoving = function() return K.IsSacredShieldTrackerMoving and K.IsSacredShieldTrackerMoving(); end,
 			setMove  = function(v) if K.SetSacredShieldTrackerMove then K.SetSacredShieldTrackerMove(v); end end,
 			reset    = function() if K.ResetSacredShieldTrackerPosition then K.ResetSacredShieldTrackerPosition(); end end,
+
+			options  = function(body, by)
+				checkboxCount = checkboxCount + 1;
+				local cbName = "NidhausSSTSoundCB" .. checkboxCount;
+				local cb = CreateFrame("CheckButton", cbName, body, "InterfaceOptionsCheckButtonTemplate");
+				cb:SetPoint("TOPLEFT", 22, by - 12);
+				cb:SetHitRectInsets(0, -100, 0, 0);
+				local fs = _G[cbName .. "Text"];
+				if fs then fs:SetText(L["SST_SOUND"] or "Sound under 5 s"); end
+				local function Sync() cb:SetChecked(SacredShieldTrackerDB and SacredShieldTrackerDB.sound); end
+				Sync();
+				body:HookScript("OnShow", Sync);
+				Tooltip(cb, L["SST_SOUND"] or "Sound under 5 s", L["TIP_SST_SOUND"]
+					or "Plays a sound once when your Sacred Shield starts glowing (5 seconds or less left).");
+				cb:SetScript("OnClick", function(self)
+					if SacredShieldTrackerDB then SacredShieldTrackerDB.sound = Checked(self); end
+				end);
+				K.UI.SoundPicker(body, 260, by, nil,
+					function() return SacredShieldTrackerDB and SacredShieldTrackerDB.soundKey; end,
+					function(v) if SacredShieldTrackerDB then SacredShieldTrackerDB.soundKey = v; end end);
+				return by - 44;
+			end,
 		});
 
 		pane:HookScript("OnShow", function()
@@ -1286,7 +1308,11 @@ function K.BuildPvPSection(pane)
 		end);
 		glwCB:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 
-		eaBlk:SetBodyHeight(230);
+		K.UI.SoundPicker(eaBody, 26, -200, nil,
+			function() return K.GetEnemyAlertOption and K.GetEnemyAlertOption("soundKey"); end,
+			function(v) if K.SetEnemyAlertOption then K.SetEnemyAlertOption("soundKey", v); end end);
+
+		eaBlk:SetBodyHeight(246);
 		eaBlk:Refresh();
 
 		AddMover("EnemySpellAlert",
@@ -1323,6 +1349,10 @@ function K.BuildPvPSection(pane)
 			K.UI.ScaleSlider(sdBody, "SeductionAlert", 26, -40, 200,
 				L["SLIDER_SCALE"] or "Scale");
 		end
+
+		K.UI.SoundPicker(sdBody, 260, -34, nil,
+			function() return SeductionAlertDB and SeductionAlertDB.soundKey; end,
+			function(v) if SeductionAlertDB then SeductionAlertDB.soundKey = v; end end);
 
 		sdBlk:SetBodyHeight(80);
 		sdBlk:Refresh();
@@ -1466,7 +1496,31 @@ function K.BuildPvPSection(pane)
 			K.UI.ScaleSlider(gtBody, "GargoyleTracker", 26, -140, 200);
 		end
 
-		gtBlk:SetBodyHeight(180);
+		checkboxCount = checkboxCount + 1;
+		local gsName = "NidhausGargSoundCB" .. checkboxCount;
+		local gsCB = CreateFrame("CheckButton", gsName, gtBody, "InterfaceOptionsCheckButtonTemplate");
+		gsCB:SetPoint("TOPLEFT", 26, -190);
+		gsCB:SetHitRectInsets(0, -100, 0, 0);
+		if _G[gsName .. "Text"] then _G[gsName .. "Text"]:SetText(L["GARG_SOUND"] or "Sound on summon"); end
+		local function SyncGS() gsCB:SetChecked(K.GetGargoyleSound and (K.GetGargoyleSound())); end
+		SyncGS();
+		gtBody:HookScript("OnShow", SyncGS);
+		gsCB:SetScript("OnClick", function(self)
+			local v = (self:GetChecked() == 1 or self:GetChecked() == true);
+			if K.SetGargoyleSound then K.SetGargoyleSound(v); end
+		end);
+		gsCB:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+			GameTooltip:SetText(L["GARG_SOUND"] or "Sound on summon", 1, 1, 1);
+			GameTooltip:AddLine(L["TIP_GARG_SOUND"] or "Plays a sound when an enemy Death Knight summons a Gargoyle.", nil, nil, nil, true);
+			GameTooltip:Show();
+		end);
+		gsCB:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+		K.UI.SoundPicker(gtBody, 260, -178, nil,
+			function() return K.GetGargoyleSound and select(2, K.GetGargoyleSound()); end,
+			function(v) if K.SetGargoyleSound then K.SetGargoyleSound(nil, v); end end);
+
+		gtBlk:SetBodyHeight(222);
 		gtBlk:Refresh();
 
 		AddMover("GargoyleTracker",
@@ -1550,6 +1604,10 @@ function K.BuildPvPSection(pane)
 		if K.UI and K.UI.ScaleSlider then
 			K.UI.ScaleSlider(teBody, "TurnEvil", 26, -152, 200);
 		end
+
+		K.UI.SoundPicker(teBody, 260, -146, nil,
+			function() return K.GetTurnEvilSound and K.GetTurnEvilSound(); end,
+			function(v) if K.SetTurnEvilSound then K.SetTurnEvilSound(v); end end);
 
 		teBlk:SetBodyHeight(186);
 		teBlk:Refresh();

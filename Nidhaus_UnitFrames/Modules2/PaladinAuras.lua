@@ -628,6 +628,8 @@ local function Body()
 	function K.IsTurnEvilPreview() return tePreview; end
 
 	function K.GetTurnEvilAllyPet() return TeDB().allyPet and true or false; end
+	function K.GetTurnEvilSound() return TeDB().soundKey; end
+	function K.SetTurnEvilSound(v) TeDB().soundKey = v; end
 	function K.SetTurnEvilAllyPet(on)
 		TeDB().allyPet = on and true or false;
 		if not on then wipe(allyLog); end
@@ -679,7 +681,7 @@ local function Body()
 						if RaidNotice_AddMessage and RaidWarningFrame then
 							RaidNotice_AddMessage(RaidWarningFrame, msg, ChatTypeInfo["RAID_WARNING"]);
 						end
-						PlaySound("RaidWarning");
+						K.PlayNUFSound(TeDB().soundKey);
 					end
 				elseif sub == "SPELL_AURA_REMOVED" or sub == "SPELL_AURA_BROKEN"
 					or sub == "SPELL_AURA_BROKEN_SPELL" then

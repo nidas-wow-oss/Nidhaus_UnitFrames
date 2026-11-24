@@ -113,6 +113,7 @@ K.DeferModule("EnemySpellAlert", {
 		if type(db.duration) ~= "number" then db.duration = DURATION; end
 		if db.sound == nil then db.sound = false; end
 		if db.glow == nil then db.glow = false; end
+		if db.soundKey == nil then db.soundKey = "raid"; end
 		if not db.spells then db.spells = {}; end
 
 		for _, grp in ipairs(SPELLS) do
@@ -362,6 +363,8 @@ K.DeferModule("EnemySpellAlert", {
 			db.duration = math.max(1, math.min(10, v));
 		elseif key == "sound" then
 			db.sound = v and true or false;
+		elseif key == "soundKey" then
+			db.soundKey = v;
 		elseif key == "glow" then
 			db.glow = v and true or false;
 			for _, f in ipairs(pool) do if f.inUse then StyleGlow(f); end end
@@ -435,7 +438,7 @@ K.DeferModule("EnemySpellAlert", {
 
 			if DB().sound and GetTime() - lastSound > 1 then
 				lastSound = GetTime();
-				PlaySound("RaidWarning");
+				K.PlayNUFSound(DB().soundKey);
 			end
 		end
 		st.widget.cls = cls;
